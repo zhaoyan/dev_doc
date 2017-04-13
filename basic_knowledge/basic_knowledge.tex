@@ -1005,13 +1005,13 @@ ctrl+n,N & move to next avaible position \\
 \subsection{Surround}
 \begin{itemize}
 		\item There are three main actions. delete, change or add surrounds
-		\item When you use delete or change, you should put your cursor inside a pair of surrounds.
+		\item When you use delete or change, you should put your cursor inside a pair of surrounds.\\
 		\includegraphics[scale=0.4]{pics/surround1.png} \\
-	\item below is change command list:
+	\item below is change command list: \\
 	\includegraphics[scale=0.4]{pics/surround2.png} \\
 		
-		\item Surroundings can be added with the same "cs" command, which takes a surrounding target, or with the "ys" command that takes a valid vim motion. 
-	\includegraphics[scale=0.4]{pics/surround3.png} \\
+		\item Surroundings can be added with the same "cs" command, which takes a surrounding target, or with the "ys" command that takes a valid vim motion. \\
+			\includegraphics[scale=0.4]{pics/surround3.png} \\
 	   
 	   \item You can use csw" or ysiw" to add surrounds. ys can follow a valid vim motion. Such as ys3w<p> will add <p>word1 word2 word3</p>
 	   \item In Visual mode, press <S-s> (captive S). Then input a surround that you want to add. Don't sue lower case "s". 
@@ -1162,7 +1162,13 @@ let g:ycm_server_log_level = 'debug'
 \end{verbatim}
 
 First run :YcmRestartServer.Then run :YcmToggleLogs <tab> select stderr log file. All the log files are saved in /tmp directory. 
-\item run ~/.vim/bundle/YouCompleteMe/run\_test.py and ~/.vim/bundle/YouCompleteMe/third_party/ycmd/run\_test.py to see If there are something wrong with YCM. 	
+
+\item run:
+\begin{verbatim}
+~/.vim/bundle/YouCompleteMe/run_test.py
+~/.vim/bundle/YouCompleteMe/third_party/ycmd/run_test.py
+\end{verbatim}
+to see If there are something wrong with YCM. 	
 \end{itemize}
 
 \subsection{NerdCommenter}
@@ -1195,6 +1201,73 @@ First run :YcmRestartServer.Then run :YcmToggleLogs <tab> select stderr log file
 \subsubsection{gcc}
 \begin{itemize}
 
+		\item gcc/g++ includes knowledges:
+				\begin{enumerate}						
+	\item You can use -I to add your include PATH, but It will only affect current g++ command.
+	\item You also can use \linuxcommand{CPLUS\_INCLUDE\_PATH g++...}. You should put them on the same line. CPLUS environment will only valid in this line. So -I method is better.
+	\item -I will be search first. Then 
+		\item quote header will search from current directory. 
+		\item Any search will NOT recursive automaticly, So you must use "include\_paht/include\_file" to specify the exact position. 
+		\item For search order. quote>system. -I will be the first in system. -I will follow from left to right.
+		\item \verb=g++ -E -x c++ - -v < /dev/null=. It will show all the include path and order. 
+		\item Based above knowledges. You can deal with most of tasks right now. If you need harder requirement. you can google "Options for Directory Search gcc". There is gcc document introduce this topic. 
+			\end{enumerate}
+
+	 \item gcc/g++ library knowledges;
+			 \begin{enumerate}
+					 \item \verb=ld -o output /lib/crt0.o hello.o -lc= You can input .o file directly to ld command
+					 \item Unless you have some very specific platform integration requirements, or have reasons not to use gcc, I can hardly think of any advantage of invoking ld directly for linking. Any extra linker-specific option you may require could easily be specified with the -Wl, prefix on the gcc command line (if not already available as a plain gcc option).
+
+					 \item if the linker is being invoked indirectly, via a compiler driver (e.g. 'gcc') then all the linker command line options should be prefixed by '-Wl,' 
+
+    \item YOu can use -L to add you library PATH, and -l library name. In you source code, you only give function name, so you have to use -l to specify the libary name. 
+
+	\item ld --verbose | grep 'SEARCH*" will show you all the default ld search library paths.
+			
+   \item LIBRARY\_PATH. you can write it in you .cshrc or .bashrc to affect all your terminals. Or put it infront of gcc/g++ command.       
+     
+	\item \verb=g++ -E -x c++ - -v < /dev/null=. It will show all the include path.And LIBRARY\_PATH and COLLECT\_GCC options. 
+	\item The linker will search your -L directories in the left-to-right order in which they appear in the commandline and it will search all your -L directories before the default linkage directories.
+	\item Then It will search LIBRARY\_PATH. Last it will search default search library path./lib /usr/lib and /usr/local/lib. (I am not quite sure about this conclusion, I get it from web. I didn't confirm it in my experiment.)
+			\end{enumerate}
+
+		\item gcc/g++ .so library knowledges. 
+		\begin{enumerate}
+				\item for elf format applicaiton. It will search elf DT\_RPATH >LD\_LIBRARY\_PATH >/etc/ld.so.cache > /lib/> /usr/lib
+
+				\item For system effect, 1) add .so to /lib or /usr/lib. 2) edit /etc/ld.so.conf, then run ldconfig to produce /etc/ld.so.cache.
+				\item gcc -c will invoke ccl and as. gcc -o will invoke ccl, as and ld
+				\item 
+            \end{enumerate}
+
+		\item For .so file, You can use gcc implicit link, then use LD\_LIBARY\_PATH to dynamic load it. You also can explicit link it in your main.c. In this way, you don't need set LD\_LIBARY and more 
+
+
+						
+
+\begin{lstlisting}[frame=single, language=c++]
+#include <stdio.h>
+#include <dlfcn.h>
+int main(int argc, char *argv[]){
+	void *dl = NULL;
+	int (*add)(int a, int b);
+	dl = dlopen( "./libtest.so", RTLD_LAZY);
+	if( dl == NULL ){
+		printf("so loading error.\n");
+		return 1;
+	}
+    add = (int(*)(int, int))dlsym(dl, "add");
+	if( dlerror() != NULL ){
+        printf("fun load error.\n");
+		return 1;
+	}
+	printf("%d\n", add(1, 2));
+	return 0;
+}
+\end{lstlisting}
+
+     \item \linuxcommand{gcc/g++ -E -dM file.c} will output only result from preprocessor and all defined macros.
+
 \item disable a few lines in the source code
 \begin{verbatim}
 #pragma GCC diagnostic error "-Wuninitialized"
@@ -1212,7 +1285,6 @@ First run :YcmRestartServer.Then run :YcmToggleLogs <tab> select stderr log file
    \item By default, gcc searches the following /usr/local/include/ and /user/include for header file. and /usr/local/lib/ and /usr/lib/ for lib files.
    \item For you own header or lib files, you can use \op{-I} and \op{-L} to  add new search directories.
    \item \linuxcommand{gcc -c hello.c} will produce object file hello.o. then you can use \linuxcommand{gcc hello.o -o hello} to produce executable file. You can these two steps just compile modified c file. It will save you a lot of compile time. \linuxcommand{gcc -c *.c}  then \linuxcommand{gcc -c a.c} last \linuxcommand{gcc *.o -o last}. A better method is to use make file.
-   \item there are three environment varaible gcc to use. C\_INCLUDE\_PATH, CPLUS\_INCLUDE and LIBRARY\_PATH. you can write
    \item \linuxcommand{ldd} will tell you what lib you are using in your executable
        programme.
 \begin{verbatim}
@@ -1235,9 +1307,14 @@ printf ...
 
    \item About optimization, a good book is ``An Introduction to GCC-Brian\_Gough'', You can google it.
 
-   \item In a new linux system, sometimes you need to install build-essential package,  it contains some C
-       language include file and library file.
-
+   \item In a new linux system, sometimes you need to install build-essential package,  it contains some C language include file and library file.
+   \item Use below command to compile .so file in linux. \\
+   \verb=gcc -shared -o libpong.so -fPIC pong.c= \\
+   This command will prodouce a libpong.so file. Then you need to create pont.h file include all the declaretion. 
+   
+   \item Then you can make a client programme. It need to inlcude pong.h file then use below to compile. \\
+	\verb=gcc -o test test.c -lpong -L.=
+	You need to use -lpong to specify libname. -L is to specify library search path. 
 \end{itemize}
 
 
