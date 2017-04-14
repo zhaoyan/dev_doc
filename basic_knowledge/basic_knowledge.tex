@@ -632,7 +632,7 @@ i`		inner string in backticks
 		\hline
         search &<C-o>...  & / and ? \\
        \hline       
-		previous and next word in cursor & <C-o>.. & #, * \\
+		previous and next word in cursor & <C-o>.. & \#, * \\
 
 		\hline 
 		All /first word in cursor & $[I$, $[i$ & \\ 
@@ -955,13 +955,13 @@ html:5  & whole page \\
 \hline 
 * &how many times output \\
 \hline
-div#id, div.class & with id and class to a tag \\
+div\#id, div.class & with id and class to a tag \\
 
 \hline 
-\$ & will attach number with eletement attribute name   \\
+\$ & will attach number with elemental attribute name   \\
 
 \hline
-\text \{ \} & add text to element \\
+text \{ \} & add text to element \\
 \hline
 \end{tabular}
 
@@ -1198,52 +1198,155 @@ to see If there are something wrong with YCM.
 
 
 \chapter{Developing tool}
-\subsubsection{gcc}
+\section{gcc}
+\subsection{gcc basic}
 \begin{itemize}
 
-		\item gcc/g++ includes knowledges:
-				\begin{enumerate}						
-	\item You can use -I to add your include PATH, but It will only affect current g++ command.
-	\item You also can use \linuxcommand{CPLUS\_INCLUDE\_PATH g++...}. You should put them on the same line. CPLUS environment will only valid in this line. So -I method is better.
-	\item -I will be search first. Then 
+\item For basic knowledge, google "GCC and Make Compiling, Linking and Building C/C++ Applications" 
+
+   \item \linuxcommand{gcc -c hello.c} will produce object file hello.o. then you can use \linuxcommand{gcc hello.o -o hello} to produce executable file. You can these two steps just compile modified c file. It will save you a lot of compile time. \linuxcommand{gcc -c *.c}  then \linuxcommand{gcc -c a.c} last \linuxcommand{gcc *.o -o last}. A better method is to use make file.
+
+   \item \linuxcommand{gcc -Wall hello.c -o hello} \op{-Wall} is an important options, you should always use it.
+   
+  \item In general, \linuxcommand{gcc -Wall hello.c -lm -o hello} the compile options \op{-lNAME} will attempt to link object files with a library file libNAME.a in the standard library directories.
+\item Disable a few lines in the source code
+\begin{verbatim}
+#pragma GCC diagnostic error "-Wuninitialized"
+    foo(a);         /* error is given for this one */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
+    foo(b);         /* no diagnostic for this one */
+#pragma GCC diagnostic pop
+    foo(c);         /* error is given for this one */
+#pragma GCC diagnostic pop
+    foo(d);         /* depends on command line options */
+\end{verbatim}
+ 
+   \item About optimization, a good book is ``An Introduction to GCC-Brian\_Gough'', You can google it.
+
+   \item In a new linux system, sometimes you need to install build-essential package,  it contains some C language include file and library file.
+
+ \item -DNAME defines a preprocessor macro NAME
+\begin{verbatim}
+ #ifdef NAME
+printf ...
+ #endif
+\end{verbatim}
+
+     \item \linuxcommand{gcc/g++ -E -dM file.c} will output only result from preprocessor and all defined macros.
+     
+     \item use \linuxcommand{ldd} can see what libs does an application depends. 
+\item   \linuxcommand{nm} can tell you what functions there are in a lib: there are T,U, and W categories. 
+\item \linuxcommand{ar-t} can see what .o files are included in a lib. \linuxcommand{nm -D --defined-only libname.so}
+will see contents in a .so file.
+\item for .so use file command, for .a use objdump -x to see if they are 32 or 64 bits.    
+   
+     
+\end{itemize}
+
+\subsection{gcc include}
+
+
+    \begin{itemize}		
+    \item gcc searches the following /usr/local/include/ and /user/include for header file.				
+	\item You can use -I to add your include path, but It will only affect current g++ command.
+	\item You also can use \linuxcommand{CPLUS\_INCLUDE\_PATH=... g++...}. You should put them on the same line. CPLUS environment will only valid in this line. -I method is better because it save typing.
+	\item \verb=-I\users\yzhao\myinclude= There is no space between -I and path variable. 
 		\item quote header will search from current directory. 
-		\item Any search will NOT recursive automaticly, So you must use "include\_paht/include\_file" to specify the exact position. 
+		\item Any search will NOT recursive automatically, So you must use "path/foo.h" to specify the exact position. 
 		\item For search order. quote>system. -I will be the first in system. -I will follow from left to right.
 		\item \verb=g++ -E -x c++ - -v < /dev/null=. It will show all the include path and order. 
-		\item Based above knowledges. You can deal with most of tasks right now. If you need harder requirement. you can google "Options for Directory Search gcc". There is gcc document introduce this topic. 
-			\end{enumerate}
+		\item cpp -v hello.c will also show all the include paths. 
+		\item Based above knowledge. You can deal with most of tasks right now. If you need harder requirement. you can google "Options for Directory Search gcc". There is a gcc document to introduce this topic. 
+		
+			\end{itemize}
 
-	 \item gcc/g++ library knowledges;
-			 \begin{enumerate}
-					 \item \verb=ld -o output /lib/crt0.o hello.o -lc= You can input .o file directly to ld command
+\subsection{gcc linker}
+			 \begin{itemize}
+			 \item By default, gcc searches /usr/local/lib/ and /usr/lib/ for lib files.
+			 
+			 \item libchild.a is based on libbase.a, then you have to put -lchild in front of -lbase, or it will produce dependent problem. 
+			 
+					 \item \verb=ld -o output /lib/crt0.o hello.o -lc= You can input .o file directly to ld command. -lc means libc.a or libc.so. It will produce "output". 
+					 
 					 \item Unless you have some very specific platform integration requirements, or have reasons not to use gcc, I can hardly think of any advantage of invoking ld directly for linking. Any extra linker-specific option you may require could easily be specified with the -Wl, prefix on the gcc command line (if not already available as a plain gcc option).
 
-					 \item if the linker is being invoked indirectly, via a compiler driver (e.g. 'gcc') then all the linker command line options should be prefixed by '-Wl,' 
+					 \item if the linker is being invoked indirectly, via a compiler driver (e.g. 'gcc') then all the linker command line options should be prefixed by '-Wl,' . An example can be found below when you use "shared object name". Such as libhello.so.0.0.1
 
-    \item YOu can use -L to add you library PATH, and -l library name. In you source code, you only give function name, so you have to use -l to specify the libary name. 
+    \item You can use -L to add you library PATH, and -l library name. In you source code, you only give function name, so you have to use -l to specify the libary name. 
 
 	\item ld --verbose | grep 'SEARCH*" will show you all the default ld search library paths.
 			
-   \item LIBRARY\_PATH. you can write it in you .cshrc or .bashrc to affect all your terminals. Or put it infront of gcc/g++ command.       
-     
-	\item \verb=g++ -E -x c++ - -v < /dev/null=. It will show all the include path.And LIBRARY\_PATH and COLLECT\_GCC options. 
-	\item The linker will search your -L directories in the left-to-right order in which they appear in the commandline and it will search all your -L directories before the default linkage directories.
+   \item LIBRARY\_PATH. you can write it in you .cshrc or .bashrc to affect all your terminals. Or put it in front of gcc/g++ command, which must stay in the same line.        
+	 
+	\item The linker will search your -L directories in the left-to-right order in which they appear in the command line and it will search all your -L directories before the default linkage directories.
+	
 	\item Then It will search LIBRARY\_PATH. Last it will search default search library path./lib /usr/lib and /usr/local/lib. (I am not quite sure about this conclusion, I get it from web. I didn't confirm it in my experiment.)
-			\end{enumerate}
+	
+	\item \verb=g++ -E -x c++ - -v < /dev/null=. It will show all the include path and LIBRARY\_PATH and COLLECT\_GCC options.
+	\item gcc -v give you link library path order and detail information. 
+	\end{itemize}
 
-		\item gcc/g++ .so library knowledges. 
-		\begin{enumerate}
-				\item for elf format applicaiton. It will search elf DT\_RPATH >LD\_LIBRARY\_PATH >/etc/ld.so.cache > /lib/> /usr/lib
+\subsection{gcc compile .so}
+  \begin{itemize}
+  \item compile .so without so name
+	\begin{enumerate}
+	\item Use below command to compile .so file in linux. \\
+   \verb=gcc -shared -o libpong.so -fPIC pong.c= \\
+   This command will prodouce a libpong.so file. Then you need to create pont.h file include all the declaretion. 
+   
+   \item Then you can make a client programme. It need to inlcude pong.h file then use below to compile. \\
+	\verb=gcc -o test test.c -lpong -L.=
+	You need to use -lpong to specify libname. -L is to specify library search path.        
+	\end{enumerate}
+
+       \item compile .so with soname 
+       \begin{enumerate}
+		\item \verb=gcc hello.c -fPIC -shared -Wl,-soname,libhello.so.0 -o libhello.so.0.0.1= 
+		
+		\item When you have libhello.so.0.0.1. run \verb=ldconfig -n .=, It will produce a soft link libhello.so.0
+		\item When you compile client program
+		\verb=gcc main.c -L. -lhello -o main=. You need to build soft link manually 
+		ln -s libhello.so.0.0.1 libhello.so. Pay attention here. 1) no number after .so 2) use ln -s command. not use ldconfig -n . After that, When you run ldd main, you will see main is only depended to libhello.so.0
+		
+		\item after that, you can produce libhello.so.0.0.2...9. Then run ldconfig-n. libhello.so.0 will point to the newer version .so. You don't need recompile main at all.  
+		\item ng -g libhello.so will list all symbol in a .so file
+		
+		  \item .a is static library, and .so is dynamic library. Sometimes, a lib will provide lib.a
+        and lib.so at the same time. gcc will use the lib.so first. In this way, you need to use
+        LD\_LIBRARY\_PATH to specify lib.so directory. Or you can use \op{-static} to tell
+        gcc to use lib.a version.
+		       
+       \end{enumerate}
+\end{itemize}
+\subsection{gcc load .so}
+
+		\begin{itemize}
+  		 \item \linuxcommand{ldd} will tell you what lib you are using in your executable programme.
+
+				\item for elf format applicaiton. It will search elf DT\_RPATH >LD\_LIBRARY\_PATH >/etc/ld.so.cache > /lib and /usr/lib
+				\item run readelf -d libfftw3\_mpi.so | grep RPATH and see if it has /usr/lib64/ as a library path. If it exist, chrpath -r<new\_path> <executable> to change the rpath in the library 
+				\item export LD\_DEBUG=libs you can debug the search path used to find your libs.
 
 				\item For system effect, 1) add .so to /lib or /usr/lib. 2) edit /etc/ld.so.conf, then run ldconfig to produce /etc/ld.so.cache.
 				\item gcc -c will invoke ccl and as. gcc -o will invoke ccl, as and ld
-				\item 
-            \end{enumerate}
+				\item When you add .so to /lib or /usr/lib, You don't need to modify /etc/ld.so.conf. but you need run ldconfig.  Or this library will not found 
+				\item Add .so to other paths(excludes /lib /usr/lob), You need to modify /etc/ld.so.conf. then run ldconfig. 
+				\item /lib/ld-linux.so.2 is dynamic loader. 
+				\item If you don't have write permission, you can use LD\_LIBRARY\_PATH
+				\item ldconfig is just run time. It has nothing with compiling. 
+				\item LD\_PRELOAD tell loader: pick up a fun in specified .so first. 
+				\item For complex .so problem, such as same name in different .so.  You should see below two documents. 
+\begin{verbatim}
+The LD_DEBUG environment varaible.
+http://www.bnikolic.co.uk/blog/linux-ld-debug.html	
+
+THE INSIDE STORY ON SHARED LIBRARIES AND DYNAMIC LOADING			
+\end{verbatim}			
+  	 
+          
 
 		\item For .so file, You can use gcc implicit link, then use LD\_LIBARY\_PATH to dynamic load it. You also can explicit link it in your main.c. In this way, you don't need set LD\_LIBARY and more 
-
-
-						
 
 \begin{lstlisting}[frame=single, language=c++]
 #include <stdio.h>
@@ -1266,100 +1369,12 @@ int main(int argc, char *argv[]){
 }
 \end{lstlisting}
 
-     \item \linuxcommand{gcc/g++ -E -dM file.c} will output only result from preprocessor and all defined macros.
-
-\item disable a few lines in the source code
-\begin{verbatim}
-#pragma GCC diagnostic error "-Wuninitialized"
-    foo(a);         /* error is given for this one */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wuninitialized"
-    foo(b);         /* no diagnostic for this one */
-#pragma GCC diagnostic pop
-    foo(c);         /* error is given for this one */
-#pragma GCC diagnostic pop
-    foo(d);         /* depends on command line options */
-\end{verbatim}
- \item \linuxcommand{gcc -Wall hello.c -o hello} \op{-Wall} is an important optons, you should always use it.
-  \item In general, \linuxcommand{gcc -Wall hello.c -lm -o hello} the compile opton \op{-lNAME} will attempt to link object files with a library file libNAME.a in the standard library directories.
-   \item By default, gcc searches the following /usr/local/include/ and /user/include for header file. and /usr/local/lib/ and /usr/lib/ for lib files.
-   \item For you own header or lib files, you can use \op{-I} and \op{-L} to  add new search directories.
-   \item \linuxcommand{gcc -c hello.c} will produce object file hello.o. then you can use \linuxcommand{gcc hello.o -o hello} to produce executable file. You can these two steps just compile modified c file. It will save you a lot of compile time. \linuxcommand{gcc -c *.c}  then \linuxcommand{gcc -c a.c} last \linuxcommand{gcc *.o -o last}. A better method is to use make file.
-   \item \linuxcommand{ldd} will tell you what lib you are using in your executable
-       programme.
-\begin{verbatim}
- LIBRARY_PATH=\$HOME/you_include:ohter_include
- export LIBRARY_PATH
-\end{verbatim}
-into .bash\_profile file.
-
-    \item .a is static library, and .so is dynamic library. Sometimes, a lib will provide lib.a
-        and lib.so at the same time. gcc will use the lib.so first. In this way, you need to use
-        LD\_LIBRARY\_PATH to specify lib.so directory. Or you can use \op{-static} to tell
-        gcc to use lib.a version.
-
-    \item -DNAME defines a preprocessor macro NAME
-\begin{verbatim}
- #ifdef NAME
-printf ...
- #endif
-\end{verbatim}
-
-   \item About optimization, a good book is ``An Introduction to GCC-Brian\_Gough'', You can google it.
-
-   \item In a new linux system, sometimes you need to install build-essential package,  it contains some C language include file and library file.
-   \item Use below command to compile .so file in linux. \\
-   \verb=gcc -shared -o libpong.so -fPIC pong.c= \\
-   This command will prodouce a libpong.so file. Then you need to create pont.h file include all the declaretion. 
-   
-   \item Then you can make a client programme. It need to inlcude pong.h file then use below to compile. \\
-	\verb=gcc -o test test.c -lpong -L.=
-	You need to use -lpong to specify libname. -L is to specify library search path. 
-\end{itemize}
+  \end{itemize}
 
 
 
-\subsubsection{IDE}
-If you can access GUI, you can use code::block and kile to develop and documents. if
-you login by SSH, By now, I think that best tool is Emacs, with GUD, it can debug a
-program. Does Emacs support latex well? Yes, It has tex mode. \par
 
-Windows has VS community version.  Mac has Xcode, but I didn't try it too much. 
-
-In linux, There are many tools you can uses. The most advance tool is Eclipse. the medium tools are codelite and UltraGDB. And the simple tool is vim and gdb( gdb -tui) \\
-
-ddd is old tool, when I use it in mint 17, It's difficult to set font.  It seems that a bug for ddd. and ddd is old tool which seems to stop developing.  \\
-
-Then I try affinic debugger, It's a commercial software and need serial number, I look for and there is not many answers on google, Maybe it's not very popular,  and the shortcoming is white background and you cann't change color theme. so I give it up. \\
-
-codelite is a good tool, Setting->colours and fonts->Customize->C++ , you can select Themes: Monokai\_2, and you can set font MonoSpace 11pt.  
-in codelite, you need to set terminal as gnome-terminal in Setting->preferences->terminal "/usr/bin/gnome-terminal -t '\$(TITLE)' -e '\$(CMD)'"
-It also use xterm as debugger output. In mint, it output ugly font.  you need to produce .Xresources file on you home directory.  I keep it on the linux software backup. 
-
-UltraGDB is subset of Eclipse, if you just need front-end of GDB, It's the best one. You can set dark theme in Window->Preferences->General->Appearance \\
-
-In conclusion,  front end of GDB are UltraGDB and codelite. IDE are eclipse and codelite.
-
-\subsection{Understand}
-Understand is a good tools to read a large scale software. 
-\begin{itemize}
-\item Don't add .h, .inc, or .inl files into understand project, It will be included by .cpp and analyze automatically. 
-\item For C++, use strict option in project configuration. You can adjust c++ version in strict C++ configuration. By now, It's good to use C++11, C++14 is too new
-\item In Understand ,you can use "Improve project accuracy"->"missing include files" to help you search head file automatically. 
-\item For CMake file, you can use \textbf{CMake -CMAKE\_EXPORT\_COMPILE\_COMMANDS -G "Unix Makefiles"} It will produce a compile\_commands.json file. In the end, you can use \linuxcommand{und} to produce a project.und. It will includes correct configuration information.  Don't use -G "Xcode", It will not produce  compile\_commands.json file.  Detail can be seen in my EverNote bookmark. 
-\item For gcc and g++ project, you can use buildspy tool in Understand, detail can be seen in my EverNote bookmark.
-\item If you select "terminal" color theme, inactive code will not visiable, you can change the background color to make it visible through "Preferences"->"Editor"->"Styles"
-\item When analyze a long or difficult file, "worker process killed after 2 mins", you can try "Ananlyze changed file " again. if 2 minutes is too short, you can configure it longer on this specify file by override configuration. 
-\item Macro is key factor in understand project, you can define it maually, but recommended way is to use CMAKE or buildsyp or visual studio to prodce a understand project automatcilly. it will includes all the correct Macro defination and include path. 
-\item You can use buildspy to build a understand project in linux, configure project to relative path "Portability" then you can move source code and understand project to Mac, and use understand in Mac to open it. the interface on Mac looks better than Linux. 
-
-\item By now, I have two projects, one is llvm and the other is openuh.  For llvm, when you run CMake in test1 directory, It will produce some head file, when you compile use xcode or makefile, It will produce some def file. But I didn't run can compiling in test1 directory, but I have really compiled src in cmake\_release\_build directory. When i use add automaticlly search headfile, it add some files in cmake\_release\_build directory. In Understand Project Browers, you can see these three directories, in fact, test1 and cmake\_release\_build are overlapped. 
-
-\item for LLVM and openuh, when you configure and compile the source code, It will produced some addtional files to be used in compiling in build directory. so, In the end you understand project will also include build directory in the end. 
-  
-\end{itemize}
-
-\subsection{gdb}
+\section{gdb}
 \subsubsection{start}
 \begin{itemize}
 \item \linuxcommand{gcc\\g++ -g file.c\\file.cpp} you need \op{-g} to compile souce code before gdb
@@ -1445,33 +1460,47 @@ For C++: gcc -xc++ -E -v -
 
 \subsubsection{CMAKE}
 
+\subsection{IDE}
+If you can access GUI, you can use code::block and kile to develop and documents. if
+you login by SSH, By now, I think that best tool is Emacs, with GUD, it can debug a
+program. Does Emacs support latex well? Yes, It has tex mode. \par
 
-\subsection{PATH and LIB}
-\subsubsection{lib in linux}
+Windows has VS community version.  Mac has Xcode, but I didn't try it too much. 
+
+In linux, There are many tools you can uses. The most advance tool is Eclipse. the medium tools are codelite and UltraGDB. And the simple tool is vim and gdb( gdb -tui) \\
+
+ddd is old tool, when I use it in mint 17, It's difficult to set font.  It seems that a bug for ddd. and ddd is old tool which seems to stop developing.  \\
+
+Then I try affinic debugger, It's a commercial software and need serial number, I look for and there is not many answers on google, Maybe it's not very popular,  and the shortcoming is white background and you cann't change color theme. so I give it up. \\
+
+codelite is a good tool, Setting->colours and fonts->Customize->C++ , you can select Themes: Monokai\_2, and you can set font MonoSpace 11pt.  
+in codelite, you need to set terminal as gnome-terminal in Setting->preferences->terminal "/usr/bin/gnome-terminal -t '\$(TITLE)' -e '\$(CMD)'"
+It also use xterm as debugger output. In mint, it output ugly font.  you need to produce .Xresources file on you home directory.  I keep it on the linux software backup. 
+
+UltraGDB is subset of Eclipse, if you just need front-end of GDB, It's the best one. You can set dark theme in Window->Preferences->General->Appearance \\
+
+In conclusion,  front end of GDB are UltraGDB and codelite. IDE are eclipse and codelite.
+
+\subsubsection{Understand}
+Understand is a good tools to read a large scale software. 
 \begin{itemize}
-\item how to make a static lib: 1) gcc -c hello.c -o hello.o 2) ar cgs libhello.a hello.o
-\item how to make a dll lib: gcc -shared -o libhello.so.1.0 hello.o . For a dll lib, you need to give major and minor version number to upgrade in the future. 
-\item How an application looking for a .a lib? 1) gcc -L 2)LIBRARY\_PATH 3)/lib , /usr/lib and /usr/local/lib
-\item How an application looking for a .so lib? 1) DT\_RPATH section in elf file 2)LD\_LIBRARY\_PATH 3) /etc/ld.so.cache (use ldconfig to load if you modify ld.so.cache file)  4)/lib/, /usr/lib . For example, you can use export LD\_LIBRARY\_PATH='pwd' to add current directory. 
+\item Don't add .h, .inc, or .inl files into understand project, It will be included by .cpp and analyze automatically. 
+\item For C++, use strict option in project configuration. You can adjust c++ version in strict C++ configuration. By now, It's good to use C++11, C++14 is too new
+\item In Understand ,you can use "Improve project accuracy"->"missing include files" to help you search head file automatically. 
+\item For CMake file, you can use \textbf{CMake -CMAKE\_EXPORT\_COMPILE\_COMMANDS -G "Unix Makefiles"} It will produce a compile\_commands.json file. In the end, you can use \linuxcommand{und} to produce a project.und. It will includes correct configuration information.  Don't use -G "Xcode", It will not produce  compile\_commands.json file.  Detail can be seen in my EverNote bookmark. 
+\item For gcc and g++ project, you can use buildspy tool in Understand, detail can be seen in my EverNote bookmark.
+\item If you select "terminal" color theme, inactive code will not visiable, you can change the background color to make it visible through "Preferences"->"Editor"->"Styles"
+\item When analyze a long or difficult file, "worker process killed after 2 mins", you can try "Ananlyze changed file " again. if 2 minutes is too short, you can configure it longer on this specify file by override configuration. 
+\item Macro is key factor in understand project, you can define it maually, but recommended way is to use CMAKE or buildsyp or visual studio to prodce a understand project automatcilly. it will includes all the correct Macro defination and include path. 
+\item You can use buildspy to build a understand project in linux, configure project to relative path "Portability" then you can move source code and understand project to Mac, and use understand in Mac to open it. the interface on Mac looks better than Linux. 
 
-\item LIBRARY\_PATH and LD\_LIBRARY\_PATH are different, can you tell me what difference they are. 
+\item By now, I have two projects, one is llvm and the other is openuh.  For llvm, when you run CMake in test1 directory, It will produce some head file, when you compile use xcode or makefile, It will produce some def file. But I didn't run can compiling in test1 directory, but I have really compiled src in cmake\_release\_build directory. When i use add automaticlly search headfile, it add some files in cmake\_release\_build directory. In Understand Project Browers, you can see these three directories, in fact, test1 and cmake\_release\_build are overlapped. 
 
-\item libchild.a is based on libbase.a, then you have to put -lchild in front of -lbase, or it will produce dependent problem. 
-
-\item An application will use .so firstly, you can use \linuxcommand{gcc -Wl,-Bstatic -llibname} to force it link static lib. 
-\item use \linuxcommand{ldd} can see what libs does an application depends. 
-\item   \linuxcommand{nm} can tell you what functions there are in a lib: there are T,U, and W categories. 
-\item \linuxcommand{ar-t} can see what .o files are included in a lib. \linuxcommand{nm -D --defined-only libname.so}
-will see contents in a .so file.
-\item for .so use file command, for .a use objdump -x to see if they are 32 or 64 bits. 
+\item for LLVM and openuh, when you configure and compile the source code, It will produced some addtional files to be used in compiling in build directory. so, In the end you understand project will also include build directory in the end. 
+  
 \end{itemize}
 
-\begin{lstlisting}[frame=single, language=c]  % Start your code-block
-int i = 0;
-printf("%d",i);
-\end{lstlisting}
-
-\section{Git}
+\section{git}
 
 \subsection{ Basic knowledge}
 \begin{itemize}
