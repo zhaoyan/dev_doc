@@ -282,6 +282,8 @@ find / -name art |& grep
 \end{verbatim}
 
   \end{enumerate}
+  
+  \end{itemize}
 
 
 \section{User}
@@ -1048,12 +1050,12 @@ ctrl+n,N & move to next avaible position \\
 \begin{itemize}
 		\item There are three main actions. delete, change or add surrounds
 		\item When you use delete or change, you should put your cursor inside a pair of surrounds.\\
-		\includegraphics[scale=0.4]{pics/surround1.png} \\
+%		\includegraphics[scale=0.4]{pics/surround1.png} \\
 	\item below is change command list: \\
-	\includegraphics[scale=0.4]{pics/surround2.png} \\
+%	\includegraphics[scale=0.4]{pics/surround2.png} \\
 		
 		\item Surroundings can be added with the same "cs" command, which takes a surrounding target, or with the "ys" command that takes a valid vim motion. \\
-			\includegraphics[scale=0.4]{pics/surround3.png} \\
+%			\includegraphics[scale=0.4]{pics/surround3.png} \\
 	   
 	   \item You can use csw" or ysiw" to add surrounds. ys can follow a valid vim motion. Such as ys3w<p> will add <p>word1 word2 word3</p>
 	   \item In Visual mode, press <S-s> (captive S). Then input a surround that you want to add. Don't sue lower case "s". 
@@ -1481,124 +1483,190 @@ int main(int argc, char *argv[]){
 \subsection{make}
 
 	\begin{itemize}
-		\item Makefile uses compiler and shell programming tools( such as rm, cp etc ) together!
-		Make command will look for makefile automatically first. So you should write you own Makefile.
-		\item You also can use make –f to specify you own makefile name,
-		A Makefile can be regarded as a script file.
+		\item Makefile uses compiler and shell programming tools( such as rm, cp etc ) together! \linuxcommand{make} command will look for makefile automatically first. So you should write you own Makefile.
+		\item You also can use make -f to specify you own makefile name, A Makefile can be regarded as a script file.
 
 		\item The basic part of Makefile is Target: prerequisites
                         tab comm.and
-		\item To check which one has changed, if someone has change, it will call command.
-That is the most important, you must remember it all the time.  And it is not difficult, isn't it?
+		\item To check which one has changed, if someone has change, it will call command. That is the most important, you must remember it all the time.  And it is not difficult, isn't it?
 
-		Comment is \#
-		\item Make –p to print the default MACRO, \$@ is the names of the file to be made, and \$? Is the names of
+		\item Comment is \#, just like comment statement in script file.
+		
+		\item Define variable in shell script: A="var\_name" (no space with quote). Define variable in makefile A = var\_name (with space no quote)
+		\item Use variable in shell script \$A, use variable in makefile \$(A)
+		
+		
+		\item Make -p to print the all default MACRO, \$@ is the names of the file to be made, and \$? Is the names of
 the changed dependents.
 
-		\item PWD :=\${shell pwd} I need to explain two thing, the first is difference between := and =, := only
-expand this macro once.    PWD is macro. After you define this macro, you can use it later in you paper with
-\$(PWD)!
+		\item PWD :=\$(shell pwd) I need to explain two thing, the first is difference between := and =, := only
+expand this macro once.    PWD is macro. After you define this macro, you can use it later in you file with
+\$(PWD). Seconde \$(shell command) will call shell command and return back result to this variable. 
+
+\item make internal variable list:
+
 
 		\item @echo can be used to output string. It also can output the variable
-		\item use @ to call shell command without output command itself. Use – to tell make to ignore any error.
-		\item Make all that is ok, don’t add any other element. Use default to run when you don’t give make and argument
-		\item Make –p will list all the default macros
+		\item use @ to call shell command without output command itself. Use – to tell make to ignore any error. Even b.txt is not exist, if you put - before rm, it will continue to run all: If you don't put - before rm. make will stop at rm b.txt command. And rm a.txt will not be called at all.  
+\begin{verbatim}
+all: all_1
+	rm a.txt
+	 
+all_1:
+	@echo "no go to here"
+	-rm b.txt
+\end{verbatim}		
+		
+		
+		\item Make all that is ok, don't add any other element. Use default to run when you don't give make and argument
+
 		\item A := \$(wildcard *.a)  ALL\_B :=\$(wildcard *.b)  A\_B :=\$(A:\%.a=\%.b)
-		\item First, when you deal with a list of files, you use := ; second when you need aàb you need use A\_B to express this set.
+		\item First, when you deal with a list of files, you use := ; second when you need a and b you need use A\_B to express this set.
+		
 		\item n order to figure out the default paths used by gcc or g++ as well as their priorities you examine the output of the following commands:
 \begin{verbatim}
 For C:    gcc -xc -E -v -
 For C++: gcc -xc++ -E -v -
 \end{verbatim}
 
+\item A simple make example for C/C++ project. There are two points here: \textbf{1) Use \$(CXX) and \$(CC), and never hard-code a value for \$(CXX) or \$(CC). Let make define them for you! } \\
+
+\textbf{2) It is bad manners to overwrite CFLAGS, CPPFLAGS, CXXFLAGS, or LDFLAGS using := or =, but it is ok to augment them with += }
+
+\begin{lstlisting}[frame=single,  basicstyle=\small, language=make]
+#
+#  "program_NAME" with a value of "myprogram". 
+# a lowercase prefix (in this case "program") and 
+# an uppercased suffix (in this case "NAME"), separated
+# by an underscore is used to name attributes
+# change it with your own name here 
+program_NAME := myprogram
+
+
+# all files in the current directory ending in ".c". 
+# The $(wildcard) is a globbing expression. 
+program_C_SRCS := $(wildcard *.c)
+program_CXX_SRCS := $(wildcard *.cpp)
+
+# This names all C object files that we are going to build. 
+# substitution expression, simply replaces ".c" with ".o"
+program_C_OBJS := ${program_C_SRCS:.c=.o}
+program_CXX_OBJS := ${program_CXX_SRCS:.cpp=.o}
+
+# This is simply a list of all the ".o" files, 
+#both from C and C++ source files.
+program_OBJS := $(program_C_OBJS) $(program_CXX_OBJS)
+
+# This is a place holder.  For example:
+# program_INCLUDE_DIRS := ./include, 
+program_INCLUDE_DIRS :=
+
+# This is a place holder. For example:
+# used program_LIBRARY_DIRS := ./lib, 
+program_LIBRARY_DIRS :=
+
+# This is a place holder. For example:
+# program_LIBRARIES := boost_signals, 
+program_LIBRARIES :=
+
+
+# -I$(includedir) expand to -I./include, then add to CPPFLAGS
+# Remember that CPPFLAGS is the C preprocessor flags, 
+# compiles a C or C++ source file into an object will use this flag.
+CPPFLAGS += $(foreach includedir,$(program_INCLUDE_DIRS),-I$(includedir))
+
+# Since the LDFLAGS are used when linking, 
+# this will cause the appropriate flags to be passed to the linker.
+LDFLAGS += $(foreach librarydir,$(program_LIBRARY_DIRS),-L$(librarydir))
+LDFLAGS += $(foreach library,$(program_LIBRARIES),-l$(library))
+
+# This indicates that "all", "clean", and "distclean" are "phony targets". 
+# Therefore, "make all", "make clean", and "make distclean"
+# should execute the content of their build rules, 
+#even if a newer file named "all", "clean", or "distclean" exists.
+.PHONY: all clean distclean
+
+# This is first build rule in the makefile, 
+# "make" and executing "make all" are the same.
+# The target simply depends on $(program_NAME), 
+# which expands to "myprogram", and that target is given below:
+all: $(program_NAME)
+
+
+# The program depends on the object files 
+#(which are automatically built using the predefined build rules... 
+#nothing needs to be given explicitly for them).
+
+# The build rule $(LINK.cc) is used to link the object files
+# and output a file with the same name as the program. 
+# Note that LINK.cc makes use of CXX, CXXFLAGS, LDFLAGS, etc.
+# On my own system LINK.cc is defined as: 
+# $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH),
+# so if CXXFLAGS, CPPFLAGS, LDFLAGS, and TARGET_ARCH are undefined,
+# but CXX is g++, expand to g++ $(program_OBJS) -o $(program_NAME).
+
+$(program_NAME): $(program_OBJS)
+    $(LINK.cc) $(program_OBJS) -o $(program_NAME)
+
+#
+# This target removes the built program and the generated object files. 
+# The @ symbol indicates that the line should be run silently, 
+# and the - symbol indicates that errors should be ignored 
+# (i.e., if the file already doesn't exist, we don't really care, 
+# and we should continue executing subsequent commands)
+
+clean:
+    @- $(RM) $(program_NAME)
+    @- $(RM) $(program_OBJS)
+
+
+#
+# The distclean target depends on the clean
+#target (so executing distclean will cause clean to be executed), 
+# but we don't add anything else.
+
+distclean: clean
+\end{lstlisting}
+
+
 \end{itemize}
 
 \subsection{CMAKE}
 
-\section{IDE}
-If you can access GUI, you can use code::block and kile to develop and documents. if
-you login by SSH, By now, I think that best tool is Emacs, with GUD, it can debug a
-program. Does Emacs support latex well? Yes, It has tex mode. \par
-
-Windows has VS community version.  Mac has Xcode, but I didn't try it too much. 
-
-In linux, There are many tools you can uses. The most advance tool is Eclipse. the medium tools are codelite and UltraGDB. And the simple tool is vim and gdb( gdb -tui) \\
-
-ddd is old tool, when I use it in mint 17, It's difficult to set font.  It seems that a bug for ddd. and ddd is old tool which seems to stop developing.  \\
-
-Then I try affinic debugger, It's a commercial software and need serial number, I look for and there is not many answers on google, Maybe it's not very popular,  and the shortcoming is white background and you cann't change color theme. so I give it up. \\
-
-codelite is a good tool, Setting->colours and fonts->Customize->C++ , you can select Themes: Monokai\_2, and you can set font MonoSpace 11pt.  
-in codelite, you need to set terminal as gnome-terminal in Setting->preferences->terminal "/usr/bin/gnome-terminal -t '\$(TITLE)' -e '\$(CMD)'"
-It also use xterm as debugger output. In mint, it output ugly font.  you need to produce .Xresources file on you home directory.  I keep it on the linux software backup. 
-
-UltraGDB is subset of Eclipse, if you just need front-end of GDB, It's the best one. You can set dark theme in Window->Preferences->General->Appearance \\
-
-In conclusion,  front end of GDB are UltraGDB and codelite. IDE are eclipse and codelite.
-
-\subsection{Understand}
-Understand is a good tools to read a large scale software. 
-\begin{itemize}
-\item Don't add .h, .inc, or .inl files into understand project, It will be included by .cpp and analyze automatically. 
-\item For C++, use strict option in project configuration. You can adjust c++ version in strict C++ configuration. By now, It's good to use C++11, C++14 is too new
-\item In Understand ,you can use "Improve project accuracy"->"missing include files" to help you search head file automatically. 
-\item For CMake file, you can use \textbf{CMake -CMAKE\_EXPORT\_COMPILE\_COMMANDS -G "Unix Makefiles"} It will produce a compile\_commands.json file. In the end, you can use \linuxcommand{und} to produce a project.und. It will includes correct configuration information.  Don't use -G "Xcode", It will not produce  compile\_commands.json file.  Detail can be seen in my EverNote bookmark. 
-\item For gcc and g++ project, you can use buildspy tool in Understand, detail can be seen in my EverNote bookmark.
-\item If you select "terminal" color theme, inactive code will not visiable, you can change the background color to make it visible through "Preferences"->"Editor"->"Styles"
-\item When analyze a long or difficult file, "worker process killed after 2 mins", you can try "Ananlyze changed file " again. if 2 minutes is too short, you can configure it longer on this specify file by override configuration. 
-\item Macro is key factor in understand project, you can define it maually, but recommended way is to use CMAKE or buildsyp or visual studio to prodce a understand project automatcilly. it will includes all the correct Macro defination and include path. 
-\item You can use buildspy to build a understand project in linux, configure project to relative path "Portability" then you can move source code and understand project to Mac, and use understand in Mac to open it. the interface on Mac looks better than Linux. 
-
-\item By now, I have two projects, one is llvm and the other is openuh.  For llvm, when you run CMake in test1 directory, It will produce some head file, when you compile use xcode or makefile, It will produce some def file. But I didn't run can compiling in test1 directory, but I have really compiled src in cmake\_release\_build directory. When i use add automaticlly search headfile, it add some files in cmake\_release\_build directory. In Understand Project Browers, you can see these three directories, in fact, test1 and cmake\_release\_build are overlapped. 
-
-\item for LLVM and openuh, when you configure and compile the source code, It will produced some addtional files to be used in compiling in build directory. so, In the end you understand project will also include build directory in the end. 
-  
-\end{itemize}
 
 \section{git}
 
-\subsection{ Basic knowledge}
+\subsection{Basic knowledge}
 \begin{itemize}
-\item \emph{A basic rule:  For single person, always fetch and merge before you work,  commit and push
-    after you work.  For multi persion, fetch and merge even before each commit.  Maybe other people have
-    committed a new version on the remote repository. }
+\item \emph{A basic rule:  For single person, always pull (fetch and merge) before you work,  commit and push after you work.  For multi person, fetch and merge even before each commit.  Maybe other people have committed a new version on the remote repository. }
 
- \item \linuxcommand{git gc} every month to run it to optimize.
+ \item Run \linuxcommand{git gc} every month to run it to optimize.
 
- \item In linux, you can \linuxcommand{sudo apt-get install git-all} and meld(merge tools), In windows, you can download msysGit and P4Merge. You need edit your .gitconfig file, showed in the next section. you can use meld or
-     P4Merge to visualize conflicts in source code. In Mac, you can download git from git home website. or install Xcode, when you install Xcode, It will install git in /usr/bin. but it will not install gitk GUI tool, so you can download git from home website and install another git on /usr/local/bin directory and use gitk in this directory. 
+ \item In Linux, you can \linuxcommand{sudo apt-get install git-all} and meld(merge tools), In windows, you can download msysGit and P4Merge. You need edit your .gitconfig file, showed in the next section. you can use meld or P4Merge to visualize conflicts in source code. In Mac, you can download git from git home website. or install Xcode, when you install Xcode, It will install git in /usr/bin. but it will not install gitk GUI tool, so you can download git from home website and install another git on /usr/local/bin directory and use gitk in this directory. 
 
-\item The two characteristics about git is \textbf{Distribute} and \textbf{Branch}, Distribute support working
-    offline, Branch can make you manage branch easily and efficiently.
+\item The two characteristics about git is \textbf{Distribute} and \textbf{Branch}, Distribute support working offline, Branch can make you manage branch easily and efficiently.
 
-\item You need to know a few important conceptions: repository, branch, commit.  paths and files. You need to
-    know object of a command, such as merge command, it needs two branch. not two commits. 
+\item You need to know a few important conceptions: repository, branch, commit.  paths and files. You need to know object of a command, such as merge command, it needs two branch. not two commits. 
    
-	\item origin is repository, master is branch, HEAD is commit. A repository can have many branches, so you can use origin/master. A branch can have many commits, so you can use HEAD\^{} . 
+	\item \textbf{origin} is a repository, \textbf{master} is a branch, \textbf{HEAD} is a commit. A repository can have many branches, so you can use origin/master. A branch can have many commits, so you can use HEAD\^{} to refer to it.
     
- \item You also need to know some low-level knowledge about git. such as tree, blob,  commit. You can use \linuxcommand{git log } to know the sha value, then use \linuxcommand{git cat-file -t (or -p) sha} to check them. 
- 
- 
-     
+ \item You also need to know some low-level knowledge about git. such as tree, blob,  commit. You can use \linuxcommand{git log} to know the sha value, then use \linuxcommand{git cat-file -t (or -p) sha} to check them. 
+    
     \item you can use commit --allow-empty to produce a lot commits to use as test. then use
-        \linuxcommand{rebase --keep-empty } to learn how to change history. Only some practical usage can
-        teach you some knowledge. For Git , Dirty Hand is very very important.
+        \linuxcommand{rebase --keep-empty } to learn how to change history. Only some practical usage can teach you some knowledge. For Git , Dirty Hand is very very important.
         
-        \item checkout and merge are different, checkout is used to "overwrite present use history", merge is used to "combine present with history".
+        \item checkout and merge are different, checkout is used to \textbf{overwrite present with history}, merge is used to \textbf{combine present with history}.
         
-         \item When a command can be followed by <paths>, then <paths> can add a file, *.file , . (all file),  /path\_name(path\_name and recursive) and /path\_name/*(no recursive).  When you read manual, you need to know, the same command has different usage when followed by different objects. For example, when checkout followed by a branch name, followed by a commit or followed by a <paths>, detail can be seen in git book p103.  reset followed by <paths> or followed by a commit is also different, detail can be seen git book p96. 
+         \item When a command can be followed by <paths>, then <paths> can be a file, *.ext ,  . (all file),  /path\_name(path\_name and recursive) and /path\_name/*(no recursive).  When you read manual, you need to know, the same command has different usage when followed by different objects. For example, when checkout followed by a branch name, followed by a commit or followed by a <paths>, detail can be seen in git book p103.  reset followed by <paths> or followed by a commit is also different, detail can be seen git book p96. 
+         
          \item you need to understand difference between tree-ish and commit-ish. commit-ish can be used as tree-ish, but tree-ish can't be used as commit-ish. 
-        
-     \item For git, one important question is what you want to do? then what the basic commands can do? So you need to assemble some basic commands to finish your object. 
-          
+                 
 \end{itemize}
-
 
 \subsubsection{git configure}
     \begin{itemize}
 
-  \item \linuxcommand{config -e [--global|system]}  -e is open a editor. --global means user, --system means
-      /etc/.gitconfig.   If you omit options, It just produce a config file for this repository.(local)
+  \item \linuxcommand{config -e [--global|system]}  -e will open a editor. --global means user, --system means /etc/.gitconfig.   If you omit options, It just produce a .gitconfig file for this repository. (local)
 
 \item It's a social website, you need to find some friends here and exchange idea. The first thing you should do is to tell other peoples who you are.  
     \begin{verbatim}
@@ -1610,9 +1678,9 @@ Understand is a good tools to read a large scale software.
     C:$\backslash$Documents and Settings$\backslash$Administrator directory.
     \item \linuxcommand{git config --global core.editor notepad} (use notepad as default editor)
     \item git config --list list all the configuration
-    \end{itemize}
+ 
 
-you also can change the ~/.gitconfig file and add some content below, it will customize your own git behaves. (color and log
+\item  ~/.gitconfig template file, it will customize your own git behaves. (color and log
 alias is more useful).
 
 \begin{verbatim}
@@ -1627,6 +1695,70 @@ onelog = log -p -1
 status = auto
 branch = auto
 ui = auto
+\end{verbatim}
+
+\includegraphics[scale=0.7]{pics/git-transport} \\
+
+   \end{itemize}
+
+\subsubsection{GitHub or gitlab}
+\begin{itemize}
+\item For gitHub, I have two github account:
+\begin{enumerate}
+  \item zhaoyan.hrb@gmail.com  zhaoyan;
+  \item yan.zhao.74@gmail.com YanZhao
+\end{enumerate}
+A project hello-world, Main project is on zhaoyan, then I use YanZhao account fork main project. project link is : \\
+git://github.com/zhaoyan/hello-world.git(read only) \\
+git@github.com:zhaoyan/hello-world.git(modifiable)
+
+
+\item \linuxcommand{ssh-keygen -t rsa -C yan.zhao.74@gmail.com} \\
+    \item your public key has been saved in /c/Users/zhao/.ssh/id\_rsa.pub(for windows) ~/.ssh/(for Linux). Then you should paste the public key to the account in github.com.  
+        	
+   \item You can copy id\_rsa.pub and id\_rsa to other computers. so you don't need to run ssh-keygen command any more. But when you copy id\_rsa to linux or Mac, you need \linuxcommand{chmod g-r id\_rsa} to make your private key only readable for you. Or when you push or fetch, git will refuse your request.  (ssh -v will give you verbose information. you must restart ubuntu after you move id\_rsa to ~/.ssh).
+
+
+    \item once you finish it, \linuxcommand{ssh -T git@github.com} will test you key setting. (github has details explanation.)
+
+\item In your .ssh directory, you find a id\_rsa command, don't change it. You can build or modifiy config file in ~/.ssh diectory. Add something below. 1) you can use your own id\_rsa\_old name here, how to use ssh-keygen to product different name, you can see manual. 2) \textbf{Don't add Port 443 statment first, if you use ssh -T to get no response, then add Port 443, then it will work}.
+		\begin{verbatim}
+		Host github.com
+		   Hostname ssh.github.com
+		   Port 443
+		   IdentityFile ~/.ssh/id_rsa_old
+		\end{verbatim}
+
+    \item Sometimes, you can't see project link, you can click the little eye(watchers) on the right upper corner. pull request will show up.
+
+\item \textbf{Don't use any Chinese in version control, If your English is not good, use
+    Pinyin.}
+    
+\item In order to do anything in Git, you have to have a Git repository. This is where Git
+    stores the data for the snapshots you are saving. There are two main ways to get a
+    Git repository. \textbf{One way} is to simply initialize a new one from an existing
+    directory, such as a new project or a project new to source control. \textbf{The
+    second way} is to clone one from a public Git repository, as you would do if you
+    wanted a copy or wanted to work with someone on a project.
+\end{itemize}
+
+\subsubsection{GUI}
+\begin{itemize}
+	\item There are two main GUI usages in git: 1) gitk 2) gui diff and merge    
+    \item gitk is GUI application. gitk --all will list all the branches.
+    \item For gui diff and merge.  You need to download diff and merge application first. For Linux, meld is the best option. You need to change you .gitconfig to add [diff] and [difftool] section. Pay attention. They finish the same task. Make you \linuxcommand{gui difftool} invoke the GUI diff(merge) application.  
+       
+      \item For Mac, I haven't test if meld can be used. But I have tried diffMerge, On its website, you can find how to config .gitconfig file.
+      \item For diff, you will not change git diff command. Only git difftool invoke GUI. For Merge, git merge just modify your file in work space to diff format when there is conflict. Then you need to run \linuxcommand{git mergetool} to invoke GUI application.  Just remember: \textbf{First run git merge, if conflict, then git mergetool}
+      \item When you use meld in Linux, just add below into .gitconfig 
+\begin{verbatim}
+[merge]
+    tool = meld
+\end{verbatim}
+\item When you run \linuxcommand{git mergetool} Meld will open three panel windows. Middle one is your result. left and right are two conflict branches.  When you finished. just click save and exit. Then run \linuxcommand{git status}, you can see it is ready for to add and commit. 
+ 
+\item For other mergetool, you maybe need more complex configuration. Detail can be found on mergetool website. 
+\begin{verbatim}
 [merge]
 tool = kdiff3
 [mergetool "meld"]    % or "P4Merge" in Windows
@@ -1638,70 +1770,20 @@ tool = p4merge
 [difftool "p4merge"]
 path = C:/Program Files/Perforce/p4merge.exe
 \end{verbatim}
-
- \includegraphics[scale=0.7]{pics/git-transport} \\
-
-\subsubsection{GitHub or gitlab}
-For gitHub, I have two github account:
-\begin{enumerate}
-  \item zhaoyan.hrb@gmail.com  zhaoyan;
-  \item yan.zhao.74@gmail.com YanZhao
-\end{enumerate}
-A project hello-world, Main project is on zhaoyan, then I use YanZhao account fork main project. \\
-project link is : \\
-git://github.com/zhaoyan/hello-world.git(read only) \\
-git@github.com:zhaoyan/hello-world.git(modifiable)
-
-\begin{itemize}
-\item \linuxcommand{ssh-keygen -t rsa -C yan.zhao.74@gmail.com} \\
-        	your public key has been saved in /c/Users/zhao/.ssh/id\_rsa.pub(for windows) ~/.ssh/(for Linux). Then you should paste the public key to the account in github.com. once you finish it, you can use command ssh git@github.com to test it. (github has details explanation.)\\
-		You can copy id\_rsa.pub and id\_rsa to other computers. so you don't need to run ssh-keygen command any more. But when you copy id\_rsa to linux or Mac, you need \linuxcommand{chmod g-r id\_rsa} to make your private key only readable for you. Or when you push or fetch, git will refuse your request.  (ssh -v will give you verbose information. you must restart ubuntu after you move id\_rsa to ~/.ssh).
-
-
-         \item{ssh -T git@github.com} will test you key setting.
-
-\item If in your .ssh directory, you find a id\_rsa command, don't change it. You can build or modifiy config file in ~/.ssh diectory. Add something below. 1) you can use your own id\_rsa\_old name here, how to use ssh-keygen to product different name, you can see manual. 2) \textbf{Don't add Port 443 statment first, if you use ssh -T to get no response, then add Port 443, then it will work}.
-		\begin{verbatim}
-		Host github.com
-		   Hostname ssh.github.com
-		   Port 443
-		   IdentityFile ~/.ssh/id_rsa_old
-		\end{verbatim}
-
-    \item Sometimes, you can't see project link, you can click the little eye(watchers) on the right upper cornor.
-        pull request will show up.
-
-\item \textbf{Don't use any Chinese in version control, If your English is not good, use
-    Pinyin.}
-\item In order to do anything in Git, you have to have a Git repository. This is where Git
-    stores the data for the snapshots you are saving. There are two main ways to get a
-    Git repository. \textbf{One way} is to simply initialize a new one from an existing
-    directory, such as a new project or a project new to source control. \textbf{The
-    second way} is to clone one from a public Git repository, as you would do if you
-    wanted a copy or wanted to work with someone on a project.
 \end{itemize}
 
-\subsubsection{GUI}
-    \begin{itemize}
-    \item gitk is GUI application.
-    \item gitk --all will list all the branches.
-    \end{itemize}
-
-\subsection{basic commands}
+\subsection{Basic commands}
 \subsubsection{status log show}
 \begin{itemize}
 		\item \linuxcommand{git status}  you need to use this command very often. 
-
 		\item  \linuxcommand{git status -uno} will not show untracked files. \linuxcommand{git log --author=Bob} only show Bob's commit.
 
-		\item \linuxcommand{git status -s} show two columns , the first is staging, the second is working tree. if you
-    modify a file,  then add. then you modify a file again. Now git status -s show MM a. guess what it means. \
-
+		\item \linuxcommand{git status -s} show two columns , the first is staging, the second is working tree. if you modify a file,  then add. then you modify a file again. Now git status -s show MM a. guess what it means. 
 	\item \linuxcommand{git log} can show you all the commits history. 
-	\item \linuxcommand{git log --pretty=oneline} just show simply log information, easy to see.
 
 \begin{verbatim}
-git log -p   #show commit log and source code modification in each modification.
+git log --pretty=oneline #just show simply log information
+git log -p   #show ci log and source modification each commit.
 git log -2  #just last two commits
 git log --after 2015-12-01  #show all commits after date
 git log --oneline  #simple informaitons
@@ -1718,9 +1800,7 @@ git log origin/master..HEAD #what have you push to remote?
 \subsubsection{add commit}
 \begin{itemize}
 
-		\item When you add  a file, a blob object is produced, and .git/index(binary file) is updated to include it. You can use \linuxcommand{git status -uno} to hide all untraced files. You also can produce a .gitignore file
-in you project, it will work on present and all children directory. When you use \linuxcommand{git status}, It will
-not show so many untracked files.  Example is below. edit .gitignore file.
+		\item When you add  a file, a blob object is produced, and .git/index(binary file) is updated to include it. You can use \linuxcommand{git status -uno} to hide all untraced files. You also can produce a .gitignore file in you project, it will work on present and all children directory. When you use \linuxcommand{git status}, It will not show so many untracked files.  Example is below. edit .gitignore file.
 \begin{verbatim}
 # comment
 *.a   #ignore all files with .a extention
@@ -1729,7 +1809,9 @@ build/   #ignore all file in build directory
 doc/*.txt  #ignore all txt files in doc/ but doc/server/arch.txt will be included.
 \end{verbatim}
 
-\item You should avoid using \linuxcommand{git add .} to add so many unnecessary files.  When There are a lot of files to add, \linuxcommand{add -i } is a good choice.  \linuxcommand{add -u} will only add tracked files, no dot is needed. 
+\item You should avoid using \linuxcommand{git add .} to add so many unnecessary files. If you run it accidentally,  You can use \linuxcommand{git reset} to revert add which you just ran. 
+
+\item When There are a lot of files to add, \linuxcommand{add -i } is a good choice.  \linuxcommand{add -u} will only add tracked files, no dot is needed. 
 
 \item Current working directory is (1),   Index file or staging is (2) and  Git local repository is (3) \\
       (1) -> (2) -> (3) \\
@@ -1737,110 +1819,138 @@ doc/*.txt  #ignore all txt files in doc/ but doc/server/arch.txt will be include
    \linuxcommand{git commit} (2) -> (3) \\
    \linuxcommand{git commit -a}  (1)->(3) Don't recommend use it. \\
 
-    \linuxcommand{git add .}   add all files  \\
-    \linuxcommand{git reset -- a.c}  contrary to  \linuxcommand{git add --a.c} \\
+    \linuxcommand{git add .}   add all files. Be careful to use this command   \\
     \linuxcommand{git add -u}   it's very often used command. or It can be used in such senorita: rm *.txt, then git add -u will delete *.txt from staging. \\
-    \linuxcommand{git ls-files --stage} will show all the files in stage. \\
+    
+    \item commit command usually don't pay attention to files or directory, it just product a commit to produce a sha object(commit). 
 
-\item commit command usually don't pay attention to files or directory, it just product a commit to produce a sha object(commit). 
+   \item \linuxcommand{git commit --amend}  don't produce new commit, just modify last commit.
+   
+   \item If you add a file a.c, but you don't commit it. How to revert? \linuxcommand{git reset a.c} Will remove a file named a.c from the current index, the "about to be committed" area, without changing anything else.  contrary to  \linuxcommand{git add --a.c} To undo git add . use git reset (no dot).
+   
+   \item If you haven't commit yet, so you can't use reset now. At this time you can use \linuxcommand{git rm} command. 
+   
+   \item If you add a file a.c, and you commit. How to revert? use \linuxcommand{git rm} or \linuxcommand{git rm --ached}, then commit it again. 
+   
+   \item Previous method will produce two commits. if you want to just modify current commit.  git rm first, then use \linuxcommand{git commit --amend}.  Or you can also use \linuxcommand{git reset HEAD~}, then maybe you need git add or not, depends on your context. last \linuxcommand{git commit -c ORIG\_HEAD}.  Here reusing the old commit message. reset copied the old head to .git/ORIG\_HEAD; commit with -c ORIG\_HEAD will open an editor, which initially contains the log message from the old commit and allows you to edit it. If you do not need to edit the message, you could use the -C option.     
 
-\item     \linuxcommand{git commit --amend}  don't produce new commit, just modify last commit message.
-
+   \item Both(commit --amend) and (reset... commit again) will produce new commit. In fact, any commit sha include current operation second. So it will different. 
+   
+   \item \textbf{So don't change commit which you pull from public or you have pushed to public} 
+        
+   \item \linuxcommand{git ls-files --stage} will show all the files in stage(index).    
 \end{itemize}
 
-\subsubsection{rename and delete}
+\subsubsection{remove rename}
 \begin{verbatim}
-rm a
-git rm a // rm a can be omitted here.
-git commit -m "delete file a"
+git rm a // It will delete from work space and index
 git rm --ached a  //just delete a from index.
+git commit -m "delete file a"
 
-git mv a b  is three command: mv a b;   git rm a ; git add b ;
+git mv a b  #is three command: mv a b; git rm a ; git add b ;
 git commit -m "rename a to b"
 \end{verbatim}
 
 \subsubsection{diff}
 \begin{itemize}
-		\item \linuxcommand{git diff --name-only} just show changed files name. so you can compare it one by one.  
-		\item \linuxcommand{git diff --name-status} will show how do you changed files, add, delete or modify. \\
+\item diff basic usage. 
 
-
-		\item Before checkout or reset, you'd better to use diff command to see if there are important content to avoid overwrite. that is a good tip. 
-
-		\item    diff -u is good command, it will show context of difference.  all the differences give by differences section.
-    use @@  -1, 4  1,4 \par represent it. detail can be seen my dead wood version git book, the first chapter.
-
-\item     After git fetch, you can use \linuxcommand{git diff master origin/master} to see all the modifications, then decide if you want to merge. fetch+merge is better than pull.
-   
-
-\item    git diff output, a stand for staging, use-symbol, b is working tree, use+symbole. You also can use
-    \linuxcommand{git difftool -- file} to use meld to see the difference, it looks much better.\par
-
-    \begin{verbatim}
+\begin{verbatim}
 git diff     ##(1) and (2)
 git diff -cached   ##(2) and (3)
 git diff HEAD   ##(1) and (3)
 
-git diff tag                    ##tag and HEAD
-git diff tag file               ##just compare a file (only one file name)
-git diff tag1..tag2             ##two tags( you can omit two dots)
-git diff SHA11..SHA12           ## two commits
+git diff tag     ##tag and HEAD
+git diff tag file    ##just compare a file (only one file name)
+git diff tag1..tag2   ##two tags( you can omit two dots)
+git diff SHA11..SHA12  ## two commits
 git diff tag1 tag2 file or  git diff tag1:file tag2:file
 
 #tag can be a alias of remote
 git remote add xjsff git://github.com/xjsff/hello-world.git
 git diff xjsff/master README  ##local README and README in xjsff/master
 \end{verbatim}
+		\item \linuxcommand{git diff --name-only} just show changed files name. so you can compare it one by one.  \linuxcommand{git diff --name-status} will show how do you changed files, add, delete or modify. 
 
+		\item Before checkout or reset, you'd better to use diff command to see if there are important content to avoid overwrite. that is a good habit. 
 
-\subsubsectionc{checkout reset}
+		\item    diff -u is good command, it will show context of difference.  All the differences give by differences section.
+   
+\item  After git fetch, you can use \linuxcommand{git diff master origin/master} to see all the modifications, then decide if you want to merge. fetch+merge is better than pull.
+   
+\item \linuxcommand{git difftool -- file} to use meld to see the difference, it looks much better.
+\end{itemize}
+\subsubsection{checkout reset}
 
 \begin{itemize}
-
-		\item checkout command can checkout a file, *.cpp(some files) , . (all files),  /path\_name(path\_name and recursive) and /path\_name/*(no recursive). 
-
- \item There are two different usages for checkout: with paths, it will not change HEAD. without paths, it will
-     reset HEAD, HEAD will be a ref to a branch,  When It points a real commit, It will be "detached HEAD" and all
-	 commits after HEAD may be discards in the future. \linuxcommand{checkout commit <commit> -- paths} or \linuxcommand{checkout branch}. Don't use in\linuxcommand{git checkout <commit>}without paths, It will put HEAD in detached state. \textbf{After checkout, follow a branch, or follow /patth/file name.}
+		\item \textbf{branch->commit, HEAD->branch, When not follow paths, checkout move HEAD, reset move (HEAD->branch, HEAD must point to a branch). } It's helpful for you to understand these two command.
+		
+		\item If HEAD->master, reset will move HEAD->master together, if HEAD->commit, reset will only move HEAD. at this time, It's still detached head status. 
+		
+		\item There are two basic different usages for checkout: 
+		\begin{enumerate}
+		\item with paths(file), it just with <commit> to replace index and work space. At the same time, It will not change HEAD. 
+		\item without paths, if you follow a branch it will move HEAD to branch.
+		\item without paths, if you follow a old <commit>, It will move HEAD to old <commit>. HEAD will be a ref to a branch,  When It points a real old commit, It will be "detached HEAD" and all commits after HEAD may be discards in the future. 
+		\item \linuxcommand{checkout commit <commit> -- paths} or \linuxcommand{checkout branch}. Don't use in\linuxcommand{git checkout <commit> (empty)} without paths, It will put HEAD in detached state. \textbf{After checkout, follow a branch, or follow /patth/file name.}
+		\item \linuxcommand{git checkout} just like \linuxcommand{git status}
+		\end{enumerate}
+				
+		\item When checkout and reset follow file, they can be a file, *.cpp(some files) , . (all files),  /path\_name(path\_name and recursive) and /path\_name/*(no recursive). 
 
 	 \item If you are in detached HEAD state, 1)You don't modify work space, just use checkout master to set HEAD to master again. 2)If you modify work space and you want to keep it. commit it first, remember <commit-sha>. Then checkout master. merge <commit-sha>. Then HEAD will move to master and master will point to merged commit.  
+	 
+\item If without commit, only file, it will use file in index to overwrite work sapce. \linuxcommand{git checkout . or git checkout file} (2)->(1). 
+
+\item If there is commit, \linuxcommand{git checkout HEAD .}  (3)->(1) and (2) dot represents all the files. \textbf{This is a dangerous command. Save or commit you local work first.}
     
-\item checkout will overwrite work directory directory, it is not like merge, and doesn't produce conflict files. So
-    be careful!
+\item checkout will overwrite work space directly, it is not like merge, and doesn't produce conflict files. So be careful!
 
-\item \textbf{checkout 1) If there is file in command line, then overwrite file in work space. 2) without file name in command line, move head 3) only checkout, like status command}   
+ 
+\item you can checkout a file from different history. :
+\begin{enumerate}
+\item \linuxcommand{git checkout v1.2.3 -- filename}  tag v1.2.3 
+
+\item \linuxcommand{git checkout stable -- filename}  stable branch 
+
+\item \linuxcommand{git checkout origin/master -- filename}  upstream master 
+
+\item \linuxcommand{git checkout HEAD -- filename}   the version from the most recent commit 
+
+\item \linuxcommand{git checkout HEAD\^{ } -- filename}   the version before the most recent commit 
+
+\item \linuxcommand{git checkout xxxx  --filename} xxxx is commit version number.
+\end{enumerate}
 
 
-\item If without commit, only file, it will use file in index to orverwrite work sapce. \linuxcommand{git checkout . or git checkout file} (2)->(1). If there is commit, \linuxcommand{git checkout HEAD .}  (3)->(1) and (2) dot represents all the files. \textbf{This is a dangerous command. Save or commit you local work first.}
-
-\item you can checkout a file from different history. \\ 
-
-\linuxcommand{git checkout v1.2.3 -- filename}  tag v1.2.3 \\
-
-\linuxcommand{git checkout stable -- filename}  stable branch \\
-
-\linuxcommand{git checkout origin/master -- filename}  upstream master \\
-
-\linuxcommand{git checkout HEAD -- filename}   the version from the most recent commit \\
-
-\linuxcommand{git checkout HEAD\^{ } -- filename}   the version before the most recent commit \\
-
-\linuxcommand{git checkout xxxx  --filename} xxxx is commit version number.
-
-\item  Similarly, There are two different usages for reset: with paths, it will not reset commit. just like contrary operation of add.\\
-\verb=git reset <commit>-- <paths or filename> ## (3)->(2)=
+\item  Similarly, There are two different usages for reset: 
+\begin{enumerate}
+\item with paths, it will not move HEAD and master (reset commit). \linuxcommand{git reset <commit>-- <paths or filename>} will overwrite index with commit, (3)->(2).  it just like contrary operation of add.
 
 \item Without paths, it will reset (HEAD-->master) together to a new <commit>, and all commits after reset commit will be discards( delete commits, dangerous!). Because It reset (HEAD-->master) together, then It doesn't have detached head problem.  
+
+\item Without paths, there are three options you can use:
 \begin{verbatim}
 git reset [--soft|hard|mixed ] <commit>
 ## soft just reset commit
 ## mixed reset commit and (3)-->(2)
 ## hard reset commit and (3)-->(2)-->(1)
 \end{verbatim}
+\end{enumerate}
 
-\item \linuxcommand{git reset HEAD} (3)->(2) 
+\item How to save from wrong reset command? When you reset to a <old-commit>. All the commits after <old-commit> will not found easily unless you can remember all the commit sha value.  A better method can be use \linuxcommand{git reflog show master | head -5}. It will show master@{0...n}. It represent all the master ref history. You also can use it to show head moving history.      
 
-\item If you modify a file in (1), you can restore from (2) or (3), but it will overwrite (1) forever, so be careful. If you want to keep it, you can do:
+\item HEAD@{num} can be used as follow to change commit history after a <old-commit>
+\begin{enumerate}
+\item \linuxcommand{git checkout <old-commit>} \# detached head
+\item \linuxcommand{git commit ...} \#last commit sha is 123abc
+\item \linuxcommand{git checkout master} \# move head to branch
+\item \linuxcommand{git reset --hard HEAD@{1}} \# reset it to old commit 123abc.  
+\end{enumerate}
+
+\item followed by <old-commit>, both checkout and reset --hard will modify all files in work space. 
+
+\item If you modify a file in (1), you can restore it from (2) with \linuxcommand{git checkout --a.c} or from(3) with \linuxcommand{git reset HEAD --a.c}.  They will overwrite (1) forever, so be careful. If you want to keep it, you can do:
 \begin{verbatim}
 git add filename  ##save modify to (2)
 git checkout v1.2.3 filename  ##get old version
@@ -1851,10 +1961,7 @@ git checkout filename  ##restore
 
 \subsubsection{stash}
 \begin{itemize}
-		\item Sometimes I have a situation that I am working on some feature on my own branch and suddenly someone
-    comes to me and says that something really important has to be fixed or improved on the main branch.
-    Usually it happens when I am in the middle of very important changes which are not ready to be committed
-    for some reason. 
+		\item Sometimes I have a situation that I am working on some feature on my own branch and suddenly someone comes to me and says that something really important has to be fixed or improved on the main branch. Usually it happens when I am in the middle of very important changes which are not ready to be committed for some reason. 
 
 \item Normally, I would have to save the changes (diff) into some file, switch to the main branch abandoning any changes, apply the fix or improvement and commit it. Then I could switch back to my own branch, apply the changes (patch) from the file and continue the work. While it is not something difficult, it can be done much easier with Git.
 
@@ -1867,21 +1974,135 @@ git stash list #list all stash
 git statsh pop #
 \end{verbatim}
 
+\end{itemize}
+
+\subsubsection{rebase revert}
+\begin{itemize}
+
+\item Reverting has two important advantages over resetting. First, it doesn't change the project history, which makes it a "safe" operation for commits that have already been published to a shared repository. For details about why altering shared history is dangerous, please see the git reset page.
+
+\item Second, Git revert is able to target an individual commit at an arbitrary point in the history, whereas git reset can only work backwards from the current commit. For example, if you wanted to undo an old commit with git reset, you would have to remove all of the commits that occurred after the target commit, remove it, then re-commit all of the subsequent commits. Needless to say, this is not an elegant undo solution.
+
+\item revert will produce a new commit too. \verb=git revert HEAD^^ = produce a new commit
+
+\textbf{Never rebase branches or trees that you pulled. Only rebase local branches.
+Never ever rebase a branch that you pushed, or that you pulled from another person}
+\par rebase will change history, if you don't have valid reason to use it, just use merge
+command.
+
+\item rebase command and merge command is little different. \textbf{When you are in test branch, master branch has a new commit, You can rebase on new commit on master. Because in the end, your test branch will be merged back to master, rebase often can save you a lot of conflict problem in the future. }
+
+\item \textbf{When you in the master branch, and When test branch has finished or partly finished, You can use git merge command to merge test branch into master branch}
+
+\item You can think merge and rebase are two commands operate on branch.
+
+\item rebase basic usage.
+1) in master  branch , commit a new commit (m1), in test branch, commit few times(t1..t2). \\
+\begin{verbatim}
+   t1-->t2
+ /
+m-->m1
+\end{verbatim}
+2) checkout test branch, then \linuxcommand{git rebase master.} /* means that SHA value has been changed.\\
+\begin{verbatim}
+       t1*-->t2*
+      /
+m-->m1
+\end{verbatim}
+
+\includegraphics[scale=0.7]{pics/Git_rebase} \\
+
+\item rebase has --onto options. Detail can be found in git rebase document. Just google it. 
+
+%rebase的命令和merge的命令有点不太一样。一个标准的流程应该是从master创造出一个分支test,然后在test commit 几次。
+%同时在master commit 几次。这个时候，进入master分支，git rebase test,
+
+%1）如果b是一个本地的branch，如果master上没有m1那么在master 上，执行 git rebase b 和git merge b效果一样，就是增加两个新的commit。 \\
+
+%2）如果master 上也有个更新m1。那么需要注意，如果m1只是本地的（你不是pull,同时，你还没有push）同时，你还希望保存
+%b1 和 b2 两次commit。这个时候，可以使用git rebase b. (因为m1 hash值改变了，所以必须要保证本地化)。\\
+%3）如果master上m1不是本地化的，那么你最好用merge。但是当你删掉b分支以后，b1,b2消失了。\\
+
+%4）如果master上m1不是本地化的，你也可以进入b分支， 然后git rebase master,（不过你需要注意，这个时候，你还在b分支里面。）然后git checkout master , git merge b。
+%相当于把b当中的b1和b2，放到了m1前面，（m1的hash没变，相当于增加了两个新的commit b1和b2. 你还需要保证b是个本地的branch)
+%一句话:rebase的使用需要谨慎使用，他的本意是修改历史的作用，如果你没有很明显的理由，就直接用merge好了。\\
+
+%rebase branch1 有三个含义，1）当前不在branch1中，2）branch1为焊接接入点，3）当前的分支commit的值改变了。
+
+%rebase branch 与rebase master是有区别的。如果你当前在master中，并且以master为主线，那么就应该调用rebase branch。从这个角度上来说，rebase master应该用的不多。除非是上面说的第4种情况，那就是m1已经push出去，并且别人也在用。
+
+%rebase两种常用场景，第一就是本地的分支上，两个分支出现并行情况，通过rebase branch1,可以得到相对干净的历史commit. 第二就是rebase thorn/master, 把别人的工作集成到我的master中去，（thorn/master和master都发生了commit）生成一个更干净的历史。他的基本原理和merge大致相同。
+
+\end{itemize}
+
+\subsubsection{branch merge}
+
+\begin{verbatim}
+git branch -r  # list all the branches on the remote
+git branch #list all the local branches
+git branch -D b1 #delete the b1 branch
+git checkout branch-name # switch to branch-name
+git checkout -b new-branch master # build new new-branch from master and switch to it.
+git checkout -b newbranch # build newbranch
+git checkout -b newbranch origin build newbranch based on origin
+git branch -m master mymaster # rename the branch
+git push origin branch ,//this command will push branch to github. \\
+but push branch to server isn't very meaningful, at least I think so. \\
+\end{verbatim}
+
+\begin{itemize}
+  \item merge command is followed by two branches, no files name.  such as \linuxcommand{git merge
+      origin/master master}
+
+  \item merge will produce a new commit without conflict,  If there is a conflict, you need manually resolve it, then commit it manually.
+
+      \item When merge can't resolve conflict, it will put working tree into a specify conditions. (file in work space has been modified with conflicted format)
+      
+   \item Three kinds of merge. 1) straight merge. 2) squash merge, 3) cherry-pick
+\item \linuxcommand{git merge-base b1 b2}  found the common ancestor
+\item \linuxcommand{git cherry -v master test}  in master branch, found all commits in test, but not in master.
+%在master分支中，找到所有test中有但是master中没有的commit.
+
+%主要用于将两个或两个以上的开发分支进行合并。
+%主要有三种merge.第一种为straight merge. 他把一个分支的整个历史合并到另外一个分支当中去。
+%还有一种就是squash 把所有的历史变成一个历史commit。 git merge --squash contact。针对于squash，
+%你需要merge以后再提交。最后一种就是cherry-pick，
+%git chekcout master git cherry-pick 321d76f (这是在另外一个分支提交的)。
+%当然1你也可以git cherry-pick -n 321d76f. -n 告诉git先不提交，然后你就可以继续cherry-pick了。
+ %然后 git commit 不用-m，这个时候一个默认的编辑器就打开了。
+ %所有你pick的commit message就会自动出现在那个编辑器中。
+
+%当merge命令自身无法解决冲突的时候，它会将工作树置于一种特殊的状态，并且给用户提供冲突信息，
+%以期用户可以自己解决这些问题。当然在这个时候，未发生冲突的代码已经被git merge登记在了index file里了。
+%如果你这个时候使用git diff，显示出来的只是发生冲突的代码信息。
+
+%在你解决了冲突之前，发生冲突的文件会一直在index file中被标记出来。这个时候，如果你使用git commit提交的话，
+%git会提示:filename.txt needs merge 在发生冲突的时候，如果你使用git status命令，那么会显示出发生冲突的具体信息。\\
+
+\includegraphics[scale=0.6]{pics/merge-diff} \\
+
+after you resolve conflict 1) git add filename 2) git commit
+
+
+\item If you want to revoke a branch to a status before merge 
+%如果你希望撤销一个分支到merge前的状态，那么使用如下命令:\\
+git reset --hard HEAD --hard means working tree and index file both restore.
+Or, if you've already committed the merge that you want to throw away, use this command: \linuxcommand{git reset --hard ORIG\_HEAD}.
+
+\includegraphics[scale=0.5]{pics/git-merge} \\
+\end{itemize}
 
 \subsubsection{remote push pull}
 \begin{itemize}
 
-		\item don't use pull, just use fetch, then merge. 
+\item don't use pull, just use fetch, then merge. 
 When you run \linuxcommand{git merge origin/master master}, there are three possibilities. \\
 1) Working directory no modification, then fast-ward merge and working and index will be updated. \\
 2) Working directory has modification, merge will fail. \\
 3) Working directory has modification and commit, merge maybe ok, then working and index will be updated. merge maybe conflict, then use merge tool to resolve conflict and commit to produce a commit manually. \\
 
 \item origin is a alias of remote repository,  \linuxcommand{git remote add origin
-    git@github.com:zhaoyan/test.git}just give a alias name, It will not real create remote repository, you need to
-    log in github to create it manually.  Beside add, you can show, rename and delete a these alias. with these
-    alias, you can \linuxcommand{push or fetch origion} directory, don't need to write the address of the remote
-    repository.
+    git@github.com:zhaoyan/test.git}just give a alias name, It will not real create remote repository, you need to log in github to create it manually.  Beside add, you can show, rename and delete a these alias. with these alias, you can \linuxcommand{push or fetch origion} directory, don't need to write the address of the remote repository.
 
 \begin{verbatim}
 git remote add paul git://github.com/paul/test.git
@@ -1896,7 +2117,7 @@ git remote rm pa #delete pa, because he will not contribute the system.
 \item git push origin experiment \#push a branch to server
 \item git push origin local:experiment \#change local branch name, and push to server.  \item git push origin :experiment \#delete local branch ,use empty name 
 \item git push origin erperimental:experimental-by-yan \#give remote-tracking-branches other name，here experimental-by-yan is remote-tracking-branches name，erperimentallocal name. <source-name>:<destination-name>
-\end{ernumerate}
+\end{enumerate}
 
 \item When you push a local branch to remote, sometime it will produce non-fast-forward error. Reason is
     demonstrated by below two figures:
@@ -1929,72 +2150,196 @@ C1-->C2->C3
 C1-->C2->C3(master)
 \end{verbatim}
 \end{itemize}
+\subsubsection{blame} 
+    \begin{verbatim}
+    git blame -L l2,l3 hello.html
+    \\Who made some modification.
+    \end{verbatim}
 
 
-\subsubsection{branch merge}
+\subsection{Branch}
+\begin{itemize}
 
+\item Branch can be in  two different positions. One is in the local place, you can use git branch to check them. The other is remote-tracking branches, you can use git branch -r to check them. They have origin/remote-branch-name, origin is not branch name, it's repository  name. 
+
+\item Usually, there are three common use branches. One is release branch which can be based on one release commit. Usually, it used to fix some bugs in release, then you can merge back master branch. Another is feature branch, when you add a feature, and you don't know if it's good or can be finished properly, you can produce a feature branch. The last branch is vendor branch. You don't commit on it. just keep track with upstream new version , then merge back with you master branch.
+
+\item You can't checkout remote branch, such as \linuxcommand{git checkout origin/branch1}. In order to do so , you have to create a local branch based on remote branch, such as \linuxcommand{git checkout --track -b branch1 origion/branch1}, then work on the local branch1. after you finish it, you can push it back. with --track, you can push or fetch without specify remote repository name. you can omit it.
+
+\item when you want to emerge mother's work, you'd better build a branch first.
+
+\item Branch is based on commit,  When you merge a branch back to  master, you may delete it if you don't need it anymore.
+
+\end{itemize}
+
+\subsubsection{branch daily usage }
+\begin{itemize}
+\item single person, center control, with branch. 	when you finish the branch, you can merge it with master. 
+
+\item Below figure show two different position are working on the same branch--malouf. \\
+
+	\includegraphics[scale=0.6]{pics/git_branch} \\
+   
+\item Multi person, center control, with branch 
+
+   \begin{enumerate}
+     \item \linuxcommand{git fetch upstream} get zhaoyan upstream the updated development process.
+     \item \linuxcommand{git checkout -b test\_bla upstream/master} based zhaoyan master branch, build local branch test\_bla (any name is OK.)
+     \item edit,  compile, \\
+     git commit -am "s1" \\
+     edit,  compile,  \\
+     git commit -am "s2"\\
+     While, upstream/master maybe changed,  a new commit t1 appear.
 \begin{verbatim}
-git branch -r  # list all the branches on the remote
-git branch #list all the local branches
-git branch -D b1 #delete the b1 branch
-git checkout branch-name # switch to branch-name
-git checkout -b new-branch master # build new new-branch from master and switch to it.
-git checkout -b newbranch # build newbranch
-git checkout -b newbranch origin build newbranch based on origin
-git branch -m master mymaster # rename the branch
-git push origin branch ,//this command will push branch to github. \\
-but push branch to server isn't very meaningful, at least I think so. \\
+     s1--- s2
+____/___t1
+\end{verbatim}
+\item \linuxcommand{git fetch upstream} when you want to update upstream, you have to get new commits
+
+\item \linuxcommand{git merge upstream/master} If no conflict, produce a forward merge, if conflict, manually
+    resolve and commit a new commit. \linuxcommand{git commit -am "st1"}
+\begin{verbatim}
+      s1--- s2
+____/___t1___\st1__
 \end{verbatim}
 
+\item Or, you can use the second method: \linuxcommand{git rebase upstream/master} No conflict, produce a new commit. with conflict, manually resolve it, then \linuxcommand{git add conflict\_file}, then
+    \linuxcommand{git rebase --continue}, not need to commit.
+    \begin{verbatim}
+        t1---s1*--- s2*
+____/
+\end{verbatim}
+
+\item git push origin test\_bla
+
+\item login github, look for you repository, checkout test\_bla, then click "request pull" button.
+
+\item If other accept you request, you can delete test\_bla branch. \linuxcommand{git branch -D test\_bla}
+
+\item \linuxcommand{git push origin  :test\_bla}  delete test\_bla branch in github.
+\item  repeate 1-10.
+   \end{enumerate}
+\end{itemize}
+
+\subsection{History}
+\subsubsection{history representation}
 \begin{itemize}
-  \item merge command is followed by two branches, no files name.  such as \linuxcommand{git merge
-      origin/master master}
+\item No space in tag name.
+\item Common used history commit ref name. 
+\begin{verbatim}
+FETCH_HEAD,ORIG_HEAD, COMMIT_EDITMSG:
+HEAD:  #last commit
+MERGE_HEAD:
+FETCH_HEAD:
 
-  \item merge will produce a new commit without conflict,  If there is a conflict, you need manually resolve it,
-      then commit manually.
+HEAD^: HEAD's parent, it's ORIG_HEAD
+HEAD^ or HEAD^1   # first parent
+HEAD^^ or HEAD^2 # second parent
+HEAD~4 : HEAD
 
-      \item When merge cann't resolve conflict, it will put working tree into a specify conditions.
-      \item Three kinds of merge. 1) straight merge. 2) squash merge, 3) cherry-pick
-\item \linuxcommand{git merge-base b1 b2}  found the common ancestor
-\item \linuxcommand{git cherry -v master test}  in master branch, found all commits in test, but not in master.
-%在master分支中，找到所有test中有但是master中没有的commit.
+HEAD:README.txt
+%It represents a blob object,sh-hash value of blob is not easy to see.
+\end{verbatim}
 
+\end{itemize}
 
-%主要用于将两个或两个以上的开发分支进行合并。
-%主要有三种merge.第一种为straight merge. 他把一个分支的整个历史合并到另外一个分支当中去。
-%还有一种就是squash 把所有的历史变成一个历史commit。 git merge --squash contact。针对于squash，
-%你需要merge以后再提交。最后一种就是cherry-pick，
-%git chekcout master git cherry-pick 321d76f (这是在另外一个分支提交的)。
-%当然1你也可以git cherry-pick -n 321d76f. -n 告诉git先不提交，然后你就可以继续cherry-pick了。
- %然后 git commit 不用-m，这个时候一个默认的编辑器就打开了。
- %所有你pick的commit message就会自动出现在那个编辑器中。
+\subsubsection{history change}
+\includegraphics[scale=0.6]{pics/Git-history} \\
+\begin{itemize}
+\item \textbf{Three basic modification history usage:}
+\begin{enumerate}
+\item Delete or combine certain commits;
+\item Delete new commits after a point
+\item Delete old commits before a point
+\end{enumerate}
 
-%当merge命令自身无法解决冲突的时候，它会将工作树置于一种特殊的状态，并且给用户提供冲突信息，
-%以期用户可以自己解决这些问题。当然在这个时候，未发生冲突的代码已经被git merge登记在了index file里了。
-%如果你这个时候使用git diff，显示出来的只是发生冲突的代码信息。
-
-%在你解决了冲突之前，发生冲突的文件会一直在index file中被标记出来。这个时候，如果你使用git commit提交的话，
-%git会提示:filename.txt needs merge 在发生冲突的时候，如果你使用git status命令，那么会显示出发生冲突的具体信息。\\
-
-\includegraphics[scale=0.6]{pics/merge-diff} \\
-
-after you reslove conflict 1) git add filename 2) git commit
+\item \textbf{Three common commands for modification history: checkout, cherry-pick and reset. Other useful command is rebase, you can think that it's a combination of previous three commands. }
 
 
-\item If you want to revoke a branch to a status before merge 
-%如果你希望撤销一个分支到merge前的状态，那么使用如下命令:\\
-git reset --hard HEAD --hard means working tree and index file both restore.
-Or, if you've already committed the merge that you want to throw away, use this command: \linuxcommand{git reset --hard ORIG\_HEAD}.
+  \item \textbf{Change current latest commit} \linuxcommand{git commit  --amend} not only change the message, but
+      also the working tree contents. \linuxcommand{git commit -C HEAD\^{}}
+        will produce a new commit, but this commit is just like \verb=HEAD^ =.
 
-\includegraphics[scale=0.5]{pics/git-merge} \\
+  \item \textbf{Delete some new commits} \linuxcommand{git reset --hard  HEAD\^{}\^{}\^{}} will delete \verb=HEAD^^=  and \verb=HEAD^=  and HEAD three commits forever, It's is a dangerous command, be careful about it.
+   
+\item \textbf{Delete all old commits before A} \\
+1)\linuxcommand{echo "Commit from tree of tag A | git commit-tree A\^{}\{tree\}}  It will produce a <SHA value>. This command will produce a new commit with <SHA value> and without any parent. It's a root commit. 
+2)\linuxcommand{git rebase --onto <SHA value> A master}  All the history behind of A will be deleted. \\
+
+  \item \textbf{Delete some old  commits by cherry-pick } \\
+   1)\linuxcommand{git checkout C}, C is a tag, by now, working tree
+      is C status, Here, you can't use
+      \linuxcommand{reset C}, because it will put master to C,  then D, E and F will become a unreferenced
+      commit, deleted by Git. If no D,E and F,
+You can't use cherry-pick in the next steps.     \\
+2) \linuxcommand{git cherry-pick E and F} , delete D commit ,cherry pick will produce a new commit SHA value. just like rebase.\\
+3) \linuxcommand{git checkout master }  It will end Head detached status.  \\
+4) \linuxcommand{git reset --hard HEAD@\{1\}}. reset HEAD-->master to new F* commit. 
+
+
+  \item \textbf{Delete some old commits by rebase } \\
+  1a) \linuxcommand{git rebase --onto m2 m3 m5}, You need to know that  m3 m5 will not m3, It will produce a new commit m4 and m5,
+   SHA value will be different. And from the figure, you can see that master branch is still on old m5 commit.  so you need perform step 2. \\
+
+%\begin{figure}
+%  \centering
+%  \includegraphics[scale=1.0]{pics/rebase1}
+%\end{figure}
+
+
+  1b )\linuxcommand{git rebase --onto m2 m3 master} will keep you track master branch, after that you don't
+  need to run step 2 below. It will be easy way to do that. \\
+
+  2) \linuxcommand{git checkout master }  and \linuxcommand{git reset --hard HEAD@\{1\}}. After these two commands, you can see m2 has disappeared. \\
+%\begin{figure}
+%  \centering
+%  \includegraphics[scale=1.0]{pics/rebase2}
+%\end{figure}
+
+  \item \textbf{Combine two old commits by cherry-pick} \\
+  1)\linuxcommand{git checkout D}, D is a tag, by now, working tree is D status,  \\
+  2) \linuxcommand{git reset --soft B } ,  because HEAD is D now, go to B, --soft means working tree is still D status \\
+  3)\linuxcommand{git commit -C C }  then \linuxcommand{git cherry-pick E and F}. \\
+  4)\linuxcommand{git checkout master }  \linuxcommand{git reset --hard HEAD@\{1\}}. Detail can be found in "Got Git". \\
+
+\item \textbf{Combine two old commits by rebase} \\
+  1)\linuxcommand{git checkout D}, D is a tag, by now, working tree is D status,  \\
+  2) \linuxcommand{git reset --soft B } ,  because HEAD is D now, go to B, --soft means working tree is still D status \\
+  3)\linuxcommand{git commit -C C }  \\
+  4)\linuxcommand{git tag newbase} \textbf{give a tag name to avoid remember sha-value} \\
+5)\linuxcommand{git rebase --onto newbase D master}  then check \linuxcommand{git branch }to see if it's on branch master, if it's yes \\
+6) \linuxcommand{git tag -d newbase } \\  Detail can be found in "Got Git". \\
+
+\item \textbf{difference cherry pick and rebase} \\
+1)rebase and cherry pick will change commit SHA value, so don't use
+    it on any commit that you have pulled or you have
+    pushed. cherry pick will not change \\
+2)cherry pick should be used in change few commits, and rebase can be used to change a lot of commits at the same time.  \\
+
+
+\item \textbf{delete all the commits in a merged branch}
+
+\begin{figure}
+  \centering
+  \includegraphics[scale=1.0]{pics/rebase3}
+\end{figure}
+
+
+1) \linuxcommand{git rebase -i -p  --keep-empty --onto 9f843b 9f843b master} -p means keep merge commit.
+9f843b is m1 commit. \\
+
+2)In git-rebase-todo file, you can see all the commits. for merge commit, you need to change it to
+\linuxcommand{x git cherry-pick --allow-empty -m 1 <SHA>}, comment all the unnecessary commits. Then you
+can see close this file. and rebase -i will run it according to this file. \\
+
+3) Maybe you need to run \linuxcommand{git checkout master }  \linuxcommand{git reset --hard HEAD@\{1\}}
+and \linuxcommand{git branch -D test} to make history clean.  (x options in msysGit system doesn't work, you
+need to manually git cherry-pick, any way, you can see all the SHA with gitk --all command. )
 
 \end{itemize}
 
 
-\end{description}
-
-\subsection{Basic usage}
-
+\subsection{Daily usage}
 \subsubsection{clone a project from github}
 \begin{enumerate}
 \item  \linuxcommand{git clone git@github.com:zhaoyan/hello-worl.git}  you can copy the address from github
@@ -2003,10 +2348,9 @@ Or, if you've already committed the merge that you want to throw away, use this 
 \item \linuxcommand{ git add main.cpp}  \linuxcommand{git commit  -m "modify sth..."}
 \item \linuxcommand{ git log} to see if you have commit successfully.
 \item \linuxcommand{git remote -v } to see what origin is.
-\item \linuxcommand{git push origin master }   This command works only if you cloned from a server to which
-    you have write access and if nobody has pushed in the meantime. If you and someone else clone at the
-    same time and they push upstream and then you push upstream, your push will rightly be rejected. You’ll
-    have to pull down their work first and incorporate it into yours before you’ll be allowed to push. (detail can be
+\item \linuxcommand{git push origin master }   This command works only if you cloned from a server to which you have write access and if nobody has pushed in the meantime. If you and someone else clone at the
+    same time and they push upstream and then you push upstream, your push will rightly be rejected. You'll
+    have to pull down their work first and incorporate it into yours before you'll be allowed to push. (detail can be
     seen in the previous push command: produce non-fast-forwarderror.
 \end{enumerate}
 
@@ -2020,7 +2364,7 @@ Or, if you've already committed the merge that you want to throw away, use this 
   \item \linuxcommand{git rm README}  you can delete a file
   \item \linuxcommand{git commit -m "first commit" } or \linuxcommand{git commit -a -m "first commit"} This is
       simple form. Combine add and commit together. Git commit -a can't add new files. If you add some news
-      files, you should use \linuxcommand{git add new addfile}. then commit.
+      files, you should use \linuxcommand{git add newfile}. then commit.
 
 \item \linuxcommand{git log} or \linuxcommand{git status} After committing, you can use log command to
     check if it has been submitted successfully.
@@ -2057,27 +2401,28 @@ to the server.
 
 \subsubsection{Collaborate With Applications}
 
-\begin{description}
-  \item[VS2010]  Add later
-
-  \item[codeblock] project file is pro1.cbp, It will produce two directory bin and obj, you need to modify
+\begin{itemize}
+  \item For codeblock, project file is pro1.cbp, It will produce two directory bin and obj, you need to modify
       .gitignore file, add bin/ and obj/ to ignore. good suggestion.
-  \item[kdevelop]
-0) rm Makefile.in or .svn (if there are) \\
-1) go into the src directory, and run git init \\
-2) git add * and  git commit \\
-3) git remote add origin git@github \\
-4) git push origin master \\
+  \item For kdevelop:
+ \begin{enumerate}
+\item rm Makefile.in or .svn (if there are) 
+\item go into the src directory, and run git init 
+\item git add . and  git commit 
+\item git remote add origin git@github 
+\item git push origin master 
 
-0) another kdevelop, rm src\\
-1) git clone git@github src\\
-2) modify Makefile.am with you kdevelop project file.\\
-3) in configure dialog, Configure options->linker flager -> add -L./ and add lib to the debug/src directory.\\
-4) compile and run.\\
+\item another kdevelop, rm src
+\item git clone git@github src
+\item modify Makefile.am with you kdevelop project file.
+\item in configure dialog, Configure options->linker flager -> add -L./ and add lib to the debug/src directory.
+\item compile and run.
+\end{enumerate}  
 
-  \item[latex] Only *.tex *.bib( reference)  and /pic directory are useful are useful, You need to add them
+
+  \item For latex,  Only *.tex *.bib( reference)  and /pic directory are useful, You need to add them
       manually.
-\end{description}
+\end{itemize}
 
 \subsubsection{single person on different computers }
 On computer 1:
@@ -2121,23 +2466,23 @@ Same operation, when you merge, it will only produce forward merge, it's relativ
 % 过了几天，bob如果想继续帮助我开发，他需要先同步一下我这几天的工作成果，只要在其当初clone的myrepo目录下执行git pull即可:
 % #git pull //不用加任何参数，因为当初clone的时候，git已经记住了我（rocrocket）的工作目录，它会直接找到我的目录来取。
 % \end{verbatim}
-
-	if modification is small , you can use email+patch; If the modification is big, you can use fork pattern
 	\begin{itemize}
+	\item if modification is small , you can use email+patch; If the modification is big, you can use fork pattern
+
     \item you can clone a exist project from other's people or on other computers,
-	\item email topic()
+	\item Use email topic
 		\begin{verbatim}
 		1) git clone http://www.bitsun.com/git/gittutorcn.git
 		2) edit and commit
 		//method 1 (develop on master)
 		$ git  fetch origin
 		$ git rebase origin
-		$ git for1mat path origin  ->0001-your-buddy-s-contribution.txt
+		$ git format path origin  ->0001-your-buddy-s-contribution.txt
 		//method 2 (develop on branche, better)
 		$ git checkout -b patch_mubs
 		$ git checkout master
 		$ git pull
-		…
+		...
 		$ git checkout patch_mubs
 		$ git rebase master ( why I need rebase here, I want to know answer)
 		
@@ -2151,281 +2496,46 @@ Same operation, when you merge, it will only produce forward merge, it's relativ
     \includegraphics[scale=0.7]{pics/Visio-git_cooperate}
 
 
-\subsection{ branch}
 
-Branch can be in  two different positions. One is in the local place, you can use git branch to check them. The
-other is remote-tracking branches, you can use git branch -r to check them. They have origin/albert name, origin
-is not branch name, it's repository  name, and albert is branch name. \par
+\section{IDE}
+If you can access GUI, you can use code::block and kile to develop and documents. if
+you login by SSH, By now, I think that best tool is Emacs, with GUD, it can debug a
+program. Does Emacs support latex well? Yes, It has tex mode. \par
 
-There are three common use branches. One is release branch which can be based on one release commit.
-Usually, it used to fix some bugs in release, then you can merge back master branch. Another is feature branch,
-when you add a feature, and you don't if it's good or can be finished properly, you can produce a feature branch.
-The last branch is vendor branch. You don't commit on it. just keep track with upstream new version , then
-merge back with you master branch.
+Windows has VS community version.  Mac has Xcode, but I didn't try it too much. 
 
-You can not checkout remote branch, such as \linuxcommand{git checkout origin/branch1}. In order to so , you
-have to create a local branch based on remote branch, such as \linuxcommand{git checkout --track -b branch1
-origion/branch1}, then work on the local branch1. after you finish it. push it back. with --track, you can push or
-fetch without specify remote repository name. you can omit it.
+In linux, There are many tools you can uses. The most advance tool is Eclipse. the medium tools are codelite and UltraGDB. And the simple tool is vim and gdb( gdb -tui) \\
 
+ddd is old tool, when I use it in mint 17, It's difficult to set font.  It seems that a bug for ddd. and ddd is old tool which seems to stop developing.  \\
 
-branch basic rules:\\
-one branch is for (master) which is for merge, the others is for daily experiments. when you want to emerge
-other's work, you need to build a branch.\\
+Then I try affinic debugger, It's a commercial software and need serial number, I look for and there is not many answers on google, Maybe it's not very popular,  and the shortcoming is white background and you cann't change color theme. so I give it up. \\
 
-branch is based on commit, before you make a branch, you'd better commit.\\
+codelite is a good tool, Setting->colours and fonts->Customize->C++ , you can select Themes: Monokai\_2, and you can set font MonoSpace 11pt.  
+in codelite, you need to set terminal as gnome-terminal in Setting->preferences->terminal "/usr/bin/gnome-terminal -t '\$(TITLE)' -e '\$(CMD)'"
+It also use xterm as debugger output. In mint, it output ugly font.  you need to produce .Xresources file on you home directory.  I keep it on the linux software backup. 
 
-When you merge a branch with master, you should delete it.
+UltraGDB is subset of Eclipse, if you just need front-end of GDB, It's the best one. You can set dark theme in Window->Preferences->General->Appearance \\
 
+In conclusion,  front end of GDB are UltraGDB and codelite. IDE are eclipse and codelite.
 
-
-\subsubsection{Cooperation based branch }
-single person, center control, with branch \\
-	\includegraphics[scale=0.6]{pics/git_branch} \\
-   	when you finish the branch, you can merge it with master.
-
-Multi person, center control, with branch \\
-
-   \begin{enumerate}
-     \item \linuxcommand{git fetch upstream} get zhaoyan upstream the updated development process.
-     \item \linuxcommand{git checkout -b test\_bla upstream/master} based zhaoyan master branch, build local
-         branch test \_bla (any name is OK.)
-     \item edit,  compile, \\
-     git commit -am "s1" \\
-     edit,  compile,  \\
-     git commit -am "s2"\\
-     While, upstream/master maybe changed,  a new commit t1 appear.
-\begin{verbatim}
-     s1--- s2
-____/___t1
-\end{verbatim}
-\item \linuxcommand{git fetch upstream} when you want to update upstream, you have to get new commits
-
-\item \linuxcommand{git merge upstream/master} If no conflict, produce a forward merge, if conflict, manually
-    resolve and commit a new commit. \linuxcommand{git commit -am "st1"}
-\begin{verbatim}
-          s1--- s2
-____/___t1___\st1______
-\end{verbatim}
-
-\item Or, you can use the second method: \linuxcommand{git rebase upstream/master} No conflict, produce a
-    new commit. with conflict, manually resolve it, then \linuxcommand{git add conflict\_file}, then
-    \linuxcommand{git rebase --continue}, not need to commit.
-    \begin{verbatim}
-        t1---s1--- s2
-____/
-\end{verbatim}
-
-\item git push origin test\_bla
-
-\item login github, look for you repository, checkout test\_bla, then click "request pull" button.
-
-\item If other accept you request, you can delete test\_bla branch. \linuxcommand{git branch -D test\_bla}
-
-\item \linuxcommand{git push origin  :test\_bla}  delete test\_bla branch in github.
-
-\item  repeate 1-10.
-
-   \end{enumerate}
-
-\subsection{history}
-
-\subsubsection{tag}
-\begin{verbatim}
-no space in tag name
-\end{verbatim}
-
-\subsubsection{history representation}
+\subsection{Understand}
+Understand is a good tools to read a large scale software. 
 \begin{itemize}
-\item revision \\
-    \begin{verbatim}
-    HEAD, FETCH_HEAD,ORIG_HEAD, MERGE_HEAD, COMMIT_EDITMSG:  #last commit
-    HEAD:  #last commit。
-    MERGE_HEAD:
-    FETCH_HEAD:
-    HEAD^: HEAD's parent, it's ORIG_HEAD
+\item Don't add .h, .inc, or .inl files into understand project, It will be included by .cpp and analyze automatically. 
+\item For C++, use strict option in project configuration. You can adjust c++ version in strict C++ configuration. By now, It's good to use C++11, C++14 is too new
+\item In Understand ,you can use "Improve project accuracy"->"missing include files" to help you search head file automatically. 
+\item For CMake file, you can use \textbf{CMake -CMAKE\_EXPORT\_COMPILE\_COMMANDS -G "Unix Makefiles"} It will produce a compile\_commands.json file. In the end, you can use \linuxcommand{und} to produce a project.und. It will includes correct configuration information.  Don't use -G "Xcode", It will not produce  compile\_commands.json file.  Detail can be seen in my EverNote bookmark. 
+\item For gcc and g++ project, you can use buildspy tool in Understand, detail can be seen in my EverNote bookmark.
+\item If you select "terminal" color theme, inactive code will not visiable, you can change the background color to make it visible through "Preferences"->"Editor"->"Styles"
+\item When analyze a long or difficult file, "worker process killed after 2 mins", you can try "Ananlyze changed file " again. if 2 minutes is too short, you can configure it longer on this specify file by override configuration. 
+\item Macro is key factor in understand project, you can define it maually, but recommended way is to use CMAKE or buildsyp or visual studio to prodce a understand project automatcilly. it will includes all the correct Macro defination and include path. 
+\item You can use buildspy to build a understand project in linux, configure project to relative path "Portability" then you can move source code and understand project to Mac, and use understand in Mac to open it. the interface on Mac looks better than Linux. 
 
-    ^ commit# first parent
-    HEAD^^ : second parent
-    HEAD^1：first parent
-    HEAD^2:second parent
+\item By now, I have two projects, one is llvm and the other is openuh.  For llvm, when you run CMake in test1 directory, It will produce some head file, when you compile use xcode or makefile, It will produce some def file. But I didn't run can compiling in test1 directory, but I have really compiled src in cmake\_release\_build directory. When i use add automaticlly search headfile, it add some files in cmake\_release\_build directory. In Understand Project Browers, you can see these three directories, in fact, test1 and cmake\_release\_build are overlapped. 
 
-    HEAD~4:HEAD
-    HEAD:README.txt
-    %It represents a blob object,  sh-hash value of blob is not easy to see.
-    \end{verbatim}
-
-\item blame
-    \begin{verbatim}
-    git blame -L l2,l3 hello.html
-    \\Who made some modification.
-    \end{verbatim}
-
+\item for LLVM and openuh, when you configure and compile the source code, It will produced some addtional files to be used in compiling in build directory. so, In the end you understand project will also include build directory in the end. 
+  
 \end{itemize}
-
-
-
-\subsubsection{history change}
-\includegraphics[scale=0.6]{pics/Git-history} \\
-
-modify history: \\
-
-\begin{description}
-  \item[Change current lastest commit] \linuxcommand{git commit  --amend} not only change the message, but
-      also the working tree contents. \verb+git commit -C HEAD^+
-        will produce a new commit, but this commit is just like \verb=HEAD^ =.
-
-  \item[delete some new commits]
-   \verb=git reset --hard  HEAD^^^ = will delete \verb=HEAD^^ =  and
-      \verb=HEAD^ =  and HEAD three commits
-forever , It's is a dangerous  command, be careful about it.
-
-\item[delete some old commits]
-1)\linuxcommand{echo "Commit from tree of tag A | git commit-tree A\^\{tree\}}  It will produce a <SHA value> \\
-2)\linuxcommand{git rebase --onto <SHA value> A master}  All the history behind of A will be deleted. \\
-
-  \item [delete a old commit by cherry-pick ]
-   1)\linuxcommand{git checkout C}, C is a tag, by now, working tree
-      is C status, Here, you can't use
-      \linuxcommand{reset C}, because it will put master to C,  then D, E and F will become a unreferenced
-      commit, deleted by Git. If no D,E and F,
-You can't use cherry-pick in the next steps.     \\
-2) \linuxcommand{git cherry-pick E and F} , delete D commit ,cherry pick will produce a new commit SHA value. just like rebase.\\
-3)\linuxcommand{git checkout master }  It will end Head detached status. \linuxcommand{git reset --hard HEAD@\{1\}}. Detail can be found in "Got Git". \\
-
-
-  \item [delete a old commit by rebase ]
-  1) \linuxcommand{git rebase --onto m2 m3 m5}, You need to know that  m3 m5 will not m3, It will produce a new commit m4 and m5,
-   SHA value will be different. And from the figure, you can see that master branch is still on old m5 commit.  so you need perform next step. \\
-
-\begin{figure}
-  \centering
-  \includegraphics[scale=1.0]{pics/rebase1}
-\end{figure}
-  \par
-
-  1a )\linuxcommand{git rebase --onto m2 m3 master} will keep you track master branch, after that you don't
-  need to run step 2 below. It will be easy way to do that.
-
-  2) \linuxcommand{git checkout master }  and \linuxcommand{git reset --hard HEAD@\{1\}}. After these two commands, you can see m2 has disappeared. \\
-\begin{figure}
-  \centering
-  \includegraphics[scale=1.0]{pics/rebase2}
-\end{figure}
-  \par
-
-
-  \item[combine two old commits by cherry-pick]
-  1)\linuxcommand{git checkout D}, D is a tag, by now, working tree is D status,  \\
-  2) \linuxcommand{git reset --soft B } ,  because HEAD is D now, go to B, --soft means working tree is still D status \\
-  3)\linuxcommand{git commit -C C }  then \linuxcommand{git cherry-pick E and F}. \\
-  4)\linuxcommand{git checkout master }  \linuxcommand{git reset --hard HEAD@\{1\}}. Detail can be found in "Got Git". \\
-
-\item[combine two old commits by rebase]
-  1)\linuxcommand{git checkout D}, D is a tag, by now, working tree is D status,  \\
-  2) \linuxcommand{git reset --soft B } ,  because HEAD is D now, go to B, --soft means working tree is still D status \\
-  3)\linuxcommand{git commit -C C }  \\
-  4)\linuxcommand{git tag newbase} \\
-5)\linuxcommand{git rebase --onto newbase D master}  then check \linuxcommand{git branch }to see if it's on branch master, if it's yes \\
-6) \linuxcommand{git tag -d newbase } \\  Detail can be found in "Got Git". \\
-
-\item[difference cherry pick and rebase]
-1)rebase and cherry pick will change commit SHA value, so don't use
-    it on any commit that you have pulled or you have
-    pushed. cherry pick will not change \\
-2)cherry pick should be used in change few commits, and rebase can be used to change a lot of commits at the same time.  \\
-
-
-\item[delete all the commits in a merged branch]
-
-\begin{figure}
-  \centering
-  \includegraphics[scale=1.0]{pics/rebase3}
-\end{figure}
-  \par
-
-1) \linuxcommand{git rebase -i -p  --keep-empty --onto 9f843b 9f843b master} -p means keep merge commit.
-9f843b is m1 commit. \\
-
-2)In git-rebase-todo file, you can see all the commits. for merge commit, you need to change it to
-\linuxcommand{x git cherry-pick --allow-empty -m 1 <SHA>}, comment all the unnecessary commits. Then you
-can see close this file. and rebase -i will run it according to this file. \\
-
-3) Maybe you need to run \linuxcommand{git checkout master }  \linuxcommand{git reset --hard HEAD@\{1\}}
-and \linuxcommand{git branch -D test} to make history clean.  (x options in msysGit system doesn't work, you
-need to manually git cherry-pick, any way, you can see all the SHA with gitk --all command. )
-
-\item[rebase -i] Is a powerful command, All the previous task can be finish by
-
-\item[revert] will produce a new commit too.
-
-\end{description}
-
-
-
-\verb=git revert HEAD^^ = produce a new commit
- 0) add a, then you don't want to put a into git.  then use git reset
--- a. if you have commit, then git rm a. It will delete a from index file,
- but in working directory still exist, then you need to commit it again. \par
-
-1)just modify, but didn't commit \linuxcommand{git reset HEAD a.c} add but not commit. \linuxcommand{git checkout -- a.c} modify but not add. \par
-
-2)checkout old version. \verb=git checkout HEAD^^ a.c= \par
-
-4)return back forever \verb=git rest --hard HEAD^^= \par
-
-5) put branch1 history into current branch.
- git rebase branch1  \par
-
-
-\textbf{Never rebase branches or trees that you pulled. Only rebase local branches.
-Never ever rebase a branch that you pushed, or that you pulled from another person}
-\par rebase will change history, if you don't have valid reason to use it, just use merge
-command.
-
-rebase command and merge command is little different. see below:
-
-1) in master  branch , commit few times(m1..m3), in test branch, commit few times(t1..t2). \\
- 2) checkout master, then git rebase  test. \\
-
-\begin{verbatim}
-           t1-->t2
-          /
-m-->m1-->m2-->m3
-\end{verbatim}
-
-3) git checkout master, git rebase test, /* means that SHA value has been changed.
-
-\begin{verbatim}
-           t1-->t2-->m1*-->m2*-->m3*
-          /
-m-->
-\end{verbatim}
-
-
-
-%rebase的命令和merge的命令有点不太一样。一个标准的流程应该是从master创造出一个分支test,然后在test commit 几次。
-%同时在master commit 几次。这个时候，进入master分支，git rebase test,
-
-
-\includegraphics[scale=0.7]{pics/Git_rebase} \\
-
-%1）如果b是一个本地的branch，如果master上没有m1那么在master 上，执行 git rebase b 和git merge b效果一样，就是增加两个新的commit。 \\
-
-%2）如果master 上也有个更新m1。那么需要注意，如果m1只是本地的（你不是pull,同时，你还没有push）同时，你还希望保存
-%b1 和 b2 两次commit。这个时候，可以使用git rebase b. (因为m1 hash值改变了，所以必须要保证本地化)。\\
-%3）如果master上m1不是本地化的，那么你最好用merge。但是当你删掉b分支以后，b1,b2消失了。\\
-
-%4）如果master上m1不是本地化的，你也可以进入b分支， 然后git rebase master,（不过你需要注意，这个时候，你还在b分支里面。）然后git checkout master , git merge b。
-%相当于把b当中的b1和b2，放到了m1前面，（m1的hash没变，相当于增加了两个新的commit b1和b2. 你还需要保证b是个本地的branch)
-%一句话:rebase的使用需要谨慎使用，他的本意是修改历史的作用，如果你没有很明显的理由，就直接用merge好了。\\
-
-%rebase branch1 有三个含义，1）当前不在branch1中，2）branch1为焊接接入点，3）当前的分支commit的值改变了。
-
-%rebase branch 与rebase master是有区别的。如果你当前在master中，并且以master为主线，那么就应该调用rebase branch。从这个角度上来说，rebase master应该用的不多。除非是上面说的第4种情况，那就是m1已经push出去，并且别人也在用。
-
-%rebase两种常用场景，第一就是本地的分支上，两个分支出现并行情况，通过rebase branch1,可以得到相对干净的历史commit. 第二就是rebase thorn/master, 把别人的工作集成到我的master中去，（thorn/master和master都发生了commit）生成一个更干净的历史。他的基本原理和merge大致相同。
-
 
 
 
