@@ -11,7 +11,8 @@ call vundle#begin()
 
 " let Vundle manage Vundle, required
 Plugin 'VundleVim/Vundle.vim'
-
+Plugin 'vim-scripts/Visual-Mark'
+Plugin 'dkprice/vim-easygrep'
 Plugin 'altercation/vim-colors-solarized'
 Plugin 'scrooloose/nerdtree'
 Plugin 'vim-scripts/indentpython.vim'
@@ -35,6 +36,9 @@ Plugin 'SirVer/ultisnips'
 Plugin 'tmhedberg/matchit'
 Plugin 'ervandew/supertab'
 Plugin 'voithos/vim-python-matchit'
+Plugin 'tmhedberg/SimpylFold'
+Plugin 'rdnetto/YCM-Generator'
+Plugin 'jszakmeister/vim-togglecursor'
 " ------------------------------------------------------
 " The following are examples of different formats supported.
 " Keep Plugin commands between vundle#begin/end.
@@ -75,54 +79,44 @@ filetype plugin on
 " see :h vundle for more details or wiki for FAQ
 " Put your non-Plugin stuff after this line
 
-set number
+if !exists("g:syntax_on")
+	syntax enable
+endif
 
-syntax enable
+set number
 set background=dark
 colorscheme solarized
 se t_Co=256
 " let g:solarized_termcolors=256
 
-" let python_highlight_all=1
-syntax on
-
-" set for fold
-set foldmethod=indent
-set foldlevel=99
+"should open all folds when you open a file, then use space to toggle fold
+set foldlevel=90
 nnoremap <space> za
 
 set fileencodings=utf-8,ucs-bom,gb18030,gbk,gb2312,cp936
 set termencoding=utf-8
 set encoding=utf-8
-set guifontwide=*
+"set guifontwide=*
 
 
 " get rid of space in the end
 " au BufRead,BufNewFile *.py,*.pyw,*.c,*.h match BadWhitespace /\s\+$/
-autocmd BufWritePre *.py normal m`:%s/\s\+$//e``
+autocmd BufWritePre *.py :%s/\s\+$//e 
 
-" indent just for python
-" au BufRead,BufNewFile *py,*pyw,*.c,*.h set tabstop=4
 set tabstop=4
-au BufNewFile,BufRead *.py set softtabstop=4
-au BufNewFile,BufRead *.py  set shiftwidth=4
-au BufNewFile,BufRead *.py   set textwidth=79
-au BufNewFile,BufRead *.py    set expandtab
-au BufNewFile,BufRead *.py     set autoindent
-au BufNewFile,BufRead *.py     set fileformat=unix
 
-
-
-
-
-" for show air-line
+" for show air-line setting
 set laststatus=2
 let g:airline#extensions#tabline#enabled = 1
 let g:airline_theme='solarized'
 let g:airline_powerline_fonts = 1
 
-" for NERDTree
+" for NERDTree setting 
 map <C-n> :NERDTreeToggle<CR>
+
+" for syntastic setting 
+let g:syntastic_tex_checkers=['lacheck']
+let g:syntastic_python_checkers=['flake8']
 
 " for insert move action
 
@@ -211,8 +205,9 @@ nmap <C-x> <C-w>c
 
 
 
- map <Esc>[18~ <F7>
+" map <Esc>[18~ <F7>
  set nocompatible
+ " back can cross multi-line
  set backspace=2
 
  noremap <F4> :set hlsearch! hlsearch?<CR>
@@ -220,34 +215,37 @@ nmap <C-x> <C-w>c
  set ww+=<,>,[,]
  let g:vimtex_fold_enabled = 1
  let g:vimtex_motion_matchparen = 0
-" let mapleader='\' 
-" call vimtex#imaps#add_map( {'lhs':'i', 'rhs':'\begin{itemize}', 'leader' :'\',  'wrapper' : 'vimtex#imaps#wrap_trivial'} )
-" let g:user_emmet_leader_key='<C-l>'
+
+ 
 imap hh <C-y>,
+" matchit setting
 autocmd FileType html,php,tex runtime macros/matchit.vim
 autocmd FileType html,php let b:match_words='<:>,<\@<=\([^/][^ \t>]*\)[^>]*\%(>\|$\):<\@<=/\1>'
 
-" let g:ycm_server_keep_logfiles = 1
-" let g:ycm_server_log_level = 'debug'
-
-let g:ycm_server_python_interpreter = '/usr/bin/python'
 
 " YouCompleteMe
+
+" let g:ycm_server_keep_logfiles = 1
+" let g:ycm_server_log_level = 'debug' 
+let g:ycm_server_python_interpreter = '/usr/bin/python' 
 set runtimepath+=~/.vim/bundle/YouCompleteMe
 let g:ycm_collect_identifiers_from_tags_files = 1           " 开启 YCM
 " 基于标签引擎
-let g:ycm_auto_trigger = 0
+let g:ycm_auto_trigger = 1 
+let g:ycm_min_num_of_chars_for_completion = 99                 "
+let g:ycm_key_invoke_completion = '<C-a>'
+nnoremap <leader>jd :YcmCompleter GoToDefinitionElseDeclaration<CR>
+
 let g:ycm_collect_identifiers_from_comments_and_strings = 1 "
 " 注释与字符串中的内容也用于补全
-let g:syntastic_ignore_files=[".*\.py$"]
+" let g:syntastic_ignore_files=[".*\.py$"]
 let g:ycm_seed_identifiers_with_syntax = 1                  " 语法关键字补全
 let g:ycm_complete_in_comments = 1
 let g:ycm_confirm_extra_conf = 0
 let g:ycm_key_list_select_completion = ['<c-n>', '<Down>']  " 映射按键,
 " 没有这个会拦截掉tab, 导致其他插件的tab不能用.
 let g:ycm_key_list_previous_completion = ['<c-p>', '<Up>']
-let g:ycm_complete_in_comments = 1                          "
-" 在注释输入中也能补全
+
 let g:ycm_complete_in_strings = 1                           "
 " 在字符串输入中也能补全
 let g:ycm_collect_identifiers_from_comments_and_strings = 1 "
@@ -257,11 +255,7 @@ let g:ycm_global_ycm_extra_conf='~/.ycm_extra_conf.py'
 let g:ycm_show_diagnostics_ui = 1                           " 禁用语法检查
 inoremap <expr> <CR> pumvisible() ? "\<C-y>" : "\<CR>" |            "
 " 回车即选中当前项
-nnoremap <c-j> :YcmCompleter GoToDefinitionElseDeclaration<CR>|     "
-" 跳转到定义处
-" let g:ycm_min_num_of_chars_for_completion=2                 "
-" 从第2个键入字符就开始罗列匹配项
-"
+
 
 let g:EasyMotion_smartcase = 1
 "let g:EasyMotion_startofline = 0 " keep cursor colum when JK motion
@@ -295,14 +289,14 @@ vnoremap <Right> :<C-u>echo "No left for you!"<CR>
 inoremap <Right> <C-o>:echo "No left for you!"<CR>
 
 
-
-
 map <F7> :r!xclip -o<CR>
 vmap <F6> :'<,'>w !xclip<CR>
 "vmap <F6> :!xclip -f -sel clip<CR>
 
-au VimEnter * silent execute "!xmodmap -e 'clear Lock' -e 'keycode 0x42 = Escape'"
-au VimLeave * silent execute "!xmodmap -e 'clear Lock' -e 'keycode 0x42 = Caps_Lock'"
+"By now, it doesn't work very well, so I comment them out
+au VimEnter * silent execute "!xmodmap -e 'clear lock'"
+au VimEnter * silent execute "!xmodmap -e 'keycode 0x42 = Escape'"
+au VimLeave * silent execute "!xmodmap -e 'keycode 0x42 = Caps_Lock' -e 'add lock = Caps_Lock'"
 
 nmap <F8> :TagbarToggle<CR>
 
@@ -312,11 +306,13 @@ hi MatchParen cterm=none ctermbg=green ctermfg=blue
 
 if has("autocmd")
 	" you can off blink cursor
-	 au InsertEnter * silent execute "!gconftool-2 --set /apps/gnome-terminal/profiles/Default/cursor_blink_mode --type string on"	
-  au InsertEnter * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape ibeam"
-  au InsertLeave * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape block"
+ au InsertEnter * silent execute "!gconftool-2 --set /apps/gnome-terminal/profiles/Default/cursor_blink_mode --type string on"	
+ au InsertEnter * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape ibeam"
+ au InsertLeave * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape block"
+ au VimEnter * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape block"
   au VimLeave * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape ibeam"
  endif
 
-
-
+let g:EasyGrepMode = 2
+let g:syntastic_filetype_map = { "php": "html" }
+let g:airline#extensions#tabline#buffer_nr_show = 1
