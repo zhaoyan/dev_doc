@@ -1705,7 +1705,7 @@ First run :YcmRestartServer.Then run :YcmToggleLogs <tab> select stderr log file
 \subsection{gcc basic}
 \begin{itemize}
 
-   \item \linuxcommand{gcc -c hello.c} will only produce object file hello.o. Then you can use \linuxcommand{gcc hello.o -o hello} to produce executable file. You can these two steps just compile modified c file. It will save you a lot of compile time. \linuxcommand{gcc -c *.c}, then \linuxcommand{gcc *.o -o last}. A better method is to use make file.
+   \item \linuxcommand{gcc -c hello.c} will only produce object file hello.o. Then you can use \linuxcommand{gcc hello.o -o hello} to produce executable file. You can use two steps just compile modified c file. It will save you a lot of compile time. \linuxcommand{gcc -c *.c}, then \linuxcommand{gcc *.o -o last}. You can omit the -c option to compile and link in one step. A better method is to use make file.
 
    \item \linuxcommand{gcc -Wall hello.c -o hello} \op{-Wall} is an important options, you should always use it.
 
@@ -1722,9 +1722,9 @@ First run :YcmRestartServer.Then run :YcmToggleLogs <tab> select stderr log file
 #pragma GCC diagnostic pop
     foo(d);         /* depends on command line options */
 \end{lstlisting}
+\item default is \op{-O0}, if you want to use gdb to debug your applicaiton, you should use \op{-g}.
 
   \item In general, \linuxcommand{gcc -Wall hello.c -lm -o hello} the compile options \op{-lNAME} will attempt to link object files with a library file libNAME.a or libNAME.so in the standard library directories.
-
  
 	\item gcc -c will invoke ccl and as. gcc -o will invoke ccl, as and ld
 
@@ -1744,9 +1744,10 @@ printf ...
 
 	 \item   \linuxcommand{nm} can tell you what functions there are in a lib: there are T,U, and W categories. \linuxcommand{nm -D --defined-only libname.so}
 
-	 \item \linuxcommand{ar -t} can see what .o files are included in a lib. 
-will see contents in a .so file.
+	 \item \linuxcommand{ar -t} can see what .o files are included in a lib.  will see contents in a .so file.
 \item for .so use file command, for .a use objdump -x to see if they are 32 or 64 bits.    
+\item Use \linuxcommand{nm -D --defined-only libname.so} to get the symbol names from your dynamic library.
+		The --defined-only switch shows you only the symbol that are defined in these files, and not references to external functions.  An alternative is to use objdump, and catch only the symbols in the text section :
 
 
    \item About optimization, a good book is "An Introduction to GCC-Brian\_Gough", You can google it.I have download it into my ref directory. For basic knowledge, google "GCC and Make Compiling, Linking and Building C/C++ Applications". 
@@ -1756,22 +1757,23 @@ will see contents in a .so file.
 \subsection{gcc include}
     \begin{itemize}		
     \item Defaultly, gcc searches the following /usr/local/include/ and /user/include for header file.				
-			
 	\item You can use -I to add your include path, but It will only affect current gcc/g++ command.
 
 	\item You also can use \linuxcommand{C(CPLUS)\_INCLUDE\_PATH=... g++...}. You should put them on the same line. CPLUS environment will only valid in this line. -I method is better because it save typing.
 
 	\item \verb=-I\users\yzhao\myinclude= There is no space between -I and path variable. 
 
-		\item quote header will search from current directory. 
+		\item Double quote header will be searched from current directory. 
+
 		\item Any search will NOT recursive automatically, So you must use "path/foo.h" to specify the exact position. 
+
 		\item For search order. quote>system. -I will be the first in system. -I will follow from left to right.
 
 		\item \verb=g++ -E -x c++ - -v < /dev/null=. It will show all the include paths and order. 
 
 		\item cpp -v hello.c will also show all the include paths. 
 
-		\item Based above knowledge. You can deal with most of tasks right now. If you need harder requirement. you can google "Options for Directory Search gcc". There is a gcc document to introduce this topic. 
+		\item Based on above knowledge. You can deal with most of tasks right now. If you need harder requirement. you can google "Options for Directory Search gcc". There is a gcc document to introduce this topic.  
 		
 			\end{itemize}
 
@@ -1783,9 +1785,9 @@ will see contents in a .so file.
 			 
 			\item \verb=ld -o output /lib/crt0.o hello.o -lc= You can input .o file directly to ld command. -lc means libc.a or libc.so. It will produce "output". 
 					 
-			\item Unless you have some very specific platform integration requirements, or have reasons not to use gcc, I can hardly think of any advantage of invoking ld directly for linking. Any extra linker-specific option you may require could easily be specified with the -Wl, prefix on the gcc command line (if not already available as a plain gcc option).
+			\item Unless you have some very specific platform integration requirements, or have reasons not to use gcc(g++), I can hardly think of any advantage of invoking ld directly for linking. Any extra linker-specific option you may require could easily be specified with the -Wl, prefix on the gcc command line (if not already available as a plain gcc option).
 
-			 \item if the linker is being invoked indirectly, via a compiler driver (e.g. 'gcc') then all the linker command line options should be prefixed by '-Wl,' . An example can be found below when you use "shared object name". Such as libhello.so.0.0.1
+			 \item If the linker is being invoked indirectly, via a compiler driver (e.g. 'gcc') then all the linker command line options should be prefixed by '-Wl,' . An example can be found below when you use "shared object name". Such as libhello.so.0.0.1
 
     \item You can use -L to add you library PATH, and -l library name. In you source code, you only give function name, so you have to use -l to specify the libary name. 
 
@@ -1804,7 +1806,7 @@ will see contents in a .so file.
 
 \subsection{gcc compile .so}
   \begin{itemize}
-  \item Compile .so without so name.
+		  \item Compile .so without soname.(The soname is often used to provide version backwards-compatibility information)
 	\begin{enumerate}
 	\item Use below command to compile .so file in linux. \\
    \verb=gcc -shared -o libpong.so -fPIC pong.c= \\
@@ -1812,7 +1814,7 @@ will see contents in a .so file.
    
    \item Then you can make a client programme. It need to inlcude pong.h file then use below gcc command to compile. \\
 	\verb=gcc -o test test.c -lpong -L.=
-	You need to use -lpong to specify libname. -L is to specify library search path.        
+	You need to use -lpong to specify libname. -L is to specify library search path, dot represent current directory.        
 	\end{enumerate}
 
        \item compile .so with soname 
@@ -1825,13 +1827,12 @@ will see contents in a .so file.
 		ln -s libhello.so.0.0.1 libhello.so. Pay attention here. 1) no number after .so 2) use ln -s command. not use ldconfig -n . After that, When you run \linuxcommand{ldd main}, you will see main is only depended to libhello.so.0
 		
 		\item after that, you can produce libhello.so.0.0.2...9. Then run ldconfig-n. libhello.so.0 will point to the newer version .so. You don't need recompile main at all.  
+
 		\item nm -g libhello.so will list all symbol in a .so file
 		
-		  \item .a is static library, and .so is dynamic library. Sometimes, a lib will provide lib.a
-        and lib.so at the same time. gcc will use the lib.so first. You can use \op{-static} to tell
-        gcc to use lib.a version.
-		       
-       \end{enumerate}
+		  \item .a is static library, and .so is dynamic library. Sometimes, a lib will provide lib.a and lib.so at the same time. gcc will use the lib.so first. You can use \op{-static} to tell gcc to use lib.a version.
+	\end{enumerate}
+	
 \end{itemize}
 \subsection{gcc load .so}
 
@@ -1849,12 +1850,15 @@ will see contents in a .so file.
 				\item When you add .so to /lib or /usr/lib, You don't need to modify /etc/ld.so.conf. but you need run ldconfig.  Or this library will not found 
 
 				\item Add .so to other paths(excludes /lib /usr/lob), You need to modify /etc/ld.so.conf. then run ldconfig. 
+						
 				\item /lib/ld-linux.so.2 is dynamic loader. 
+
 				\item If you don't have write permission, you can use LD\_LIBRARY\_PATH
 
 				\item ldconfig is just run time. It has nothing with compiling. 
 
 				\item LD\_PRELOAD tell loader: pick up a fun in specified .so first. 
+
 				\item For complex .so problem, such as same name in different .so.  You should see below two documents. 
 
 \begin{verbatim}
@@ -1864,7 +1868,7 @@ http://www.bnikolic.co.uk/blog/linux-ld-debug.html
 THE INSIDE STORY ON SHARED LIBRARIES AND DYNAMIC LOADING			
 \end{verbatim}			
   	 
-		\item For .so file, You can use gcc implicit link, then use LD\_LIBARY\_PATH to dynamic load it. You also can explicit link it in your main.c. In this way, you don't need set LD\_LIBARY and more 
+		\item For .so file, You can use gcc implicit link, then use LD\_LIBARY\_PATH to dynamic load it. You also can dynamic open a .so file and load a function to call. It in your main.c. In this way, you don't need set LD\_LIBARY and more 
 
 \begin{lstlisting}[frame=single, language=c++]
 #include <stdio.h>
@@ -1894,10 +1898,14 @@ int main(int argc, char *argv[]){
 \subsection{start}
 \begin{itemize}
 \item \linuxcommand{gcc\\g++ -g file.c\\file.cpp} you need \op{-g} to compile souce code before gdb
+
   \item \linuxcommand{gdb -tui} start good GUI mode
+
   \item \linuxcommand{gdb app} just load symbol information, then you can use run arg1 arg2.. to run this problem.
   \item \linuxcommand{help} will list classes of commands then type help follewed by class name.  or help followed by command name. 
+
   \item you can use another terminal to compile this file and then in you gdb to kill and run again. all the breakpoints will be keep.
+		  
   \item you can kill and run app again at any time. 
  
 \end{itemize}
@@ -1908,11 +1916,10 @@ int main(int argc, char *argv[]){
   \item \linuxcommand{info breakpoints} will list all the breakpoints 
   \item After you have list all the breakpoints, you will know the number of them, then you can use \linuxcommand{disable 2} to  disable the second breakpoint. {ignore 2 5} will skip the number 2 and number 5 breakpoints. 
   \item  \linuxcommand{tbreak } will just stop once, then it will be removed. 
-  \item \linuxcommand{until line or functions} 
 \end{itemize}
 
 
-\subsection{step}
+\subsection{Contrl Running}
 \begin{itemize}
 \item When your program is running, send ctrl+C to stop it, and you can type continue command to restart execution.
 \item list command show you current context information.
@@ -1943,10 +1950,16 @@ int main(int argc, char *argv[]){
 
 	\begin{itemize}
 		\item Makefile uses compiler and shell programming tools( such as rm, cp etc ) together! \linuxcommand{make} command will look for makefile automatically first. So you should write you own Makefile.
+
 		\item You also can use make -f to specify you own makefile name, A Makefile can be regarded as a script file.
 
-		\item The basic part of Makefile is Target: prerequisites
-                        tab comm.and
+		\item The basic part of Makefile is:
+\begin{verbatim}
+Target: prerequisites
+		tab comm.and 
+\end{verbatim}
+				
+										
 		\item To check which one has changed, if someone has change, it will call command. That is the most important, you must remember it all the time.  And it is not difficult, isn't it?
 
 		\item Comment is \#, just like comment statement in script file.
