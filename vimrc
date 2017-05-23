@@ -313,6 +313,10 @@ if has("autocmd")
   au VimLeave * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape ibeam"
  endif
 
+au VimEnter,InsertLeave * set nocul
+au InsertEnter,InsertChange * set cul
+
+
 let g:EasyGrepMode = 2
 let g:syntastic_filetype_map = { "php": "html" }
 let g:airline#extensions#tabline#buffer_nr_show = 1
