@@ -40,16 +40,143 @@
 
 		\item There are two Interface Framework, Qt and GTK\@.  KDE is based on QT, and Gnome and Cinnamon(Mint) is based on GTK.  
 
-		\item You can use \linuxcommand{uname} to check basic information about your computer, detail can be seen uname --help. he processor type (or name) refers for what architecture has been made the processor.  The hardware machine name must be compatible with the processor type, in other words, must be the same type as the processor type.  And finally, the hardware platform refers to the whole instructions that the hardware uses to process and which it musn't be a higher version than the processor type. i686=x86\_64
+		\item You can use \linuxcommand{uname} to check basic information about your computer, detail can be seen uname --help. The processor type (or name) refers for what architecture has been made the processor.  The hardware machine name must be compatible with the processor type, in other words, must be the same type as the processor type.  And finally, the hardware platform refers to the whole instructions that the hardware uses to process and which it needn't be a higher version than the processor type. i686=x86\_64
 
 		\item \linuxcommand{lscpu} will tell you how many cores do you have. Socket is physics CPU, "cores per socket" is number of cores. 
+\end{itemize}
+
+\section{Shell}
+\subsection{Shell type}
+\begin{itemize}
+		\item There are two basic shell, one is bash and the other is tcsh. They can be change by calling \linuxcommand{bash} or \linuxcommand{tcsh}.  You can use echo \$0 to see which shell you are using right now.
+
+		\item By now, a new shell is zsh, It support more features. 
+
+		\item You can use \linuxcommand{chsh}, -l will list all available shell, and -s follow new shell full path name, such as \linuxcommand{chsh -s /bin/bash}.
+
+		\item Every time when you open a new terminal, It will read .bashrc or .rshrc. It depends on what shell you are using, that is why you need to use \linuxcommand{echo \$0} to know which shell you are using. It will use export(bash) or setenv(csh) to load all envoriment variable. 
+
+		\item In tcsh, you can use bindkey -e and bindkey -v to change to emacs mode and vi mode.In bash, you can use set -o vi or set -o emacs.
+
+		\item Once in vim mode, It's important to distinguish insert mode and command mode. For bash( version 4.3 or 4.4) you can use  "set show-mode-in-prompt on" in .inputrc file. For zsh, you also can implement it. But in tcsh, there isn't any good way to show message on prompt. Just accept it.   
+\end{itemize}
+
+\subsection{wild character and quote}
+\begin{itemize}
+		\item Single quotes preserves the literal value of each character.  Double quotes preserves the literal value of all characters within the quotes, with the exception of '\$', 'backtick', '$\backslash$', and, when history expansion is enabled, '!'. 
+\begin{verbatim}
+echo '$PATH `pwd` '
+echo "$PATH `pwd` \$PATH"
+\end{verbatim}
+		\item For shell, There are "*, ?, [ ] and \{\}" wild character. \textbf{Any time you input these four wild characters, shell will interpret it according to all the files names.}
+
+		\item \{\} will not match file name, echo a\{.h,.c\} just output a.h and a.c \textbf{Don't use space inside \{\}.
+
+		\item For example echo [a-d]c.  
+				\begin{enumerate}
+						\item shell see [ ], it will expand according to file names. If it doesn't match, it will print No match. If there are bc file or dc file. [a-d]c will be expanded to "bc dc".
+						\item Then shell invoke echo command.
+				\end{enumerate}
+
+		\item For \{\}, You use \linuxcommand{echo \{*.txt,*.c\}}. \textbf{No space after comma.} It will expanded to a.txt b.c if there is a.txt and b.c in your directory.
+
+		\item If you don't want shell to interpret wild character, use $\backslash$
+
+		\item A good example of wild character is \linuxcommand{grep --exclude=a$\backslash$*.h 'a*b' *.h}. You should know three * meaning in previous command.
+\end{itemize}
+
+\subsection{Environment variable}
+\begin{itemize} 
+		\item When bash is invoked as an interactive login shell, or as a non-interactive shell with the --login option, it first reads and executes commands from the file /etc/profile, if that file exists. Then/etc/profile.d/*.sh. Then it looks for ~/.bash\_profile,  ~/.bash\_login, and ~/.profile, in that order, and reads and executes commands from the first one that exists and is readable. The --noprofile option may be used when the shell is started to inhibit this behavior.
+		
+		\item When an interactive shell that is not a login shell is started, bash reads and executes commands from  /etc/bash.bashrc and ~/.bashrc, if these files exist. This may be inhibited by using the --norc option. The --rcfile file option will force bash to read and execute commands from file instead of /etc/bash.bashrc and  ~/.bashrc.	
+
+		\item For tcsh, read .cshrc file, for zsh, read .zshrc file.
+
+		\item This goes pretty far back in the Unix history. rc stands for "run commands", and makes sense actually.
+
+		\item echo \$0 will show "bash", it's not login shell. If it shows "-bash", it is login shell.  
+	
+		\item Why we need variable, just like macro in C language. With variable, we can configure and customize an application outside. And we can customize a variable to affect a lot of applications. Such as \$PATH.
+				
+		\item For different shell, you have different syntax in shell script. For example, for bash shell you can use YanVar=123, There is no space between =.You also can use unset command "unset YanVar". Or use check command: \linuxcommand{echo \$YanVar}. Different shell have different syntax, tcsh muse use set. \textbf{Pay attention, in shell, there is no variable, just macro, so expansion is key idea to understand it's behaviour. Such as expansion order}.
+
+		\item There are two kinds of variables: environment and user defined.
+
+		\item \linuxcommand{env} shows all the environment variable. Such as \$HOME,  \$PATH, \$LANG,\$EDITOR which can specify you default editor in your system.\linuxcommand{set} list all the local environment variables and user defined variable , that is more than env command. For example, the \$PS1.  
+
+		\item \linuxcommand{getconf} can get some system variable, such as \linuxcommand{getconf ARG\_MAX}, you can use xargs -n 50 to make command satisfy the ARG\_MAX
+	
+		\item In mint, maybe in your home directory, there is no .bashrc file, so you need to create one and add export PATH=\$PATH:/home/yan/openuh-install/bin  then exit the current terminal and restart a new one. Then use echo \$PATH to see if the directory has been added.
+	
+		\item In previous command, Linux use ":" but windows use ";" why windows use different?  
+			
+		\item If you already in terminal, you can use "export" or "setenv" command to add environment variable. If these commands are in a sh file, you have to use \linuxcommand{source a.sh} to run. Because, if no source command, it will open a child terminal, so after a.sh finish, child terminal will disappear, and all the environment variable you just set in the child terminal will disappear too. 
+
+		\item If There is only one environment variable need to be set, you can run setenv or export in your current shell directly, then you can run a command, this command will be run in the child process, but child process can access parent environment variable, it's OK
+				
+		\item \linuxcommand{export DEPART=Sale} and \linuxcommand{DEPART=Sale ; export DEPART} they means the same. 
+
+		\item \linuxcommand{setenv} is csh command. In bash, you can use \linuxcommand{export} directly. \textbf{csh doesn't use =, bashrc doesn't use backslash.}
+\begin{verbatim}
+in .cshrc
+setenv PATH $PATH\:/users/yzhao4/python-3.23/bin
+
+in .bashrc
+export PATH=$PATH:/storage/yzhao/binexport 
+\end{verbatim}
+
+		\item If There are a few environment variables need to be set, You'd better put them into a script file. \textbf{But you have to use source a.sh} to make sure a.sh running in the current process, not a child process. 
+
+		\item Two shells don't share history and environment variables. 
+\end{itemize}
+	
+\subsection{pipe}
+\begin{itemize}
+		\item pipe command can be called "filter", It will accept input from STDIN, perform operations, then send it to STDOUT. Such as \textbf{grep, uniq, sort, fmt, pr, head, cut, tee, tr, join, paste, expand, split, tr, awk, sed, less}
+
+		\item You can't judge if a command is filter by running it. "cat" will hang up to wait for you from STDIN, but less will show error message.
+
+		\item xargs is also a filter, you can use this way \linuxcommand{find . -name "*.c" | xargs rm -rf } a.c and b.c will be rm command arguments.
+
+		\item Sometimes, a command need a file name as input or output, but you don't want to give a filename, It usually used in pipe commands, such as \linuxcommand{gzip -dc a.tar.gz  | tar -xvf  - }. It just like \linuxcommand{gzip -dc a.tar.gz  | tar -xvf  /dev/stdin}
+
+  \item "-" has nothing with shell, It's only available in tar command. Most of time, It's only used in tar. 
+\end{itemize}
+
+\subsection{shell script}
+\subsubsection{Basic}
+\begin{itemize}
+		\item The first line of script is \verb=#!/bin/bash=.  This is a special clue given to the shell indicating what program is used to interpret the script. Other scripting languages such as perl, awk, tcl, Tk, and python can also use this mechanism.
+
+		\item After you finished script file, use \linuxcommand{chmod +x your-script-name}.
+
+		\item echo -e "aaa$\backslash$nbbb" will output two lines.
+
+		\item \linuxcommand{!!} run the previous command, \linuxcommand{!\$} is the previous argument. \linuxcommand{\$?} is the last bash command result, If it's 0, means that everything is OK. Detail can be found in google "Become a Command Line Ninja With These Time-Saving Shortcuts''
+
+		\item \linuxcommand{command1;command2}.   To run two command with one command line.  \linuxcommand{command1 \&\& command2} command2 is executed if, and only if, command1 returns an exit status of zero. \linuxcommand{command1 || command2} command2 is executed if and only if command1 returns a non-zero exit status.
+
+\end{itemize}
+
+\subsubsection{Variable} 
+
+\begin{itemize}
+\item In script file, \$0 is script name, and \$1, \$2.. are arguments to the scripts. 
+
+\item print the contains of variable (HOME) and not the HOME. You must use \$ followed by variable name to print variable. \verb= echo $HOME= print the variable contents. And \verb=echo HOME= just print "HOME" string. It's a little confused for a C programmer, but you need to be used to it. 
+
+ \item In most cases, \$var and \$\{var\} are the same.  The braces are only needed to resolve ambiguity in expressions: such as echo \$\{var\}bar
+
+\item \$(command) is same as `command. 
+
 \end{itemize}
 
 \subsection{Terminal tips}
 
 \begin{itemize}
 
-		\item Motion shortcut keys are list below:Ctrl+p or up down arrow key can go to the previous command, this is very useful. 
+		\item Motion shortcut keys are list below: Ctrl+p or up down arrow key can go to the previous command, this is very useful. 
 \begin{center}
   \begin{tabular}{c|c}
  \hline shortcut & function \\
@@ -62,7 +189,7 @@
   \end{tabular}
 \end{center}
 
-\item delete shortcut keys: You can use "hw" to delete previous character or word. "dd" use to delete forward character or word, "uk" to sentence begining and end. In Vim, the keyboard shortcut is not the same. \textbf{They are bash edit keyshortcut.}
+		\item delete shortcut keys: You can use "hw" to delete previous character or word. "dd" use to delete forward character or word, "uk" to sentence beginning and end. In Vim, the keyboard shortcut is not the same. \textbf{They are bash edit keyshortcut.}
 
 \begin{center}
   \begin{tabular}{|c|c|}
@@ -75,11 +202,11 @@
   \end{tabular}
 \end{center}
 
-\item You can remember "eu" "ak". They both delete the whole line, The first letter is move command. And the second letter is edit commmand. 
+		\item You can remember "eu" "ak". They both delete the whole line, The first letter is move command. And the second letter is edit command. 
 
-\item \linuxcommand{bind -p} will list all the shortcut. This is bash command. In tcsh shell, you can use \linuxcommand{bindkey -v} to make your commad line edit function compatible with VI. Also use esc to switch command mode and insert mode. For example, by press Esc, then, you can use fx command to jump x character in the command line. It's very convince for edit long command line.
+		\item \linuxcommand{bind -p} will list all the shortcut. This is bash command. In tcsh shell, you can use \linuxcommand{bindkey -v} to make your commad line edit function compatible with VI. Also use esc to switch command mode and insert mode. For example, by press Esc, then, you can use fx command to jump x character in the command line. It's very convince for edit long command line.
 
-\item  About keyboard shortcut, I have good idea, that is to use left Ctrl and Alt together, because you can use your thumb to press Alt and use palm to press Ctrl\_L,(Even in my three laptops, I also can press Ctrl\_L easily by palm).
+		\item  About keyboard shortcut, I have good idea, that is to use left Ctrl and Alt together, because you can use your thumb to press Alt and use palm to press Ctrl\_L,(Even in my three laptops, I also can press Ctrl\_L easily by palm).
 	So a shortcut can be defined below:
 	\[ \left\{ \begin{array}{cl}
 	            \textrm{move} & \left\{ \begin{array}{c} \textrm{other: Ctrl\_L} \\ \textrm{emacs: Alt\_L} \end{array}  \right. \\
@@ -123,16 +250,18 @@
   \item Ctrl+Alt+F1\ldots F6 switch terminal. Ctrl+Alt+F7 return back to GUI\@. When F7 doesn't work, you can try F8. 
 \end{itemize}
 
+
 \subsection{Time}
 \begin{itemize}
-\item For linux file time: there are three time stamps: atime (access time), it is when the file was last read.\  ctime is the inode change time, while mtime is the file modification time.\  mtime changes when you write to the file. It is the age of the data in the file. \textbf{Whenever atime or mtime changes, so does ctime, except you use touch command} But ctime changes a few extra times. For example, it will change if you change the owner or the permissions on the file.  
+		\item For Linux file time: there are three time stamps: atime (access time), it is when the file was last read.\  ctime is the inode change time, while mtime is the file modification time.\  mtime changes when you write to the file. It is the age of the data in the file. \textbf{Whenever atime or mtime changes, so does ctime, except you use touch command} But ctime changes a few extra times. For example, it will change if you change the owner or the permissions on the file.  
 
-\item  timestamp will be used in many linux commands, ls -l will show modification time. and you can use \linuxcommand{stat fileName} to see all the three time. The can be used in find command. 
-\item atime sometimes will not updated by visiting a file. Atime updates are by far the biggest IO performance deficiency that Linux has today. So sometimes it's disable when mount in option in /etc/fstab
+		\item  timestamp will be used in many linux commands, ls -l will show modification time. and you can use \linuxcommand{stat fileName} to see all the three time. The can be used in find command. 
 
-\item \linuxcommand{touch} can change time of a file or you can use it to produce an empty file.  \linuxcommand{touch -a existFile} change access time and ctime. \linuxcommand{touch -t existFile} change modify time and ctime.   \linuxcommand{touch -c existFile} change a,c and m time. 
+		\item atime sometimes will not updated by visiting a file. Atime updates are by far the biggest IO performance deficiency that Linux has today. So sometimes it's disable when mount in option in /etc/fstab
+
+		\item \linuxcommand{touch} can change time of a file or you can use it to produce an empty file.  \linuxcommand{touch -a existFile} change access time and ctime. \linuxcommand{touch -t existFile} change modify time and ctime.   \linuxcommand{touch -c existFile} change a,c and m time. 
             
-\item \linuxcommand{touch -t YYMMDDHHmm} will set mtime and atime to the date you want and it sets ctime to \textbf{NOW}. You have complete control over mtime, but the system stays in control of ctime. So mtime is a little bit like the date on a letter while ctime is like the postmark on the envelope. System use ctime to do backup job. An example can be found in my evernote book mark. 
+		\item \linuxcommand{touch -t YYMMDDHHmm} will set mtime and atime to the date you want and it sets ctime to \textbf{NOW}. You have complete control over mtime, but the system stays in control of ctime. So mtime is a little bit like the date on a letter while ctime is like the postmark on the envelope. System use ctime to do backup job. An example can be found in my evernote book mark. 
 
 \end{itemize}
 
@@ -140,27 +269,25 @@
 \section{File and Dir}
 \subsection{Basic}
 \begin{itemize}
-\item A hard link points to the file by \textbf{inode}.  A symbolic link points to the file by \textbf{filename}. 
+		\item A hard link points to the file by \textbf{inode}.  A symbolic link points to the file by \textbf{filename}. 
  
-\item  There is no "real" hard link name; All hard links are equally valid names for the file. You can use \linuxcommand{ls -l}. The first number after the file mode is the link count(this count is represent hard link number).  For symbolic link, It just point to a filename, If origin file name changed, symbolic link will not be valid.   symbolic is very flexible,  It can be linked to a dir or it can be linked to different file system. but hard link has many restriction. 
+		\item  There is no "real" hard link name; All hard links are equally valid names for the file. You can use \linuxcommand{ls -l}. The first number after the file mode is the link count(this count is represent hard link number).  For symbolic link, It just point to a filename, If origin file name changed, symbolic link will not be valid.   symbolic link is very flexible,  It can be linked to a dir or it can be linked to different file system. But hard link has many restriction.  
+		\item \linuxcommand{find -L / -samefile path/to/foo.txt}find all files links to foo.txt
 
-\item \linuxcommand{find -L / -samefile path/to/foo.txt}find all files links to foo.txt
-
-\item Absolute directory must begin with root directory /
+		\item Absolute directory must begin with root directory /.
 		
+		\item Linux doesn't use extension name to specify file type, you should use \linuxcommand{file fileName} to judge it.  
 
-     \item Linux don't use extension name to specify file type, you should use \linuxcommand{file fileName} to judge it. 
-     
-	 \item When you use ls -l, the first character stands for different kinds: -:file, d:Dir,
-         l:link file, b:interface of device. So you can use \linuxcommand{ls -al | grep \^{}d} to show all the directories. 
+		\item When you use ls -l, the first character stands for different kinds: -:file, d:Dir, l:link file, b:interface of device. So you can use \linuxcommand{ls -al | grep \^{}d} to show all the directories. 
 	 
-    \item \linuxcommand{ls -d */} will list only directory without all files in it. if you want to see all files in it. omit -d
+		\item \linuxcommand{ls -d */} will list only directory without all files in it. if you want to see all files in it. omit -d
  
-   \item /usr stands for UNIX Software Resource, isn't users directory. It associate with software. /users includes all the users name, don't confuse them. FHS recommend linux developer install their application into the different dirs inside of /usr:  such as /usr/bin and /usr/lib. Don't build their separately directory.  For example, when you install codeblock, you can see codeblock exe file in /usr/bin. when you \linuxcommand{ldd codeblock}. you can see it use a lot of lib in /usr/lib. There is no codeblock directory which includes everything.  It's different with Window system.
+		\item /usr stands for UNIX Software Resource, isn't users directory. It associate with software. /users includes all the users name, don't confuse them. FHS recommend linux developer install their application into the different dirs inside of /usr:  such as /usr/bin and /usr/lib. Don't build their separately directory.  For example, when you install codeblock, you can see codeblock exe file in /usr/bin. When you use \linuxcommand{ldd codeblock}. you can see it use a lot of lib in /usr/lib. There is no codeblock directory which includes everything.  It's different with Window system.
 		   	
          \item /var include all cache, log, mail which are increased when you system is running. so it will increase with time. 
          
-     \item The Dir Structure:\\
+		 \item The Dir Structure:
+\begin{center}
 \begin{tabular}{p{0.2\textwidth}|p{0.7\textwidth}}
   \hline
   % after \\: \hline or \cline{col1-col2} \cline{col3-col4} ...
@@ -176,30 +303,31 @@
   \hline /dev & device file \\
   \hline /lib & lib used when you start linux. /lib/modules has kernel modules \\
   \hline 
-\end{tabular}
-
+\end{tabular} 
+ \end{center}
 \end{itemize} 
+
 \subsection{partition and mount point}
 	\includegraphics[scale=0.8]{pics/basic_file_system_clip}
-	\\ 
-   A good tool software in linux system is GParted, which  is used for creating, deleting, resizing, moving, checking, and copying disk partitions and their file systems.  You also can use df command to check your system \textbf{partitions}. You can create 1) partitions by GParted 2) mkdir a dir 3) then mount them by adding below text in /etc/fstab file.    \\   
-   \verb=/dev/sda3 /home/yan/llvm ext4 defaults 0 0=
+\begin{itemize} 
+		\item A good tool software in linux system is GParted, which  is used for creating, deleting, resizing, moving, checking, and copying disk partitions and their file systems.  You also can use df command to check your system \textbf{partitions}. You can create 1) partitions by GParted 2) mkdir a dir 3) then mount them by adding below text in /etc/fstab file. \verb=/dev/sda3 /home/yan/llvm ext4 defaults 0 0=
    
-   \textbf{/etc, /bin, /dev, /lib and /sbin can NOT be put in different partition with root /. }  \\
+		\item \textbf{/etc, /bin, /dev, /lib and /sbin can NOT be put in different partition with root /. }  
+\end{itemize}
 
 \subsection{Permission or file mode}
 \begin{itemize}
-      \item \linuxcommand{ls -al} will list all the files ownership and permission. Basiclly, all the system support \linuxcommand{ll} command directly. 
+		\item \linuxcommand{ls -al} will list all the files ownership and permission. Basically, all the system support \linuxcommand{ll} command directly. 
 			  
-  \item There are three different groups: owner, Group, and Other. In each group,  there are three different permissions: r, w, x;
+		\item There are three different groups: owner, Group, and Other. In each group,  there are three different permissions: r, w, x;
 
-  \item for File and Dir, "rwx" has different meaning. x for Dir means you can come into this dir.  For a Dir, if you only have r permission, you only can \linuxcommand{ls -l Dir}, You can't cp a file from it unless you have x permission. So x permission is very important for a Dir
+		\item For File and Dir, "rwx" has different meaning. x for Dir means you can come into this dir.  For a Dir, if you only have r permission, you only can \linuxcommand{ls -l Dir}, You can't cp a file from it unless you have x permission. So x permission is very important for a Dir
 		  	
-      \item \linuxcommand{chown chgrp} are very useful when you copy files to other peoples. \linuxcommand{chgrp -R grpName dirName}, you must make sure grpName in /etc/group file. or it will report error.  \linuxcommand{chown} command need to make sure owner name in /etc/passwd file. 
+		\item \linuxcommand{chown chgrp} are very useful when you copy files to other peoples. \linuxcommand{chgrp -R grpName dirName}, you must make sure grpName in /etc/group file. or it will report error.  \linuxcommand{chown} command need to make sure owner name in /etc/passwd file. 
 
           \item When you need to use chgrp or chown? When you copy a file to other people. 
 
-		  \item \linuxcommand{chmod} command follow[ugoa][+-=][rwx], for example, \linuxcommand{chmod u+x file}  or \linuxcommand{chmod go=r file}. there are four letters: u(owner), g(group), o(other) and a(all).\textbf{u represent owner, You need to remember that specially}. ("=") means "set the permissions exactly like this.
+		  \item \linuxcommand{chmod} command follow[ugoa][+-=][rwx], for example, \linuxcommand{chmod u+x file}  or \linuxcommand{chmod go=r file}. There are four letters: u(owner), g(group), o(other) and a(all).\textbf{u represent owner, You need to remember that specially}. ("=") means "set the permissions exactly like this.
 				  
 		  \item SUID or GUID, In simple words users will get file owner’s permissions as well as owner UID and GID when executing a file/program/command. An good example is passwd command, It's owned by root, When you launch it, you have root permission to modify /etc/shade file. That is all!
 \end{itemize}
@@ -215,27 +343,24 @@
 
 		\item \linuxcommand{diff a.cpp b.cpp} will show line-by-line differences. 
 
-		\item In GUI, you can drag a file into terminal. 
-
 		\item when you run a command, sometimes you need to \linuxcommand{./a.out}. "./" means current directory.
 		
-    \item When you use cp, you need pay attention to -a options, it related to maintains permission and owners.
+		\item When you use cp, you need pay attention to -a options, it related to maintains permission and owners.
 
         \item You can use \linuxcommand{od} to see the binary file, It reminds me the UltraEdit
         
         \item \linuxcommand{rmdir} only can be used to delete an empty dir. You can use rm -r to delete a directory with files in it.
 
-            \item \linuxcommand{tail, head, cat ,tac, less } less will stop, to ask you to continue. Maybe less is better than cat.  I often copy-and-paste text from the web into a file like this (command prompt shown):
+		\item \linuxcommand{tail, head, cat ,tac, less } less will stop, to ask you to continue. Maybe less is better than cat.  I often copy-and-paste text from the web into a file like this (command prompt shown):
                 \begin{verbatim}
                 $ cat > filename
                 <Cmd-V>
                 <Ctrl-D>
                 \end{verbatim}
-            \item \linuxcommand{which -a command} will help you find command's name and in all \$PATH directory.  \linuxcommand{type} can tell you if a command is bash build in command. such as cd command.  They are used to know more about your commands
-
-             \item \linuxcommand{file} is to determined the kind of all files.( executable, text, or data file).  
+		\item \linuxcommand{which -a command} will help you find command's name and in all \$PATH directory.  \linuxcommand{type} can tell you if a command is bash build in command. Such as cd command.  They are used to know more about your commands
+		\item \linuxcommand{file} is to determined the kind of all files.( executable, text, or data file).  
                 
-             \item \linuxcommand{locate} can help you find a file very quickly, because it just search in an index database.   you can use \linuxcommand{updatedb} to update this database. \linuxcommand{whereis} just look for binary(-b option) or source(-s option) files. They just used to search binary and source files.  
+		\item \linuxcommand{locate} can help you find a file very quickly, because it just search in an index database.   You can use \linuxcommand{updatedb} to update this database. \linuxcommand{whereis} just look for binary(-b option) or source(-s option) files. They just used to search binary and source files.  
 \end{itemize}
 
 \subsection{Find command}
@@ -244,13 +369,13 @@
 
 		\item \linuxcommand{find . "ab"} will not find "abc" file. You need to use "ab*" to get it. A better expression is "*ab*" will find more files.  
 
-		\item In the previous example, you also can use \linuxcommand{find . $\backslash$*.txt}. Use $\backslash$ to escape the original means.  
+		\item In the previous example, you also can use \linuxcommand{find . $\backslash$*.txt}. Use $\backslash$ to stop shell to expand it.  
 
-		\item \linuxcommand{find . -name "tex*"} can help you find all tex* file from current directory recursively. It's a very powerful command, without -name, it will search all the files.  \textbf{Don't forget double quote around tex*. It will give tex* directly to find command. if you don't do that, shell will expand it by itself. and it will not search recursively. }
+		\item \linuxcommand{find . -name "tex*"} can help you find all tex* file from current directory recursively. It's a very powerful command, without -name, it will search all the files.  \textbf{Don't forget double or single quote around tex*. It will give tex* directly to find command. if you don't do that, shell will expand it by itself. And it will not search recursively. }
 
 	  \item \linuxcommand{find . -iname "Abc*"} will ignore letter case. 
 
-	  \item You can find according to \textbf{name, type ,size, owner and time. } You also can use logic or operator.
+	  \item You can find according to \textbf{name, type ,size, owner and time. } You also can use logic or operator. Below are some useful examples.
 	  	  
      \begin{enumerate}
      	  \item \linuxcommand{find ./dir -maxdepth 1 -type d -iname "man*" } -type can be b(block), c(characer special file) d(directory), p(pipe), l(symbolic link) s(socket), or f(plain file).  
@@ -267,15 +392,16 @@
      	  
 		  \item for symbolic link, you can see -H, -P, -L options in find command man page. default is -P, means that Never follow symbolic links.
 
+		  \item Sometimes, find will output "Permisson denied". You can use below command to filter these message. 
 \begin{verbatim}
 in bash:
 find / -name art  2>&1 | grep -v "Permission denied"
 in tcsh:
-find / -name art |& grep
+find / -name art |& grep -v ".."
 \end{verbatim}
-\end{enumerate}
-  
-		\item Sometimes, find will output "Permisson denied". You can use below command to filter these message. 
+
+		\end{enumerate}  
+
   \end{itemize}
 
 \subsection{Grep command}
@@ -284,15 +410,17 @@ find / -name art |& grep
 
 		\item -n will give match line number. Once you know line number, you can vim +num file to open it.  
 
-		\item -v inverse result. -l will supress your output. It will only output file name. -l will help you to deal with file with some pipe command, such as copy or rm files with some match words in them.  
+		\item -v inverse result. -l will suppress your output. It will only output file name. -l will help you to deal with file with some pipe command, such as copy or rm files with some match words in them.  
 	
-		\item A, B, C use to print line aroud match. \linuxcommand{grep -B 2 -A 1 'computer' file} 
+		\item A, B, C use to print line around match. \linuxcommand{grep -B 2 -A 1 'computer' file} 
 
 		\item \linuxcommand{grep --include=$\backslash$*.\{c,h\} -rnw  -e "pattern" /path} -w stands match the whole word. -l (letter L) can be added to have just the file name. This will only search through the files which have .c or .h extensions. Similarly a sample use of --exclude: 
 
+		\item --include usage will recursive search all the sub directory. You can use *.txt, but it only works on current directory.
+
 		\item export GREP\_OPTIONS='--color=always' will give grep command color output.
 
-		\item \linuxcommand{echo i*} or \linuxcommand{ls i*}, first, shell will look for all filename which begin with letter i,\textbf{It will not replace * with all file names and add i in front of it}. If it fail, it will print out "No match"
+		\item \linuxcommand{echo i*} or \linuxcommand{ls i*}, first, shell will deal with * symbol first. Look for all filename which begin with letter i,\textbf{It will not replace * with all file names and add i in front of it}. If it fail, it will print out "No match"
 
 		\item \linuxcommand{echo --include=*}, just like previous example, it will fail to look for filename begin with --incl.. So it will print out No match. If you use \linuxcommand{echo --include=$\backslash$*}, it will print literal string out.
 
@@ -306,7 +434,7 @@ find / -name art |& grep
 
 		\item Since you usually type regular expressions within shell commands, it is good practice to enclose the regular expression in single quotes (') to stop the shell from expanding it. 
 
-		\item grep support regex, You need to use -E option to support extended regex. \linuxcommand{grep -E 'abc\{1,2\}d' file}.  that's very power feature. Here, I just list a few basic usage. 
+		\item grep support regex, You need to use -E option to support extended regex. \linuxcommand{grep -E 'abc\{1,2\}d' file}.  That's very power feature. Here, I just list a few basic usage. 
 
 		\item -e and -E follow regular expression. -e is basic version. In basic regular expressions the meta-characters \verb=?, +, {, |, (,)= lose their special meaning; Instead use the backslashed versions \verb=\?, \+, \{,  \|, \(, and \)=. \textbf{I recommend to use -E option.}
 
@@ -330,168 +458,66 @@ $\backslash$ (Back Slash)&   '123$\backslash$\$'  Just looke for '123\$' in file
 * (Asterisk), ? , + &  &	match zero or more*,  + (pluse) is one or more,   ?(question mark) is zero or one occurrence.   \\
 \hline 
 \{x,y\}, 	\{x\}	\{x,\} & &	\{x,y\}match x to y occurrences of the preceding;  or \{x\} x occurrence; or  \{x,\} x or more occurrences. \\
-\hline 
 
+\hline 
 \end{tabular}
 
-\item When you mean match number, \verb=* equal ? and + = 
+		\item When you mean match number, \verb=* equal ? and + = 
 
-\item '[abc]+',  '(abc)+' and 'abc+' are different.  (abc) means it's a group, and should be considered as whole. abc+ means that + just used on letter c, So it will match ab or abc.  
+		\item '[abc]+',  '(abc)+' and 'abc+' are different.  (abc) means it's a group, and should be considered as whole. abc+ means that + just used on letter c, So it will match ab or abc.  
 
-\item '<.+>' will math "<car>...</car>". Default it use greedy match. If you want to use lazy match, use '<.+?>'. When you use '<.+?>'.  You should use \linuxcommand{grep -P '<.+?>'} -P means that use perl language standard. 
+		\item '<.+>' will math "<car>...</car>". Default it use greedy match. If you want to use lazy match, use '<.+?>'. When you use '<.+?>'.  You should use \linuxcommand{grep -P '<.+?>'} -P means that use perl language standard. Because only perl support lazy search.  
 
-\item Usally, grep just match one line. If you want match multilines. You can use \linuxcommand{grep -Pnzo 'BLOCK($\backslash$n|.)*?END\_BLOCK }.  Pay attention it use lazy match method. and . doesn't means newline, you need to use '($\backslash$n|.)*?'
+		\item Usually, grep just match one line. If you want match multi-lines. You can use \linuxcommand{grep -Pnzo 'BLOCK($\backslash$n|.)*?END\_BLOCK }.  Pay attention it use lazy match method. and . doesn't means newline, you need to use '($\backslash$n|.)*?'
 
-\item By placing part of a regular expression inside round brackets or parentheses, you can group that part of the regular expression together. This allows you to apply a \textbf{quantifier} to the entire group or to restrict \textbf{alternation} to part of the regex.  Only parentheses can be used for grouping. Square brackets define a character class, and curly braces are used by a quantifier with specific limits.
+		\item By placing part of a regular expression inside round brackets or parentheses, you can group that part of the regular expression together. This allows you to apply a \textbf{quantifier} to the entire group or to restrict \textbf{alternation} to part of the regex.  Only parentheses can be used for grouping. Square brackets define a character class, and curly braces are used by a quantifier with specific limits.
 
-\item Differences grep and find:
+		\item Differences between grep and find:
 		\begin{enumerate}
-				\item \linuxcommand{grep} put file names or directory name in the end, find just use directory after the find command.
-				\item find don't need -r, it find files recrusively automaticlly, grep must use -r if you follow a dir
+				\item "grep" put file names or directory name in the end, "find" just use directory after the find command.
+				\item "find" don't need -r, it find files recursively automatically, grep must use -r if you follow a dir
+
 				\item grep will partial match, find will not partial match unless you use *.
-				\item \linuxcommand{grep -r --inlucde=$\backslash$*.\{a,b\} -E 'abc*' .} The first * is shell to expand file name, The second * is regular expression, stand for match zero or more. 
+
+				\item \linuxcommand{grep -r --inlucde=$\backslash$*.\{a,b\} -E 'abc*' .} The first * mush precede a escape symbol, The second * is regular expression, stand for match zero or more. 
+
 				\item find command pattern: \textbf{find dirname expre1 [or] expre2}, expre1 is -name '*.txt' expre2 is -ctime -2 
-				\item grep pattern: \textbf{grep -rnw 'abc' *.txt}
 		\end{enumerate}
 \end{itemize}
 
 \section{User}
 \begin{itemize}
-		\item \linuxcommand{cat /ect/passwd} will tell you all the users and which shell they are using.  
+		\item \linuxcommand{cat /etc/passwd} will tell you all the users and which shell they are using.  
 
 		\item Don't log in root, you can use \linuxcommand{sudo} follow your command
 
-		\item There are two basic shell, one is bash and the other is tcsh. You can change it in command line by command "bash" and "tcsh". You can use echo \$0 to see which shell you are using right now.
-
-\item Every time when you open a new terminal, It will read .bashrc or .rshrc. It depends on what shell you are using, that is why you need to use \linuxcommand{echo \$0} to know which shell you are using. It will use export(bash) or setenv(csh) to load all envoriment variable. 
-	
-		\item \linuxcommand{whoami} tell you account informaiton.
-\end{itemize}
-
-\section{Shell}
-\subsection{wild character and quote}
-\begin{itemize}
-\item Single quotes preserves the literal value of each character.  Double quotes preserves the literal value of all characters within the quotes, with the exception of '\$', 'backtick', '$\backslash$', and, when history expansion is enabled, '!'. 
-\begin{verbatim}
-echo '$PATH `pwd` '
-echo "$PATH `pwd` \$PATH"
-\end{verbatim}
-\end{itemize}
-
-\subsection{Environment variable}
-\begin{itemize} 
-		\item When bash is invoked as an interactive login shell, or as a non-interactive shell with the --login option, it first reads and executes commands from the file /etc/profile, if that file exists. Then/etc/profile.d/*.sh. Then it looks for ~/.bash\_profile,  ~/.bash\_login, and ~/.profile, in that order, and reads and executes commands from the first one that exists and is readable. The --noprofile option may be used when the shell is started to inhibit this behavior.
-		
-		\item When an interactive shell that is not a login shell is started, bash reads and executes commands from  /etc/bash.bashrc and ~/.bashrc, if these files exist. This may be inhibited by using the --norc option. The --rcfile file option will force bash to read and execute commands from file instead of /etc/bash.bashrc and  ~/.bashrc.	
-
-		\item This goes pretty far back in the Unix history. rc stands for "run commands", and makes sense actually.
-
-		\item echo \$0 will show "bash", it's not login shell. if it shows "-bash", it is login shell.  
-	
-	\item Why we need variable, just like macro in C language. With varaible, we can config and customize an application outside. And we can customize a varaible to affect a lot of applications. such as \$PATH
-				
-	\item set: \linuxcommand{YanVar=123} unset: \linuxcommand{unset YanVar} check: \linuxcommand{echo \$YanVar}
-
-	\item There are two kinds of variables: environment and user defined.
-
-	\item \linuxcommand{env} shows all the environment variable. such as \$HOME,  \$PATH, \$LANG,\$EDITOR which can specify you default editor in your system.
-
-	\item \linuxcommand{set} list all the local environment variables and user defined varaible , that is more than env command. For example, the \$PS1.  \linuxcommand{unset} to delete an environment variable
-
-	\item \linuxcommand{getconf} can get some system variable, such as \linuxcommand{getconf ARG\_MAX}, you can use xargs -n 50 to make command satisfy the ARG\_MAX
-	
-	\item In mint, maybe in your home directory, there is no .bashrc file, so you need to create one and add export PATH=\$PATH:/home/yan/openuh-install/bin  then exit the current terminal and restart a new one. Then use echo \$PATH to see if the directory has been added.
-	
-	\item In previous command, Linux use : but windows use ; why windows use different?  
-	
-	\item \linuxcommand{export DEPART=Sale} and \linuxcommand{DEPART=Sale ; export DEPART} they means the same. If the export statement in a script file, you must use \linuxcommand{Source a.sh} or \linuxcommand{. a.sh} to run the script file, then It will affect the continuous processing. source means that this command only run in current bash, it doesn't run in a child shell.  
-			
-	\item If you alread in termial, you can use export or setenv command to add envoriment varaible. if these commands are in a sh file, you have to use \linuxcommand{source a.sh} to run. because, if no source command, it will open a child terminal, so after a.sh finish, child terminal will disappear, and all the environment varaible you just set in the child terminal will disappear too. 
-
-	\item \linuxcommand{setenv} is csh command. In bash, you can use \linuxcommand{export} directly. \textbf{csh doesn't use =, bashrc doesn't use backslash.}
-\begin{verbatim}
-in .cshrc
-setenv PATH $PATH\:/users/yzhao4/python-3.23/bin
-
-in .bashrc
-export PATH=$PATH:/storage/yzhao/binexport 
-\end{verbatim}
-\item If There is only one enviroment variable need to be set, you can run setenv or export in your current shell directly, then you can run a command, this command will be runned in the child process, but child process can access parent enviroment varaible, it's OK
-
-\item If There are a few enviroment varaibles need to be set, You'd better put them into a script file. \textbf{But you have to use source a.sh} to make sure a.sh running in the current process, not a child process. 
-
-\item Two shells don't share history and enviroment varaibles. 
-\end{itemize}
-	
-\subsection{pipe}
-\begin{itemize}
-  \item pipe command can be called "filter", It will accept input fomr STDIN, perform operations, then send it to STDOUT. Such as grep, uniq, sort, fmt, pr, head, cut, tee, tr, join, paste, expand, split, tr, awk, sed, less
-
-  \item You cann't judge if a command is filter by running it. cat will hang up to wait for you from STDIN, but less will show error message.
-
-  \item xargs is also a filter, you can use this way \linuxcommand{find . -name "*.c" | xargs rm -rf } a.c and b.c will be rm command arguments.
-
-  \item Sometimes, a command need a file name as input or output, but you don't want to give a filename, It usually used in pipe commands, such as \linuxcommand{gzip -dc a.tar.gz  | tar -xvf  - }. It just like \linuxcommand{gzip -dc a.tar.gz  | tar -xvf  /dev/stdin}
-
-  \item "-" has nothing with shell, It's only available in tar command. Most of time, It's only used in tar. 
-\end{itemize}
-
-\subsection{shell script}
-\subsubsection{Basic}
-\begin{itemize}
-\item The first line of script is \verb=#!/bin/bash=.  This is a special clue given to the shell indicating what program is used to interpret the script. Other scripting languages such as perl, awk, tcl, Tk, and python can also use this mechanism.
-
-\item After you finished script file, use \linuxcommand{chmod +x your-script-name}
-
-\item echo -e "aaa$\backslash$nbbb" will output two lines
-
-\item \linuxcommand{!!} run the previous command, \linuxcommand{!\$} is the previous argument. \linuxcommand{\$?} is the last bash command result, If it's 0, means that everything is OK. Detail can be found in google "Become a Command Line Ninja With These Time-Saving Shortcuts''
-
-\item \linuxcommand{command1;command2}.   To run two command with one command line.  \linuxcommand{command1 \&\& command2} command2 is executed if, and only if, command1 returns an exit status of zero. \linuxcommand{command1 || command2} command2 is executed if and only if command1 returns a non-zero exit status.
-
-\end{itemize}
-
-\subsubsection{Variable} 
-
-\begin{itemize}
-\item \$0 is script name, and \$1, \$2.. are arguments to the scripts. 
-
-\item print the contains of variable (HOME) and not the HOME. You must use \$ followed by variable name to print variables cotaines. \verb= echo $HOME= print the variable contents. and \verb=echo HOME= just print "HOME" string. It's a little confused for a C programmer, but you need to be used to it. 
-
- \item In most cases, \$var and \$\{var\} are the same: 
-
-\item The braces are only needed to resolve ambiguity in expressions: such as echo \$\{var\}bar
-
-\item \$(command) is same as `command. 
-
+		\item \linuxcommand{whoami} tell you account information.
 \end{itemize}
 
 \section{processes}
 \begin{itemize}
-		\item CTRL-C aborts the app, CTRL-Z \textbf{suspend} app and put it to backgroud, you can use bg command to re-continue this job on backgound. CTRL-D is EOF. \textbf{C is cancel, D is end.}
+		\item CTRL-C aborts the app, CTRL-Z \textbf{suspend} app and put it to background, you can use bg command to re-continue this job on background. CTRL-D is EOF. \textbf{C is cancel, D is end.}
 
- \item \linuxcommand{ps -l} and \linuxcommand{ps aux} are two common processes check command. ps aux will product a lot content, so we often use \linuxcommand{ps aux | grep user}. In status column, S is sleep, T is stop, and R is run. + symbol means it's in foregound. 
+		\item \linuxcommand{ps -l} and \linuxcommand{ps aux} are two common processes check command. ps aux will product a lot content, so we often use \linuxcommand{ps aux | grep user}. In status column, S is sleep, T is stop, and R is run. + symbol means it's in foregound. 
 
- \item \linuxcommand{./hello \&} will put hello to background. another useful commands are \linuxcommand{fg bg, job}. \textbf{They just belongs to this bash}. You can use ONE bash shell to do multi tasks. They are very helpful when you are login sever with ssh command. At this time, you only have one terminal window. So multi-task is import for you. If you work on local workstation. You can open another terminal windows easily, These commands are not very helpful for you.
+		\item \linuxcommand{./hello \&} will put hello to background. Another useful commands are \linuxcommand{fg bg, job}. \textbf{They just belongs to this bash}. You can use ONE bash shell to do multi tasks. They are very helpful when you are login sever with ssh command. At this time, you only have one terminal window. So multi-task is import for you. If you work on local workstation. You can open another terminal windows easily, These commands are not very helpful for you.
  
- \item View all the background jobs using jobs command,  If you have multiple background ground jobs, and would want to bring a certain job to the foreground,  \linuxcommand{fg \%2} will bring the job\#2 and \linuxcommand{kill \%2} will kill it.  
+		\item View all the background jobs using jobs command,  If you have multiple background ground jobs, and would want to bring a certain job to the foreground,  \linuxcommand{fg \%2} will bring the job\#2 and \linuxcommand{kill \%2} will kill it.  
  
- \item Ctrl-Z will suspend process. If you want to continue, you need to 1) use jobs to know its number, 2) use bg \%num to restart it in background. 3)3)3)If you want to bring it back to foreground, use fg \%num. 
+		\item Ctrl-Z will suspend process. If you want to continue, you need to 1) use jobs to know its number, 2) use bg \%num to restart it in background. 3)If you want to bring it back to foreground, use fg \%num. 
 
- \item \linuxcommand{nice commandname \&} means that you run command friendly with other(not occupy all resources) and run it at background. Skuld may be a UNIX server!
+		\item \linuxcommand{nice commandname \&} means that you run command friendly with other(not occupy all resources) and run it at background. 
 	
- \item \linuxcommand{htop} will show processes dynamicly.
+		\item \linuxcommand{htop} will show processes dynamically.
 
- \item \linuxcommand{kill -s singal PIDnumber} will send signal to processes with PIDnumber. \textbf{This command has some confusion with its name.}
+		\item \linuxcommand{kill -s singal PIDnumber} will send signal to processes with PIDnumber. \textbf{This command has some confusion with its name.}
 
- \item \linuxcommand{kill -l } will list all avaible singal, The default signal is TERM which allows the program being killed to catch it and do some cleanup before exiting. A program can ignore it, Specifying -9 or KILL as the signal does not allow the program to catch it, do any cleanup or ignore it.\textbf{It should only be used as a last resort.}
+		\item \linuxcommand{kill -l } will list all available signal, The default signal is TERM which allows the program being killed to catch it and do some cleanup before exiting. A program can ignore it, Specifying -9 or KILL as the signal does not allow the program to catch it, do any cleanup or ignore it.\textbf{It should only be used as a last resort.}
  
- \item \linuxcommand{ps -f --forest} will show all the processes in hierarchy.  Just like pstree
+		\item \linuxcommand{ps -f --forest} will show all the processes in hierarchy.  Just like pstree.  
 
-		 	
- \item I launch a background process, either by appending "\&" to the command line or by stopping it with CTRL-Z and resuming it in background with "bg". Then I log out.  We were quite sure it should have been killed by a SIGHUP, but this didn't happen; upon logging in again, the process was happily running and pstree showed it was "adopted" by init. But then, if it is, what's the nohup command's purpose? Below is answer: For BASH, this depends on the huponexit shell option, which can be viewed and/or set using the built-in shopt command.
+		\item I launch a background process, either by appending "\&" to the command line or by stopping it with CTRL-Z and resuming it in background with "bg". Then I log out.  We were quite sure it should have been killed by a SIGHUP, but this didn't happen; upon logging in again, the process was happily running and pstree showed it was "adopted" by init. But then, if it is, what's the nohup command's purpose? Below is answer: For BASH, this depends on the huponexit shell option, which can be viewed and/or set using the built-in shopt command.
 \end{itemize}
-
 
 \section{Application}
 \subsection{Internet}
@@ -507,7 +533,6 @@ export PATH=$PATH:/storage/yzhao/binexport
  \item  You need to install VNC server in the linux with su priviliage, then run vncserver on the linux machine. Last on you windows machine, you can use putty and vncviewer to access the remote desk top. Detail can be googled, there are some reference pages available.
 \end{itemize}
 
-
 \subsection{clipboard}
 	\begin{itemize}
 			\item There are two kinds of clips: 1) normal clip, Ctrl+C copy and Ctrl+V paste. 2)Xclip, shift+mouse left button select+copy. Mouse middle button to paste. Most linux system support both. But they are two different clipboards. If you use Ctrl+C command, You can't use mouse middle button to paste it.
@@ -516,16 +541,15 @@ export PATH=$PATH:/storage/yzhao/binexport
 					
 			\item You just try xclip in shell to see if it's installed. if it's not installed, you can use \linuxcommand{sudo apt-get install xclip}. If you use Mac, in VMware fusion, you need to configure the Linux mouse setting.  default is command+primaryButton to simulate middle button.  xclip is very useful in linux, it support copy from a vim and paste to another vim.  
 
-			\item How to use copy and paste in vim? you can see vim section for detail.
 	\end{itemize}
 
 \subsection{Installing}
-	\begin{itemize}
-			\item By now, There are two main install methods, one is make and the other is cmake, For cmake, you should use "Out of source" build. 
+\begin{itemize}
+		\item There are two kinds of installing method in linux, one is install from source code, The other is install binary package.
 
-	\item There are two kinds of installing method in linux, one is install from source code, The other is install binary package.
+		\item By now, There are three main install methods from source file, one is make and the other is cmake, For cmake, you should use "Out of source" build. Another is use autotool, but this method is a little obsolete, don't study and use it any more. For some simple project, you can use make file directly. 
 
-    \item If you install from source code, you need to download tarball, then read INSTALL or README(option), then run config to produce makefile, last run make and make install.
+		\item If you install from source code, you need to download tarball, then read INSTALL or README(option), then run config to produce makefile, last run make and make install.
 \begin{verbatim}
 	./configure --prefix="$HOME" --build=x86_64-unknown-linux-gnu 
 	make 2>&1 | tee make.log (bashrc)
@@ -535,30 +559,30 @@ export PATH=$PATH:/storage/yzhao/binexport
 
      \item As root, you should put install a application under /usr/local. If you don't have su privilege, use \linuxcommand{--prefix}.  It will compile source first, when you make install.
 
-	 \item You should not specify app name in prefix directory. Linux will put all execuate binary to \$HOME/bin, and lib to \$HOME/lib or \$HOME/lib64. If It's development package, it will put header file to \$HOME/include, and document file in \$HOME/share. So just use \verb!--prefix=$HOME!.Then add \$HOME/bin to your path in .bashrc file.  
+	 \item You should not specify app name in prefix directory. Linux will put all execute binary to \$HOME/bin, and lib to \$HOME/lib or \$HOME/lib64. If It's development package, it will put header file to \$HOME/include, and document file in \$HOME/share. So just use \verb!--prefix=$HOME!.Then add \$HOME/bin to your path in .bashrc file.  
 	
-		\item./Configure use Makefile.in to produce Makefile. They are a set of automatic tools. You can see them in c++ web directory, but they are a little complicated, Kdevelop also use them.  Just know them.  Below is an example to install Perl.
+	 \item./Configure use Makefile.in to produce Makefile. They are a set of automatic tools. You can see them in c++ web directory, but they are a little complicated, Kdevelop also use them.  Just know them.  Below is an example to install Perl.
 
-		\item If there is configure execuate in your directory, you can use autoreconf to generate it. Basiclly, The first thing to do is read INSTALL and README two documents. 
+	 \item If there is no configure execute in your directory, you can use autoreconf to generate it. Basically, The first thing to do is read INSTALL and README two documents. 
 
-	 \item install some perl programe, If you want to install in your own directory, you can add PREFIX. That will assure you have permission on it
-  	 perl Makefile.PL
+	 \item install some perl programme, If you want to install in your own directory, you can add PREFIX. That will assure you have permission on it
     \begin{verbatim}
     perl Makefile.PL PREFIX=\storage\yzhao
     make
     make test
     make install
     \end{verbatim}
-\item tee command is used to store and view (both at the same time) the output of any other command. 
+		\item "tee" command is used to store and view (both at the same time) the output of any other command. 
 
-	\item Before you install installing package, you can use \linuxcommand{md5sum} or \linuxcommand{sha1sum} on the package to get fingerprint, then compare your fingerprint with official one on the website to check the files validation.  
-    \item There are two main binary installing method RPM+YUM(online update) and dpkg+APT(apt-get) . centOS uses the first, and Ubuntu uses the second. Detail can be found in Vbird linux book.
+		\item Before you install package, you can use \linuxcommand{md5sum} or \linuxcommand{sha1sum} on the package to get fingerprint, then compare your fingerprint with official one on the website to check the files validation.  
+				
+		\item There are two main binary installing method RPM+YUM(online update) and dpkg+APT(apt-get). CentOS uses the first, and Ubuntu uses the second. Detail can be found in Vbird linux book.
 
-	\item  You can download the .deb files and use 'dpkg-deb -x' to extract them underneath your home directory. You will then have a lot of "fun" setting the PATH, LD\_LIBRARY\_PATH, and other variables. The more complex the program or app you're installing the more fun you'll be up for :)
+		\item  You can download the .deb files and use 'dpkg-deb -x' to extract them underneath your home directory. You will then have a lot of "fun" setting the PATH, LD\_LIBRARY\_PATH, and other variables. The more complex the program or app you're installing the more fun you'll be up for :) So this is your last resort if you don't have su permission.
 
-	\item Recently, more and more programme has been put into github. such as xclip, So you can first google some application name. Such as xclip, google it and found git webaddree https://github.com/astrand/xclip. Then git clone gitaddress on you Download directory. after that, you can use configure and make....
+		\item Recently, more and more programme has been put into github. Such as xclip, So you can first google some application name. Such as xclip, google it and found git webaddree https://github.com/astrand/xclip. Then git clone gitaddress on you Download directory. After that, you can use configure and make....
 
-	\item Some application has pre-compiled portable binary package, such as double commander. On it's homepage, you can find file  doublecmd-0.7.8.gtk2.x86\_64.tar.xz. You need to know two things, 1) You GUI is gtk or qt? 2) You computer is 32 or 64, then download right package for you.
+		\item Some application has pre-compiled portable binary package, such as double commander. On it's homepage, you can find file  doublecmd-0.7.8.gtk2.x86\_64.tar.xz. You need to know two things, 1) You GUI is gtk or qt? 2) You computer is 32 or 64, then download right package for you.
 	\end{itemize}
 
 \subsection{Double commander}
@@ -571,7 +595,7 @@ export PATH=$PATH:/storage/yzhao/binexport
 
 		\item You can use tabs in Double commander, It can help you manage more directories at the same time. You also can use Ctrl+tab to switch tab. Notice, it's not Alt+tab. 
 
-		\item By now, I use gvim as Double commander's default editor, and meld as file comparision tool. 
+		\item By now, I use gvim as Double commander's default editor, and meld as file comparison tool. 
 
 		\item command used key shortcut.\\
 
@@ -626,11 +650,11 @@ ctrl+Pageup  & parent directory  \\
 
 		\item There is Dark reader extension for chrome browser. \textbf{There are three applications: 1) terminal(vim)+solairized theme 2) double commander+solairized theme 3) Chrome browser+Darker reader}. Most of time, They are quite enough for my development career. 
 
-    \item To make less show Chinese, \linuxcommand{export LESS=-isMrf} I don't know what it means?
+		\item To make less show Chinese, \linuxcommand{export LESS=-isMrf} I don't know what it means?
 
-    \item usually, virtual box think right Ctrl as default host key, it's not convinent in linux, because most of move command need right Ctrl, so you need change it.  In window, run VBoxManage.exe setextradata global GUI/Input/HostKey 165 can change it to right Alt. Here, I need to explian, the 165, it's virtual keycode defined by microsoft. you can find detail in google. Now I change it to Win\_L, value is 91.
+		\item usually, virtual box think right Ctrl as default host key, it's not convenient in linux, because most of move command need right Ctrl, so you need change it.  In window, run VBoxManage.exe setextradata global GUI/Input/HostKey 165 can change it to right Alt. Here, I need to explian, the 165, it's virtual keycode defined by microsoft. you can find detail in google. Now I change it to Win\_L, value is 91.
 
-\item There are AltGr key to input multi-language character, but I don't need it by now, according to my laptop layout, I need to change it to Alt, so I can use move command shortcut. and define win\_menu to Ctrl. I finish it as follow: \\
+		\item There are AltGr key to input multi-language character, but I don't need it by now, according to my laptop layout, I need to change it to Alt, so I can use move command shortcut. and define win\_menu to Ctrl. I finish it as follow: \\
 	1) use \linuxcommand{xev} get keycode, AltGr is 108 and win\_menu is 135 \\
 	2) create your own .Xmodmap and write keycode 108 = Alt\_L\\
 	3) in .bashrc, add some statements\\
@@ -690,8 +714,6 @@ au VimEnter,InsertLeave * set nocul
 au InsertEnter,InsertChange * set cul
 \end{verbatim} 
 
-		\item Use Vim, not vi. Vim is better than vi, previous figure is very important, you should click i to get insert mode. Then --insert will show on the bottom. If no --insert, that is common(NORMAL) mode. All the edit command(copy and paste) should be done under common mode. 
-
 		\item \linuxcommand{sudo apt-get install vim-gnome}, then use \linuxcommand{vim -g} will support mouse.  With mouse, you can click a position to move there. you also can drag mouse to select a block of text. It's easier to use it.  
 
 		\item :h s will give you detail information about each command. \verb=:h i_CTRL-W= will show a command "CTRL-W" represent in insert mode. "i\_" is insert mode. "v\_" is visual mode. And if you don't use any prefix, it represents all the command in the normal mode. There are two things worth mentioning: 1) Most commands in insert mode is combination key, such as CTRL-?. 2)In the help topic, you can see a lot of other optional insert commands around CTRL-W. You can extend your knowledge by learning other insert commands.
@@ -708,13 +730,15 @@ au InsertEnter,InsertChange * set cul
 
 		\item gvim's color is sharper than vim in terminal.  Maybe it use more colors than terminal.  
 
-		\item g and z don't use as any command in normal mode, so they are prefix as combinaiton command, such as zt,zb, gj, gk, gg. :help z and :help g will show you all the commands that sit behind these prefixes.
+		\item g and z don't use as any command in normal mode, so they are prefix as combination command, such as zt,zb, gj, gk, gg. :help z and :help g will show you all the commands that sit behind these prefixes.
 
-		\item \linuxcommand{vim -u NONE} will laungh vim without load .vimrc. It will help you if you have some troubles in your .vimrc file or you want to do some experiments. 
+		\item \linuxcommand{vim -u NONE} will launch vim without load .vimrc. It will help you if you have some troubles in your .vimrc file or you want to do some experiments. 
+
 		\item dot is interesting thing in vim:
 				\begin{enumerate}
-						\item In normal mode,dot represent repeate last command.
-						\item In reg. dot preprest last insert content. If you use dot, it will remember a command before you go into the insert mode. If you use ".p, It just paste your insert content at current position. 
+						\item In normal mode,dot represent repeat last command.
+						\item In reg. dot represent last insert content. If you use dot, it will remember a command before you go into the insert mode. If you use ".p, It just paste your insert content at current position. 
+
 						\item In Mark, dot present you last insert position, you can use `dot to jump back, different with gi. gi will go into insert mode.
 				\end{enumerate}
 \end{itemize}
@@ -750,13 +774,13 @@ i'		inner simple quoted string
 a`		a string in backticks (with backticks)
 i`		inner string in backticks
 \end{verbatim}
-\item There are "a,i" two big categories. There are "w,s,p", "b,B $[$", and "double quote, single quote, backticks". Inaddtion, There is extra "t,<", Just remember 11 group.You can use them in the "d,c,y"commands. Don't forget you can use v command to see if scope of these text objects in your text.  
+		\item There are "a,i" two big categories. There are "w,s,p", "b,B $[$", and "double quote, single quote, backticks". In addtion, There is extra "t,<", Just remember 11 group.You can use them in the "d,c,y"commands. Don't forget you can use v command to see if scope of these text objects in your text.  
 
-\item For text object,  \textbf{delete around, change inside}. Detail can be found in pratical vim tip 52. 
+		\item For text object,  \textbf{delete around, change inside}. Detail can be found in practical vim tip 52. 
 
-\item \textbf{VimTex} plugin will add new text object, such as vimtex add "e" and "c" two text objects. 
+		\item \textbf{VimTex} plugin will add new text object, such as vimtex add "e" and "c" two text objects. 
 
-\item \textbf{Surrord} plugin add another control scope, such as "s" beside "a" and "i". 
+		\item \textbf{Surrord} plugin add another control scope, such as "s" beside "a" and "i". 
 \end{itemize}
 
 \begin{tabular}{p{0.15\textwidth}|p{0.23\textwidth}|p{0.63\textwidth}}
@@ -781,26 +805,25 @@ w,s,p & (a,i)(w,W,s,p) & Add surrounds: csw", csW", ysiw" yss".  \\
 \hline 
 \end{tabular}
 
-
 \section{Basic command}
 \subsection{Motion command}
 \subsubsection{Move in insert mode}
 \begin{itemize}
 		\item \textbf{Move in insert mode is not mainstream operation in VIM.}
 
-	\item Move, you should be able to move in both insert mode and normal mode. For some simple move, you should not leave insert mode, that means you can save some time.You need to use \verb!inoremap! to map to alt key, see next item.  
+		\item Move, you should be able to move in both insert mode and normal mode. For some simple move, you should not leave insert mode, that means you can save some time.You need to use \verb!inoremap! to map to alt key, see next item.  
 
 		\item Some consideration about mapping<A-?> in insert mode: (By now, I didn't use it very often, They are history legacy.)
 			\begin{enumerate}
 					\item All <A-*> need to be use \verb!inoremap <A-t> <C-o>gg! command to map to a command in normal mode. In table, I just keep <A-*>, detail mapping can be seen in my .vimrc file. 
 
-					\item Don't change any command in normal mode, when you use laptop or other compouter, when your mapping doesn't work well, you can return to normal mode to use these original commands in normal mode
+					\item Don't change any command in normal mode, when you use laptop or other computer, when your mapping doesn't work well, you can return to normal mode to use these original commands in normal mode
 
 					\item when you are mapping, you can refer the normal mode, such as <A-w> is move to next word, just like w command in normal mode.
 
-					\item If you just want to have ONE action move or other operation, you don't need to leave insert mode, so mapping the move used command in insert mode, by now, I mapping some move and editting command in insert mode. Detail can be seen in below table.
+					\item If you just want to have ONE action move or other operation, you don't need to leave insert mode, so mapping the move used command in insert mode, by now, I mapping some move and editing command in insert mode. Detail can be seen in below table.
 
-					\item By now, you can use Alt-char map some commands, and you also can use two captive lettes which don't use very often in our language. such as UU RR etc. 
+					\item By now, you can use Alt-char map some commands, and you also can use two captive letter which don't use very often in our language. such as UU RR etc. 
 
 					\item By now, on some computers, if you map alt-(char), It doesn't work very well. Sometimes, when you press it,it will go into the normal mode. I don't have time to investigate right now. 
 			\end{enumerate}
@@ -858,7 +881,7 @@ w,s,p & (a,i)(w,W,s,p) & Add surrounds: csw", csW", ysiw" yss".  \\
 		All /first word in cursor(For C/C++) &  & $[I$, $[i$  \\ 
 
 		\hline 
-		will go to next line in wraped mode. & &  gj and gk \\
+		will go to next line in wrapped mode. & &  gj and gk \\
 		\hline 
 
 \end{tabular}
@@ -871,47 +894,48 @@ w,s,p & (a,i)(w,W,s,p) & Add surrounds: csw", csW", ysiw" yss".  \\
 
 		\item j k 0 \^{} \$ can add g in front of letter to distinguish real line and display lines.
 
-		\item "f F t T" will not go over multiline. It just search within one line. If you need to multiline search, you can use "/ ?"
+		\item "f F t T" will not go over multiline. It just search within one line. If you need to multiline search, you can use "/ ?". Or use Easymotion Plugin.
 
 		\item h,j,k,l, w(W), e(E), b(B), \^ , \$ ,fx,tx, (,), \{ ..., gg. All these move command you can add number before them. For example, \verb=4f,= will jump to the fourth ,(comma) directly.    
 
-		\item fx command, then ; and , will repeat forward and backward command, Just like n and N in / and ? command.
+		\item fx command, then ; and , will repeat forward and backward command, Just like n and N in / and ? Command.
 
 		\item reuse the last search // and last search in sub s//aaaa/gc				
-
-	\item jump lists basic:
+		\item jump lists basic:
 \begin{enumerate}
-	\item Jump commands are "G","/", "?", "n", "N","\%", "(", ")", "[[", "]]", "{", "}", ":s", ":tag", "L", "M", "H"
+		\item Jump commands are "G","/", "?", "n", "N","\%", "(", ")", "[[", "]]", "{", "}", ":s", ":tag", "L", "M", "H"
 
-	\item "w b e j k h l" are not jump command, they will not recored in jump list. "f, F, t, T" are not jump command either.  \textbf{With in one line isn't jump command, You can think it in this way although it's not 100\% accurately.}
+		\item "w b e j k h l" are not jump command, they will not recored in jump list. "f, F, t, T" are not jump command either.  \textbf{With in one line isn't jump command, You can think it in this way although it's not 100\% accurately.}
 
 		\item All jump command will record in jump list; :ju will show jump list. Then you can use <C-o> and <C-i> to navigate the jump list. 
 				
-	\item <C-o> will return back last jump positio, <C-\^{}> will switch back to previous file. 
+		\item <C-o> will return back last jump positio, <C-\^{}> will switch back to previous file. 
 
-	\item Double single quote and double backtick will toggle current and previous jump. Double backtick will come back exact position. Double single quote will come back previous line position.  \textbf{If you want to jump to one place, then jump back, these two commands are very useful. You don't need use m to mark the original position and use $`$ to jump to mark position.}
+		\item Double single quote and double backtick will toggle current and previous jump. Double backtick will come back exact position. Double single quote will come back previous line position.  \textbf{If you want to jump to one place, then jump back, these two commands are very useful. You don't need use m to mark the original position and use $`$ to jump to mark position.}
 \end{enumerate}
 
-\item marks lists basic:
+		\item marks lists basic:
 		\begin{enumerate}
 				\item :marks command will show you all the marks list. 
 
-		\item Basic command is ma and 'a. 
+				\item Basic command is ma and 'a. 
 
-		\item Low case letter just mark position in current file. Captive letter can mark a position in different file, when you jump to this position, you don't need to open this file manually.
+				\item Low case letter just mark position in current file. Captive letter can mark a position in different file, when you jump to this position, you don't need to open this file manually.
 
-		\item There are single quote command, backtick command. single quote will jump to exact mark, backtick will jump to mark line. They need follow a mark name.
+				\item There are single quote command, backtick command. Single quote will jump to exact mark, backtick will jump to mark line. They need follow a mark name.
 
-		\item gi will return last position you exit insert mode. 
+				\item gi will return last position you exit insert mode. 
 
-		\item \`{}. will return your last edited position.  \`{}" will return exit position of current buffer. And \`{}0 will return exit position of file(when vim exit, That is to say, The last file you are working when you exit your vim last time.) 
-		\item Double single quote command will help you to jump back origin position, but still in normal mode, gi command will return back to the position where you exit insert mode, and return back to insert mode. It's very uesfule command. 
+				\item \`{}. will return your last edited position.  \`{}" will return exit position of current buffer. And \`{}0 will return exit position of file(when vim exit, That is to say, The last file you are working when you exit your vim last time.) 
+
+				\item Double single quote command will help you to jump back origin position, but still in normal mode, gi command will return back to the position where you exit insert mode, and return back to insert mode. It's very useful command. 
 \end{enumerate}
 
 \item search command in VIM:
 		\begin{enumerate}
 				\item \linuxcommand{:lv word \%} will search all word in current file. It will show all the result in position list. 
-				\item position list is assocaited with current window, and quickfix list is global.
+
+				\item position list is associated with current window, and quickfix list is global.
 
 				\item You can use :lne :lw :lpr to manipuate position list windows. You can use :cne :cw :cpr to manipuate quickfix windows. 
 
@@ -929,19 +953,22 @@ w,s,p & (a,i)(w,W,s,p) & Add surrounds: csw", csW", ysiw" yss".  \\
 
 				\item Press F4 to toggle highlight research result. 
 
-				\item There are two subtopics, One is regex syntax is different between grep, python and vim. The detail can be see below link.  https://remram44.github.io/regex-cheatsheet/regex.html#syntax-basics And a good regex example can be found here:  http://www.rexegg.com/regex-quickstart.html
+				\item There are two subtopics, One is regex syntax is different between grep, python and vim. The detail can be see below link.  https://remram44.github.io/regex-cheatsheet/regex.html\#syntax-basics And a good regex example can be found here:  http://www.rexegg.com/regex-quickstart.html
 		\end{enumerate}
 
 				\item Another subtopics is search scopes.
-						\begin{enumerate}
-								\item / search current buffer, it support regex too, but it will not output result to position list or error list. 
-								\item :vimgrep and :lvimgrep difference lies in write to location list or quickfix list.
-								\item :lv can follow \% to represent the current file
-										
-								\item $\backslash$vv is just syntax sugar of :vimgrep. You don't need input word manually, and it will open quickfix window directly. The shortcomting is you can't edit regex manually. 
+				\begin{enumerate}
+						\item / search current buffer, it support regex too, but it will not output result to position list or error list. 
 
-								\item You can use :GrepOptions to turn on recursive, so vv will find all .h or .c or .cpp files.
-								\item For :lv, you can use **/*.cpp to search all .cpp files recursively. You also can input complex regex manually, So :lv is more flexible than $\backslash$vv. $\backslash$vv is more convenient than :lv. 
+						\item :vimgrep and :lvimgrep difference lies in write to location list or quickfix list.
+
+						\item :lv can follow \% to represent the current file
+										
+						\item $\backslash$vv is just syntax sugar of :vimgrep. You don't need input word manually, and it will open quickfix window directly. The shortcoming is you can't edit regex manually. 
+
+						\item You can use :GrepOptions to turn on recursive, so vv will find all .h or .c or .cpp files.
+								
+						\item For :lv, you can use **/*.cpp to search all .cpp files recursively. You also can input complex regex manually, So :lv is more flexible than $\backslash$vv. $\backslash$vv is more convenient than :lv. 
 						\end{enumerate}
 
 		\item :marks :ju :reg :change are three useful commands. 		
@@ -1001,13 +1028,13 @@ w,s,p & (a,i)(w,W,s,p) & Add surrounds: csw", csW", ysiw" yss".  \\
 				\end{tabular}
 	\end{center}
 
-
 \item tricks about edit command: 
 		\begin{enumerate} 
 				\item  Edit commands "d,c,y", \textbf{d keep in the normal mode. c go to insert mode. y keep contents.} All edit command "d,c,y" can follow motion, it give edit command a "operator scope". For example, "d2w" will delete next two words. "d3j" will delete next 3 lines. "ct;" will delete every thing until ";", it's very useful for C++ language. 
-				\item \textbf{d,c can follow EasyMotion command, but y can follow EasyMotion command.}
 
-				\item C delete to the end of line,and go into insert mode. D is the same, but stay in the normal mode. S delete the whole line, and then go into the insert mode. X delete previous character. \textbf{remember(C,D) and (S,dd).}
+				\item \textbf{d,c,y can all follow EasyMotion command.}
+
+				\item C delete to the end of line, and go into insert mode. D is the same, but stay in the normal mode. S delete the whole line, and then go into the insert mode. X delete previous character. \textbf{remember(s,x), (C,D) and (S,dd).}
 
 				\item All the edit command "d,c,y" can follow motion, at the same time, It also can follow text object, such as "aw" and "iw". A list of text objects can be see below.  You can use \verb=di"= to delete all the contents inside of a pair of double quotes. You also can use \verb=da"= to delete all the contents plus a pair of double quotes.There are 11 groups common used text objects which I introduced in previous section. 
 
@@ -1037,6 +1064,7 @@ w,s,p & (a,i)(w,W,s,p) & Add surrounds: csw", csW", ysiw" yss".  \\
 
 \subsubsection{dot command}
 \begin{itemize}
+		\item Below command will be remembered by dot command.
 		\begin{enumerate}
 				\item insertion : a, A, i, I, o, O
 
@@ -1118,7 +1146,7 @@ w,s,p & (a,i)(w,W,s,p) & Add surrounds: csw", csW", ysiw" yss".  \\
 	
 \subsection{Buffer}
 \begin{itemize}
-		\item Manage buffer
+		\item Manage buffer:
 \begin{center}
 \begin{tabular}{p{0.33\textwidth}|p{0.2\textwidth}|p{0.33\textwidth}}
 		   \hline
@@ -1146,7 +1174,6 @@ w,s,p & (a,i)(w,W,s,p) & Add surrounds: csw", csW", ysiw" yss".  \\
 			\end{tabular}
 	\end{center}
 
-	\begin{enumerate}
 			\item Closing windows is different with deleting buffer. When you use :bd command. It will close the windows too. If you want to just close buffer. You should use :bn to switch to another buffer, then use :ls to know the buffe number which you want to close, in the end. use :bd num close to close it background without close current windows.
 
 		\item use :ls! command will show all the buffers. Such as Nerdtree buffer, VimtexToc buffer. To reload buffer into certain windows. 
@@ -1742,6 +1769,7 @@ main()
 }"]]"
 %\end{lstlisting}
 \end{verbatim}
+
 \begin{enumerate}
 		\item * is your position
 		\item \verb=[[,[],][,]]= First is directory, second is opening or closing brace. They just jump to the first column
@@ -1769,6 +1797,7 @@ main()
 \item \textbf{cscope support a little syntastic analytic, Anytime when you modify files, you need to produce new cscope.out file and it doesn't support python language}
 
 \end{itemize}
+
 
 \subsubsection{EasyGrep}
 \begin{itemize}
@@ -1913,14 +1942,14 @@ q in tag window & quit tag window \\
 		$\backslash$vv & show all in quickfix & 1)No semantic 2)easygrep\\
 
        \hline
-	   <C-\> g & jumt to def & 1) semantic 2)cscope \\
+	   <C-$\backslash$> g & jumt to def & 1) semantic 2)cscope \\
 
        \hline
 	   <C-o>, <C-i> & jumt back &  \\
 
 		\end{tabular}
 	\end{center}
-	\item 1)<C-\>(Cscope) 2)<C-]>(ctags) 3)$\backslash$gg(YCM) These three command support semantic jump
+	\item 1)<C-$\backslash$>(Cscope) 2)<C-]>(ctags) 3)$\backslash$gg(YCM) These three command support semantic jump
 	\item Other just search or jump without C/C++ semnatic support
 	\item If you don't want to jum $[$i or $[$I are good choice, they just show without jump
 	\item If you want to show and jump in one files, use :lv var \%. 
@@ -2086,7 +2115,7 @@ pip install --install pyclewn
 \subsubsection{YoucompleteMe}
 
 \begin{itemize}
-\item YoucompleteMe popup windows has bad color scheme. you can add two statments in .vimrc to change it. But by now, new version YCM seems to have better color. If you think default color is ok, You don't need to use below statements. 
+		\item YoucompleteMe popup windows has bad color scheme. you can add two statments in .vimrc to change it. But by now, new version YCM seems to have better color. If you think default color is ok, You don't need to use below statements. 
 \begin{verbatim}
 highlight Pmenu ctermfg=Bule ctermbg=White guifg=#000000 guibg=#66cc66
 highlight PmenuSel ctermfg=White ctermbg=Blue guifg=#ffffff guibg=#5cadff
@@ -2138,6 +2167,12 @@ First run :YcmRestartServer.Then run :YcmToggleLogs <tab> select stderr log file
 
 \subsubsection{Ulitsnippet and Vim-Snippet}
 \begin{itemize}
+		\item g:UltiSnipsListSnippets=<C-a> and <C-tab> doesn't work on some terminal emulator. Anytime you want to use a snips, you can press <C-a> to take a look. It will show all content in more pager,(which doesn't support search). You can press G<cr> to quit this more pager.
+
+		\item <C-a> command can recognize you file type automatcially. When you press <C-a> in tex, It only show all tex snippet. 
+
+		\item By now, I mainly work on tex, C/C++, python, and html. So I need to remember some common used snippets in these four file types. 
+
 \item Ulitsnips is engine, Vim-Snippet include a lot of template which is written according to Ulit engine syntax. 
 
 \item Basically, you can go to Ulit directory to see your favorite language snippets. 
@@ -2188,6 +2223,59 @@ First run :YcmRestartServer.Then run :YcmToggleLogs <tab> select stderr log file
 \subsubsection{Auto-complete Conclusion}
 
 \begin{itemize}
+		\item Basically, There are three kinds of methods for auto-completion:
+				\begin{enumerate}
+						\item YCM for programming.
+						\item Ulitsnippet for programming.
+						\item ins-completion in VIM.
+				\end{enumerate}
+		\item For text format file. You can use ins-completion. By the way, you can use Supertab plugin to avoid type complex keystrok. 
+
+		\item For Programming file. Mainly you should use YCM and Ultisnippet. You also can use ins-completion(insert word in comment and insert previous line in code). Supertab is also useful because I map Ultisnippet to <C-j>.
+
+		\item \textbf{For text file, use ins-completion and tab as syntax sugar. In tex or html file, you also can use tab to trigger snippet,such as "enum, item, center, and tab"}
+
+		\item In vim, \textbf{Once you select, it will insert it to document, You need to get used to this style. Accept is just close the popup windows.}
+
+		\item YCM usage:
+				\begin{enumerate}
+						\item \textbf{1) trigger 2) select 3) accept}.
+						\item use <c-l> to trigger, or use . or file path / to trigger.
+						\item In popup window, you can <C-e> quite.
+						\item \textbf{If it's easy to select what your want.} default it's in filter status, you can use 1) tab s-tab 2) <C-n><C-p> 3)up, dow to select.
+						\item \textbf{If it's not easy to select what you want}. You also can keep typing, it will help you filter the pop up windows.
+						\item There are three way to accept 1) keep input another character 2) enter 3) <C-y> \textbf{prefer to use method 1, method 2 is usefule for python because it will change to next line 3)last use <C-y>, for example you want to input tab next, so you have to use <C-y> first, it's slowly}
+				\end{enumerate}
+
+		\item Ins-completion usage:
+				\begin{enumerate}
+						\item Just like YCM, it also include \textbf{1) trigger 2) select 3) accept}.
+						\item use <C-x><C-.> to trigger, use <tab> to save keystroke when you want to repeat next time.
+						\item <C-e> quie.
+						\item Different with YCM, \textbf{insc-completion is in selected status.} Easy select , just keep use three ways to select what you want.
+						\item If not easy to select, <C-n> or <C-p> to unselect anythin, then keep typing to filter popup window. 
+						\item There are also tree way to accept. just like YCM.
+						\item \textbf{When YCM working in C or python file, ins-completio stop working in filter mode, I found a solution, in .vim/bundle/YoucompletMe/autoload/youcompleteme.vim file. modify two functions. comment two statments as below:}
+
+\begin{verbatim}
+function! s:OnInsertChar()
+  call timer_stop( s:pollers.completion.id )
+  if pumvisible()
+    "call feedkeys( "\<C-e>", 'n' )
+  endif
+endfunction 
+
+function! s:OnDeleteChar( key )
+  call timer_stop( s:pollers.completion.id )
+  if pumvisible()
+    "return "\<C-y>" . a:key
+  endif
+  return a:key
+endfunction
+\end{verbatim}
+				\end{enumerate}
+
+
 		\item For C++ and Python file
 \begin{tabular}{p{0.25\textwidth}|p{0.75\textwidth}}
 \hline 
@@ -2203,7 +2291,7 @@ file & 1)YCM ./ and / trigger 2)<C+x><C+f> insert cwd file  \\
 . -> \# & YCM \\
 
 \hline
-Previous keyword & 1) <C+x><C+p> 2) YCM <C+a> \\
+Previous keyword & 1) <C+x><C+p> 2) YCM <C+l> \\
 
 \hline 
 code snippet & <C+j> snippet\\
@@ -2242,10 +2330,10 @@ keyword and definition & <C+x><C+i> and <C+x><C+d> \\
 content  & usage \\ 
 
 \hline 
-word & <C+x><C+k> 
+word & <C+x><C+k>\\ 
 
 hline
-spell & <C+x>s(set spell)\\ 
+spell & <C+x>s(:set spell)\\ 
 
 \hline 
 file & <C+x><C+f> insert cwd file  \\ 
@@ -2257,12 +2345,14 @@ Previous keyword & <C+x><C+p> \\
 previous line & <C+x><C+l> \\
 
 \hline 
-vimtex and emmet & plugin \\
+vimtex and emmet & plugin or <C-j> to insert snippet\\
 
 \hline
 \end{tabular}
 
 \end{itemize}
+
+
 
 \chapter{Developing tool}
 \section{gcc}
