@@ -1976,732 +1976,6 @@ class & operator=(const class& rhs)
 
 
 
-\subsection{pointer and smart pointer}
-
-\subsubsection{function pointer}
-\begin{itemize}
-
-\item A real example of function pointer is set\_new\_handler. It accepts a function pointer and return the same function pointer, so declaring such format is a little difficult.
-\begin{lstlisting}[frame=single, language=c++]
-void failNew(){
-cerr<<"Fail now"<<endl
-abort();
-}
------------------------------------------
-extern void ( *set_new_handler ( void (*)() ) ) ();
-// This function declaration is very complex.
-set_new_handler(failNew);
-\end{lstlisting}
-
-\item A better method is to use typedef method.
-\begin{lstlisting}[frame=single, language=c++]
-typedef void(* FunPtr)();
-
-FunPtr (*set_new_handler) (FunPtr);
-
-set_new_handler(failNew);
-\end{lstlisting}
-
-\item in C++ 11, When you want to function pointer, encourage you to use more lambda idiom. You also can use auto to store a lambda function for future use.
-\end{itemize}
-
-\subsubsection{When to use new?}
-\begin{itemize}
-
-\item When do you use smart pointer? Here I change this questions to another question, When do you use pointer?
-\begin{enumerate}
-\item An new object remain in existence, until you delete it. (you control the life time of it, maybe you create it in fun1,then delete it in fun4. so the obj is neither stack life nor global life. You may or may not transfer \textbf{ownership} between functions.)
-
-\item When you want to dynamic create a obj in runtime according runtime condition or user input. (maybe don't create it. ) Below code demonstrate previous two conditions.  ToothBrush need to be control life time and created dynamically.
-\begin{lstlisting}[frame=single, language=c++]
-class Person{
-ToothBrush* pbrush;
-
-buyNewBrush(string &name){
-    if(pbrush != nullptr}{
-	    	delete pbrush;
-    }
-    if(name == "Orlab")
-          pbrush = new Brush();
-    }
-}
-~Person(){
-	if(pbrush != nullptr}{
-		delete pbrush;
-    }
-}
-///////////////////
-Person Yan();
-Yan.buyNewBrush("Oralb");
-......Three months later...........
-Yan.buyNewBrush("Philip");
-}
-\end{lstlisting}
-
-\item Large array or resources,  if you allocate in stack, it will cause stack overflow. \textbf{In practicse, this item is deprecated, because any time when you use [] or new [], you need consider to use array or vector ans string!}
-\end{enumerate}
-
-\end{itemize}
-
-
-\subsubsection{Smart pointer Basic knowledge}
-
-\begin{itemize}
-\item A simple auto\_ptr source code: You can learn how to overload operator*() and operator->().
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-template <class T> class auto_ptr{
-    T* ptr;
-public:
-    explicit auto_ptr(T* p = 0) : ptr(p) {}
-    ~auto_ptr()                 {delete ptr;}
-    $\Hilight{12}$T& operator*()     {return *ptr;}
-    $\Hilight{12}$T* operator->()    {return ptr;}
-    // ...
-};
-
-auto_ptr<int> aupr;
-//aupr is nullptr even you don't initialize it.
-\end{lstlisting}
-
-\item Why do we need smart pointer?
-\begin{enumerate}
-\item "Just remember" is seldom the best solution! So we need smart pointer to perform delete operator automatically.
-
-\item When throw an exception, or return in the middle of code. delete will not be invoked at all, It will cause memory leaking. When you use smart pointer, If an exception is thrown in the middle of fun, there will no be memory leak.
-\begin{lstlisting}[frame=single, language=c++]
-void methodA() {
-   unique_ptr<int> buf(new int[256]);
-
-   int result = fillBuf(buf))
-   if(result == -1)
-      return;
-}
-\end{lstlisting}
-
-\item smart pointer is nullptr default if you don't initialize. You avoid wild pointer problem.
-\item \textbf{smart pointer can manage exclusive ownership or shared ownership automatically. }
-\end{enumerate}
-
-\item There are four kinds of smart pointer: auto\_ptr, unique\_ptr, shared\_ptr and weak\_ptr.  But only unique\_ptr and shared\_ptr are recommended to use. auto\_ptr is now deprecated, and should not be used in new code. When you get a chance, try doing a global search-and-replace of auto\_ptr to unique\_ptr in your code base. weak\_ptr is mainly used for observer, you can always use raw pointer or reference for this purpose. Raw pointer can't check if pointee object is still valid, weak\_ptr can accomplish this task.
-
-\item Why auto\_ptr not recommended? 1) When you assign targetP = sourceP, it will cause sourceP set to be NULL, It will cause trouble when you use sourceP in the future.  2)You can't create container includes auto\_ptr, compiler prohibit you doing so!
-\begin{lstlisting}[frame=single, language=c++]
-auto_ptr<string> ps (new string("hello world") );
-auto_ptr<string> ps1;
-ps1 = ps;   // ps will be set null.
-ps->size() // it will crash the application.
-
-auto_ptr<string> parray[5]; //compiling error.
-auto_ptr<string> ps = parray[2];
-//parray[2] will be set null;
-\end{lstlisting}
-
-\item \textbf{When you construct a smart pointer, you must use 1) a pointer and 2) this pointer must be produced by new.} You can't build smart pointer by address operator. such as unique\_ptr<double> ptr(\&int);   Why? because smart pointer will call delete when it is out of scope.  delete operator has to be used on pointer produced by new operator.
-
-\item Obtain the raw pointer (get), to relinquish control of the pointed object (release), and to replace the object it manages (reset).
-\begin{lstlisting}[frame=single, language=c++]
-string * cp = new string("hello world");
-shared_ptr<string> ps(cp);
-string * cp1 = ps.get(); //use get() get normal pointer.
-\end{lstlisting}
-
-
-\item Smart pointer has bool operator, you can use if to test if it's nullptr directly.
-\begin{lstlisting}[frame=single, language=c++]
- std::unique_ptr<int> ptr(new int(42));
- if (ptr) std::cout <<  *ptr << '\n';
- ptr.reset();
- if (ptr) std::cout <<  *ptr << '\n';
-\end{lstlisting}
-
-\item Smart pointer and const:
-\begin{lstlisting}[frame=single, language=c++]
-shared_ptr<T> p;        ---> T * p;
-const shared_ptr<T> p;   ---> T * const p;
-shared_ptr<const T> p;   ---> const T * p;
-const shared_ptr<const T> p; ---> const T * const p;
-\end{lstlisting}
-
-\item Smart pointer is used mainly for ownership, It doesn't support Inheritance well. \textbf{Don't use smart pointer when you want to use in polymorphous.}
-
-\end{itemize}
-
-\subsubsection{unique\_ptr}
-\begin{itemize}
-
-\item unique\_ptr basic 1-1: create unique\_ptr from new.    \textbf{make\_unique is better than inside new, inside new is better than outside new.}
-\begin{lstlisting}[frame=single, language=c++]
-string * cp = new string("hello world");
-
-unique_ptr<string> ps = cp; // NOT allow
-
-//ok, but not good style(outside new)
-unique_ptr<string> ps (cp);
-
-//good style(inside new)
-unique_ptr<string> ps (new string("hello world"));
-
-//best style make_unique
-unique_ptr<string> ps( std::make_unique<int>(1) );
-\end{lstlisting}
-
-\item unique\_ptr basic 1-2: When pass value into a function, \textbf{1) for exit unique\_ptr, use move to transfer ownership, 2) for new unique\_ptr, use make\_unique to assure exception safe.}
-\begin{lstlisting}[frame=single, language=c++]
-void sink( unique_ptr<widget> arg1, unique_ptr<gadget> arg2);
-
-//1) use move
-sink( std::move(exist_uptr_wi), std::move(exist_uptr_ga))
-
-//2) use make function to assure exception safety.
-sink( make_unique<widget>(new ...),
-make_unique<gadget>(new ...) );  // exception-safe
-\end{lstlisting}
-
-\item unique\_ptr basic 2-1: Create unique\_ptr from another unique\_ptr, you have to use move.
-\begin{lstlisting}[frame=single, language=c++]
-unique_ptr<string> ps1 (new string("hello world"));
-
-unique_ptr<string> ps2 ( ps1 ); //compile error, not allow.
-unique_ptr<string> ps2 ( move(ps1) ); //ok
-//ownship transfer from ps1 to ps2, nothing delete.
-\end{lstlisting}
-
-
-\item unique\_ptr basic 3: unique\_ptr assignment
-\begin{lstlisting}[frame=single, language=c++]
-unique_ptr<string> ps1 (new string("ps1"));
-unique_ptr<string> ps2 (new string("ps2"));
-
-ps1= ps2; //compile error, not allow
-
-//method1: use move
-ps1 = std::move(ps2);
-//pointer inside previous ps1 will be deleted.
-// pointer inside ps1 point to "ps2" string now.
-//pointer inside ps2 will set to null
-
-//method2: reset
-ps1.reset(cp); //ok
-//pointer inside previous ps1 will be deleted.
-\end{lstlisting}
-
-\item unique\_ptr basic 4-1: If a program attempts to assign one unique\_ptr to another. The compiler allows it if the source object is a temporary rvalue (It will call move ctor or assignment of unique\_ptr inside.) and disallows it if the source object has some duration. \textbf{It is a move-only type.}
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-unique_ptr<string> ps2 = $\Hilight{19}$uqique_ptr<string>(new string("yo") ); //OK
-
-uqique_ptr<string> fun(){
-return unique_ptr<string> temp(new string("yan");
-}
-pu2 = fun(); //OK
-\end{lstlisting}
-
-\item unique\_ptr basic 4-2: unique\_ptr support source and sink idiom.
-\begin{lstlisting}[frame=single, language=c++]
-unique_ptr fun() //support source
-
-fun(unique_ptr up);  //use move to support sink
-fun(move(other_up));
-\end{lstlisting}
-
-\item unique\_ptr basic 5: Just observer, not transfer ownership , you can get pointer, or use unique\_ptr reference.
-\begin{lstlisting}[frame=single, language=c++]
-unique_ptr<string> ps1 (new string("ps1"));
-
-fun(string* pstr);
-fun(unique_ptr<string> & ref_ptr);
-\end{lstlisting}
-
-\item by default, std::unique\_ptrs are the same size as raw pointers, so efficiency of it is just like raw pointer.
-
-\item If your vector should hold std::unique\_ptr<Fruit> instead of raw pointers (to prevent memory leaks).
-vector need copy in and copy out. but unique\_ptr don't support copy. So 1) you can use emplace\_back with new pointer, but it will lead memory leak if extending vector size fail. 2) use unname unique\_ptr, 3) use make\_unique .
-\begin{lstlisting}[frame=single, language=c++]
-class Fruit { ... };
-class Pear : Fruit { ... };
-class Tomato : Fruit { ... };
-
-std::vector<std::unique_ptr<Fruit> > m_fruits;
-//method 1, bad
-m_fruits.emplace_back(new Pear);
-
-//method 2, good
-m_fruits.push_back(std::unique_ptr<Fruit>(new Pear));
-m_fruits.push_back(std::unique_ptr<Fruit>(new Tomato));
-
-//method 3, best using std::make_unique:
-m_fruits.push_back(std::make_unique<Pear>());
-m_fruits.push_back(std::make_unique<Tomato>());
-\end{lstlisting}
-
-
-
-\item When in doubt, prefer unique\_ptr by default, and you can always later move-convert to shared\_ptr if you need it. If you do know from the start you need shared ownership, however, go directly to shared\_ptr via make\_shared. If you compiler report error about unique\_ptr, then you should consider to use shared\_ptr
-
-
-\item Unique\_ptr has new [] version. The existence of std::unique\_ptr for arrays should be of only intellectual interest to you, because std::array, std::vector, and std::string are virtually always better data structure choices than raw arrays. About the only situation I can conceive of when a std::unique\_ptr<T[]> would make sense would be when you're using a C-like API that returns a raw pointer to a heap array that you assume ownership of it.
-\begin{lstlisting}[frame=single, language=c++]
-unique_ptr<double []>  pda(new double[5] );
-// it will call delete [] inside.
-\end{lstlisting}
-
-
-
-\item A common use for std::unique\_ptr is as a factory function return type for objects
-in a hierarchy. detail can be seen "effective modern c++ item 18"
-\begin{enumerate}
-\item During construction, std::unique\_ptr objects can be configured to use custom deleters: arbitrary functions
-(or function objects, including those arising from lambda expressions) to be invoked when it's time for their resources to be destroyed. when a custom deleter can be implemented as either a function or a captureless
-lambda expression, the lambda is preferable.
-\item When a custom deleter is to be used, its type must be specified as the second type argument to std::unique\_ptr.
-\end{enumerate}
-
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-//only c++ 14 support return type deduction
-template<typename... Ts>
-$\Hilight{4}$auto makeInvestment(Ts&&... params) {
-auto delInvmt = [](Investment* pInvestment) {
-makeLogEntry(pInvestment); // makedelete
-pInvestment; // Investment
-};
-
-std::unique_ptr<Investment, decltype(delInvmt)>
-pInv(nullptr, delInvmt);
-
-if (...){
-pInv.reset(new Stock($\Hilight{16}$std::forward<Ts>(params)...));
-}
-else if (... ) {
-pInv.reset(new Bond(std::forward<Ts>(params)...));
-}
-return pInv; // as before
-}
-\end{lstlisting}
-
-\item std::unique\_ptr is the C++11 way to express exclusive ownership, but one of its
-most attractive features is that it easily and efficiently converts to a std::shared\_ptr: This is a key part of why std::unique\_ptr is so well suited as a factory function return type. Factory functions can't know whether callers will want to use exclusive ownership semantics for the object they return or whether shared ownership
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-std::shared_ptr<Investment> sp = // converts std::unique_ptr
-makeInvestment( arguments ); // to std::shared_ptr
-\end{lstlisting}
-
-
-\item unique\_ptr can be used inside of class. Below class B disable value-copying (or to define a suitable copy-constructor  and operator= to handle it safely).
-\begin{lstlisting}[frame=single, language=c++]
-class B {  // this class cann't be
-public:
-   unique_ptr<int> i;
-   B():i(new int(0)) { }
-};
-\end{lstlisting}
-
-\item You can store unique\_ptr objects in an STL container providing you don't invoke methods or algorithm, such as copy(), that copy or assign one unique\_ptr to another.  see effective stl item 8.
-
-\begin{lstlisting}[frame=single, language=c++]
-bool compare_by_uniqptr(
-               const unique_ptr<SomeLargeData>& a,
-               const unique_ptr<SomeLargeData>& b) {
-    return a->id < b->id;
-}
-
-sort(vec_byuniqptr.begin(), vec_byuniqptr.end(),
-compare_by_uniqptr);
-\end{lstlisting}
-
-\begin{lstlisting}[frame=single, language=c++]
-typedef std::unique_ptr<int> unique_t;
-typedef std::vector< unique_t > vector_t;
-
-vector_t vec2(5, unique_t(new Foo));     // Error (Copy)
-vector_t vec3(vec1.begin(), vec1.end()); // Error (Copy)
-std::copy(vec1.begin(), vec1.end(),
-          std::back_inserter(vec2)); // Error (copy)
-
-vector_t vec3(make_move_iterator(vec1.begin()),
-                 make_move_iterator(vec1.end())); //Ok
-
-std::sort(vec1.begin(), vec1.end());
-// OK, because using Move Assignment Operator
-\end{lstlisting}
-
-
-\end{itemize}
-
-
-\subsubsection{shared\_ptr}
-\begin{itemize}
-
-\item shared\_ptr basic 1: create shared\_ptr from new.    \textbf{make\_shared is better than inside new, inside new is better than outside new.}
-\begin{lstlisting}[frame=single, language=c++]
-string * cp = new string("hello world");
-
-shared_ptr<string> ps = cp; // NOT allow
-
-//method1: use constructor
-shared_ptr<string> ps (cp); //ok, but not good style
-shared_ptr<string> ps (new string("hello world")); //good style
-
-//method2: make_unique
-unique_ptr<string> ps( std::make_shared<string>("hello world") );
-\end{lstlisting}
-
-\item shared\_ptr basic 2: Create shared\_ptr from another shared\_ptr
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-shared_ptr<string> ps1 (new string("hello world"));
-
-shared_ptr<string> ps2 ( ps1 );
-//use_count of ps1 and ps2 are all 2
-
-shared_ptr<string> ps2 ( move(ps1) );
-// use_count of ps2 is 1, and ps1 is 0.
-$\Hilight{30}$//Just transfer use_count to ps2, not ownership.
-\end{lstlisting}
-
-\item shared\_ptr basic 3: shared\_ptr assignment
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-shared_ptr<string> ps1 (new string("ps1"));
-shared_ptr<string> ps2 (new string("ps2"));
-
-//method1: use assignment
-ps1= ps2;
-$\Hilight{9}$// 1) previous use_count decrements 1(If equal 0, will delete)
-$\Hilight{9}$// 2) ps1 points to current use_count
-$\Hilight{9}$// 3) and current use_count increments 1
-
-//method2: use move
-ps1 = std::move(ps2);
-$\Hilight{9}$// 1) previous use_count decrements 1(If equal 0, will delete)
-$\Hilight{9}$// 2) ps1 points to current use_count
-$\Hilight{9}$// 3) ps2 will not point to use_count, ps1 point it, but NOT increment 1
-
-
-//method3: reset
-ps1.reset(cp); //ok
-//pointer inside previous ps1 will be deleted.
-\end{lstlisting}
-
-\item shared\_ptr basic 4: Just observer, not transfer ownership , you can get pointer, or use shared\_ptr reference.
-\begin{lstlisting}[frame=single, language=c++]
-shared_ptr<string> ps1 (new string("ps1"));
-
-fun(string* pstr);
-fun(shared_ptr<string> & ref_ptr);
-\end{lstlisting}
-
-\item inside of shared\_ptr: \newline
-\includegraphics[scale=0.8]{pics/shared.png}
-
-
-\item When are control block created?
-\begin{enumerate}
-\item std::make\_shared  always creates a control block. It manufactures
-a new object to point to, so there is certainly no control block for that
-object at the time std::make\_shared is called.
-\item A control block is created when a std::shared\_ptr is constructed from a
-unique-ownership pointer (i.e., a std::unique\_ptr ). As part of its construction, the
-std::shared\_ptr assumes ownership of the pointed-to object, so the uniqueownership
-pointer is set to null.
-\item When a std::shared\_ptr constructor is called with a raw pointer, it creates a
-control block.
-\item std::shared\_ptr constructors taking std::shared\_ptrs or std::weak\_ptrs
-as constructor arguments do \textbf{NOT} create new control blocks, because they can rely
-on the smart pointers passed to them to point to any necessary control blocks
-\end{enumerate}
-
-
-\item Like std::unique\_ptr, std::shared\_ptr uses delete as its default resource-destruction mechanism, but it also supports custom deleters.
-\begin{lstlisting}[frame=single, language=c++]
-std::unique_ptr< Widget, decltype(loggingDel) >
-                               upw(new Widget, loggingDel);
-// deleter type is ptr type
-
-std::shared_ptr<Widget> spw(new Widget, loggingDel);
- // deleter type is not part of ptr type
-\end{lstlisting}
-
-\item In order to correctly use shared\_ptr with an array, you must supply a custom deleter.
-\begin{lstlisting}[frame=single, language=c++]
-template< typename T >
-struct array_deleter {
-  void operator ()( T const * p){
-    delete[] p;
-  }
-};
-
-std::shared_ptr<int> sp( new int[10], array_deleter<int>() );
-\end{lstlisting}
-
-
-\item If the program uses more than one pointer to an object, shared\_ptr is your choice.  Such as you have two objects that contain pointers to the same third object. Or you may have an STL container of pointers.
-
-\item There are at least two lessons regarding std::shared\_ptr use here. First, try to
-avoid passing raw pointers to a std::shared\_ptr constructor. 1) use make\_share(). 2) if you have customed delete and can't use make\_share().   pass the result of new directly
-instead of going through a raw pointer variable.
-
-\begin{lstlisting}[frame=single, language=c++]
-auto pw = new Widget; // pw is raw ptr
-
-std::shared_ptr<Widget> spw1(pw, loggingDel);
-// create control block for *pw
-std::shared_ptr<Widget> spw2(pw, loggingDel);
-// create 2nd control block for *pw!
-
-
-std::shared_ptr<Widget> spw1(new Widget, loggingDel);
-// direct use of new
-std::shared_ptr<Widget> spw2(spw1);
-\end{lstlisting}
-
-
-\item Sometimes, I want to keep file alive, because foo and bar will use them. You can't use RAII auto object. And If you use raw pointer, It's difficult to trace and delete it. shared\_ptr is the best options right now.  you don't needs to worry about deleting file - once both foo and bar have finished and no longer have any references to file (probably due to foo and bar being destroyed), file will automatically be deleted.
-
-\begin{lstlisting}[frame=single, language=c++]
-void setLog(const Foo & foo, const Bar & bar) {
-//File file("/path/to/file", File::append);  1) //RAII auto obj
-//File* file = new File("/path/to/file", File::append); //2) raw new
-   shared_ptr<File> file =
-              new File("/path/to/file", File::append); //3) best
-   foo.setLogFile(file);
-   bar.setLogFile(file);
-}
-\end{lstlisting}
-
-\end{itemize}
-
-
-\subsubsection{weak\_ptr}
-\begin{itemize}
-\item A truly smart pointer would deal with this problem by tracking
-when it dangles, i.e., when the object it is supposed to point to no longer exists. That's
-precisely the kind of smart pointer std::weak\_ptr is. \textbf{You can't test if a raw pointer is dangle or not.}
-
-\item The relationship begins at birth. std::weak\_ptrs are typically created from std::shared\_ptrs. You can only create a weak\_ptr out of a shared\_ptr or another weak\_ptr. So the idea would be that the owner of the pointer hold a shared\_ptr instead of a raw pointer.
-
-\item std::weak\_ptrs can't be dereferenced, nor can they be tested for nullness. That's because std::weak\_ptr isn't a standalone smart pointer. It's an augmentation of std::shared\_ptr. Almost the only things you can do are to interrogate it to see if the managed object is still there, or construct a shared\_ptr from it.
-
-\begin{lstlisting}[frame=single, language=c++,mathescape=true]
-auto spw =
-std::make_shared<Widget>();
-// the pointed-to Widget's ref count (RC) is 1.
-
-std::weak_ptr<Widget> wpw(spw);
-// wpw points to same Widget as spw. RC remains 1
-...
-spw = nullptr;
-// RC goes to 0, and the Widget is destroyed.
-// wpw now dangles
-$\Hilight{12}$if (wpw.expired())
-// if wpw doesn't point to an object…
-\end{lstlisting}
-
-\begin{lstlisting}[frame=single, language=c++,mathescape=true]
-std::shared_ptr<Widget> spw1 = wpw.lock();
-// if wpw's expired, spw1 is null
-auto spw2 = wpw.lock();
-// same as above, but uses auto
-
-std::shared_ptr<Widget> spw3(wpw);
-// if wpw's expired, throw std::bad_weak_ptr
-\end{lstlisting}
-
-
-
-\item Potential use cases for std::weak\_ptr includes: caching, observer lists, and the prevention of std::shared\_ptr cycles.  All the detail can be seen in "Effective Modern ++" Item 20.
-\begin{lstlisting}[frame=single, language=c++]
-std::shared_ptr<const Widget> fastLoadWidget(WidgetID id)
-{
-static std::unordered_map<WidgetID,
-std::weak_ptr<const Widget>> cache;
-auto objPtr = cache[id].lock();
-// objPtr is std::shared_ptr to cached object (or null
-// if object's not in cache)
-if (!objPtr) { // if not in cache,
-objPtr = loadWidget(id); // load it
-cache[id] = objPtr; // cache it
-}
-return objPtr;
-}
-\end{lstlisting}
-
-
-\end{itemize}
-
-\subsubsection{make function}
-\begin{itemize}
-\item make\_unique doesn't joined the Standard Library until c++14.
-\item make\_unique just perfect-forwards its parameters to the constructor of the object being created, constructs a std::unique\_ptr from the raw pointer new produces, and returns the std::uniqu\_ptr so created. \textbf{make\_unique doesn't support arrays or custom deleters.}
-
-\item std::make\_unique and std::make\_shared are two of the three make functions: functions that take an arbitrary set of arguments, perfect-forward them to the constructor for a dynamically allocated object, and return a smart pointer to that object. The third make function is std::allocate\_shared
-\item make function has tree advantage: simply, exception safety and allocate once for efficiency.
-
-\begin{enumerate}
-\item The method of using new repeat the type being created, but the make functions don't.  The second reason to prefer make functions has to do with exception safety.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-auto upw1(std::make_unique<Widget>()); // with make func
-std::unique_ptr<$\Hilight{4}$Widget> upw2(new $\Hilight{4}$Widget); // without make func
-
-auto spw1(std::make_shared<Widget>()); // with make func
-std::shared_ptr<Widget> spw2(new Widget); // without make func
-\end{lstlisting}
-
-\item It's obvious that this code entails a memory allocation, but it actually performs two. Item 19 explains that every std::shared\_ptr points to a control block containing, among other things, the reference count for the pointed-to object. That's because std::make\_shared allocates a single chunk of
-memory to hold both the Widget object and the control block.
-\end{enumerate}
-
-\item make function has its limitation:
-\begin{enumerate}
-\item For example, none of the make functions permit the specification of custom deleters.
-
-\item the perfect forwarding code uses parentheses, not braces. The bad news is that if you want to construct your pointed-to object using a braced initializer, you must use new directly. Using a make function would require the ability to perfect-forward a braced initializer, but, as Item 30 explains, braced initializers can't be perfect-forwarded.
-
-\item As long as std::weak\_ptrs refer to a control block (i.e., the weak count is greater
-than zero), that control block must continue to exist. And as long as a control block
-exists, the memory containing it must remain allocated. The memory allocated by a
-std::shared\_ptr make function, then, can't be deallocated until the last
-std::shared\_ptr and the last std::weak\_ptr referring to it have been destroyed
-\end{enumerate}
-
-\item If you can't use make function, you have to create shared\_ptr first, then pass it to function, but a better way is to move it.
-\begin{lstlisting}[frame=single, language=c++]
-std::shared_ptr<Widget> spw(new Widget, cusDel);
-processWidget(spw, computePriority()); // correct, but not
-// optimal; see below
-
-processWidget(std::move(spw), // both efficient and
-computePriority()); // exception safe
-\end{lstlisting}
-
-\end{itemize}
-
-
-\subsubsection{smart pointer Scenario}
-
-\begin{itemize}
-
-\item Smart pointer general guides:
-
-\begin{enumerate}
-
-\item You must ensure that there is only one manager object for each managed object. You do this by writing your code so that when an object is first created, it is immediately given to a shared\_ptr to manage, \textbf{and any other shared\_ptrs or weak\_ptrs that are needed to point to that object are all directly or indirectly copied or assigned from that first shared\_ptr.} The customary way to ensure this is to write the new object expression as the argument for a shared\_ptr constructor, or use the make\_shared function template described below.
-
-\item The exception to this immediate assignment rule is things like factory methods that return a plain pointer to the object they create -- in this case however, the callee still should generally be immediately assigning this returned object to a shared\_ptr or unique\_ptr.  Methods should return a plain-pointers when it is up to the caller to handle ownership of the object(exclusive ownership or shared ownership).
-
-\item Methods can take plain-pointers as their arguments for just observe it. Or use smart pointer to transfer or get ownership.
-\begin{lstlisting}[frame=single, language=c++]
-ObserveFun(Foo* p);
-ObserveFun(smart_pointer.get() );
-ObserveFun(unique_ptr<Foo> &p);
-//Not use very often, can be used as fun_obj
-// in a container of unique_ptr.
-
-UniqueFun(unique_ptr<Foo> p);
-UniqueFun(make_unique_ptr<Foo>(new Foo() )); //get ownership
-UniqueFun(move(other_unique_ptr) )  //transfer ownership
-
-SharedFun(shared_ptr<Foo> p);
-\end{lstlisting}
-
-\item If you want to get the full benefit of smart pointers, your code should avoid using raw pointers to refer to the same objects; otherwise it is too easy to have problems with dangling pointers or double
-deletions. In particular, smart pointers have a get() function that returns the pointer member variable
-as a built-in pointer value. This function is rarely needed. As much as possible, leave the built-in
-pointers inside the smart pointers and use only the smart pointers.
-
-\end{enumerate}
-
-
-\item Three policy of smart pointer usage:
-\begin{enumerate}
-\item \textbf{Owership policy: use smart pointer.}
-\item \textbf{Observer Policy : use raw pointer, reference or weak\_ptr}
-\item Nullity Policy: Not allow nullptr, prefer to use reference. \textbf{prefer reference than pointer}
-\end{enumerate}
-
-
-\item When you want to use raw pointer in STL container, There are two things you need to consider:
-\begin{enumerate}
-\item  Be wary of remove-like algorithms on containers of pointers. "effective STL item 33"
-\item When using containers of newed pointers, remember to delete the pointers before the container is destroyed. "effective STL item 7". \textbf{All these two problems can be resolved by using smart pointer.}
-\end{enumerate}
-
-\item \textbf{Observer pointer,observing pointers are pointers which do not keep the pointed object alive} raw pointers are bad when used for performing manual memory management, i.e. new and delete. When used purely as a means to achieve reference semantics and pass around non-owning, observing pointers, there is nothing intrinsically dangerous in raw pointers. Just not to dereference a dangling pointer
-\begin{lstlisting}[frame=single, language=c++]
-observe(subject * s1)
-// subject is a class ovserver is function.
-//just use raw pointer subject, use weak_ptr or raw pointer.
-//observer doesn't have owner policy and
-// life time policy with subject
-\end{lstlisting}
-
-\item \textbf{Function example 1: Inside a function}
-\begin{enumerate}
-\item If you don't want to create dynamically or large array, don't use new. Just use local auto object.
-\item When you have to use new, and this function has \textbf{Ownership of pointer, means that they have the same life time},  use unique\_ptr.
-\end{enumerate}
-\begin{lstlisting}[frame=single, language=c++]
-fun(){
-Foo fo();
-// it make obj directly,
-//when you don't need dynamic.
-
-if(input == "Foo")
-       uniqu_ptr<Foo> up(new Foo() );
-//When you need new, use uniqu_ptr
-}
-\end{lstlisting}
-
-
-\item \textbf{Function example 2 : argument of a function.}
-\begin{enumerate}
-\item As a parameter, pass it to a function. if you don't want to create dynamicly or large array, don't use new. Just use reference.
-\item If you have to use new,  use uniqu\_ptr \& as argument.  \textbf{Here, You just want to observe sth, no ownership transfer}
-\item \textbf{If you want to transfer ownership to callee from caller, use uniqu\_ptr, and use move.}
-\item \textbf{If you want to shared ownership to callee from caller, use shared\_ptr}
-\end{enumerate}
-
-\begin{lstlisting}[frame=single, language=c++]
-Foo *fo = new Foo();  //bad smell here.
-fun(Foo * p);
-delete fo;
-
-fun(Foo &p); //use reference to improve efficiency
-
-uniqu_ptr<Foo> up(new Foo() );
-fun(uniqu_ptr<Foo>& up); //use reference here
- //to avoid copy, uniqu_ptr can't copy
-
-fun(uniqu_ptr<Foo> down);  //prototype
-fun(std::move(up) );
-\end{lstlisting}
-
-\item \textbf{Function example3: return from function.}
-\begin{enumerate}
-\item As a function return value. if you don't want to create dynamically or large array, don't use new. Don't  use reference refer to a local object created inside of fun.
-\item If you have to use New, and you want to transfer Ownership from callee to caller. You should use unique\_ptr.
-\item If there is no clear single owner, store and return shared\_ptr.(in this example, caller of fun() is single owner, so use unique\_ptr)
-\end{enumerate}
-
-\begin{lstlisting}[frame=single, language=c++]
-Foo* fun(){   //old c style.
-........
-return new Foo();
-}
-
-unique_ptr<Foo> fun(){  // this is better.
-........
-return unique_ptr<Foo>(new Foo()) ;
-}
-\end{lstlisting}
-\item Below use shared\_ptr, because Server is public used, and no single owner.
-\begin{lstlisting}[frame=single, language=c++]
-shared_ptr<Server> buildNewServer(){  // this is better.
-return shared_ptr<Foo>(new Foo()) ;
-}
-
-shared_ptr<Server> serverForClass1 = buildNewServer();
-shared_ptr<Server> serverForClass2  = serverForClass1;
-\end{lstlisting}
-
-\end{itemize}
-
 
 
 
@@ -3143,6 +2417,767 @@ sprintf(.....);
 \end{itemize}
 
 
+\section{pointer and smart pointer}
+
+\subsection{function pointer}
+\begin{itemize}
+
+\item A real example of function pointer is set\_new\_handler. It accepts a function pointer and return the same function pointer, so declaring such format is a little difficult.
+\begin{lstlisting}[frame=single, language=c++]
+void failNew(){
+cerr<<"Fail now"<<endl
+abort();
+}
+-----------------------------------------
+extern void ( *set_new_handler ( void (*)() ) ) ();
+// This function declaration is very complex.
+set_new_handler(failNew);
+\end{lstlisting}
+
+\item A better method is to use typedef method.
+\begin{lstlisting}[frame=single, language=c++]
+typedef void(* FunPtr)();
+
+FunPtr (*set_new_handler) (FunPtr);
+
+set_new_handler(failNew);
+\end{lstlisting}
+
+\item in C++ 11, When you want to function pointer, encourage you to use more lambda idiom. You also can use auto to store a lambda function for future use.
+\end{itemize}
+
+\subsection{When to use new?}
+\begin{itemize}
+
+\item When do you use smart pointer? Here I change this questions to another question, When do you use pointer?
+\begin{enumerate}
+\item An new object remain in existence, until you delete it. (you control the life time of it, maybe you create it in fun1,then delete it in fun4. so the obj is neither stack life nor global life. You may or may not transfer \textbf{ownership} between functions.)
+
+\item When you want to dynamic create a obj in runtime according runtime condition or user input. (maybe don't create it. ) Below code demonstrate previous two conditions.  ToothBrush need to be control life time and created dynamically.
+\begin{lstlisting}[frame=single, language=c++]
+class Person{
+ToothBrush* pbrush;
+
+buyNewBrush(string &name){
+    if(pbrush != nullptr}{
+	    	delete pbrush;
+    }
+    if(name == "Orlab")
+          pbrush = new Brush();
+    }
+}
+~Person(){
+	if(pbrush != nullptr}{
+		delete pbrush;
+    }
+}
+///////////////////
+Person Yan();
+Yan.buyNewBrush("Oralb");
+......Three months later...........
+Yan.buyNewBrush("Philip");
+}
+\end{lstlisting}
+
+\item Large array or resources,  if you allocate in stack, it will cause stack overflow. \textbf{In practices, this item is deprecated, because any time when you use [] or new [], you need consider to use array or vector ans string!}
+\end{enumerate}
+
+\item \textbf{Never say new in c++14!} 
+\end{itemize}
+
+
+\subsection{Smart pointer Basic knowledge}
+
+\begin{itemize}
+\item A simple auto\_ptr source code: You can learn how to overload operator*() and operator->().
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+template <class T> class auto_ptr{
+    T* ptr;
+public:
+    explicit auto_ptr(T* p = 0) : ptr(p) {}
+    ~auto_ptr()                 {delete ptr;}
+    $\Hilight{12}$T& operator*()     {return *ptr;}
+    $\Hilight{12}$T* operator->()    {return ptr;}
+    // ...
+};
+
+auto_ptr<int> aupr;
+//aupr is nullptr even you don't initialize it.
+\end{lstlisting}
+
+\item Why do we need smart pointer?
+\begin{enumerate}
+\item "Just remember" is seldom the best solution! So we need smart pointer to perform delete operator automatically.
+
+\item When throw an exception, or return in the middle of code. delete will not be invoked at all, It will cause memory leaking. When you use smart pointer, If an exception is thrown in the middle of fun, there will no be memory leak.
+\begin{lstlisting}[frame=single, language=c++]
+void methodA() {
+   unique_ptr<int> buf(new int[256]);
+
+   int result = fillBuf(buf))
+   if(result == -1)
+      return;
+}
+\end{lstlisting}
+
+\item smart pointer is nullptr default if you don't initialize. You avoid wild pointer problem.
+
+\item \textbf{smart pointer can manage exclusive ownership or shared ownership automatically. }
+\end{enumerate}
+
+\item There are four kinds of smart pointer: auto\_ptr, unique\_ptr, shared\_ptr and weak\_ptr.  But only unique\_ptr and shared\_ptr are recommended to use. auto\_ptr is now deprecated, and should not be used in new code. When you get a chance, try doing a global search-and-replace of auto\_ptr to unique\_ptr in your code base. weak\_ptr is mainly used for observer, you can always use raw pointer or reference for this purpose. Raw pointer can't check if pointee object is still valid, weak\_ptr can accomplish this task.
+
+\item Why auto\_ptr not recommended? 1) When you assign targetP = sourceP, it will cause sourceP set to be NULL, It will cause trouble when you use sourceP in the future.  2)You can't create container includes auto\_ptr, compiler prohibit you doing so!
+\begin{lstlisting}[frame=single, language=c++]
+auto_ptr<string> ps (new string("hello world") );
+auto_ptr<string> ps1;
+ps1 = ps;   // ps will be set null.
+ps->size() // it will crash the application.
+
+auto_ptr<string> parray[5]; //compiling error.
+auto_ptr<string> ps = parray[2];
+//parray[2] will be set null;
+\end{lstlisting}
+
+\item \textbf{When you construct a smart pointer, you must use 1) a pointer and 2) this pointer must be produced by new.} You can't build smart pointer by address operator. such as unique\_ptr<double> ptr(\&int);   Why? because smart pointer will call delete when it is out of scope.  delete operator has to be used on pointer produced by new operator.
+
+\item Obtain the raw pointer (get), to relinquish control of the pointed object (release), and to replace the object it manages (reset).
+\begin{lstlisting}[frame=single, language=c++]
+string * cp = new string("hello world");
+shared_ptr<string> ps(cp);
+string * cp1 = ps.get(); //use get() get normal pointer.
+\end{lstlisting}
+
+
+\item Smart pointer has bool operator, you can use if to test if it's nullptr directly.
+\begin{lstlisting}[frame=single, language=c++]
+ std::unique_ptr<int> ptr(new int(42));
+ if (ptr) std::cout <<  *ptr << '\n';
+ ptr.reset();
+ if (ptr) std::cout <<  *ptr << '\n';
+\end{lstlisting}
+
+\item Smart pointer and const:
+\begin{lstlisting}[frame=single, language=c++]
+shared_ptr<T> p;        ---> T * p;
+const shared_ptr<T> p;   ---> T * const p;
+shared_ptr<const T> p;   ---> const T * p;
+const shared_ptr<const T> p; ---> const T * const p;
+\end{lstlisting}
+
+\item Smart pointer is used mainly for ownership, It doesn't support Inheritance well.
+ \textbf{Don't use smart pointer when you want to use in polymorphous.}
+
+\end{itemize}
+
+\subsection{unique\_ptr}
+
+\subsubsection{basic}
+\begin{itemize}
+
+\item unique\_ptr basic 1-1: create unique\_ptr from new.    \textbf{make\_unique is better than inside new, inside new is better than outside new.}
+\begin{lstlisting}[frame=single, language=c++]
+string * cp = new string("hello world");
+
+unique_ptr<string> ps = cp; // NOT allow
+
+//ok, but not good style(outside new)
+unique_ptr<string> ps (cp);
+
+//good style(inside new)
+unique_ptr<string> ps (new string("hello world"));
+
+//best style make_unique
+unique_ptr<string> ps( std::make_unique<string>("hello") );
+\end{lstlisting}
+
+\item unique\_ptr basic 1-2: When pass value into a function, \textbf{1) for exit unique\_ptr, use move to transfer ownership, 2) for new unique\_ptr, use make\_unique to assure exception safe.}
+\begin{lstlisting}[frame=single, language=c++]
+void sink( unique_ptr<widget> arg1, unique_ptr<gadget> arg2);
+
+//1) use move
+sink( std::move(exist_uptr_wi), std::move(exist_uptr_ga))
+
+//2) use make function to assure exception safety.
+sink( make_unique<widget>(new ...),
+make_unique<gadget>(new ...) );  // exception-safe
+\end{lstlisting}
+
+\item unique\_ptr basic 2-1: Create unique\_ptr from another unique\_ptr, you have to use move.
+\begin{lstlisting}[frame=single, language=c++]
+unique_ptr<string> ps1 (new string("hello world"));
+
+unique_ptr<string> ps2 ( ps1 ); //compile error, not allow.
+unique_ptr<string> ps2 ( move(ps1) ); //ok
+//ownship transfer from ps1 to ps2, nothing delete.
+\end{lstlisting}
+
+
+\item unique\_ptr basic 3: unique\_ptr assignment
+\begin{lstlisting}[frame=single, language=c++]
+unique_ptr<string> ps1 (new string("ps1"));
+unique_ptr<string> ps2 (new string("ps2"));
+
+ps1= ps2; //compile error, not allow
+
+//method1: use move
+ps1 = std::move(ps2);
+//pointer inside previous ps1 will be deleted.
+// pointer inside ps1 point to "ps2" string now.
+//pointer inside ps2 will set to null
+
+//method2: reset
+ps1.reset(cp); //ok
+//pointer inside previous ps1 will be deleted.
+\end{lstlisting}
+
+\item unique\_ptr basic 4-1: If a program attempts to assign one unique\_ptr to another. The compiler allows it if the source object is a temporary rvalue (It will call move ctor or assignment of unique\_ptr inside.) and disallows it if the source object has some duration. \textbf{It is a move-only type.}
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+unique_ptr<string> ps2 = $\Hilight{19}$uqique_ptr<string>(new string("yo") ); //OK
+
+uqique_ptr<string> fun(){
+return unique_ptr<string> temp(new string("yan");
+}
+pu2 = fun(); //OK
+\end{lstlisting}
+
+\item unique\_ptr basic 4-2: unique\_ptr support source and sink idiom.
+\begin{lstlisting}[frame=single, language=c++]
+unique_ptr fun() //support source
+
+fun(unique_ptr up);  //use move to support sink
+fun(move(other_up));
+\end{lstlisting}
+
+\item unique\_ptr basic 5: Just observer, not transfer ownership , you can get pointer, or use unique\_ptr reference.
+\begin{lstlisting}[frame=single, language=c++]
+unique_ptr<string> ps1 (new string("ps1"));
+
+fun(string* pstr);
+fun(unique_ptr<string> & ref_ptr);
+\end{lstlisting}
+
+\item by default, std::unique\_ptrs are the same size as raw pointers, so efficiency of it is just like raw pointer.
+
+\item Unique\_ptr has new [] version. The existence of std::unique\_ptr for arrays should be of only intellectual interest to you, because std::array, std::vector, and std::string are virtually always better data structure choices than raw arrays. About the only situation I can conceive of when a std::unique\_ptr<T[]> would make sense would be when you're using a C-like API that returns a raw pointer to a heap array that you assume ownership of it.
+\begin{lstlisting}[frame=single, language=c++]
+unique_ptr<double []>  pda(new double[5] );
+// it will call delete [] inside.
+\end{lstlisting}
+
+
+\item When in doubt, prefer unique\_ptr by default, and you can always later move-convert to shared\_ptr if you need it. If you do know from the start you need shared ownership, however, go directly to shared\_ptr via make\_shared. If you compiler report error about unique\_ptr, then you should consider to use shared\_ptr
+
+
+\item unique\_ptr can be used inside of class. Below class B disable value-copying (or to define a suitable copy-constructor  and operator= to handle it safely).
+\begin{lstlisting}[frame=single, language=c++]
+class B {  // this class can't be copy
+public:
+   unique_ptr<int> i;
+   B():i(new int(0)) { }
+};
+\end{lstlisting}
+
+\end{itemize}
+
+
+\subsubsection{unique\_ptr and polymorphism}
+
+\begin{itemize}
+
+\item A common use for std::unique\_ptr is as a factory function return type for objects
+in a hierarchy. detail can be seen "effective modern c++ item 18"
+
+\begin{enumerate}
+\item During construction, std::unique\_ptr objects can be configured to use custom deleters: arbitrary functions (or function objects, including those arising from lambda expressions) to be invoked when it's time for their resources to be destroyed. when a custom deleter can be implemented as either a function or a captureless lambda expression, the lambda is preferable.
+
+\item When a custom deleter is to be used, its type must be specified as the second type argument to std::unique\_ptr.
+\end{enumerate}
+
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+//only c++ 14 support return type deduction
+template<typename... Ts>
+$\Hilight{4}$auto makeInvestment(Ts&&... params) {
+auto delInvmt = [](Investment* pInvestment) {
+makeLogEntry(pInvestment); // makedelete
+delete pInvestment; // Investment
+};
+
+std::unique_ptr<Investment, decltype(delInvmt)>
+pInv(nullptr, delInvmt);
+
+if (...){
+pInv.reset(new Stock($\Hilight{16}$std::forward<Ts>(params)...));
+}
+else if (... ) {
+pInv.reset(new Bond(std::forward<Ts>(params)...));
+}
+return pInv; // as before
+}
+\end{lstlisting}
+
+\item std::unique\_ptr is the C++11 way to express exclusive ownership, but one of its
+most attractive features is that it easily and efficiently converts to a std::shared\_ptr: This is a key part of why std::unique\_ptr is so well suited as a factory function return type. Factory functions can't know whether callers will want to use exclusive ownership semantics for the object they return or whether shared ownership
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+std::shared_ptr<Investment> sp = // converts std::unique_ptr
+makeInvestment( arguments ); // to std::shared_ptr
+\end{lstlisting}
+
+\item how to support polymorphism.
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+void f(unique_ptr<Base> const &base)
+unique_ptr<Derived> derived = unique_ptr<Derived>(new Derived);
+f(derived); //this fail;
+
+f(std::move(derived)); //method 1 work
+
+void f(std::unique_ptr<Derived> const &); //method 2
+
+std::unique_ptr<base> derived = std::make_unique<Derived>(); //method 3
+\end{lstlisting}
+
+
+\end{itemize}
+
+
+\subsubsection{unique\_ptr and container}
+\begin{itemize}
+
+\item If your vector should hold std::unique\_ptr<Fruit> instead of raw pointers (to prevent memory leaks). vector need copy in and copy out. but unique\_ptr don't support copy. So 1) you can use emplace\_back with new pointer, but it will lead memory leak if extending vector size fail. 2) use unname unique\_ptr, 3) use make\_unique .
+\begin{lstlisting}[frame=single, language=c++]
+class Fruit { ... };
+class Pear : Fruit { ... };
+class Tomato : Fruit { ... };
+
+std::vector<std::unique_ptr<Fruit> > m_fruits;
+//method 1, bad
+m_fruits.emplace_back(new Pear);
+
+//method 2, good
+m_fruits.push_back(std::unique_ptr<Fruit>(new Pear));
+m_fruits.push_back(std::unique_ptr<Fruit>(new Tomato));
+
+//method 3, best using std::make_unique:
+m_fruits.push_back(std::make_unique<Pear>());
+m_fruits.push_back(std::make_unique<Tomato>());
+\end{lstlisting}
+
+\item You can store unique\_ptr objects in an STL container providing you don't invoke methods or algorithm, such as copy(), that copy or assign one unique\_ptr to another.  see effective stl item 8.
+
+\begin{lstlisting}[frame=single, language=c++]
+bool compare_by_uniqptr(
+               const unique_ptr<SomeLargeData>& a,
+               const unique_ptr<SomeLargeData>& b) {
+    return a->id < b->id;
+}
+
+sort(vec_byuniqptr.begin(), vec_byuniqptr.end(),
+compare_by_uniqptr);
+\end{lstlisting}
+
+
+\begin{lstlisting}[frame=single, language=c++]
+typedef std::unique_ptr<int> unique_t;
+typedef std::vector< unique_t > vector_t;
+
+vector_t vec2(5, unique_t(new Foo));     // Error (Copy)
+vector_t vec3(vec1.begin(), vec1.end()); // Error (Copy)
+std::copy(vec1.begin(), vec1.end(),
+          std::back_inserter(vec2)); // Error (copy)
+
+vector_t vec3(make_move_iterator(vec1.begin()),
+                 make_move_iterator(vec1.end())); //Ok
+
+std::sort(vec1.begin(), vec1.end());
+// OK, because using Move Assignment Operator
+\end{lstlisting}
+
+
+\end{itemize}
+
+
+\subsection{shared\_ptr}
+\begin{itemize}
+
+\item shared\_ptr basic 1: create shared\_ptr from new.    \textbf{make\_shared is better than inside new, inside new is better than outside new.}
+\begin{lstlisting}[frame=single, language=c++]
+string * cp = new string("hello world");
+
+shared_ptr<string> ps = cp; // NOT allow
+
+//method1: use constructor
+shared_ptr<string> ps (cp); //ok, but not good style
+shared_ptr<string> ps (new string("hello world")); //good style
+
+//method2: make_unique
+unique_ptr<string> ps( std::make_shared<string>("hello world") );
+\end{lstlisting}
+
+\item shared\_ptr basic 2: Create shared\_ptr from another shared\_ptr
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+shared_ptr<string> ps1 (new string("hello world"));
+
+shared_ptr<string> ps2 ( ps1 );
+//use_count of ps1 and ps2 are all 2
+
+shared_ptr<string> ps2 ( move(ps1) );
+// use_count of ps2 is 1, and ps1 is 0.
+$\Hilight{30}$//Just transfer use_count to ps2, not ownership.
+\end{lstlisting}
+
+\item shared\_ptr basic 3: shared\_ptr assignment
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+shared_ptr<string> ps1 (new string("ps1"));
+shared_ptr<string> ps2 (new string("ps2"));
+
+//method1: use assignment
+ps1= ps2;
+$\Hilight{9}$// 1) previous use_count decrements 1(If equal 0, will delete)
+$\Hilight{9}$// 2) ps1 points to current use_count
+$\Hilight{9}$// 3) and current use_count increments 1
+
+//method2: use move
+ps1 = std::move(ps2);
+$\Hilight{9}$// 1) previous use_count decrements 1(If equal 0, will delete)
+$\Hilight{9}$// 2) ps1 points to current use_count
+$\Hilight{9}$// 3) ps2 will not point to use_count, ps1 point it, but NOT increment 1
+
+
+//method3: reset
+ps1.reset(cp); //ok
+//pointer inside previous ps1 will be deleted.
+\end{lstlisting}
+
+\item shared\_ptr basic 4: Just observer, not transfer ownership , you can get pointer, or use shared\_ptr reference.
+\begin{lstlisting}[frame=single, language=c++]
+shared_ptr<string> ps1 (new string("ps1"));
+
+fun(string* pstr);
+fun(shared_ptr<string> & ref_ptr);
+\end{lstlisting}
+
+\item inside of shared\_ptr: \newline
+\includegraphics[scale=0.8]{pics/shared.png}
+
+
+\item When are control block created?
+\begin{enumerate}
+\item std::make\_shared  always creates a control block. It manufactures
+a new object to point to, so there is certainly no control block for that
+object at the time std::make\_shared is called.
+\item A control block is created when a std::shared\_ptr is constructed from a
+unique-ownership pointer (i.e., a std::unique\_ptr ). As part of its construction, the
+std::shared\_ptr assumes ownership of the pointed-to object, so the uniqueownership
+pointer is set to null.
+\item When a std::shared\_ptr constructor is called with a raw pointer, it creates a
+control block.
+\item std::shared\_ptr constructors taking std::shared\_ptrs or std::weak\_ptrs
+as constructor arguments do \textbf{NOT} create new control blocks, because they can rely
+on the smart pointers passed to them to point to any necessary control blocks
+\end{enumerate}
+
+
+\item Like std::unique\_ptr, std::shared\_ptr uses delete as its default resource-destruction mechanism, but it also supports custom deleters.
+\begin{lstlisting}[frame=single, language=c++]
+std::unique_ptr< Widget, decltype(loggingDel) >
+                               upw(new Widget, loggingDel);
+// deleter type is ptr type
+
+std::shared_ptr<Widget> spw(new Widget, loggingDel);
+ // deleter type is not part of ptr type
+\end{lstlisting}
+
+\item In order to correctly use shared\_ptr with an array, you must supply a custom deleter.
+\begin{lstlisting}[frame=single, language=c++]
+template< typename T >
+struct array_deleter {
+  void operator ()( T const * p){
+    delete[] p;
+  }
+};
+
+std::shared_ptr<int> sp( new int[10], array_deleter<int>() );
+\end{lstlisting}
+
+
+\item If the program uses more than one pointer to an object, shared\_ptr is your choice.  Such as you have two objects that contain pointers to the same third object. Or you may have an STL container of pointers.
+
+\item There are at least two lessons regarding std::shared\_ptr use here. First, try to
+avoid passing raw pointers to a std::shared\_ptr constructor. 1) use make\_share(). 2) if you have customed delete and can't use make\_share().   pass the result of new directly
+instead of going through a raw pointer variable.
+
+\begin{lstlisting}[frame=single, language=c++]
+auto pw = new Widget; // pw is raw ptr
+
+std::shared_ptr<Widget> spw1(pw, loggingDel);
+// create control block for *pw
+std::shared_ptr<Widget> spw2(pw, loggingDel);
+// create 2nd control block for *pw!
+
+
+std::shared_ptr<Widget> spw1(new Widget, loggingDel);
+// direct use of new
+std::shared_ptr<Widget> spw2(spw1);
+\end{lstlisting}
+
+
+\item Sometimes, I want to keep file alive, because foo and bar will use them. You can't use RAII auto object. And If you use raw pointer, It's difficult to trace and delete it. shared\_ptr is the best options right now.  you don't needs to worry about deleting file - once both foo and bar have finished and no longer have any references to file (probably due to foo and bar being destroyed), file will automatically be deleted.
+
+\begin{lstlisting}[frame=single, language=c++]
+void setLog(const Foo & foo, const Bar & bar) {
+//File file("/path/to/file", File::append);  1) //RAII auto obj
+//File* file = new File("/path/to/file", File::append); //2) raw new
+   shared_ptr<File> file =
+              new File("/path/to/file", File::append); //3) best
+   foo.setLogFile(file);
+   bar.setLogFile(file);
+}
+\end{lstlisting}
+
+\end{itemize}
+
+
+\subsection{weak\_ptr}
+\begin{itemize}
+\item A truly smart pointer would deal with this problem by tracking
+when it dangles, i.e., when the object it is supposed to point to no longer exists. That's
+precisely the kind of smart pointer std::weak\_ptr is. \textbf{You can't test if a raw pointer is dangle or not.}
+
+\item The relationship begins at birth. std::weak\_ptrs are typically created from std::shared\_ptrs. You can only create a weak\_ptr out of a shared\_ptr or another weak\_ptr. So the idea would be that the owner of the pointer hold a shared\_ptr instead of a raw pointer.
+
+\item std::weak\_ptrs can't be dereferenced, nor can they be tested for nullness. That's because std::weak\_ptr isn't a standalone smart pointer. It's an augmentation of std::shared\_ptr. Almost the only things you can do are to interrogate it to see if the managed object is still there, or construct a shared\_ptr from it.
+
+\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+auto spw =
+std::make_shared<Widget>();
+// the pointed-to Widget's ref count (RC) is 1.
+
+std::weak_ptr<Widget> wpw(spw);
+// wpw points to same Widget as spw. RC remains 1
+...
+spw = nullptr;
+// RC goes to 0, and the Widget is destroyed.
+// wpw now dangles
+$\Hilight{12}$if (wpw.expired())
+// if wpw doesn't point to an object…
+\end{lstlisting}
+
+\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+std::shared_ptr<Widget> spw1 = wpw.lock();
+// if wpw's expired, spw1 is null
+auto spw2 = wpw.lock();
+// same as above, but uses auto
+
+std::shared_ptr<Widget> spw3(wpw);
+// if wpw's expired, throw std::bad_weak_ptr
+\end{lstlisting}
+
+
+
+\item Potential use cases for std::weak\_ptr includes: caching, observer lists, and the prevention of std::shared\_ptr cycles.  All the detail can be seen in "Effective Modern ++" Item 20.
+\begin{lstlisting}[frame=single, language=c++]
+std::shared_ptr<const Widget> fastLoadWidget(WidgetID id)
+{
+static std::unordered_map<WidgetID,
+std::weak_ptr<const Widget>> cache;
+auto objPtr = cache[id].lock();
+// objPtr is std::shared_ptr to cached object (or null
+// if object's not in cache)
+if (!objPtr) { // if not in cache,
+objPtr = loadWidget(id); // load it
+cache[id] = objPtr; // cache it
+}
+return objPtr;
+}
+\end{lstlisting}
+
+
+\end{itemize}
+
+\subsection{make function}
+\begin{itemize}
+
+\item Don't use make\_unique if you need a custom deleter or are adopting a raw pointer from elsewhere.
+
+\item make\_unique doesn't joined the Standard Library until c++14.
+
+\item make\_unique just perfect-forwards its parameters to the constructor of the object being created, constructs a std::unique\_ptr from the raw pointer new produces, and returns the std::uniqu\_ptr so created. \textbf{make\_unique doesn't support arrays or custom deleters.}
+
+\item std::make\_unique and std::make\_shared are two of the three make functions: functions that take an arbitrary set of arguments, perfect-forward them to the constructor for a dynamically allocated object, and return a smart pointer to that object. The third make function is std::allocate\_shared
+\item make function has tree advantage: simply, exception safety and allocate once for efficiency.
+
+\begin{enumerate}
+\item The method of using new repeat the type being created, but the make functions don't.  The second reason to prefer make functions has to do with exception safety.
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+auto upw1(std::make_unique<Widget>()); // with make func
+std::unique_ptr<$\Hilight{4}$Widget> upw2(new $\Hilight{4}$Widget); // without make func
+
+auto spw1(std::make_shared<Widget>()); // with make func
+std::shared_ptr<Widget> spw2(new Widget); // without make func
+\end{lstlisting}
+
+\item It's obvious that this code entails a memory allocation, but it actually performs two. Item 19 explains that every std::shared\_ptr points to a control block containing, among other things, the reference count for the pointed-to object. That's because std::make\_shared allocates a single chunk of
+memory to hold both the Widget object and the control block.
+\end{enumerate}
+
+\item make function has its limitation:
+\begin{enumerate}
+\item For example, none of the make functions permit the specification of custom deleters.
+
+\item the perfect forwarding code uses parentheses, not braces. The bad news is that if you want to construct your pointed-to object using a braced initializer, you must use new directly. Using a make function would require the ability to perfect-forward a braced initializer, but, as Item 30 explains, braced initializers can't be perfect-forwarded.
+
+\item As long as std::weak\_ptrs refer to a control block (i.e., the weak count is greater
+than zero), that control block must continue to exist. And as long as a control block
+exists, the memory containing it must remain allocated. The memory allocated by a
+std::shared\_ptr make function, then, can't be deallocated until the last
+std::shared\_ptr and the last std::weak\_ptr referring to it have been destroyed
+\end{enumerate}
+
+\item If you can't use make function, you have to create shared\_ptr first, then pass it to function, but a better way is to move it.
+\begin{lstlisting}[frame=single, language=c++]
+std::shared_ptr<Widget> spw(new Widget, cusDel);
+processWidget(spw, computePriority()); // correct, but not
+// optimal; see below
+
+processWidget(std::move(spw), // both efficient and
+computePriority()); // exception safe
+\end{lstlisting}
+
+\end{itemize}
+
+
+\subsection{smart pointer Scenario}
+
+\begin{itemize}
+
+\item Smart pointer general guides:
+
+\begin{enumerate}
+
+\item You must ensure that there is only one manager object for each managed object. You do this by writing your code so that when an object is first created, it is immediately given to a shared\_ptr to manage, \textbf{and any other shared\_ptrs or weak\_ptrs that are needed to point to that object are all directly or indirectly copied or assigned from that first shared\_ptr.} The customary way to ensure this is to write the new object expression as the argument for a shared\_ptr constructor, or use the make\_shared function template described below.
+
+\item The exception to this immediate assignment rule is things like factory methods that return a plain pointer to the object they create -- in this case however, the callee still should generally be immediately assigning this returned object to a shared\_ptr or unique\_ptr.  Methods should return a plain-pointers when it is up to the caller to handle ownership of the object(exclusive ownership or shared ownership).
+
+\item Methods can take plain-pointers as their arguments for just observe it. Or use smart pointer to transfer or get ownership.
+\begin{lstlisting}[frame=single, language=c++]
+ObserveFun(Foo* p);
+ObserveFun(smart_pointer.get() );
+ObserveFun(unique_ptr<Foo> &p);
+//Not use very often, can be used as fun_obj
+// in a container of unique_ptr.
+
+UniqueFun(unique_ptr<Foo> p);
+UniqueFun(make_unique_ptr<Foo>(new Foo() )); //get ownership
+UniqueFun(move(other_unique_ptr) )  //transfer ownership
+
+SharedFun(shared_ptr<Foo> p);
+\end{lstlisting}
+
+\item If you want to get the full benefit of smart pointers, your code should avoid using raw pointers to refer to the same objects; otherwise it is too easy to have problems with dangling pointers or double
+deletions. In particular, smart pointers have a get() function that returns the pointer member variable
+as a built-in pointer value. This function is rarely needed. As much as possible, leave the built-in
+pointers inside the smart pointers and use only the smart pointers.
+
+\end{enumerate}
+
+
+\item Three policy of smart pointer usage:
+\begin{enumerate}
+\item \textbf{Owership policy: use smart pointer.}
+\item \textbf{Observer Policy : use raw pointer, reference or weak\_ptr}
+\item Nullity Policy: Not allow nullptr, prefer to use reference. \textbf{prefer reference than pointer}
+\end{enumerate}
+
+
+\item When you want to use raw pointer in STL container, There are two things you need to consider:
+\begin{enumerate}
+\item  Be wary of remove-like algorithms on containers of pointers. "effective STL item 33"
+\item When using containers of newed pointers, remember to delete the pointers before the container is destroyed. "effective STL item 7". \textbf{All these two problems can be resolved by using smart pointer.}
+\end{enumerate}
+
+\item \textbf{Observer pointer,observing pointers are pointers which do not keep the pointed object alive} raw pointers are bad when used for performing manual memory management, i.e. new and delete. When used purely as a means to achieve reference semantics and pass around non-owning, observing pointers, there is nothing intrinsically dangerous in raw pointers. Just not to dereference a dangling pointer
+\begin{lstlisting}[frame=single, language=c++]
+observe(subject * s1)
+// subject is a class ovserver is function.
+//just use raw pointer subject, use weak_ptr or raw pointer.
+//observer doesn't have owner policy and
+// life time policy with subject
+\end{lstlisting}
+
+\item \textbf{Function example 1: Inside a function}
+\begin{enumerate}
+\item If you don't want to create dynamically or large array, don't use new. Just use local auto object.
+\item When you have to use new, and this function has \textbf{Ownership of pointer, means that they have the same life time},  use unique\_ptr.
+\end{enumerate}
+\begin{lstlisting}[frame=single, language=c++]
+fun(){
+Foo fo();
+// it make obj directly,
+//when you don't need dynamic.
+
+if(input == "Foo")
+       uniqu_ptr<Foo> up(new Foo() );
+//When you need new, use uniqu_ptr
+}
+\end{lstlisting}
+
+
+\item \textbf{Function example 2 : argument of a function.}
+\begin{enumerate}
+\item As a parameter, pass it to a function. if you don't want to create dynamicly or large array, don't use new. Just use reference.
+\item If you have to use new,  use uniqu\_ptr \& as argument.  \textbf{Here, You just want to observe sth, no ownership transfer}
+\item \textbf{If you want to transfer ownership to callee from caller, use uniqu\_ptr, and use move.}
+\item \textbf{If you want to shared ownership to callee from caller, use shared\_ptr}
+\end{enumerate}
+
+\begin{lstlisting}[frame=single, language=c++]
+Foo *fo = new Foo();  //bad smell here.
+fun(Foo * p);
+delete fo;
+
+fun(Foo &p); //use reference to improve efficiency
+
+uniqu_ptr<Foo> up(new Foo() );
+fun(uniqu_ptr<Foo>& up); //use reference here
+ //to avoid copy, uniqu_ptr can't copy
+
+fun(uniqu_ptr<Foo> down);  //prototype
+fun(std::move(up) );
+\end{lstlisting}
+
+\item \textbf{Function example3: return from function.}
+\begin{enumerate}
+\item As a function return value. if you don't want to create dynamically or large array, don't use new. Don't  use reference refer to a local object created inside of fun.
+\item If you have to use New, and you want to transfer Ownership from callee to caller. You should use unique\_ptr.
+\item If there is no clear single owner, store and return shared\_ptr.(in this example, caller of fun() is single owner, so use unique\_ptr)
+\end{enumerate}
+
+\begin{lstlisting}[frame=single, language=c++]
+Foo* fun(){   //old c style.
+........
+return new Foo();
+}
+
+unique_ptr<Foo> fun(){  // this is better.
+........
+return unique_ptr<Foo>(new Foo()) ;
+}
+\end{lstlisting}
+\item Below use shared\_ptr, because Server is public used, and no single owner.
+\begin{lstlisting}[frame=single, language=c++]
+shared_ptr<Server> buildNewServer(){  // this is better.
+return shared_ptr<Foo>(new Foo()) ;
+}
+
+shared_ptr<Server> serverForClass1 = buildNewServer();
+shared_ptr<Server> serverForClass2  = serverForClass1;
+\end{lstlisting}
+
+\end{itemize}
+
+
+
+
 \section{reference and rvalue reference}
 \subsection{reference basic}
 \begin{itemize}
@@ -3573,8 +3608,146 @@ cout<<str<<endl // print zello here.
 \end{itemize}
 
 
-\subsection{Universal reference}
+
+
+\subsection{function interface design}
+
+\subsubsection{parameter design}
 \begin{itemize}
+\item The move copy ctor and move assignment operator give us a idea how to improve function interface design. By now, you imagine you have a fun, then you have three operations inside, 1) read 2) copy 3) write.
+
+\item For read, "const type\&" is enough, For write, "type\&" is good, because I don't need to write sth into prvalue. so:
+\begin{lstlisting}[frame=single, language=c++]
+writeFun(Foo &);
+
+writeFun(foo1+foo2) // will not compile, foo1+foo2 is rvalue.
+\end{lstlisting}
+
+
+
+\item For copy, thing become interesting. because for rvalue, we can move directly. Our goal is that we use move for rvalue, so there are three options: 1) overlaod copyFun to support const Foo\& and Foo \&\&.  2) Use pass-value fun(Foo ) 3) Use universal reference
+\begin{lstlisting}[frame=single, language=c++]
+fun(Foo value){
+vector<Foo> vect;
+vect.push_back(std::move(value)); //use move to implement
+}
+\end{lstlisting}
+
+\begin{tabular}{|c|c|c|}
+\hline
+ & lvalue  & rvalue \\
+\hline
+copyFun(Foo foo) & \specialcell[t]{copy parameter\\move inside} & \specialcell[t]{move parameter \\ move inside} \\
+\hline
+copyFun(Foo \&)  & copy inside & (NOT support) \\
+\hline
+copyFun(const Foo \&) & copy inside & copy inside \\
+\hline
+copyFun(Foo \&\&)  & (NOT support) & move inside \\
+\hline
+\specialcell[t]{template<T\&\&> \\
+copyFun(T \&\&)}  & copy inside & move inside \\
+\hline
+\end{tabular}
+
+ 
+\item Use Overload fun to deal with rvalue only. So usually function to accept rvalue reference doesn't exit by itself, it just stay with another version to accept lvalue, fun(const Foo\& foo);
+\begin{lstlisting}[frame=single, language=c++]
+//rvalue reference
+fun(Foo&& foo);
+fun(foo1+foo2) // will compile, It means that inside fun
+// you will steal resource. 
+fun(f_return_foo()); // call move ctor.
+\end{lstlisting}
+
+\item Next, No overload, just pass value to deal with lvalue and rvalue at the same time.
+\begin{lstlisting}[frame=single, language=c++]
+struct S{
+    void initByVal(SomeType param); // can now steal from param
+};
+
+SomeType t;
+s.initByVal(t); // deal with lvalue 
+s.initByVal(std::move(t)); // move data to param, then steal inside
+\end{lstlisting}
+
+\item Last, No overload, just pass rvalue  reference to deal with lvalue and rvalue at the same time.
+\begin{lstlisting}[frame=single, language=c++]
+struct S{
+    void initByRef(SomeType&& param);
+};
+
+SomeType t;
+s.initByRef(std::move(t)); // this works, and even better (less moves)
+s.initByRef(SomeType()); // this also works
+\end{lstlisting}
+
+\item But for lvalue, you need a help function here.
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T>
+T copy_to_temp(const T& t) { return t; }
+
+SomeType t; // I'll need t later, so cannot std::move(t)
+s.initByRef(copy_to_temp(t)); // but can copy
+
+s.initByVal(t); // note that here t is also copied, it just happens implicitly
+\end{lstlisting}
+
+\item the same idea can be applied to move-only types (such as unique\_ptr<T>)
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T>
+T move_to_temp(T& t) { return std::move(t); }
+
+void foo(unique_ptr<SomeType>&& param);
+
+unique_ptr<SomeType> p;
+foo(move_to_temp(p)); // note: this does move, p will become empty
+foo(std::move(p)); //here, p will not become empty. 
+\end{lstlisting}
+
+
+\item More explanation.
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T>
+T move_to_temp1(T& t) { return std::move(t); }
+//here move ctor is called when return to a value
+
+
+T&& move_to_temp2(T& t) { return std::move(t);}
+//here no move ctor is called, just reference value assignment.
+
+void foo(unique_ptr<SomeType>&& param);
+
+unique_ptr<SomeType> p;
+foo(move_to_temp1(p));  //compile ok, return value is prvalue
+foo(move_to_temp2(p));  //compile ok, return value is xvalue
+\end{lstlisting}
+
+\end{itemize}
+
+\subsubsection{universal reference parameter}
+\begin{itemize}
+
+\item The first of the remaining two rules for rvalue references affects old-style lvalue references as well. Recall that in pre-11 C++, it was not allowed to take a reference to a reference: something like A\&\& would cause a compile error. C++11, by contrast, introduces the following reference collapsing rules1:
+\begin{lstlisting}[frame=single, language=c++]
+A& & becomes A&
+A& && becomes A&
+A&& & becomes A&
+A&& && becomes A&&
+\end{lstlisting}
+
+Secondly, there is a special template argument deduction rule for function templates that take an argument by rvalue reference to a template argument:
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T>
+void foo(T&&);
+\end{lstlisting}
+Here, the following apply:
+\begin{enumerate}
+
+\item When foo is called on an lvalue of type A, then T resolves to A\& and hence, by the reference collapsing rules above, the argument type effectively becomes A\&.
+
+\item When foo is called on an rvalue of type A, then T resolves to A, and hence the argument type becomes A\&\&.
+\end{enumerate}
 
 \item There are two common ways to get an xvalue expression: 1) Use std::move to move an object. or
 2) Use std::forward to forward an rvalue.
@@ -3615,60 +3788,6 @@ void push_back(T&& x); //no type deduction
 };
 \end{lstlisting}
 
-\end{itemize}
-
-
-
-
-
-
-\subsection{function interface design}
-
-\subsubsection{parameter design}
-\begin{itemize}
-\item The move copy ctor and move assignment operator give us a idea how to improve function interface design. By now, you imagine you have a fun, then you have three operations inside, 1) read 2) copy 3) write.
-
-\item For read, "const type\&" is enough, For write, "type\&" is good, because I don't need to write sth into prvalue. so:
-\begin{lstlisting}[frame=single, language=c++]
-writeFun(Foo &);
-
-writeFun(foo1+foo2) // will not compile, foo1+foo2 is rvalue.
-\end{lstlisting}
-
-\item For copy, thing become interesting. because for rvalue, we can move directly, and at the same time, we have ROV.
-
-\begin{tabular}{|c|c|c|}
-\hline
- & lvalue  & rvalue \\
-\hline
-copyFun(Foo foo) & \specialcell[t]{copy parameter\\move inside} & \specialcell[t]{move parameter \\ move inside} \\
-\hline
-copyFun(Foo \&)  & copy inside & (NOT support) \\
-\hline
-copyFun(const Foo \&) & copy inside & copy inside \\
-\hline
-copyFun(Foo \&\&)  & (NOT support) & move inside \\
-\hline
-\specialcell[t]{template<T\&\&> \\
-copyFun(T \&\&)}  & copy inside & move inside \\
-\hline
-\end{tabular}
-
-\item Our goal is that we use move for rvalue, so there are three options: 1) overlaod copyFun to support const Foo\& and Foo \&\&.  2) Use pass-value fun(Foo ) 3) Use universal reference
-\begin{lstlisting}[frame=single, language=c++]
-fun(Foo value){
-vector<Foo> vect;
-vect.push_back(std::move(value)); //use move to implement
-}
-\end{lstlisting}
-
-\item Use Overload fun to deal with rvalue only. So usually function to accept rvalue reference doesn't exit by itself, it just stay with another version to accept lvalue, fun(const Foo\& foo);
-\begin{lstlisting}[frame=single, language=c++]
-//rvalue reference
-fun(Foo&& foo);
-fun(foo1+foo2) // will compile, It means that inside fun
-// you will steal resource. It's not common usage.
-\end{lstlisting}
 
 \item You can use universal reference too,  but inside, you have to use forward function, and implementation is a little difficult.  Detail can be seen "effective modern c++ item 41".
 
@@ -3712,6 +3831,70 @@ unique_ptr<T> make_unique(Args&&... args); // Standard
 overload being called more frequently than expected. Perfect-forwarding constructors are especially problematic, because they're typically better matches than copy constructors for non-const lvalues, and
 they can hijack derived class calls to base class copy and move constructors. detail can be seen in "effective modern c++ item 26"
 
+\item By using auto\&\& var = <initializer> you are saying: I will accept any initializer regardless of whether it is an lvalue or rvalue expression and I will preserve its constness. This is typically used for forwarding (usually with T\&\&). The reason this works is because a "universal reference", auto\&\& or T\&\&, will bind to anything.
+
+\item You might say, well why not just use a const auto\& because that will also bind to anything? The problem with using a const reference is that it's const! You won't be able to later bind it to any non-const references or invoke any member functions that are not marked const.
+\begin{lstlisting}[frame=single, language=c++]
+auto&& vec = some_expression_that_may_be_rvalue_or_lvalue;
+auto i = std::begin(vec);
+(*i)++;
+
+auto         => will copy the vector, but we wanted a reference
+auto&        => will only bind to modifiable lvalues
+const auto&  => will bind to anything but make it const, giving us const_iterator
+const auto&& => will bind only to rvalues
+\end{lstlisting}
+
+\item If you then use std::forward on your auto\&\& reference to preserve the fact that it was originally either an lvalue or an rvalue, your code says: Now that I've got your object from either an lvalue or rvalue expression, I want to preserve whichever valueness it originally had so I can use it most efficiently - this might invalidate it. As in:
+\begin{lstlisting}[frame=single, language=c++]
+auto&& var = some_expression_that_may_be_rvalue_or_lvalue;
+// var was initialized with either an lvalue or rvalue, but var itself
+// is an lvalue because named rvalues are lvalues
+use_it_elsewhere(std::forward<decltype(var)>(var));
+\end{lstlisting}
+
+
+\begin{lstlisting}[frame=single, language=c++]
+std::vector<int> global_vec{1, 2, 3, 4};
+
+template <typename T>
+T get_vector()
+{
+  return global_vec;
+}
+
+template <typename T>
+void foo()
+{
+  auto&& vec = get_vector<T>();
+  auto i = std::begin(vec);
+  (*i)++;
+  std::cout << vec[0] << std::endl;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[frame=single, language=c++]
+foo<std::vector<int>>();
+std::cout << global_vec[0] << std::endl;
+foo<std::vector<int>&>();
+std::cout << global_vec[0] << std::endl;
+\end{lstlisting}
+
+
+\begin{lstlisting}[frame=single, language=c++]
+if (std::is_lvalue_reference<decltype(var)>::value) {
+  // var was initialised with an lvalue expression
+} else if (std::is_rvalue_reference<decltype(var)>::value) {
+  // var was initialised with an rvalue expression
+}
+\end{lstlisting}
+
+
+\end{itemize}
+
+
+\subsubsection{RVO}
+\begin{itemize}
 
 \item When you function return a value.
 \begin{enumerate}
@@ -3739,27 +3922,6 @@ return std::forward<T>(frac);
 \item Never apply std::move or std::forward to local objects if they would otherwise
 be eligible for the return value optimization.
 \end{enumerate}
-
-\end{itemize}
-
-
-\subsubsection{return design}
-\begin{itemize}
-\item Main idea about this subsection:
-\begin{enumerate}
-\item return value.
-\item return plain reference.
-\item return rvalue reference.
-\end{enumerate}
-
-\item It's very important understand there are two phrases when you return from function. The first step  is from inside fun fauto to ouside of function ftemp(unname tempory), then fauto disappear.  Then in second step, \textbf{Move} from ftemp to flast. because ftemp is rvalue.
-\begin{lstlisting}[frame=single, language=c++]
-Foo fun(){
- return fauto;
-}
-
-Foo flast = fun();
-\end{lstlisting}
 
 \item Foo f1 = fun(); When function finish, ctor is called first time, from auto-->temp. Then, ctor is called  second time,  temp-->f1. With RVO, It can be build on f1 directly, no ctor is called at all.
 \begin{lstlisting}[frame=single, language=c++]
@@ -3806,6 +3968,7 @@ Foo fun(){
    else
      return Foo(2);
 \end{lstlisting}
+
 \item swap fun
 \begin{lstlisting}[frame=single, language=c++]
 swap( Foo & f1 , Foo& f2){
@@ -3813,6 +3976,8 @@ swap( Foo & f1 , Foo& f2){
    f1 = move(f2);
    f2 = move(temp)
 \end{lstlisting}
+
+
 \item vector container include rvalue version and value version.
 \begin{lstlisting}[frame=single, language=c++]
 vector.push_back(Foo(1)); //better
@@ -3823,14 +3988,37 @@ vector.push_back(f1);
 vector.push_back(std::move(f1));
 \end{lstlisting}
 \end{enumerate}
+\end{itemize}
+
+\subsubsection{return design}
+\begin{itemize}
+\item Main idea about this subsection:
+\begin{enumerate}
+\item return value.
+\item return plain reference.
+\item return rvalue reference.
+\end{enumerate}
+
+\item It's very important understand there are two phrases when you return from function. The first step  is from inside fun fauto to ouside of function ftemp(unname tempory), then fauto disappear.  Then in second step, \textbf{Move} from ftemp to flast. because ftemp is rvalue.
+\begin{lstlisting}[frame=single, language=c++]
+Foo fun(){
+ return fauto;
+}
+
+Foo flast = fun();
+\end{lstlisting}
 
 
 \item return reference 1: Now I will talking about return plain reference. based on previous two explanations. You can have some conclusions below:
 
 \begin{enumerate}
-\item Return value can use ROV and move, so It has already had high efficiency.
+\item Return value can use RVO and move, so It has already had high efficiency.
+
 \item You want to return a reference to avoid copy of auto obj inside of function,  but in the end you will get a dangling reference. It's very a dangerous action. \textbf{Don't return reference just for efficient return, It's unnecessary and dangerous}.
+
 \item You don't need return rvalue reference\&\& either.  return value ftemp outside of fun is always rvalue. ftemp->flast is move.  So you don't need to declare Foo\&\& fun
+
+
 \item If you return non-auto obj, You have to 1) new a obj, in this way, you can return pointer directly. 2) input a reference for read, in this way, you can input const reference, You don't need to return it at all. 3) input a reference for write, in this way, you don't need return it either, modification will act on inputted reference directly. So when do we use return plain reference?
 \end{enumerate}
 
@@ -3949,7 +4137,7 @@ struct Beta {
   Beta_ab ab;
   Beta_ab const& getAB() const& { return ab; }
   Beta_ab && getAB() && { return move(ab); }
-   //  Good interface design.
+   $/Hilight{30}$// return && is not Good interface design.
 
    Beta_ab ab = Beta().getAB();
    // It will call move version.
@@ -3957,9 +4145,21 @@ struct Beta {
    //Beta_ab && ab = Beta().getAB(); ab is dangling rref
 
   2) Beta_ab getAB() && { return move(ab); }
-  //  Good interface design.
+  $/Hilight{30}$//Good interface design.
 };
 \end{lstlisting}
+
+\item Why return value is better than return rvalue reference? 1) more clear semantic 2) when use with auto, it's better. 
+\begin{lstlisting}[frame=single, language=c++]
+DataType data() && { return std::move(values); } // why DataType?
+auto values = makeWidget().data();
+//with ROV, just move once. 
+
+DataType && data() && { return std::move(values); }
+auto&& values = makeWidget().data();
+//values will be dangling
+\end{lstlisting}
+
 
 \item \textbf{For only copy lvalue, return value; for movable lvalue, force move;  For universal refence, forward. }
 \begin{lstlisting}[frame=single, language=c++]
