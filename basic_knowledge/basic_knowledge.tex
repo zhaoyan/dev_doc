@@ -2433,7 +2433,7 @@ printf ...
      
 \end{itemize}
 
-\subsection{gcc include}
+\subsection{include}
     \begin{itemize}		
     \item Defaultly, gcc searches the following /usr/local/include/ and /user/include for header file.				
 	\item You can use -I to add your include path, but It will only affect current gcc/g++ command.
@@ -2456,7 +2456,7 @@ printf ...
 		
 			\end{itemize}
 
-\subsection{gcc linker}
+\subsection{linker}
 			 \begin{itemize}
 			 \item By default, gcc searches /usr/local/lib/ and /usr/lib/ for lib files.
 			 
@@ -2483,7 +2483,7 @@ printf ...
 	\item gcc -v give you link library path order and detail information. 
 	\end{itemize}
 
-\subsection{gcc compile .so}
+\subsection{compile .so}
   \begin{itemize}
 
 		  \item Compile .so without soname.(The soname is often used to provide version backwards-compatibility information)
@@ -2515,7 +2515,7 @@ printf ...
 	\end{enumerate}
 	
 \end{itemize}
-\subsection{gcc load .so}
+\subsection{load .so}
 
 		\begin{itemize}
   		 \item \linuxcommand{ldd} will tell you what lib you are using in your executable programme.
@@ -2530,7 +2530,9 @@ printf ...
 
 				\item When you add .so to /lib or /usr/lib, You don't need to modify /etc/ld.so.conf. but you need run ldconfig.  Or this library will not found 
 
-				\item Add .so to other paths(excludes /lib /usr/lob), You need to modify /etc/ld.so.conf. then run ldconfig. 
+				\item Add .so to other paths(excludes /lib /usr/lib), You need to modify /etc/ld.so.conf. then run ldconfig. 
+				
+				\item in Ubuntu, \# echo "/path-to-your-libs/" > /etc/ld.so.conf.d/your.conf After that run sudo ldconfig
 						
 				\item /lib/ld-linux.so.2 is dynamic loader. 
 
@@ -2797,17 +2799,211 @@ distclean: clean
 \end{itemize}
 \subsection{autotools}
 \begin{itemize}
-		\item autotools includes some separate tools, such as autoreconf, autoconf and some others toolds
+		\item autotools includes some separate tools, such as autoreconf, autoconf, automake, autoheader and acolcal.m4 
+		
 		\item \textbf{Three important points:}
 				\begin{enumerate}
 						\item edit makefile.am to write your file content structure
-						\item use autoscan to produce configure.scan, rename configure.ac, then modifiy to make you source code more portalbe. 
-						\item run autoreconf to run all the tools behind the scene.
+						\item use autoscan to produce configure.scan, rename configure.ac, then modifiy to make you source code more portable. 
+						
+						\item run autoreconf to run all the tools behind the scene. You also can run the command step by step.
 				\end{enumerate}
+		
+		\item Two simple fig.s can be seen here.  \\
+			\includegraphics[scale=0.7]{pics/autotool1} \\	
+			\includegraphics[scale=0.7]{pics/autotool2} \\	
+		
+		\item  Basic steps:
+		\begin{enumerate}
+		\item create project
+
+         \item autoscan, then rename configure.scan ==> configure.ac
+         \item aclocal
+         \item autoheader( optional, it will produce config.h.in. But if you use AC\_CONFIG\_HEADER, you must run it.)
+         \item Makefile.am(If you have multi-deep directory, make sure each directory has one)
+            \item libtoolize –automake –copy –force(if configure.ac use libtool)
+           \item automake –add-missing
+           \item autoconf, it will produce configure command
+           \item build another build\_dir, parallel with source project
+            \item cd build\_dir. Then ../source/configure --prefix=/home/yan/install
+            \item make \&\& make install
+            	
+		\end{enumerate}
+			
+				
 		\item I have add some good reference paper to ref directory. When you really need them, just read them first. 
 
 		\item By now, it support VPATHS, you can download source code, then make build1 subdir inside, then cd build1 sub, run ../configure, it will put all obj,bin and lib file in build1 sub directory. if you want to build another version. make build2 subdir inside, then run ../configur --different-conf. You can use the same set source code in this way. 
 \end{itemize}
+\subsubsection{config.ac}
+\begin{itemize}
+\item A example configure.ac
+
+\begin{verbatim}
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+
+AC_PREREQ([2.69])  
+#must have 
+AC_INIT([Hello], [0.3], [zhaoyan.hrb@gmail.com]) 
+#change it 
+AC_CONFIG_SRCDIR([config.h.in])
+# Test if configure.ac is in the right directory
+
+AC_CONFIG_HEADERS([config.h]) 
+#use config.h to customize you source code
+
+AC_CONFIG_MACRO_DIR([build-aux/m4]) 
+# move your local m4 macro to target machine
+# to avoid portable problem
+
+AM_INIT_AUTOMAKE([foreign])
+#use foreign, don't need README... five files.
+
+case $host in 
+    cpu-*-os*)
+        COMP="aaa bbb"
+       
+        ;;
+    *)
+        COMP="ccc"
+        
+        ;;
+esac
+# ../src/configure --host=cpu-yan-os 
+AC_SUBST(COMP)
+# COMP will be aaa bbb, then use AC_SUBST to replace 
+# COMP in the Makefile.am , "SUBDIRS = $(COMP)"
+# in this way, aaa bbb will be compiled, otherwise, 
+# ccc subdirectory will be built
+
+
+# Checks for programs.
+AC_PROG_CXX
+AC_PROG_AWK
+AC_PROG_CC
+AC_PROG_CPP
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+## AC_PROG_RANLIB
+
+AC_ARG_ENABLE([ember_paths],
+[  --enable-ember-paths    cross-compile for EmbeR.],
+[case "${enableval}" in
+  yes) ember_paths=true ;;
+  no)  ember_paths=false ;;
+  *) AC_MSG_ERROR([bad value ${enableval} for --enable-ember-paths]) ;;
+  esac],[ember_paths=false])
+AM_CONDITIONAL([EMBER_PATHS], [test x$ember_paths = xtrue])
+
+LT_INIT
+# use libtools, detail can seen in libtools section
+
+CXXFLAGS='-std=gnu++1y -g -O0'
+# You can set users variable for make here.
+
+# Checks for libraries.
+AC_CHECK_LIB([lib1], [fun1])
+
+# Checks for header files.
+AC_CHECK_HEADERS([fcntl.h stdlib.h])
+
+# Checks for functions.
+AC_FUNC_MALLOC
+AC_CHECK_FUNCS([gethrtime gettimeofday])
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_CHECK_HEADER_STDBOOL
+AC_C_INLINE
+AC_TYPE_INT64_T
+AC_TYPE_MODE_T
+AC_TYPE_SIZE_T
+AC_CHECK_TYPES([ptrdiff_t])
+
+AC_CONFIG_FILES([Makefile
+                 src/Makefile
+                 src/aaa/Makefile
+                 src/bbb/Makefile
+                 src/ccc/Makefile
+                 ])
+#which make file you want to produce.                 
+                
+AC_OUTPUT
+\end{verbatim}
+\item Main function of congiure.ac is to check lib, function and header file in the target system, then give error or config.h. In the end, you source code can custimize its behavior accordingly.
+
+\item Another function is to set some variable, such as CXXFLAGS.
+
+\item configure what subdirectories to be built on the different platform. In another word, what Makefile should be produced.
+
+\end{itemize}
+
+\subsubsection{Makefile.am}
+\begin{itemize}
+\item For recursive directory, each directory should have Makefile.am. on parent directory, just set "SUBDIRS = sub1 sub2"
+
+\item use libtool to produce .so
+\begin{verbatim}
+AM_CXXFLAGS = -Wall -fPIC
+if SWITCH
+AM_CXXFLAGS += -fprofile-arcs -ftest-coverage
+endif
+//For ENABLEGCOV, you can use to 
+../src/configure --enable-switch to turn on it.
+
+lib_LTLIBRARIES = libyan.la
+
+libyan_la_SOURCES =		\
+	src1.cpp					\
+	src2.cpp					\
+	
+AM_CPPFLAGS = -I$(top_srcdir)/src/includes 
+
+libyan_la_LDFLAGS = -version-info 0:0:0 -L/usr/local/lib -L$(ODDS_LIBS)
+libyan_la_LIBADD = -llibabc 
+\end{verbatim}
+
+\item produce .exe
+\begin{verbatim}
+include $(top_srcdir)/common.am
+bin_PROGRAMS = exe1
+
+exe1_SOURCES =						\
+	main.cpp 							\
+	init.cpp							
+
+exe1_CPPFLAGS = -I$(top_srcdir)/src/includes 
+exe1_LDFLAGS = -L/usr/lib64 -L/usr/local/lib64 
+exe1_LDADD = -lboost_log -lboost_log_setup  
+\end{verbatim}
+
+\item For bin, lib, include, they are position. PROGRAMS LIBRARIES and HEADERS, they are categories. So for "bin\_PROGRAMS", it means that I want to produce an executable file and the executable file will be in bin directory.
+
+\item include\_HEADERS means that this file will be installed in include directory.
+\item A simple picture \\
+   \includegraphics[scale=0.7]{pics/am} \\
+\end{itemize}
+
+\subsubsection{libtools}
+\begin{itemize}
+\item libtools is mainly used to produce .so file for different OS.
+\item configure.ac and Makefile.am also support it.
+
+\item In makefile.am use lib\_LTLIBRARIES, not lib\_LIBRARIES(that is used to build static library.)
+
+\item How to compile a .so? See automake.am example in the previous section.
+\item How to use a .so? You can use .la file directly in you automake.am. Pay attention to the two points: compile .so you need to use \_LIBADD to specify dependency. when you use .so you need to use\_LDADD to specify .so dependency. At the same time. .so will be baked into exe with rpath, so you can run your main directly. Don't need to set LD\_LIBRARY\_PATH varaible.
+\begin{verbatim}
+bin_PROGRAMS = main.c
+main_LDADD = /path_to_la/libabc.la 
+#la is special file extension of libtool
+\end{verbatim}
+
+\item A good introduction file can be found in "use GNU Libtool build lib" by wuxiaohu in Chinese version.
+
+\end{itemize}
+
 \subsection{CMAKE}
 \begin{itemize}
 		\item The best way to study is see a simple and complete template file. You can google "most simple but complete cmake example" and take a look.  
