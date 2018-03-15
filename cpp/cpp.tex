@@ -459,10 +459,11 @@ Foo (int a, int b);
 
 \begin{itemize}
 
+\item When you write an implementation file (.cpp, .cxx, etc) your compiler generates a translation unit. This is the object file from your implementation file plus all the headers you \#included in it.
+
 \item Each .cpp is a translation unit. Basically, you should put each class into a single .cpp file, and make sure each .cpp file has a corresponding .h file.  If two classes are highly correlated, they maybe be put in the same .cpp file.
 
 \item A translation unit roughly consists of a source file after it has been processed by the C preprocessor, meaning that header files listed in \#include directives are literally included, sections of code within \#ifdef may be included, and macros have been expanded.
-
 
 \item If you just want a function or variable visible to only current translation unit. You can declare it as static. Or you can use unnamed namespace.  You don't need to put it into a header file.  But in C++, you have to declare function and variable before you use them. Different with C language, In C language, compiler will guess a function prototype from it's usage, It's not good sometimes.
 
@@ -474,7 +475,7 @@ Foo (int a, int b);
 \begin{enumerate}
 \item Use \textbf{\#pragma once} to add include guard, It's not standard, but It has been supported by many compiler. Including g++, clang and MSVC.
 
-\item \textbf{Put your local/private header file in front of system header file. }  Why? There are two advantage, 1) You can know what header file should be included, It's helpful to achieve the goal of demand 2.  2) Sometimes, if you have you own function with same name as system or library, It can give you a compile error; Below example will give you a compile error. But if you put <cmath> before myHead.h. Then, main will use acos in cmath, and your acos will be override.
+\item \textbf{Put your local/private header file in front of system header file. }  Why? There are two advantages, 1) You can know what header file should be included, It's helpful to achieve the goal of demand 2.  2) Sometimes, if you have you own function with same name as system or library, It can give you a compile error; Below example will give you a compile error. But if you put <cmath> before myHead.h. Then, main will use acos in cmath, and your acos will be override.
 
 \begin{lstlisting}[frame=single, language=c++]
 #include "myHead.h"  //double acos(double)
@@ -487,7 +488,50 @@ acos(0.5);
 \item You will need to put the minimal set of \#include statements that are needed to make the header compilable when your local/private header is included on the first place.  It will make your header file self-sufficient.
 \end{enumerate}
 
-\item In .h file, you can include template and inline function.  In fact, you have to put template into .h file. \textbf{Putting a semicolon in the end of head file is good suggestion.} You also need semicolon after declare class. In .cpp file, no semicolon after each function definition.
+\item In .h file, you can include template and inline function.  In fact, you have to put template into .h file. 
+
+\item \textbf{Putting a semicolon in the end of head file is good suggestion.} You also need semicolon after declare class. In .cpp file, no semicolon after each function definition.
+
+\end{itemize}
+
+\subsubsection{declaring and definition}
+\begin{itemize}
+
+\item A declaration introduces an identifier and describes its type, be it a type, object, or function. \textbf{A declaration is what the compiler needs to accept references to that identifier.} 
+\begin{lstlisting}[frame=single, language=c++]
+extern int bar;
+extern int g(int, int);
+double f(int, double); 
+// extern can be omitted for function declarations
+class foo; 
+// no extern allowed for type declarations
+\end{lstlisting}
+
+\item A definition actually instantiates/implements this identifier. It's what the linker needs in order to link references to those entities. These are definitions corresponding to the above declarations:
+\begin{lstlisting}[frame=single, language=c++]
+int bar;
+int g(int lhs, int rhs) {return lhs*rhs;}
+double f(int i, double d) {return i+d;}
+class foo {}; //put ; after calss definition.
+\end{lstlisting}
+
+\item The difference between declaring a symbol and defining a symbol: A declaration tells the compiler about the existence of a certain symbol and makes it possible to \textbf{refer to that symbol everywhere where the explicit memory address or required storage of that symbol is not required.} A definition tells the compiler what the body of a function contains or how much memory it must allocate for a variable.
+
+\item One very important difference between declarations and definitions is that a symbol may be declared many times, but defined only once. For example, you can forward declare a function or class however often you want, but you may only ever have one definition for it. This is called the \textbf{One Definition Rule}.
+
+\item Even you can declare variable, function and class many times, it's not good smell to do that.  If you modify it's name, you need to trace back all the declaration. \textbf{If a function or class is used by many units, You'd better build a global header file "global.h". and put all the declaration there.} 
+
+
+\item In C++ there exists the concept of forward declaring a symbol. We declare the type and name of a symbol so that we can use it where its definition is not required. A direct usage is PIMPL. 1) It will reduce compile-time dependencies.2) hide all the detail. 3) Break cyclic references
+\begin{lstlisting}[frame=single, language=c++]
+// file.hpp
+class C1; // that is forward declaring.
+
+class C2{
+...
+C1* pc1;
+}
+\end{lstlisting}
 
 \item About pimpl, you need to know below:
 
@@ -551,7 +595,67 @@ return *this;
 
 \end{enumerate}
 
+\item You need to know, forward declartion doesn't work if you need to build or access its member. 
+
+\begin{lstlisting}[frame=single, language=c++]
+class Foo;
+Foo f1 = new Foo //error, you need #include Foo.h
+// so compile can know all detail.
+
+fun(Foo* f1){
+f1->a; //error, compile need to know if there is a inside of Foo
+}
+\end{lstlisting}
 \end{itemize}
+\subsubsection{ODR}
+\begin{itemize}
+
+\item For C langauge, there is tenttive defintion rule. You can define the same varaible in two different .c file. The result will be undefined. But in the C++, this is not allowed any more. 
+
+\item For C++ langauge ,tentative defintion of varialbe is not allowed. At the same time, multi-definition of function is not allowed either. but there are another implicit risk as below. Just google "The One-Definition Rule  Andrzej's C++ blog".
+
+\item In the same unit, you can't define class C1 again, but if you put two class C1 in two different .cpp file. compiler will not complain at all. When you run you application probably carsh, it's dangerous. It's a little differnt with function and global variable. Because function and global varaible all need allocation memory.
+
+\item \textbf{Either a name is for everyone (and declared in a header file) or is translation-unit-local in an anonymous namespace.}
+
+\item It specifies the scope of the function to be that of a translation unit. So, if an inline function appears in foo.cpp (either because it was written in it, or because it #includes a header in which it was written, in which case the preprocessor basically makes it so). Now you compile foo.cpp, and possibly also some other bar.cpp which also contains an inline function with the same signature (possibly the exact same one; probably due to both #includeing the same header). When the linker links the two object files, it will not be considered a violation of the ODR, as the inline directive made each copy of the file local to its translation unit (the object file created by compiling it, effectively). This is not a suggestion, it is binding.
+
+It is not coincidental that these two things go together. The most common case is for an inline function to appear in a header #included by several source files, probably because the programmer wanted to request fast inline expansion. This requires the translation-unit locality rule, though, so that linker errors shouldn't arise.
+
+\end{itemize}
+
+
+\subsubsection{linkage}
+\begin{itemize}
+
+\item scope is a property handled by compiler, whereas linkage is a property handled by linker.
+
+\item Another property of internal linkage is that it is only implemented when the variable has global scope, and all constants are by default internally linked.
+
+\item Internal linkage refers to everything only in scope of a translation unit.
+
+\item External linkage refers to things that exist beyond a particular translation unit. In other words, accessible through the whole program, which is the combination of all translation units (or object files).
+
+\item When internal linkage, it means that 1) you can put two same static varaible name in two different .cpp file, no linkage error. 2) you can't put extern before static, in another word, you can't access static variable in another .cpp file. 
+
+\item static has internal linkage. non-const global variable has external linkage.
+
+\item const variables internally link by default unless otherwise declared as \texttt{extern}. It means that:
+
+\begin{enumerate}
+\item You can put \texttt{const int g\_num = 10;} and put it into a header file or global.h file. Then when you need g\_num, just include this header file into you .cpp and it will not cause redefine linkage error.
+
+\item You can put \texttt{const int g\_num = 10;} in one .cpp file. then declare \texttt{extern const int g\_num ;} in global.h file.
+\end{enumerate}
+
+\item \textbf{For const used just in one .cpp, use static and put it in the .h or .cpp file. They can have the same time.}
+
+\item \textbf{For const used by more than two .cpp file, use 1) const in the global.h(default internal linkage) 2) use extern const in the global.h and define in a .cpp file(external linkage)}
+
+
+
+\end{itemize}
+
 \subsection{vexing parsing}
 \begin{enumerate}
 
@@ -1293,37 +1397,6 @@ struct D : A, B {};
 \end{itemize}
 
 \subsection{cv-qualifier}
-\subsubsection{linkage}
-\begin{itemize}
-
-\item The difference between declaring a symbol and defining a symbol: A declaration tells the compiler about the existence of a certain symbol and makes it possible to refer to that symbol everywhere where the explicit memory address or required storage of that symbol is not required. A definition tells the compiler what the body of a function contains or how much memory it must allocate for a variable.
-
-\item One very important difference between declarations and definitions is that a symbol may be declared many times, but defined only once. For example, you can forward declare a function or class however often you want, but you may only ever have one definition for it. This is called the one definition rule.
-
-\item In C++ there exists the concept of forward declaring a symbol. What we mean by this is that we declare the type and name of a symbol so that we can use it where its definition is not required. In this way, if file.hpp change, we don't need recompile current file. 
-\begin{lstlisting}[frame=single, language=c++]
-// file.hpp
-class Class;
-void f(Class object);
-\end{lstlisting}
-
-\item scope is a property handled by compiler, whereas linkage is a property handled by linker.
-
-\item Another property of internal linkage is that it is only implemented when the variable has global scope, and all constants are by default internally linked.
-
-\item When you write an implementation file (.cpp, .cxx, etc) your compiler generates a translation unit. This is the object file from your implementation file plus all the headers you \#included in it.
-
-\item Internal linkage refers to everything only in scope of a translation unit.
-
-\item External linkage refers to things that exist beyond a particular translation unit. In other words, accessible through the whole program, which is the combination of all translation units (or object files).
-
-\item const variables internally link by default unless otherwise declared as \texttt{extern}. It means that you can put \texttt{const int g\_num = 10;} and put it into a header file. Then when you need g\_num, just include this header file into you .cpp and it will not cause redfine linkage error.
-
-\item static has internal linkage. non-const global variable has external linkage.
-
-\end{itemize}
-
-
 
 \subsubsection{const and mutable}
 \begin{itemize}
@@ -1500,11 +1573,12 @@ public:
 
 \item In above example, getLength() is member-wise const function, It just read a length value, not set it from outside. But inside this function, you need to change some private member value, At this time, you need to use mutable keyword, so const getLength() function can modify and cache a length\_ value.
 
+\item const function just put restraint inside of function, it not ask caller to be a const object at all. Why I declare getLength() as const, because if you don't do it. const obj can't call getLength() function at all. 
+
 \end{itemize}
 
 \subsubsection{static}
 \begin{itemize}
-
 
 \item In C++, \textbf{global and static variables initialized to default values.}  But auto variable is random value, because of efficiency consideration.
 
