@@ -1422,7 +1422,7 @@ const int &r = ci;
 \item \texttt{const} mainly used in :
 \begin{enumerate}
 \item functions parameter.
-\item function return value. ( just used for \texttt{const} reference)
+\item function return. ( just used for \texttt{const} reference)
 \item member function.
 \end{enumerate}
 
@@ -1470,13 +1470,12 @@ const char& operator[](int position);
 }
 \end{lstlisting}
 
-\item Most of time, only index operator \[\], assignment operator and \texttt{<<}, \texttt{>>} support return reference. for assignment operator, we'd better return \texttt{const \&} because it will avoid (x=y)=z error. For istream and ostream overload, you don't need return const at all. 
+\item Most of time, only index operator \[\], assignment operator and \texttt{<<}, \texttt{>>} support return reference. For assignment operator, we only need to return \texttt{\&}.  For istream and ostream overload, you don't need return const at all. 
 \begin{lstlisting}[frame=single, language=c++]
-const Array &Array::operator=(const Array &right) {
+Array &Array::operator=(const Array &right) {
    ....
    return *this; //enables x=y= 
 }
-(x=y)=z // If you declare const, this statment is error
 \end{lstlisting}
 
 
@@ -1528,7 +1527,7 @@ void myCode(const Person& p){
 }
 \end{lstlisting}
 
-\item The most common use of const overloading is with the subscript operator. You should generally try to use one of the standard container templates, such as std::vector, but if you need to create your own class that has a subscript operator, here's the rule of thumb: subscript operators often come in pairs.
+\item The most common use of const overloading is with the subscript operator. You should generally try to use one of the standard container templates, such as std::vector, but if you need to create your own class that has a subscript operator, here's the rule of thumb:\textbf{ subscript operators often come in pairs.}
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 class Fred { /*...*/ };
 class MyFredList {
@@ -1543,6 +1542,7 @@ public:
 
 
 \end{enumerate}
+\item \textbf{If your member functions doesn't change member varaible, put const after the function, it will make const obj can invoke this function too.}
 
 \item Do not use "volatile" except in low-level(embedded c) code that deals directly with hardware. \textbf{1) don't optimized code, 2) each time you read volatile, load from RAM instead of using old value.}
 \begin{lstlisting}[frame=single, language=c++]
@@ -1725,6 +1725,7 @@ cout<<"Hello world"<<endl;
 \end{enumerate}
 
 \item unnamed namespace just like static to specify it to local file scope. At the same time, make anonymous namespace as small as possible.  see C++ primer p492
+
 \begin{lstlisting}[frame=single, language=c++]
 // a.cpp file
 static int count;
@@ -1737,10 +1738,11 @@ int count;
 
 \end{itemize}
 
-\subsubsection{name lookup}
+\subsubsection{Name lookup}
 \begin{itemize}
 
 \item Koenig(ADL) lookup: If you supply a function argument of class type (here x, of type A::X), then to look up the correct function name the compiler considers matching names in the namespace (here A) containing the argument's type.
+
 \begin{lstlisting}[frame=single, language=c++]
 namespace NS{
 class T { };
@@ -1755,6 +1757,7 @@ f(parm); // OK, calls NS::f
 
 
 \item ADL can bring name lookup ambiguous problem.  When you call f(parm) f is in global scope, So number 2 is in the \textbf{searching scope} default. But ADL bring namespace NS scope into searching scope. In searching scope, there are two options, so compiler will stop.
+
 \begin{lstlisting}[frame=single, language=c++]
 namespace NS { // some header T.h
 class T { };
@@ -1767,7 +1770,7 @@ f(parm); // ambiguous: NS::f  or global f?
 }
 \end{lstlisting}
 
-\item Just like previous example, g is in the namespace B, with help of ADL, \textbf{searching scope is namespace A + namespace B}. there are two f in the searching scope.
+\item Just like the previous example, g is in the namespace B, with help of ADL, \textbf{searching scope is namespace A + namespace B}. there are two f in the searching scope.
 
 \begin{lstlisting}[frame=single, language=c++]
 namespace A{
@@ -1828,7 +1831,7 @@ int* operator+( T , unsigned ) {/* do something */}
 
 
 
-\subsection{name lookup and overload}
+\subsection{Name lookup and overload}
 \begin{itemize}
 
 \item Phases of the function call process: 1) Name lookup 2)Overload resolution 3)Access control
@@ -1839,17 +1842,17 @@ int* operator+( T , unsigned ) {/* do something */}
 
 \end{itemize}
 
-\subsubsection{name hiding}
+\subsubsection{Name hiding}
 \begin{itemize}
 \item Function name resolution:
 \begin{enumerate}
-\item First, compiler looks in the \textbf{immediate scope},  and makes a list of all functions that has right named  (regardless of whether they're accessible or even take the right number of parameters). If name and type mismatch, compiler will bark.
+		\item First, compiler looks in the \textbf{immediate scope},  and makes a list of all functions that has right named  (regardless of whether they're accessible or even take the right number of parameters). Pay attentions here, \textbf{If here found function time, even the parameter doesn't match, compiler will not continue outward search. It will stop here and bark}. It's a safe measure, compiler think the immediate scope is "priority zone". Maybe you omit parameter, I can't outward search implicitly. 
 
 \item Only if compiler doesn't find any at all, then compiler continue "outward" into the next enclosing scope and repeat.
 
 \item If in the searching scope there are more than one candidate functions, the compiler then stops searching and works with the candidates that it's found, performing overload resolution and then applying access rules.
 
-\item \textbf{overload resolution will not go across scopes!}
+\item \textbf{In one word, overload resolution will not go across scopes!}
 \end{enumerate}
 
 \item There are three examples about immediate scope.
@@ -1915,6 +1918,7 @@ pa->f(3) // will call base f.
 \end{lstlisting}
 
 \item A class name or enumeration name can be hidden by an explicit declaration of that same name — as an object, function, or enumerator — in a nested declarative region or derived class.
+
 \begin{lstlisting}[frame=single, language=c++]
 //example 1
 int x =2;{
@@ -1977,7 +1981,9 @@ b.f(3) // compile error. f(int) is hiding in derived class.
 
 \begin{enumerate}
 \item \textbf{In some cases it's worth arguing that a function of a different name is a better choice than an overloaded function.}
+		
 \item  In the case of constructors, overloading is the only choice.
+
 \item  operator overload is also very common.
 \end{enumerate}
 
@@ -2016,7 +2022,7 @@ If there is a value that you can use for a default, use default parameter.
 
 \item Why \verb=<<= need to be friend? You need to consider:  Because you need to write cout\verb=<<= obj. If you declare \verb=<<= as a member operator, you have to write obj\verb=<<=cout; it looks weird.
 
-\item If you want to overload + operator, and support time t; 3+t;  Previous method can't be work. You need to define a friend function. In order to improve a t+3 efficiency, you also can define a member function time operator+(int i) member function.
+\item If you want to overload + operator, and support time t; 3+t;   You need to define a friend function. In order to improve a t+3 efficiency, you also can define a member function time operator+(int i) member function.
 \begin{lstlisting}[frame=single, language=c++]
 time operator+(const time &t) const;
 //member function.
@@ -2032,9 +2038,9 @@ member function
 //to avoid implicit conversion from 3 to obj.
 \end{lstlisting}
 
-\item ob = ob1+ob2 will changed to:  ob1.operator+(ob2);  the last const make the ob to invoke this operator doesn't change the value in this class. Don't return const value type, It will make "move" not work.
+\item ob = ob1+ob2 will changed to:  ob1.operator+(ob2);  The last const make the ob to invoke this operator doesn't change the value in this class. Don't return const value type, It will make "move" not work.
 
-\item assignment operator overload. 1) return a non-const reference, and 2) to avoid assign self.
+\item assignment operator overload. 1) return a non-const reference, and 2) to avoid assign self. Don't return const reference, somebody said that it can avoid (x=y)=z. But in fact, it's not a normal way to write such code. In STL string, assignment operator just return reference. It give you a clue, \textbf{any time you have questions about interface design, you can see the STL library.}
 \begin{lstlisting}[frame=single, language=c++]
 class & operator=(const class& rhs)
 {
@@ -2046,13 +2052,6 @@ class & operator=(const class& rhs)
 \end{lstlisting}
 
 \end{itemize}
-
-
-
-
-
-
-
 
 
 \subsection{I/O}
@@ -8783,57 +8782,82 @@ printLength(myarray);
 
 \subsection{Brace Init}
 \begin{itemize}
+		\item There are three name: 1)initilizer list, 2) brace initilization, 3) member initilization list(mem-init)
+
 \item Three ways to initialization:
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 int x1 = 27;  //1) asiignment
 int x2(27); //2) parentheses
 int x3{ 27 }; //3) brace init
 int x4={ 27 }; //same as 3
+t$\Hilight{25}$//Don't use = with {} unless you are using c++03
 \end{lstlisting}
 
-\item Call default ctor.
+\item brace initilization is "generic init method", because it can be used in 1) POD type, 2) aggrecation type 3) class member
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
-Widget w2(); // most vexing parse! declares a function
+int a{0};
+string s{"hello"};
+string s2{s}; //copy construction
+vector<string> v{"foo", "bar"}; 
+// Basically the same, ignoring some small technicalities.
+vector<string> v = {"foo", "bar"};
+// Vector takes a braced-init-list of elements.
+// Usable with 'new' expressions.
+auto p = new vector<string>{"foo", "bar"};
 
-Widget w2; call default ctor
-Widget w3{}; //use brace init to do .
-\end{lstlisting}
+// A map can take a list of pairs. Nested braced-init-lists work.
+map<int, string> m{{1, "one"}, {2, "2"}};
 
-
-\item Initializing your objects, arrays, and containers is much easier in C++11 than it used to be in C++03. In C++03, below codes are impossible.
-\begin{lstlisting}[frame=single, language=c++,mathescape=true]
-vector <string> vs = {"alpha", "beta", "gamma"};
-
-map<string, string> stars =
- { {"Superman", "+1 (212) 545-7890"},
-  {"Batman", "+1 (212) 545-0987"}};
-
-double *pd= new double [3] {0.5, 1.2, 12.99};
+double *pd= new double [3] {0.5, 1.2, 12.99}; 
 $\Hilight{22}$//before { no =,  or compile error
 
-class C {
+class C
+{
 int x[4];
 public:
 C(): x{0,1,2,3} {}
 };
 \end{lstlisting}
+\item Uniform Initialization: It will stop narrow if it's out of range of target. but allow if the value is within the range of the target.
 
-\item In C++11, This syntax was generalized, and any object type can now be created with a braced initializer list, known as a braced-init-list in the C++ grammar.
-\begin{lstlisting}[frame=single, language=c++]
-auto p = new vector<string>{"foo", "bar"};
 
-//braced-init-list can be implicitly converted to a return type.
+\item initilizer list can be used in function parameter and return value and for range.  
+\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+// A braced-init-list can be implicitly converted to a return type.
 vector<int> test_function() { return {1, 2, 3}; }
 
 // Iterate over a braced-init-list.
 for (int i : {-1, -2, -3}) {}
 
 // Call a function using a braced-init-list.
-void TestFunction2(std::initializer_list<int> init_list) {}
-TestFunction2({1, 2, 3});
+void TestFunction2(vector<int> v) {}
+TestFunction2({1, 2, 3}); 
 \end{lstlisting}
 
-\item When brace init used as overload initializer\_list, \textbf{it always match initializer\_list}.
+
+\item An empty pair of braces indicates default initialization. Default initialization of POD types usually means initialization to binary zeros, whereas for non-POD types default initialization means default construction:
+
+\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+//C++11: default initialization using {}
+int n{}; //zero initialization: n is initialized to 0
+int *p{}; //initialized to nullptr
+double d{}; //initialized to 0.0
+char s[12]{}; //all 12 chars are initialized to '\0'
+string s{}; //same as: string s;
+char *p=new char [5]{}; // all five chars are initialized to '\0'
+\end{lstlisting}
+
+\item Empty braces mean no arguments, that is to say you get default construction, not an empty std::initializer\_list:
+\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+Widget w1; // calls default ctor
+Widget w2{}; // also calls default ctor
+Widget w3(); // most vexing parse! declares a function!
+
+Widget w4({}); // calls std::initializer_list ctor with empty list
+Widget w5{{}}; // ditto
+\end{lstlisting}
+
+\item When 1)brace init is used, 2) and there are overload initializer\_list, \textbf{it always match initializer\_list}.
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 class Widget {
 public:
@@ -8850,7 +8874,8 @@ Widget w2(10, 5.0); //  calls second ctor
 Widget w2{10, 5.0}; // std::initializer_list ctor
 // (10 and 5.0 convert to long double)
 \end{lstlisting}
-\textbf Compilers' determination to match braced initializers with constructors taking std::initializer\_lists is so strong, it prevails even if the best-match std::initializer\_list constructor can't be called.
+
+\item \textbf Compilers' determination to match braced initializers with constructors taking std::initializer\_lists is so strong, it prevails even if the best-match std::initializer\_list constructor can't be called.
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 class Widget {
 public:
@@ -8859,16 +8884,6 @@ Widget(std::initializer_list<bool> il); // added
 };
 Widget w2{10, 5.0}; // still match init_list,
 //5.0 can't be convert bool, so compile fail.
-\end{lstlisting}
-
-\item Empty braces mean no arguments, that is to say you get default construction, not an empty std::initializer\_list:
-\begin{lstlisting}[frame=single, language=c++,mathescape=true]
-Widget w1; // calls default ctor
-Widget w2{}; // also calls default ctor
-Widget w3(); // most vexing parse! declares a function!
-
-Widget w4({}); // calls std::initializer_list ctor with empty list
-Widget w5{{}}; // ditto
 \end{lstlisting}
 
 \item An example from vector, () and init brace are different in meaning.
@@ -8884,23 +8899,10 @@ std::vector<int> v2{10, 20}; // use initializer_list ctor:
 
 \item If you use a braced initialize list when initializing a variable, use an equals before the open curly brace.
 
-\item An empty pair of braces indicates default initialization. Default initialization of POD types usually means initialization to binary zeros, whereas for non-POD types default initialization means default constructor is invoked. You can omit = under such context.
-
-\begin{lstlisting}[frame=single, language=c++]
-int x = {5}; // When use init, prefer to use =
-string s2={s1};
-short quar[5] = {1,2,3,4,5}
-class c1={3,"aaa"}; //Just like class c1(3,"aaa");
-
-int x{}; //x will be 0
-char str[12]{}; all element will be '\0';
-double y{5}; // you can omit =
-\end{lstlisting}
-
-
 \item \textbf{When you use Type\{\} to define a nameless temporary variable.  don't give variable name.}
 \begin{enumerate}
 \item In C++, anonymous variables are primarily used either to pass or return values without having to create lots of temporary variables to do so.
+
 \item anonymous objects are treated as rvalues (not lvalues, which have an address). This means anonymous objects can only be passed or returned by value or const reference. Otherwise, a named variable must be used instead.
 \end{enumerate}
 
@@ -8913,17 +8915,65 @@ Cents add(const Cents &c1, const Cents &c2){
 cout <<add(Cents{6}, Cents{8}).getCents();
 \end{lstlisting}
 
-\item Uniform Initialization: It will stop narrow if it's out of range of target. but allow if the value is within the range of the target.
+ 
+\begin{lstlisting}[frame=single, language=c++]
+//Initialization
+float3 3Dvec = {1.0, 1.0, 1.0};
+float3 3Dvec2 {1.0, 1.0, 1.0};
+float3 3Dvec3 (1.0, 1.0, 1.0);
 
+//Assignment
+3Dvec = {2.0, 2.0, 2.0};
+3Dvec = float3 (2.0, 2.0, 2.0);
+\end{lstlisting}
 
-\item When use with auto, you need to be careful.
+\item When use with auto, you need to be careful. The only situation where = is preferred over \verb={}= is when using auto keyword to get the type determined by the initializer.
 \begin{lstlisting}[frame=single, language=c++]
 auto d = {1.23};
 // d is a std::initializer_list<double>
 auto d = double{1.23};
+auto d = 1.23
 // Good -- d is a double, not a std::initializer_list.
 \end{lstlisting}
+\item difference between "copy brace initilizer" and "brace initilizaer".
+\begin{lstlisting}[frame=single, language=c++]
+class A{
+	public:
+	A(){};
+	explicit A(int k):m_a(k){};
+	explicit A(const A& rhs){m_a = rhs.m_a;};
+	virtual ~A(){};
+	int m_a;
+};
 
+int main(){
+	A a={110};// will compile error
+	A a{110} //this will work here.
+	A b = {a}; // will compile error.
+	//because there are explicit before.
+}
+\end{lstlisting}
+
+\item If the (single) value you are initializing with is intended to be the exact value of the object, use copy (=) initialization (because then in case of error, you'll never accidentally invoke an explicit constructor, which generally interprets the provided value differently). 
+
+\item If the values you are initializing with are a list of values to be stored in the object (like the elements of a vector/array, or real/imaginary part of a complex number), use curly braces initialization if available.
+
+\item If the values you are initializing with are not values to be stored, but describe the intended value/state of the object, use parentheses. Examples are the size argument of a vector or the file name argument of an fstream.
+
+\item A good reference article is GotW \#1 Solution: Variable Initialization – or Is It?
+
+\item such as vector example, you have to use vector<int>(1,2) to build a vector with one element, the value is 2. When you design a class, avoid providing a constructor that ambiguously overloads with an initializer_list constructor, so that users won’t need to use ( ) to reach such a hidden constructor.When you design a class, avoid providing a constructor that ambiguously overloads with an initializer_list constructor, so that users won’t need to use ( ) to reach such a hidden constructor.
+
+\item basic rules:
+		\begin{enumerate}
+
+				\item Use braced initilization first, because 1) uniform style,this is usefule when you write template programme. 2)avoid narrow 3) For some certain situation, such as class and aggracation, only braced initilization works 4)avoid most vexing parse problems.
+
+				\item Don't use = before braced initilizaiton, it will not work when you define explicit ctor and copy ctor.
+
+				\item Pay attention two traps. 1) If type has list initialization ctor, braced initilization will use it first, and very strongly.  2) For auto type variable. (auto x=\{1,2\} x always is initilizaer\_list type.)
+
+		\end{enumerate}
 \end{itemize}
 
 
