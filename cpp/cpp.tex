@@ -53,7 +53,7 @@
 
 \item \textbf{Don't sweat the small stuff.} Such as how many spaces to indent? space or tab? or must have comment etc. In any interview, style is not an important issue. 
 
-\item \textbf{Use descriptive function and variable name. Even it's a little longer.} Most code is read a lot more than it is typed. In this way, you don't need comment any more. 
+\item \textbf{Use descriptive function and variable name. Even it's a little longer.} Most code is read a lot more than it is typed. And with good function and variable name, comment is unnecessary.
 
 \item \textbf{Don't use abbreviation name unless it's very common, such as CPU and TCP/IP.}
 
@@ -75,13 +75,13 @@
 
 \item Using upperCamelCase for Classes, Structures, Enumerations, Typedef and  Constants;
 
-\item Using lowerCamelCase and verb for function. Such as "getSth" and "doSth"
-d
-\item Using lowercase and underscore  and noun for variable and parameter name. Because for long variable name, It's easier to read. Such as "sth\_for\_dinner"
+\item Using lowerCamelCase and verb for function. Such as \texttt{getSth} and \texttt{doSth}
 
-\item Using "other" or "rhs" as name for copy ctor and assignment operator.
+\item Using lowercase and underscore  and noun for variable and parameter name. Because for long variable name, It's easier to read. Such as \texttt{sth\_for\_dinner}
 
-\item The prefix "is" should be used for boolean variables and methods which return bool.
+\item Using \texttt{other} or \texttt{rhs} as name for copy ctor and assignment operator.
+
+\item The prefix \texttt{is} should be used for boolean variables and methods which return bool.
 
 \end{itemize}
 
@@ -128,7 +128,6 @@ bool fooFun(bool flag, int& result);
 
 \item When you want to comment a large block of code out, use \#if 0 ...  \#endif, It's better than using /* ... */
 
-
 \item Don't duplicate the function or class name in comment. Maybe you will change name later, this inconsistent will confuse comment readers in the future.
 
 \item Install Doxygen in linux, then run \linuxcommand{doxygen -g} in the terminal to produce configure file, the name is Doxyfile.  In Doxyfile, modify two items:
@@ -139,7 +138,6 @@ INPUT = ./src
 then run \linuxcommand{doxygen Doxyfile}, A html directory will be built.
 
 \item Install doxygen on Windows, you can run doxywizard application. You can use GUI to set Doxyfile configuration file.
-
 
 \item Usually you have a standard tree structure of project, that is to say every .cpp has .h file.  Under this circumstance, you should put comment command in .h file. Because .h file is an interface to customer.
 
@@ -194,7 +192,7 @@ return g( x );
 \item Format lambdas like blocks of code.
 \begin{lstlisting}[frame=single, language=c++]
 int cutoff = 7;
-std::find(foo.begin(),foo.end(),[&](const Foo &a, ) ->bool{
+std::find(foo.begin(),foo.end(),[&](const Foo &a ) ->bool{
     return a.blah<cutoff //use reference to get local var
 });
 \end{lstlisting}
@@ -264,11 +262,9 @@ is earlier than dynamic initialization
 
 \item Use \_FILE\_ and \_LINE\_ to capture the current file name and line number. I think that assert use this kind of macro inside.
 
-
 \item Use \texttt{const} replace \texttt{\#define} to define global constants. \texttt{static const} can be used to define constant class member. (\texttt{const} means that it will not change, so I don't need keep multi copy in multi objs, so I use static.)
 
-
-\item Use more typedef to simplify Complicated Type expressions, It's helpful especially in STL. 
+\item Use more typedef or alias to simplify Complicated Type expressions, It's helpful especially in STL. 
  \begin{lstlisting}[frame=single, language=c++]
 typedef std::map< int, int > IntMap;
 typedef IntMap::const_iterator IntMapConstIter;
@@ -349,16 +345,58 @@ for(auto i = con.begin, e = con.end();i!=e; ++i){
 \item The C++11 standard (§ 23.2.1) mandates that end has O(1) complexity, so previous item has no efficiency meaning in C++11.
 
 \item A range-based for loop is introduced in C++11. Use auto\& to aoid copying the each element. Below are highly recommended when yo use STL container.
+		\begin{enumerate}
+				\item For observing the elements, use the following syntax:
 
 \begin{lstlisting}[frame=single, language=c++]
-//g++ -std=c++11
-for(const auto &val : Container) { read(val)};
-for(auto val : Container) { change(val); save(val)};
+for (const auto& elem : container)    
+// capture by const reference
+\end{lstlisting}
 
+\item If the objects are cheap to copy (like ints, doubles, etc.), it's possible to use a slightly simplified form:
+
+\begin{lstlisting}[frame=single, language=c++]
+for (auto elem : container)   
+// capture by value
+\end{lstlisting}            
+
+\item For modifying the elements in place, use:
+
+\begin{lstlisting}[frame=single, language=c++]
+for (auto& elem : container)    
+// capture by (non-const) reference
+\end{lstlisting}
+
+\item If the container uses "proxy iterators" (like std::vector<bool>), use:
+Of course, if there is a need to make a local copy of the element inside the loop body, capturing by value (for (auto elem : container)) is a good choice.
+
+\begin{lstlisting}[frame=single, language=c++]
+for (auto&& elem : container)  
+// capture by &&
+\end{lstlisting}
+
+
+\item Additional notes on generic code. In generic code, since we can't make assumptions about generic type T being cheap to copy, in observing mode it's safe to always use for (const auto\& elem : container).
+(This won't trigger potentially expensive useless copies, will work just fine also for cheap-to-copy types like int, and also for containers using proxy-iterators, like std::vector<bool>.)
+For observing the elements, use:
+
+\begin{lstlisting}[frame=single, language=c++]
+for (const auto& elem : container)
+\end{lstlisting}
+
+\item Moreover, in modifying mode, if we want generic code to work also in case of proxy-iterators, the best option is for (auto&& elem : container).
+(This will work just fine also for containers using ordinary non-proxy-iterators, like std::vector<int> or std::vector<string>.)jFor modifying the elements in place, use:
+
+\begin{lstlisting}[frame=single, language=c++]
+for (auto&& elem : container)
+\end{lstlisting}
+\item If there are pointer inside the container.
+\begin{lstlisting}[frame=single, language=c++]
 //make sure Container contain pointer
 for(auto *ptr: Container){ ptr->change();}
 for(const auto *ptr: Container){ ptr->read();}
 \end{lstlisting}
+\end{enumerate}
 
 \item The range-based version is for: You want to do something with every element in the container, without mutating the container(insert or erase). If you want to mutate the container, Follow idea introduced in Container--Erasure section below.
 
@@ -367,6 +405,7 @@ for(const auto *ptr: Container){ ptr->read();}
 \item For a sequential container, you can use range-based version change element.
 \item For an associate container, only visit each element.
 \end{enumerate}
+
 
 \item Common function interface: From here: \textbf{you can see \texttt{const} only used in pointer or reference type. You should use more \texttt{const} in your projects. }
 
@@ -391,6 +430,7 @@ j=i++; //j = i;  i=i+1;
 \end{lstlisting}
 
 \item How to understand \texttt{*p++} ?
+
 \begin{enumerate}
 \item Precedence of prefix ++ and * is same. Associativity of both is right to left.
 \item Precedence of postfix ++ is higher than both * and prefix ++. Associativity of postfix ++ is left to right.
@@ -421,7 +461,7 @@ while(*p++ != '\0')
 \end{itemize}
 
 \subsection{Basic of C and C++}
-\subsubsection{Basic concept}
+\subsubsection{Basic concepttion}
 \begin{itemize}
 \item C++ inherits basic data type, variable name, statement, expression, and operator, control flow, function, file, head file and library, array, pointer and structure from C language. C++ is subset of C, so any C programs can be compiled by C++. Compared with C language,  C++ include two extensions, one is \textbf{Template} and the other is \textbf{OOP}.
 
@@ -452,6 +492,12 @@ Foo (int a, int b);
 \item If you define a function in a.cpp file(You have to use g++ to compile it), and this function will be used in legacy C system, you need the previous trick again.  You can give lib and head file to C system,  and then the C system can include head file and linked to lib.
 
 \item \textbf{In one word, if you have obj code produced by C or C++, When you want to linked it to current different language, you should consider using "\_\_cplusplus" }
+\item There are three occasions which you need to use extern C
+		\begin{enumerate}
+				\item When you want to produce a DLL or SO.
+				\item When the code will be used by java or python.
+				\item When used with legacy C code.
+		\end{enumerate}
 
 \end{itemize}
 
@@ -503,7 +549,7 @@ extern int bar;
 extern int g(int, int);
 double f(int, double); 
 // extern can be omitted for function declarations
-class foo; 
+class Foo; 
 // no extern allowed for type declarations
 \end{lstlisting}
 
@@ -595,7 +641,7 @@ return *this;
 
 \end{enumerate}
 
-\item You need to know, forward declartion doesn't work if you need to build or access its member. 
+\item You need to know, forward declartion doesn't work if you need to build or access its member. It's only work when you refer it by pointer or reference.
 
 \begin{lstlisting}[frame=single, language=c++]
 class Foo;
@@ -603,27 +649,43 @@ Foo f1 = new Foo //error, you need #include Foo.h
 // so compile can know all detail.
 
 fun(Foo* f1){
-f1->a; //error, compile need to know if there is a inside of Foo
+f1->a; 
+//error, compiler need to know if there is a 
 }
+fun(Foo f1) //error, compiler need to know the sieze
 \end{lstlisting}
 \end{itemize}
+
 \subsubsection{ODR}
 \begin{itemize}
 
 \item For C langauge, there is tenttive defintion rule. You can define the same varaible in two different .c file. The result will be undefined. But in the C++, this is not allowed any more. 
 
+\begin{lstlisting}[frame=single, language=c++]
+a.c
+int g_i = 100;
+////////////////////////////////
+b.c
+int g_i;
+fun(){
+printf("%d",g_i) //will print 100
+//gcc a.c b.c report no error.
+//g++ report error
+//in b.c, if you g_i= 2; gcc report error.
+\end{lstlisting}
+
 \item For C++ langauge ,tentative defintion of varialbe is not allowed. At the same time, multi-definition of function is not allowed either. but there are another implicit risk as below. Just google "The One-Definition Rule  Andrzej's C++ blog".
 
-\item In the same unit, you can't define class C1 again, but if you put two class C1 in two different .cpp file. compiler will not complain at all. When you run you application probably carsh, it's dangerous. It's a little differnt with function and global variable. Because function and global varaible all need allocation memory.
+\item In the same unit, you can't define class C1 again, but if you put two class C1 in two different .cpp file. compiler will not complain at all. When you run you application probably crash, it's dangerous. It's a little differnt with function and global variable. Because function and global varaible all need allocation memory.
 
 \item \textbf{Either a name is for everyone (and declared in a header file) or is translation-unit-local in an anonymous namespace.}
 
-\item It specifies the scope of the function to be that of a translation unit. So, if an inline function appears in foo.cpp (either because it was written in it, or because it \#includes a header in which it was written, in which case the preprocessor basically makes it so). Now you compile foo.cpp, and possibly also some other bar.cpp which also contains an inline function with the same signature (possibly the exact same one; probably due to both \#includeing the same header). When the linker links the two object files, it will not be considered a violation of the ODR, as the inline directive made each copy of the file local to its translation unit (the object file created by compiling it, effectively). This is not a suggestion, it is binding.
+\item  If an inline function appears in foo.cpp (either because it was written in it, or because it \#includes a header in which it was written, in which case the preprocessor basically makes it so). Now you compile foo.cpp, and possibly also some other bar.cpp which also contains an inline function with the same signature (possibly the exact same one; probably due to both \#includeing the same header). When the linker links the two object files, it will not be considered a violation of the ODR, as the inline directive made each copy of the file local to its translation unit (the object file created by compiling it, effectively). This is not a suggestion, it is binding.
 
 It is not coincidental that these two things go together. The most common case is for an inline function to appear in a header \#included by several source files, probably because the programmer wanted to request fast inline expansion. This requires the translation-unit locality rule, though, so that linker errors shouldn't arise.
 
+\item \textbf{Put inline function into the header file.}
 \end{itemize}
-
 
 \subsubsection{linkage}
 \begin{itemize}
@@ -643,7 +705,7 @@ It is not coincidental that these two things go together. The most common case i
 \item const variables internally link by default unless otherwise declared as \texttt{extern}. It means that:
 
 \begin{enumerate}
-\item You can put \texttt{const int g\_num = 10;} and put it into a header file or global.h file. Then when you need g\_num, just include this header file into you .cpp and it will not cause redefine linkage error.
+\item You can put \texttt{const int g\_num = 10;} into a header file or global.h file. Then when you need g\_num, just include this header file into you .cpp and it will not cause redefine linkage error.
 
 \item You can put \texttt{const int g\_num = 10;} in one .cpp file. then declare \texttt{extern const int g\_num ;} in global.h file.
 \end{enumerate}
@@ -651,12 +713,9 @@ It is not coincidental that these two things go together. The most common case i
 \item \textbf{For const used just in one .cpp, use static and put it in the .h or .cpp file. They can have the same time.}
 
 \item \textbf{For const used by more than two .cpp file, use 1) const in the global.h(default internal linkage) 2) use extern const in the global.h and define in a .cpp file(external linkage)}
-
-
-
 \end{itemize}
 
-\subsection{vexing parsing}
+\subsubsection{vexing parsing}
 \begin{enumerate}
 
 \item Use parentheses to group when you declare a variable. \textbf{When you declare something, It's legal to use parentheses to group varaible name.}
@@ -702,8 +761,7 @@ A(a);  // You want to create a temporary obj
 int f(double (*pf)()); //standard way
 int f(double pf()); //You can omit parentheses
                     // just like int x and int (x);
-int f(double ()); for function f, you can omit variable name.                   
-\end{lstlisting}
+int f(double ()); for function f, you can omit variable name.                   \end{lstlisting}
 
 \item Based on all above all the knowledges. We have most complex problem.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
@@ -743,7 +801,7 @@ int equals = 42;                      // OK
 std::unique_ptr<Foo> braces{new Foo}; // Also OK
 
 std::vector<int> bad(6); 
-// ERROR: parentheses not allowed
+//work, but look like a function.
 
 std::vector<int> good{6};
 // OK    
@@ -2598,7 +2656,7 @@ void methodA() {
 \item \textbf{smart pointer can manage exclusive ownership or shared ownership automatically. }
 \end{enumerate}
 
-\item There are four kinds of smart pointer: auto\_ptr, unique\_ptr, shared\_ptr and weak\_ptr.  But only unique\_ptr and shared\_ptr are recommended to use. auto\_ptr is now deprecated, and should not be used in new code. When you get a chance, try doing a global search-and-replace of auto\_ptr to unique\_ptr in your code base. weak\_ptr is mainly used for observer, you can always use raw pointer or reference for this purpose. Raw pointer can't check if pointee object is still valid, weak\_ptr can accomplish this task.
+\item There are four kinds of smart pointer: \texttt{auto\_ptr} \texttt{unique\_ptr} \texttt{shared\_ptr} and \texttt{weak\_ptr}  But only unique\_ptr and shared\_ptr are recommended to use. auto\_ptr is now deprecated, and should not be used in new code. When you get a chance, try doing a global search-and-replace of auto\_ptr to unique\_ptr in your code base. weak\_ptr is mainly used for observer, you can always use raw pointer or reference for this purpose. Raw pointer can't check if pointee object is still valid, weak\_ptr can accomplish this task.
 
 \item Why auto\_ptr not recommended? 1) When you assign targetP = sourceP, it will cause sourceP set to be NULL, It will cause trouble when you use sourceP in the future.  2)You can't create container includes auto\_ptr, compiler prohibit you doing so!
 \begin{lstlisting}[frame=single, language=c++]
@@ -2638,9 +2696,6 @@ shared_ptr<const T> p;   ---> const T * p;
 const shared_ptr<const T> p; ---> const T * const p;
 \end{lstlisting}
 
-\item Smart pointer is used mainly for ownership, It doesn't support Inheritance well.
- \textbf{Don't use smart pointer when you want to use in polymorphous.}
-
 \end{itemize}
 
 \subsection{unique\_ptr}
@@ -2664,7 +2719,16 @@ unique_ptr<string> ps (new string("hello world"));
 unique_ptr<string> ps( std::make_unique<string>("hello") );
 \end{lstlisting}
 
-\item unique\_ptr basic 1-2: When pass value into a function, \textbf{1) for exit unique\_ptr, use move to transfer ownership, 2) for new unique\_ptr, use make\_unique to assure exception safe.}
+\item unique\_ptr basic 1-2: Create unique\_ptr from another unique\_ptr, you have to use move.
+\begin{lstlisting}[frame=single, language=c++]
+unique_ptr<string> ps1 (new string("hello world"));
+
+unique_ptr<string> ps2 ( ps1 ); //compile error, not allow.
+unique_ptr<string> ps2 ( move(ps1) ); //ok
+//ownship transfer from ps1 to ps2, nothing delete.
+\end{lstlisting}
+
+\item unique\_ptr basic 2: When pass value into a function, \textbf{1) for exit unique\_ptr, use move to transfer ownership, 2) for new unique\_ptr, use make\_unique to assure exception safe.}
 \begin{lstlisting}[frame=single, language=c++]
 void sink( unique_ptr<widget> arg1, unique_ptr<gadget> arg2);
 
@@ -2674,15 +2738,6 @@ sink( std::move(exist_uptr_wi), std::move(exist_uptr_ga))
 //2) use make function to assure exception safety.
 sink( make_unique<widget>(new ...),
 make_unique<gadget>(new ...) );  // exception-safe
-\end{lstlisting}
-
-\item unique\_ptr basic 2-1: Create unique\_ptr from another unique\_ptr, you have to use move.
-\begin{lstlisting}[frame=single, language=c++]
-unique_ptr<string> ps1 (new string("hello world"));
-
-unique_ptr<string> ps2 ( ps1 ); //compile error, not allow.
-unique_ptr<string> ps2 ( move(ps1) ); //ok
-//ownship transfer from ps1 to ps2, nothing delete.
 \end{lstlisting}
 
 
@@ -2701,7 +2756,10 @@ ps1 = std::move(ps2);
 
 //method2: reset
 ps1.reset(cp); //ok
-//pointer inside previous ps1 will be deleted.
+//pointer inside previous ps1 will be delete
+
+string* pstr = ps1.release();
+// use pstr get pointer managed by ps1.
 \end{lstlisting}
 
 \item unique\_ptr basic 4-1: If a program attempts to assign one unique\_ptr to another. The compiler allows it if the source object is a temporary rvalue (It will call move ctor or assignment of unique\_ptr inside.) and disallows it if the source object has some duration. \textbf{It is a move-only type.}
@@ -2738,9 +2796,7 @@ unique_ptr<double []>  pda(new double[5] );
 // it will call delete [] inside.
 \end{lstlisting}
 
-
 \item When in doubt, prefer unique\_ptr by default, and you can always later move-convert to shared\_ptr if you need it. If you do know from the start you need shared ownership, however, go directly to shared\_ptr via make\_shared. If you compiler report error about unique\_ptr, then you should consider to use shared\_ptr
-
 
 \item unique\_ptr can be used inside of class. Below class B disable value-copying (or to define a suitable copy-constructor  and operator= to handle it safely).
 \begin{lstlisting}[frame=single, language=c++]
@@ -2750,16 +2806,8 @@ public:
    B():i(new int(0)) { }
 };
 \end{lstlisting}
-
-\end{itemize}
-
-
-\subsubsection{unique\_ptr and polymorphism}
-
-\begin{itemize}
-
 \item A common use for std::unique\_ptr is as a factory function return type for objects
-in a hierarchy. detail can be seen "effective modern c++ item 18"
+in a hierarchy. Detail can be seen "effective modern c++ item 18"
 
 \begin{enumerate}
 \item During construction, std::unique\_ptr objects can be configured to use custom deleters: arbitrary functions (or function objects, including those arising from lambda expressions) to be invoked when it's time for their resources to be destroyed. when a custom deleter can be implemented as either a function or a captureless lambda expression, the lambda is preferable.
@@ -2796,22 +2844,8 @@ std::shared_ptr<Investment> sp = // converts std::unique_ptr
 makeInvestment( arguments ); // to std::shared_ptr
 \end{lstlisting}
 
-\item how to support polymorphism.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-void f(unique_ptr<Base> const &base)
-unique_ptr<Derived> derived = unique_ptr<Derived>(new Derived);
-f(derived); //this fail;
-
-f(std::move(derived)); //method 1 work
-
-void f(std::unique_ptr<Derived> const &); //method 2
-
-std::unique_ptr<base> derived = std::make_unique<Derived>(); //method 3
-\end{lstlisting}
-
 
 \end{itemize}
-
 
 \subsubsection{unique\_ptr and container}
 \begin{itemize}
@@ -3256,6 +3290,76 @@ precisely the kind of smart pointer std::weak\_ptr is. \textbf{You can't test if
 
 
 \end{itemize}
+\subsection{smart pointer and polymorphism}
+
+\begin{itemize}
+		\item \textbf{Basic idea: smart pointer base and smart pointer are not covariant at all. You can think that just like vector<Base> and vector<derived>}.
+
+		\item For shared\_ptr, it support derived to base shared\_ptr copy or assignment. Behind the hood, you need to know the template member function. Detail can be found in effective C++ item 45 "Use member function templates to accept "all compatible types". Why you can? because it get raw pointer and wrapped it again and compiler allow it.
+
+		\item  For shared\_ptr base, you can't assign it to the shared\_ptr, so you can use static\_pointer\_cast and dynamic\_pointer\_cast. 1) they only support shared\_ptr. 2) They use shared\_ptr alaise ctor, get raw pointer, use static or dynamic cast, then build derived shared\_ptr too. Detail can be found "
+std::static\_pointer\_cast vs static\_cast<std::shared\_ptr<A>>"
+
+\item For shared\_ptr base reference, You have to use const. Why do we need const, 1) from pd1 build temporary base shared\_ptr pointer, 2) static\_pointer\_cast also return a tempoary base shared\_ptr.
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+void doSomething(const std::shared_ptr<Base>& ptr) {
+// you must use const
+    std::cout<<ptr.use_count()<<std::endl; //cout 2
+}
+
+int main() {
+    std::shared_ptr<Derived1> pd1 = std::make_shared<Derived1>();
+    doSomething(pd1);
+	doSomething(static_pointer_cast<Base>(pd1));
+} 
+\end{lstlisting}
+
+\item From above, you can see static\_ptr\_cast mainly used to down cast shared\_ptr. From derived to base, you can use const reference directly.
+
+\item static cast also can used for check down cast, it will check at compile time. not like dynamic cast, it will check at run time and also require class has at lease one virtual function.
+
+\item Most of time, use smart pointer reference just for observe. at this time, you can use raw poiner or raw reference directly. 
+
+\item For unique\_ptr, You can use move from derived pointer to base pointer directly.
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+void doSomething(const std::unique_ptr<Base> ptr) {
+    ptr->run();
+}
+
+int main() {
+    std::unique_ptr<Derived1> pd1 = std::make_unique<Derived1>();
+    doSomething(std::move(pd1));
+}
+\end{lstlisting}
+\item For const reference  
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+void f(const unique_ptr<Base>  &base)
+unique_ptr<Derived> derived = unique_ptr<Derived>(new Derived);
+f(derived); //this fail;
+
+f(std::move(derived)); //method 1 work
+
+void f(std::unique_ptr<Derived> const &); //method 2
+
+std::unique_ptr<base> derived = std::make_unique<Derived>(); //method 3
+\end{lstlisting}
+\end{lstlisting}
+\item For down cast unique\_ptr, There are no counter part of static\_pointer\_cast. So only way you can do is use release and wrap it agaion.
+	
+
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+template<typename TO, typename FROM>
+unique_ptr<TO> static_unique_pointer_cast (unique_ptr<FROM>&& old){
+    return unique_ptr<TO>{static_cast<TO*>(old.release())};
+    //conversion: unique_ptr<FROM>->FROM*->TO*->unique_ptr<TO>
+}
+
+unique_ptr<Base> foo = fooFactory();
+unique_ptr<Derived> foo2 = static_unique_pointer_cast<Derived>(std::move(foo));
+\end{lstlisting}
+\end{itemize}
+
+
 
 \subsection{make function}
 \begin{itemize}
@@ -5651,6 +5755,15 @@ Base* p = Bref.Clone();
 
 \item Continue- Think this problem: Change Design. Base is concrete class,  More Effective C++ Item 33 said"Making Non-leaf class abstract. So maybe you can change the inheritance system.
 
+\item copy ctor and copy initilization. Detail can be found "Is there a difference in C++ between copy initialization and direct initialization?"
+\begin{lstlisting}[frame=single, language=c++]
+class A{
+explicit A(const &A);
+}
+A a1;
+A a2(a1) //OK
+A a3 = a1 //doesn't work
+\end{lstlisting}
 \item Assignment operator and copy ctor in inheritance:
 \begin{enumerate}
 \item \textbf{Default Assignment  operator and  copy constructor in derived class which are implicitly produced by compiler will call default base assignment  operator and  copy constructor.}
