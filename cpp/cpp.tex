@@ -44,7 +44,6 @@
 \chapter{CPP Language}
 \fi
 
-
 \section{Basic Language Knowledge}
 \subsection{Style}
 \subsubsection{Basic Principles}
@@ -59,6 +58,7 @@
 
 \item \textbf{Don't need to use type indicator for all variable.} Hungarian notation offer no benefit for object-oriented language, especially it's impossible to use in template. But for some generic concept, such as reference, pointer and STL container, you can use it such as: "ptr\_map\_dic". Modern IDE(such as Visual Studio and Understand) support pop up message when you hover your mouse over a variable.
 \end{itemize}
+
 
 \subsubsection{Naming}
 \begin{itemize}
@@ -470,6 +470,8 @@ while(*p++ != '\0')
 \item Only statement, which end with semicolon is executed. Most statements are expression statements.
 
 \end{itemize}
+
+
 
 \subsubsection{Combine C and C++}
 \begin{itemize}
@@ -6515,13 +6517,115 @@ assert( is_swapable<T>::value && "Cannot swap this type" );
 \end{lstlisting}
 
 \item A good article is "A simple introduction to type traits"
+
+\item Another type trait implementation method, use sizeof and stattic\_cast, these two can be done at compile time. 
+\begin{lstlisting}[frame=single, language=c++]
+template<typename D, typename B>
+class IsDerivedFromHelper
+{
+    class No { };
+    class Yes { No no[3]; };
+    
+    static Yes Test( B* );
+    static No Test( ... );
+public:
+    enum { Is = sizeof(Test(static_cast<D*>(0))) == sizeof(Yes) };
+    
+};
+
+
+template <class C, class P> 
+bool IsDerivedFrom() {
+    return IsDerivedFromHelper<C, P>::Is;
+}
+\end{lstlisting}
+\item In C++11, you can use constexpr instead of sizeof, and \textbf{decltype also get type in the compiling time.}  
+\begin{lstlisting}[frame=single, language=c++]
+template <class T> struct hasSerialize
+{
+    // We test if the type has serialize using decltype and declval.
+    template <typename C> static constexpr decltype(std::declval<C>().serialize(), bool()) test(int /* unused */)
+    {
+        // We can return values, thanks to constexpr instead of playing with sizeof.
+        return true;
+    }
+
+    template <typename C> static constexpr bool test(...)
+    {
+        return false;
+    }
+
+    // int is used to give the precedence!
+    static constexpr bool value = test<T>(int());
+};
+\end{lstlisting}
+\item last kind of implementation is use category. An example can be found in iterator.
+
+\begin{lstlisting}[frame=single, language=c++]
+struct input_iterator_tag {};
+struct output_iterator_tag {};
+struct forward_iterator_tag: public input_iterator_tag {};
+struct bidirectional_iterator_tag: public forward_iterator_tag {};
+struct random_access_iterator_tag: public bidirectional_iterator_tag {};
+
+template < ... > // template params elided
+class deque {
+class iterator {
+public:
+typedef random_access_iterator_tag iterator_category;
+...
+};
+
+template<typename IterT>
+struct iterator_traits {
+typedef typename IterT::iterator_category iterator_category;
+...
+};
+
+template<typename T> // partial template specialization
+struct iterator_traits<T*> // for built-in pointer types
+{
+typedef random_access_iterator_tag iterator_category;
+...
+};
+\end{lstlisting}
+
 \end{itemize}
 
 
 \subsubsection{enable\_if}
 \begin{itemize}
+		\item When you have type trait, in this subsection, I mainly talk about how to use them in generic programing. std::find is example of generic programming example, let see how it use it.
+	\begin{lstlisting}[frame=single, language=c++]
+template<typename IterT, typename DistT>
+void advance(IterT& iter, DistT d)
+{
+doAdvance( // call the version
+iter, d, // of doAdvance
+typename // that is
+std::iterator_traits<IterT>::iterator_category() // appropriate for
+); // iter’s iterator
+} // category
+\end{lstlisting}			
 
-\item For false, enable\_fi is empty define.
+
+\begin{lstlisting}[frame=single, language=c++]
+template<typename IterT, typename DistT> // use this impl for
+void doAdvance(IterT& iter, DistT d, // random access
+std::random_access_iterator_tag) // iterators
+{
+iter += d;
+}
+template<typename IterT, typename DistT> // use this impl for
+void doAdvance(IterT& iter, DistT d, // bidirectional
+std::bidirectional_iterator_tag) // iterators
+{
+if (d >= 0) { while (d--) ++iter; }
+else { while (d++) --iter; }
+}
+\end{lstlisting}
+
+\item For false, enable\_if is empty define.
 \begin{lstlisting}[frame=single, language=c++]
 template <bool, typename T = void>
 struct enable_if
@@ -6567,6 +6671,24 @@ vector(_InputIterator __first,
 \end{lstlisting}
 
 \item A good article is "SFINAE and enable\_if"
+
+\item Another example about how to use type information is to use Int2Type. example is in the Modern C++ Design C, second chapter. You can see another example about Type2Type.
+	\begin{lstlisting}[frame=single, language=c++]
+DoSome(T*, Int2Type<true>){
+	...
+	}
+
+DoSome(T*, Int2Type<false>){
+	}
+	
+	Do(T* pObj){
+			DoSome(pObj, Int2Type<IsPolymorphic>());
+			}
+
+\end{lstlisting}	
+\item The same function can be finished by enable\_if. 
+
+\item \textbf{use a few ways to implement type trait, then use enable\_if to use type trait to get genericprogramming(static morphorism); That is generic programming basic idea.
 \end{itemize}
 
 \subsubsection{More topic about type T}
@@ -8881,9 +9003,9 @@ list<int> data(beg, end);
 \subsection{New Type}
 
 \begin{itemize}
-\item Add three new types " long long", "char16\_t"  and "char32\_t".
+\item Add three new data types " long long", "char16\_t"  and "char32\_t".
 
-\item New container: forward\_list, unordered\_map unordered\_set.  The latter two support implementing hash tables.
+\item New container: forward\_list, unordered\_map unordered\_set.  The latter two support implementing hash tables. std library provide basic hash function for some basic type, such as int and string. If you have you own class, you can use boost::hash\_combine. A good std::hash example can be found in cppreference.com 
 
 \item nullptr is always a pointer type, Don't use NULL any more. NULL is just 0 In C language, but in strong type C++ language, NULL can be ambiguity in f(int); and f(foo *);
 
@@ -8898,7 +9020,7 @@ list<int> data(beg, end);
   std::cout<<300'000.00;
 \end{lstlisting}
 
-\item Note that the syntax of C++ attribute-tokens might seem a bit unfamiliar. The list of attributes, including [[deprecated]], comes after keywords like class or enum, and before the entity name.
+\item Note that the syntax of C++ attribute-tokens might seem a bit unfamiliar. The list of attributes, including [[deprecated]], comes after keywords like class or enum, and before the entity name. A good article can be found if you google "Marking as deprecated in C++14". This feature is useful for a large and long term project. You can't just delete flaky, because other people maybe is using it in their code.
 
 \begin{lstlisting}[frame=single, language=c++]
 class [[deprecated]] flaky {
@@ -8908,12 +9030,13 @@ int cranky(){
    return 0;
 }
 
-// below two statements produce compiler warning
+// below two statements produce compiler warning.
   flaky f;
   return cranky();
 \end{lstlisting}
 
 \end{itemize}
+
 \subsubsection{std::array}
 \begin{itemize}
 \item std::array is just a class version of the classic C array. \textbf{Its size is fixed at compile time and it will be allocated  on the stack}.
@@ -8923,6 +9046,29 @@ int cranky(){
 \item Fixed arrays decay into pointers, losing the array length information when you pass it to a function.
 
 \item Because it does bounds checking, at() is slower (but safer) than operator [].
+\item array support copy and assignment between the same size.
+\begin{lstlisting}[frame=single, language=c++]
+//Making a new array via copy
+auto a3 = a2;
+
+//This works too:
+auto a4(a2);
+
+a5 = a2 // a2 and a5 must have the same size.
+\end{lstlisting}
+\item Like std::vector, std::array doesn't implicitly decay into a raw pointer. If you want to use the underlying std::array pointer, you must use the data() member function.For example, let's assume you are using an API with a C-style buffer interface:
+
+\begin{lstlisting}[frame=single, language=c++]
+void carr_func(int * arr, size_t size){
+    std::cout << "carr_func - arr: " << arr << std::endl;
+}
+
+//Error:
+//carr_func(a2, a2.size());
+
+//OK:
+carr_func(a2.data(), a2.size());
+\end{lstlisting}
 
 \item Advice would be: Use std::vector unless (a) your profiler tells you that you have a problem and (b) the array is tiny.
 \begin{lstlisting}[frame=single, language=c++]
@@ -8936,11 +9082,23 @@ void printLength(const std::array<double, 5> &myarray){
 std::array<double, 5> myarray { 9.0, 7.2, 5.4, 3.6, 1.8 };
 printLength(myarray);
 \end{lstlisting}
+\item \textbf{For most of time, you should use std::array and std::forward\_list firstly if you don't have any strong reason against using them.} 
 \end{itemize}
 
 \subsection{Brace Init}
 \begin{itemize}
-		\item There are three name: 1)initilizer list, 2) brace initilization, 3) member initilization list(mem-init)
+		\item There are three name: 1)initilizer list, 2) brace(list) initilization, 3) member initilization list(mem-init)
+\begin{enumerate}
+		\item member initilization list is used in C++ ctor. it has some advantages: 1) For initialization of non-static const data members:
+2) For initialization of reference members:
+3) For initialization of member objects which do not have default constructor:
+4) For initialization of base class members
+5) When constructor’s parameter name is same as data member
+6) For Performance reasons:A good explanation can be found in google"When do we use Initializer List in C++?"
+\item brace initilization is a generic initilization syntax(method), it support more initilization, such as class member and aggrecation. At the same time, it will avoid narrowing and vexing parsing problem. 
+
+\item Initilizer list is a \textbf{new data type. just like std::list.}
+\end{enumerate}
 
 \item Three ways to initialization:
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
@@ -8948,7 +9106,7 @@ int x1 = 27;  //1) asiignment
 int x2(27); //2) parentheses
 int x3{ 27 }; //3) brace init
 int x4={ 27 }; //same as 3
-t$\Hilight{25}$//Don't use = with {} unless you are using c++03
+$\Hilight{25}$//Don't use = with {} unless you are using c++03
 \end{lstlisting}
 
 \item brace initilization is "generic init method", because it can be used in 1) POD type, 2) aggrecation type 3) class member
@@ -8976,22 +9134,11 @@ public:
 C(): x{0,1,2,3} {}
 };
 \end{lstlisting}
+
 \item Uniform Initialization: It will stop narrow if it's out of range of target. but allow if the value is within the range of the target.
 
 
-\item initilizer list can be used in function parameter and return value and for range.  
-\begin{lstlisting}[frame=single, language=c++,mathescape=true]
-// A braced-init-list can be implicitly converted to a return type.
-vector<int> test_function() { return {1, 2, 3}; }
-
-// Iterate over a braced-init-list.
-for (int i : {-1, -2, -3}) {}
-
-// Call a function using a braced-init-list.
-void TestFunction2(vector<int> v) {}
-TestFunction2({1, 2, 3}); 
-\end{lstlisting}
-
+\item \textbf{Am empty pair of braces can be 1)default initializaiotn, 2) a empty std::initializaer\_list. You should know how to distingushi them. }
 
 \item An empty pair of braces indicates default initialization. Default initialization of POD types usually means initialization to binary zeros, whereas for non-POD types default initialization means default construction:
 
@@ -9014,6 +9161,20 @@ Widget w3(); // most vexing parse! declares a function!
 Widget w4({}); // calls std::initializer_list ctor with empty list
 Widget w5{{}}; // ditto
 \end{lstlisting}
+
+\item initilizer list can be used in function parameter and return value and for range.  
+\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+// A braced-init-list can be implicitly converted to a return type.
+vector<int> test_function() { return {1, 2, 3}; }
+
+// Iterate over a braced-init-list.
+for (int i : {-1, -2, -3}) {}
+
+// Call a function using a braced-init-list.
+void TestFunction2(vector<int> v) {}
+TestFunction2({1, 2, 3}); 
+\end{lstlisting}
+
 
 \item When 1)brace init is used, 2) and there are overload initializer\_list, \textbf{it always match initializer\_list}.
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
@@ -9055,9 +9216,10 @@ std::vector<int> v2{10, 20}; // use initializer_list ctor:
 
 \item base on previous vector example, choosing between parentheses and braces for object creation inside templates can be challenging.(it has different semantic meaning.)
 
-\item If you use a braced initialize list when initializing a variable, use an equals before the open curly brace.
+%\item If you use a braced initialize list when initializing a variable, use an equals before the open curly brace.
 
 \item \textbf{When you use Type\{\} to define a nameless temporary variable.  don't give variable name.}
+
 \begin{enumerate}
 \item In C++, anonymous variables are primarily used either to pass or return values without having to create lots of temporary variables to do so.
 
@@ -9073,19 +9235,47 @@ Cents add(const Cents &c1, const Cents &c2){
 cout <<add(Cents{6}, Cents{8}).getCents();
 \end{lstlisting}
 
- 
-\begin{lstlisting}[frame=single, language=c++]
-//Initialization
+\item Difference between three initilization syntactic expression.
+		\begin{enumerate}
+				
+\item Copy-list-initialisation. Strictly by the book, this creates a temporary float3 by calling its 3-parameter constructor, then initialises vec3D by using the move constructor (or copy constructor, if no move ctor is available), and finally destroys the temporary.
+
+In practice, the temporary creation and move/copy operation will be elided by any non-broken compiler, so there is no inefficiency. However, note that it requires the move/copy constructor to be accessible. You cannot initialise a non-movable, non-copyable class like this, at the same, copy or move ctor can be declared explicit.
+ \begin{lstlisting}[frame=single, language=c++]
 float3 3Dvec = {1.0, 1.0, 1.0};
+\end{lstlisting}
+
+\item Both of these directly initialise vec3D2 by calling its 3-parameter constructor. I'd say the brace one is the optimal syntax, because it's unambiguous. In this particular case, it does not matter, but sometimes, using parentheses can lead to a (most) vexing parse. 
+\begin{lstlisting}[frame=single, language=c++]
 float3 3Dvec2 {1.0, 1.0, 1.0};
 float3 3Dvec3 (1.0, 1.0, 1.0);
+\end{lstlisting}
+\item a vexing parse example is below, there is another complex exmaple in previous section "vexing parse problem"
+\begin{lstlisting}[frame=single, language=c++]
+float3 x(); //x is function, not call default ctor
 
+float3 x(float3());  // a function
+float3 x(float3(i));  // still a function, float3(i) is float i
+//vs.
+float3 y{float3{}};  // a variable
+\end{lstlisting}
+
+\item These are 100\% identical, as long as the type of vec3D is float3. Both create a temporary float3 object using its 3-parameter constructor, pass that object to the move (or copy) assignment operator of vec3D, and then destroy the temporary. I'd say the brace one is better, because it's future proof. If you later rename the class, the brace one will continue to work as is, while the parenthesis one will require a name chaage. Also, if you change the type of vec3D, the brace one will still create an object of vec3D's type, while the second one will keep creating and assigning from a float3 object. It's not possible to say universally, but I'd say the former behaviour is usually preferred. 
+\begin{lstlisting}[frame=single, language=c++]
 //Assignment
 3Dvec = {2.0, 2.0, 2.0};
 3Dvec = float3 (2.0, 2.0, 2.0);
 \end{lstlisting}
+\end{enumerate}
+
+\item The only situation where = is preferred over \{\} is when using auto keyword to get the type determined by the initializer.
+\begin{lstlisting}[frame=single, language=c++]
+auto z1 {99}; // z1 is an initializer_list<int>
+auto z2 = 99; // z2 is an int
+\end{lstlisting}
 
 \item When use with auto, you need to be careful. The only situation where = is preferred over \verb={}= is when using auto keyword to get the type determined by the initializer.
+		
 \begin{lstlisting}[frame=single, language=c++]
 auto d = {1.23};
 // d is a std::initializer_list<double>
@@ -9093,6 +9283,7 @@ auto d = double{1.23};
 auto d = 1.23
 // Good -- d is a double, not a std::initializer_list.
 \end{lstlisting}
+
 \item difference between "copy brace initilizer" and "brace initilizaer".
 \begin{lstlisting}[frame=single, language=c++]
 class A{
@@ -9122,16 +9313,77 @@ int main(){
 
 \item such as vector example, you have to use vector<int>(1,2) to build a vector with one element, the value is 2. When you design a class, avoid providing a constructor that ambiguously overloads with an initializer\_list constructor, so that users won’t need to use ( ) to reach such a hidden constructor.When you design a class, avoid providing a constructor that ambiguously overloads with an initializer\_list constructor, so that users won’t need to use ( ) to reach such a hidden constructor.
 
-\item basic rules:
-		\begin{enumerate}
+\item Some syntactic examples:
+\begin{lstlisting}[frame=single, language=c++]
+	class A{
+	public:
+	A(){};
+	 A(int k):m_a(k){};
+	 A(const A& rhs){m_a = rhs.m_a;};
+	int m_a;
+};
+int i = 3;
+\end{lstlisting}
+\begin{tabular}{|p{0.27\textwidth}|p{0.7\textwidth}|}
+\hline
+Expression & meaning \\
+\hline
+A a, A a\{\} & default ctor
+\hline
+A a() & delcare function a,vexing  
+\hline
+A() & A temporary A obj
+\hline
+B b(A()) & declare function, vexing 
+\hline
+B b(A\{\}) & ctor a b with temp A. 
+\hline
+fun(A()),fun(A{}) & work
+\hline
+\end{tabular}
 
-				\item Use braced initilization first, because 1) uniform style,this is usefule when you write template programme. 2)avoid narrow 3) For some certain situation, such as class and aggracation, only braced initilization works 4)avoid most vexing parse problems.
+\begin{tabular}{|p{0.27\textwidth}|p{0.7\textwidth}|}
+\hline
+Expression & meaning \\
+\hline
+A a(i), A a\{i\} & ctor
+\hline
+A (i) & just like A i, you have define i, so compile error. 
+\hline
+A\{i\} & A temporary A obj
+\hline
+B b(A(i)) & declair a function B b(A i); 
+\hline
+B b(A{i}) & build b with temp A
+\hline
+fun(A(i)),fun(A{i}) & work, fun(A i) will not a declaration, because there are no return value.
+\hline
+B b(A a(i))  & compile error, because A a(i) is not expression. 
+\hline
+fun(A a(i)) & same as above. 
+\hline
+
+\end{tabular}
+\begin{tabular}{|p{0.27\textwidth}|p{0.7\textwidth}|}
+\hline
+Expression & meaning \\
+\hline
+A a = (i), A a=\{i\} & call ctor directly ,but you can't declare copy ctor explicit.
+\hline
+A a = A(i), A a = A\{i\} & same as above.
+\hline
+\end{tabular}
+
+\item \textbf{If there is possible, it will use declaration first. }.
+
+\item basic rules:
+\begin{enumerate}
+\item Use braced initilization first, because 1) uniform style,this is usefule when you write template programme. 2)avoid narrow 3) For some certain situation, such as class and aggracation, only braced initilization works 4)avoid most vexing parse problems.
 
 				\item Don't use = before braced initilizaiton, it will not work when you define explicit ctor and copy ctor.
 
 				\item Pay attention two traps. 1) If type has list initialization ctor, braced initilization will use it first, and very strongly.  2) For auto type variable. (auto x=\{1,2\} x always is initilizaer\_list type.)
-
-		\end{enumerate}
+\end{enumerate}
 \end{itemize}
 
 
