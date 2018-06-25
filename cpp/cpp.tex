@@ -1869,7 +1869,91 @@ values.insert(it, 1998);
 
 \subsubsection{constexpr}
 \begin{itemize}
-	\item It can be used on object and function.
+    \item constexpr has two advantages: 1) improve efficiencies(calculate at compile time). 2) expand usage scope (initialze constexpr obj and use in integer constexpr context)
+    \begin{lstlisting}[frame=single, language=c++]
+    constexpr int fun(int a, int b){return a+b;}
+    
+    constexpr int const foo = fun(2,3) ;
+    int a[fun(2,3)];
+    // without constexpr in function declaration,
+    // the next two statmentments can't be compiled. 
+    \end{lstlisting}
+    \item The first conception is \textbf{constant expressions}. 
+    \begin{enumerate}
+        \item A constant expression is more than merely constant: It can be used in places that require compile-time evaluation, for example, template parameters and array-size specifiers.
+        
+        \item Declaring something as constexpr does not necessarily guarantee that it will be evaluated at compile time. It can be used for such, but it can be used in other places that are evaluated at run-time.
+    \end{enumerate}
+
+	\item It can be used on object and function.The basic difference when applied to objects is this:
+    \begin{enumerate}
+        \item const declares an object as constant. This implies a guarantee that, once initialized, the value of that object won't change, and the compiler can make use of this fact for optimizations. It also helps prevent the programmer from writing code that modifies objects that were not meant to be modified after initialization. 
+
+        \item All constexpr objects are const, but not all const object are constexpr.
+        
+        \item Value of constexpr must be known at compile time.If you want to get value from a function, you have to use constexpr function to assign value to it. 
+    \end{enumerate}
+
+     \item constexpr can be used on functions.
+     
+     \begin{enumerate}
+         \item Both constexpr and inline are for performance improvements, inline functions are request to compiler to expand at compile time and save time of function call overheads. In inline functions, expressions are always evaluated at run time. constexpr is different, here expressions are evaluated at compile time.
+         
+         \item const can only be used for non-static member functions, not functions in general. It gives a guarantee that the member function does not modify any of the non-static data members. 
+         
+         \item constexpr can be used with both member and non-member functions, as well as constructors. It declares the function fit for use in constant expressions. \textbf{constexpr functions must be able to return compile-time results when called with compile-time values.} The compiler will only accept it if the function meets certain criteria (7.1.5/3,4), most importantly: 
+         \begin{enumerate}
+             \item The function body must be non-virtual and extremely simple: Apart from typedefs and static asserts, only a single return statement is allowed. In the case of a constructor, only an initialization list, typedefs and static assert are allowed. (= default and = delete are allowed, too, though.)
+             
+             \item As of C++14 the rules are more relaxed, what is allowed since then inside a constexpr function: asm declaration, a goto statement, a statement with a label other than case and default, try-block, definition of a variable of non-literal type, definition of a variable of static or thread storage duration, definition of a variable for which no initialization is performed.
+             
+             \item The arguments and the return type must be \textbf{literal types} (i.e., generally speaking, very simple types, typically scalars or aggregates)
+             
+             \item constexpr function can call only other constexpr function not simple function.
+             
+             \item in C++11, constexpr member function is implicit const; C++14 lift it up.
+         \end{enumerate}
+     \end{enumerate}
+
+\item constexpr and const
+\begin{enumerate}
+    \item when you declare constexpr obj, it implicit const. It's just used in variable, When you want to use const int * const p, you'd better write you own const 
+\begin{lstlisting}[frame=single, language=c++]
+    constexpr int const foo = 42;
+    constexpr int       foo = 42;    // same as previous
+    constexpr int const *pb = &bar;  //  &bar must be constexpr
+\end{lstlisting}
+
+\end{enumerate}
+
+\item when do you need to use constexpr function
+
+\begin{enumerate}
+    \item That makes a constexpr qualifier an irrevocable design decision. You cannot remove this qualifier without an incompatible change to your API. It also limits how you can implement that function, e.g. you would not be able to do any logging within this function. Not every trivial function will stay trivial in eternity.
+    
+    \item That means you should preferably use constexpr for functions that are inherently pure functions, and that would be actually useful at compile time (e.g. for template metaprogramming). It would not be good to make functions constexpr just because the current implementation happens to be constexpr-able.
+    
+    \item Where compile-time evaluation is not necessary, using inline functions or functions with internal linkage would seem more appropriate that constexpr. All of these variants have in common that the function body is “public” and is available in the same compilation unit as the call location.
+    
+    \item a few example;you have something that can be evaluated down to a constant while maintaining good readability and allowing slightly more complex processing than just setting a constant to a number.
+    \begin{lstlisting}[frame=single, language=c++]
+    constexpr int MeaningOfLife ( int a, int b ) { return a * b; }
+    const int meaningOfLife = MeaningOfLife( 6, 7 );
+\end{lstlisting}
+    
+    \item It basically provides a good aid to maintainability as it becomes more obvious what you are doing. Take max( a, b ) for example: Its a pretty simple choice there but it does mean that if you call max with constant values it is explicitly calculated at compile time and not at runtime.
+    \begin{lstlisting}[frame=single, language=c++]
+    template< typename Type > constexpr Type max( Type a, Type b ) { return a < b ? b : a; }
+    \end{lstlisting}
+    
+    
+    \item Another good example would be a DegreesToRadians function. Everyone finds degrees easier to read than radians. While you may know that 180 degrees is in radians it is much clearer written as follows:
+    \begin{lstlisting}[frame=single, language=c++]
+    const float oneeighty = DegreesToRadians( 180.0f );
+    \end{lstlisting}
+    
+\end{enumerate}
+
 \end{itemize}
 
 \subsubsection{static}
@@ -7898,6 +7982,54 @@ DoSome(T*, Int2Type<false>){
 
 \item \textbf{use a few ways to implement type trait, then use enable\_if to use type trait to get generic programming(static polymorphism); That is generic programming basic idea.}
 \end{itemize}
+
+
+
+
+use tag
+	\begin{lstlisting}[frame=single, language=c++]
+template <typename T>
+auto get_value(T t, std::true_type) {
+    return *t;
+}
+
+template <typename T>
+auto get_value(T t, std::false_type) {
+    return t;
+}
+
+template <typename T>
+auto get_value(T t) {
+    return get_value(t, std::is_pointer<T>{}); 
+}
+\end{lstlisting}
+use SFINAE 
+
+	\begin{lstlisting}[frame=single, language=c++]
+template <typename T, std::enable_if_t<std::is_pointer_v<T>, int> = 0>
+auto get_value(T t) {
+    return *t;
+}
+
+template <typename T, typename std::enable_if_t<!std::is_pointer_v<T>, int> = 0>
+auto get_value(T t) {
+    return t;
+}
+\end{lstlisting}
+use constexpr if: 
+
+	\begin{lstlisting}[frame=single, language=c++]
+template <typename T>
+auto get_value(T t)
+{
+    if constexpr (std::is_pointer_v<T>) {
+        return *t;
+    } else {
+        return t;
+    }
+}
+\end{lstlisting}
+
 
 
 \subsection{template and friend}
