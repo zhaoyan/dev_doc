@@ -27,35 +27,192 @@
 %\fi
 
 	
-\chapter{Python Basic}
-\section{Syntax}
+\chapter{type and operator}
+\section{reference}
+\begin{itemize}
+	\item Assignment creates references, Not copies
 \begin{lstlisting}[frame=single, language=Python]
-g = 1
-def fun():
-    print g # this will cause error. 
+L = [1,2,3]
+M = ['a',L, 'b'] #shallow copy
+M1 =['a',L[:], 'b'] #deep copy
+\end{lstlisting}  
+	\item Immutable Types can't be changed
+\begin{lstlisting}[frame=single, language=Python]
+T=(1,2,3)
+T[2] = 4 # error
+T = T[:2] + 4  # OK
+\end{lstlisting}  
+	\item Same value vs. Same object
+\begin{lstlisting}[frame=single, language=Python]
+L1 = [1,2,3]
+L2 = [1,2,3]
+L1==L2  L1 is L2
+\end{lstlisting}  
+\end{itemize}
+
+\section{Built-in type}
+\subsection{set}
+\subsection{tuple}
+
+
+\section{Syntax}
+\subsection{name}
+\begin{itemize}
+	\item Roughly speaking, namespaces are just containers for mapping names to objects. 
+	\item from module import * will not import  any variable \_x
+
+	\item \_\_X\_\_ is system varaible, has specific meaning to interpreter. 
+
+	\item LEGB rules:
+	\begin{enumerate}
+		\item 	Local can be inside a function or class method, for example.
+		\item Enclosed can be its enclosing function, e.g., if a function is wrapped inside another function.
+		\item Global refers to the uppermost level of the executing script itself, and
+		\item Built-in are special names that Python reserves for itself.
+	\end{enumerate}
+
+\begin{lstlisting}[frame=single, language=Python]
+a_var = 'global value'
+
+def outer():
+	a_var = 'local value'
+	print('outer before:', a_var)
+	def inner():
+		nonlocal a_var
+		a_var = 'inner value'
+		print('in inner():', a_var)
+	inner()
+	print("outer after:", a_var)
+
+>>>outer()
+outer before: local value
+in inner(): inner value
+outer after: inner value
+	\end{lstlisting}  
+	\item In practice, it is usually a bad idea to modify global variables inside the function scope, since it often be the cause of confusion and weird errors that are hard to debug.
+	If you want to modify a global variable via a function, it is recommended to pass it as an argument and reassign the return-value.
+\begin{lstlisting}[frame=single, language=Python]
+a_var = 2
+
+def a_func(some_var):
+return 2**3
+
+a_var = a_func(a_var)
+print(a_var)
+\end{lstlisting} 
+	
+	\item For class and function, L and G are different, but for module, L and G are same.
+	\item For local , The locals are exposed there by the built-in locals() and vars() functions. \textbf{The locals should be considered a read-only namespace, as there is no language guarantee that changes you make to it directly will actually be applied.}
+		\item The CPython implementation uses a special optimisation for local variables: They aren't dynamically looked up at runtime from a dictionary, as globals are, but rather are assigned indices statically at compile time, and are looked up by index at runtime, which is a lot faster. This requires the Python compiler to be able to identify all local names at compile time, which is impossible if you have a wildcard import at function level.
+	\begin{lstlisting}[frame=single, language=Python]
+	g = 1
+	def fun():
+	print g # this will cause error. 
 	g = 2
 	print g
-
-fun()
-print g
-# output 
-2 create a local name g
-1
+	
+	fun()
+	print g
+	# output 
+	2 create a local name g
+	1
+	\end{lstlisting}  
+	\item You can control global namespace inside a function.
+\begin{lstlisting}[frame=single, language=Python]
+X = 2
+def fun():
+	global X
+	X = 44
+	Y = 55
+	globals()['Y'] = 3
+	
+>>>print(X,Y) # output 44 3
 \end{lstlisting}  
 
+\item Warning: For-loop variables “leaking” into the global namespace
+\begin{lstlisting}[frame=single, language=Python]
+b = 1
+for b in range(5):
+	if b == 4:
+	print(b, '-> b in for-loop')
+print(b, '-> b in global')
+
+>>>4 -> b in for-loop
+4 -> b in global
+\end{lstlisting}  
+
+	\item Regardless of the code block, the globals are exposed there by the built-in globals() function. 
+\begin{lstlisting}[frame=single, language=Python]
+	def f2():
+	fc = 3
+	fd = 4
+	print(globals())
+	print(locals())
+\end{lstlisting}  
+	
+	\item For some code blocks, like function and class bodies, the globals and locals are distinct; and the locals are inaccessible from outside that code block. For other code, like modules, they are the same thing (and thus equally accessible). With exec(), you can pass both in, thus controlling the distinction.
+
+	\item If you want to access them at the same time, you can:
 \begin{lstlisting}[frame=single, language=python]
-g = 1
-def fun():
-	global g
-	g = 2
-	print g
+X = 99
+def selector():
+     import __main__   # import enclosing module
+     print __main__.X  # qualify to get to global version of name
+     X = 88            # unqualified X classified as local
+     print X           # prints local version of name
 
-fun()
-print g
-# output 
-2 create a local name g
-2
-\end{lstlisting}  
+>>> selector()
+99
+88
+	\end{lstlisting} 
+\end{itemize}
+
+\subsection{import and module}
+\subsubsection{builtin}
+\begin{itemize}
+	\item builtins is conception for module.
+	\item relationship between builtins and \_\_builtins\_\_, A good explanation is "What's the deal with \_\_builtins\_\_ vs \_\_builtin\_\_" link address is \begin{verbatim}
+	http://mathamy.com/whats-the-deal-with-builtins-vs-builtin.html \end{verbatim}
+	\item Why use builtin, we can add a name to builtin,  so in all the other modules, you can use it.
+\end{itemize}
+\subsubsection{dir an dict}
+\begin{itemize}
+	\item dir includes \_\_dict\_\_
+	\item not all instance has \_\_dict\_\_. Some internal type use slot instead. 
+	\item A good introduction is "whats-the-biggest-difference-between-dir-and-dict-in-python"
+\end{itemize}
+
+\begin{itemize}
+	\item search path. modify sys.path dynamiclly. 
+	\item sys.path的组成部分：（1）程序的主目录；（2）PYTHONPATH目录（如果已经进行了设置）；（3）标准链接库目录；（4）任何.pth文件的内容（如果存在的话） 
+	\item import/from copies names but doesn't link.
+	\item think it as a name space
+	\item it just import once, then fetch imported module object
+	\item package is different with module, you just put module into the different path to avoid name conflict. but you need to put \_\_init\_\_.py file in each path. 
+	\item If you put code before the function definitions, it will execute before the \_\_name\_\_ check.
+\begin{lstlisting}[frame=single, language=python]
+print("This code executes before main.") 
+
+def functionA():
+	print("Function A")
+
+def functionB():
+	print("Function B")
+
+if __name__ == '__main__':
+functionA()
+functionB()
+	\end{lstlisting} 
+If this module is indeed being used as the main script, this code results in:
+
+This code executes before main. 
+Function A 
+Function B
+If this module was imported instead of used as the main script, you get the following at import time:
+
+This code executes before main. 
+
+\end{itemize}
 
 \begin{lstlisting}[frame=single, language=python]
 gl = [1,2,3]
@@ -65,7 +222,7 @@ def fun():
 	print gl
 
 fun()
-print gl
+print gl gl   ag 
 # output 
 [1,2,3]
 [1,33,3]
@@ -81,7 +238,7 @@ def fun():
 	def infun():
 		o = [] # create a local name o
 		o.append(1)
-		print o
+		print o  yan zhao
 	print o
 
 fun()
@@ -153,16 +310,25 @@ print(sys.maxunicode)
 
 \end{itemize}
 
-\chapter{Idea}
+\chapter{statement and expression}
+\chapter{function}
+\chapter{class}
+\section{basic}
+\begin{itemize}
+	\item A good chinese tutorial is \verb!http://www.voidcn.com/article/p-xclezsgj-bg.html!
+	
+\end{itemize}
+\section{class attributes}
+\begin{itemize}
+	
+	\item A good example is "Python Class Attributes: An Overly Thorough Guide" \verb!https://www.toptal.com/python/python-class-attributes-an-overly-thorough-guide!
+\end{itemize}
+\chapter{meta}
+\chapter{GUI}
+
+\chapter{lib}
 
 
-
-\chapter{Conclusion}
-
-adsfdfe
-asdfasdf
-asdfadsf
-asdfasd
 
 
 %\ifx \allfiles \undefined
