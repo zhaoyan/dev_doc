@@ -8240,7 +8240,7 @@ class HasFriend{
 
 \subsection{Template function}
 \begin{itemize}
-\item When you use template function with real argument, compiler will extract type information from real argument, then generate real function code for you.  So it will make compiler looks longer.
+\item When you use template function with real argument, compiler will deduct type from real argument, then generate real function code for you.  So it will make compiling longer.
 \begin{lstlisting}[frame=single, language=c++]
 swap(i1, i2);
 swap(f1, f2);
@@ -8310,7 +8310,7 @@ f(int& j);  //#2, 2 will be selected, because i isn't const
 \item If there are exact match, it will pick up before template, even template has EXACT specification.
 \end{enumerate}
 
-\item For temple, order is:
+\item For template, order is:
 \begin{enumerate}
 \item specialized argument template
 \item specialization version in side this  specialized argument template.
@@ -8340,7 +8340,12 @@ template< >f<>(int* t) //#2 is specialization of #1
 template<typename T>
 f(T* t); //#3
 
-template< >f<>(int* t) //put here is specialization of #3
+template< >f<>(int* t) //#4 put here is specialization of #3
+
+
+int *p; 
+f( p ); //If you put specialization at #2, it will call #3, That is wrong.
+//If you put specialization at #4, it will call #4, that is right.
 \end{lstlisting}
 
 \item You can tell compiler that you prefer template function over overload one
@@ -8410,7 +8415,7 @@ template <> void func<int>(int param) {} // specialization
 
 \item A good article is "Overload resolution" in Andrzej's C++ blog. \textbf{It taught you 1) name kookup and 2)overload and 3)instanition three conception very well.}
 
-\item You can see a visio fig in the pics directory. 
+\item Summary 
 \begin{figure}
 	\centering
 	\includegraphics[scale=0.8]{pics/template.png}
@@ -8615,7 +8620,6 @@ int main(){
 	return 0;
 }
 \end{lstlisting}
-
 \end{itemize}
 
 
@@ -9020,6 +9024,54 @@ typedef random_access_iterator_tag iterator_category;
 \end{itemize}
 
 \subsubsection{mixin}
+\begin{itemize}
+	\item method 1, use Mixin
+	\begin{enumerate}
+		\item 
+	\end{enumerate}
+\begin{lstlisting}[frame=single, language=c++]
+\end{lstlisting}
+	\item method 2, use CRTP
+\begin{enumerate}
+	\item 
+\end{enumerate}
+\begin{lstlisting}[frame=single, language=c++]
+\end{lstlisting}
+
+	\item method 3, template Method
+\begin{enumerate}
+	\item 
+\end{enumerate}
+\begin{lstlisting}[frame=single, language=c++]
+\end{lstlisting}
+
+	\item method 4, command pattern
+\begin{enumerate}
+	\item 
+\end{enumerate}
+\begin{lstlisting}[frame=single, language=c++]
+\end{lstlisting}
+
+
+	\item method 5, mixin
+\begin{enumerate}
+	\item 
+\end{enumerate}
+\begin{lstlisting}[frame=single, language=c++]
+\end{lstlisting}
+
+	\item method 6, policy base
+\begin{enumerate}
+	\item 
+\end{enumerate}
+\begin{lstlisting}[frame=single, language=c++]
+\end{lstlisting}
+
+\item summary:(insert a picture)
+
+
+\end{itemize}
+
 \subsubsection{tag dispatch}
 \begin{itemize}
 	\item A famous usage of tag dispatch is iterator 
@@ -9066,7 +9118,7 @@ detail::advance_dispatch(i, n, category);
 
 \item The second implementation of tag dispatch is use integral\_constant
 \begin{enumerate}
-	\item \textbf{std::true_type use inegral\_constant(type generator)to define a new type. is_arithmetic derived form true\_type or false\_type}
+	\item \textbf{std::true\_type use inegral\_constant(type generator)to define a new type. is\_arithmetic derived form true\_type or false\_type}
 \begin{lstlisting}[frame=single, language=c++]
 std::integral_constant<bool, true>
 
@@ -9105,6 +9157,17 @@ return foo_impl(value, std::is_arithmetic<T>{});
 	\item build you own trait has\_serialize, it includes a bool memeber ::value
 	\item You can use decltype, declval and constexpr to build this trait. 
 	\item From this trait, it return value, not a type. So you need use enable\_if template in the client code. change the value to a type, then use the type to overload resolving.
+	\item For false, enable\_if is empty define.
+	\begin{lstlisting}[frame=single, language=c++]
+	template <bool, typename T = void>
+	struct enable_if
+	{};
+	
+	template <typename T>
+	struct enable_if<true, T> {
+	typedef T type;
+	};
+	\end{lstlisting}
 \end{enumerate}
 \begin{lstlisting}[frame=single, language=c++]
 template <class T> struct has_serialize
@@ -9145,54 +9208,16 @@ return to_string(obj);
 
 \end{lstlisting}
 
-\item summary (insert a picture here)
+\item summary:
+
+\includegraphics[scale=0.6]{pics/tag_dispatch.png}
+
 \end{itemize}
 
 
 
 \subsubsection{enable\_if}
 \begin{itemize}
-\item When you have type trait, in this subsection, I mainly talk about how to use them in generic programming. std::find is an example of generic programming example, let see how it use it.
-\begin{lstlisting}[frame=single, language=c++]
-template<typename IterT, typename DistT>
-void advance(IterT& iter, DistT d){
-   doAdvance( iter, d, typenamestd::iterator_traits<IterT>::iterator_category())
-   
-);
-// call the version of doAdvance that is appropriate for iter’s iterator category
-} 
-\end{lstlisting}			
-
-\begin{lstlisting}[frame=single, language=c++]
-template<typename IterT, typename DistT>
-void doAdvance(IterT& iter, DistT d, 
-std::random_access_iterator_tag) {
-   iter += d;
-}
-// use this impl for random access iterators
-
-template<typename IterT, typename DistT> 
-void doAdvance(IterT& iter, DistT d, 
-std::bidirectional_iterator_tag) {
-   if (d >= 0) { while (d--) ++iter; }
-   else { while (d++) --iter; }
-}
-
-//use this impl for iterators bidirectional
-\end{lstlisting}
-
-
-\item For false, enable\_if is empty define.
-\begin{lstlisting}[frame=single, language=c++]
-template <bool, typename T = void>
-struct enable_if
-{};
-
-template <typename T>
-struct enable_if<true, T> {
-  typedef T type;
-};
-\end{lstlisting}
 
 \item Note SFINAE at work here. When we make the call do\_stuff(25), the compiler selects the first overload: since the condition std::is\_integral<int> is true, the specialization of struct enable\_if for true is used, and its internal type is set to int. The second overload is omitted because without the true specialization (std::is\_class<int> is false) the general form of struct enable\_if is selected, and it doesn't have a type, so the type of the argument results in a substitution failure.
 
@@ -9248,8 +9273,6 @@ DoSome(T*, Int2Type<false>){
 \end{itemize}
 
 
-
-
 use tag
 	\begin{lstlisting}[frame=single, language=c++]
 template <typename T>
@@ -9293,8 +9316,6 @@ auto get_value(T t)
     }
 }
 \end{lstlisting}
-
-
 
 
 \subsection{Template example}
