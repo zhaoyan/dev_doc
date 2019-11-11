@@ -8626,252 +8626,375 @@ int main(){
 
 \subsection{template and inheritance}
 
-\subsubsection{Templates Parameterised by base class}
+\begin{itemize}
+	
+	\item Non-Template class Derived from Template Base class specification}
+
+	\begin{lstlisting}[frame=single, language=c++]
+	class u8toU16 : public std::codecvt<wchar_t, char, std::mbstate_t>{
+	};
+	
+	\end{lstlisting}
+
+	
+	\item Template class Deriving from the non-template class
+	\begin{lstlisting}[frame=single, language=c++]
+	class Base
+	
+	template<typename T>
+	class Derived: public Base
+	\end{lstlisting}	
+	
+	\item \item template class can be used as base class and used as a component class. So we can inehrite from a template class
 \begin{enumerate}
+	\item A basic example
+	\begin{lstlisting}[frame=single, language=c++]
+	template< typename Type>
+	class SpecialStack: public Stack<Type>{
+	Array<Type> array;
+	}
+	\end{lstlisting}	
+	
+	\item If an enum is used by several member functions of the std::codecvt template class, and does not relate to the template parameters. Hence it can exist in a separate base class.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	template<typename T>
+	class codecvt_base{
+	public:
+	enum result {ok, partial, error, noconv};
+	};
+	\end{lstlisting}
+	
+	\item You also can extending the derived class
+	\begin{lstlisting}[frame=single, language=c++]
+	template< typename T>
+	class Base
+	
+	template<typename T, typename U>
+	class Derived: public Base<T>
+	\end{lstlisting}
+	
+	
+	\item Factor parameter-independent code out of templates. detail can be found in effective item 44. That is to avoid code bloating.
+	\begin{lstlisting}[frame=single, language=c++]
+	template<typename T> // size-independent base class for
+	class SquareMatrixBase { // square matrices
+	protected:
+	...
+	void invert(std::size_t matrixSize); // invert matrix of the given size
+	...
+	};
+	
+	template<typename T, std::size_t n>
+	class SquareMatrix: private SquareMatrixBase<T> {
+	private:
+	using SquareMatrixBase<T>::invert; // make base class version of invert
+	// visible in this class; see Items 33
+	// and 43
+	public:
+	...
+	void invert() { invert(n); } // make inline call to base class
+	}; // version of invert
+	\end{lstlisting}
+	
+	
+	\item Specialising the base class
+	\begin{lstlisting}[frame=single, language=c++]
+	template< typename T>
+	class Base
+	
+	template<typename T>
+	class Derived: public Base<int>
+	\end{lstlisting}
+\end{enumerate}
 
-\item template class can be used as base class and used as a component class.
-\begin{lstlisting}[frame=single, language=c++]
-template< typename Type>
-class SpecialStack: public Stack<Type>{
-Array<Type> array;
-}
-\end{lstlisting}	
+\item Parameterised inheritance
+	\begin{enumerate}	
+	\item Basic example 
+	\begin{lstlisting}[frame=single, language=c++]
+	template<typename T>
+	class Derived: public T
+	\end{lstlisting}
+	
+	\item \textbf{Two famous idioms are Mixin and Policy, can be found below sections. In this chapter, we only focuse syntaxtic level, not semantic level. 
 
-\item private inheritance 
-\begin{lstlisting}[frame=single, language=c++]
-template <typename OutputPolicy, typename LanguagePolicy>
-class HelloWorld : private OutputPolicy, private LanguagePolicy{
-    using OutputPolicy::print;
-    using LanguagePolicy::message;
- 
-public:
-    // Behaviour method
-    void run() const{
-        // Two policy methods
-        print(message());
-    }
-};
- 
-class OutputPolicyWriteToCout{
-protected:
-    template<typename MessageType>
-    void print(MessageType const &message) const{
-        std::cout << message << std::endl;
-    }
-};
- 
-class LanguagePolicyEnglish{
-protected:
-    std::string message() const{
-        return "Hello, World!";
-    }
-};
- 
-class LanguagePolicyGerman{
-protected:
-    std::string message() const{
-        return "Hallo Welt!";
-    }
-};
- 
-int main(){
-    /* Example 1 */
-    typedef HelloWorld<OutputPolicyWriteToCout, LanguagePolicyEnglish> HelloWorldEnglish;
- 
-    HelloWorldEnglish hello_world;
-    hello_world.run(); // prints "Hello, World!"
- 
-    /* Example 2 * Does the same, but uses another language policy */
-    typedef HelloWorld<OutputPolicyWriteToCout, LanguagePolicyGerman> HelloWorldGerman;
- 
-    HelloWorldGerman hello_world2;
-    hello_world2.run(); // prints "Hallo Welt!"
-}
-\end{lstlisting}
+\end{enumerate}
 
-\item public inheritance. A good introduction can be found in "modern c++ design" first chapter, about creator template class.  
+\item It can be used as private inheritance. An example can be found in policy section. 
+
+\item public inheritance. A good introduction can be found in "modern c++ design" first chapter, about creator template class.\textbf{public inheritance means the derived class want to expose the public interface in base class}
+
+\item public inheritance will expose interface to outside, just like Create() function. private inheritance just implement it. 
+
 \begin{lstlisting}[frame=single, language=c++]
 template <class T>
 struct OpNewCreator{
- static T* Create(){
- return new T;
- }
+static T* Create(){
+return new T;
+}
 };
 template <class T>
 struct MallocCreator{
- static T* Create(){
- void* buf = std::malloc(sizeof(T));
- if (!buf) return 0;
- return new(buf) T;
- }
+static T* Create(){
+void* buf = std::malloc(sizeof(T));
+if (!buf) return 0;
+return new(buf) T;
+}
 }; 
 
 // Library code
 template <class CreationPolicy>
 class WidgetManager : public CreationPolicy
 {
- ...
+...
 }; 
 
 // Application code
 typedef WidgetManager< OpNewCreator<Widget> > MyWidgetMgr; 
 \end{lstlisting}
 
-\item public inheritance will expose interface to outside, just like Create() function. private inheritance just implement it. 
-
 \item \textbf{private inheritance is not the first choice, but the last choice For above example, you don't need private inheritance, you can use previous section "Templates Parameterized by independent class". It's much clear. If policy class has protect member function which we want to use, at this time. private inheritance is our last choice. }
+\end{itemize}
 
-\end{enumerate}
 
+\subsection{type traits and policy}
+\subsubsection{implementation}
+\begin{itemize}
+	\item \textbf{The most common way of implementation is template class specification.}
+	\begin{enumerate}
+	\item most common usage of trait is member constants is\_integer<T>::value
+	
+	\item You use a templated structure, usually named with the type trait you are after. Eg) is\_integer, is\_pointer, is\_void. The structure contains a static const bool named value which defaults to a sensible state. You use a type trait by querying its value, like: my\_type\_trait<T>::value
+		
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	template <typename T>
+	struct is_swapable {
+	static const bool value = false;
+	};
+	
+	template <>
+	struct is_swapable<short> {
+	static const bool value = true;
+	};
+	
+	template <>
+	struct is_swapable<int> {
+	static const bool value = true;
+	};
+	
+	assert( is_swapable<T>::value && "Cannot swap this type" );
+	\end{lstlisting}
+	\item A good article is "A simple introduction to type traits"
+	\end{enumerate}
 
-\subsubsection{ Templates Parameterised by a Derived Class (Static polymorphism)}
-
+\item Another good way is to build new trait based on existing trait.
+	\begin{lstlisting}[frame=single, language=c++]
+	template <typename T>
+	struct is_swapable {
+		static const bool value = std::is_integral< T >::value && sizeof( T ) >= 2;
+	};
+	\end{lstlisting}
+	
+	\item Another type trait implementation method, use sizeof and static\_cast, these two can be done at compile time. That is to test if a class derived from another class.
+	\begin{lstlisting}[frame=single, language=c++]
+	template<typename D, typename B>
+	class IsDerivedFromHelper
+	{
+	class No { };
+	class Yes { No no[3]; };
+	
+	static Yes Test( B* );
+	static No Test( ... );
+	public:
+	enum { Is = sizeof(Test(static_cast<D*>(0))) == sizeof(Yes) };
+	
+	};
+	
+	
+	template <class C, class P> 
+	bool IsDerivedFrom() {
+	return IsDerivedFromHelper<C, P>::Is;
+	}
+	\end{lstlisting}
+	
+	\item In C++11, you can use constexpr instead of sizeof, and \textbf{decltype and declval also get type in the compiling time.}. 
+	\begin{enumerate}
+		\item two overload template test functions. One return true, default return false.
+		\item in the funciton which return true, use decltype and declval to simulate call some functions you want to judge. make these type used in function parameter or return 
+		\item use test function to initialized constexpr \textbf{value} 
+		\item There are two examples, one is judge if T has member function. Another it so test if T is function.
+	\end{enumerate}
 \begin{lstlisting}[frame=single, language=c++]
-template <class T> 
-struct Base{
-    void interface()    {
-        // ...
-        static_cast<T*>(this)->implementation();
-        // ...
-    }
+template <class T> struct IsFunction
+{
 
-    static void static_func()    {
-        // ...
-        T::static_sub_func();
-        // ...
-    }
-};
+//This is pointer to array of function.
+// int (*p)[1]  pointer to int [1]
+// int *p[1], that is array of pointer to int.
+//Pay attention to these difference. 
+template <typename C> 
+static constexpr bool test(U (*)[1] ){
+return true;
+}
 
-struct Derived : Base<Derived>{
-    void implementation();
-    static void static_sub_func();
+template <typename C> 
+static constexpr bool test(...){
+return false;
+}
+
+// int is used to give the precedence!
+//use 0 as pretend pointer.
+static constexpr bool value = test<T>(0);
 };
 \end{lstlisting}
 
+\end{lstlisting}
+	\begin{lstlisting}[frame=single, language=c++]
+	template <class T> struct hasSerialize
+	{
+	// We test if the type has serialize using decltype and declval.
+	template <typename C> static constexpr decltype(std::declval<C>().serialize(), bool()) test(int /* unused */)
+	{
+	// We can return values, thanks to constexpr instead of playing with sizeof.
+	return true;
+	}
+	
+	template <typename C> static constexpr bool test(...)
+	{
+	return false;
+	}
+	
+	// int is used to give the precedence!
+	static constexpr bool value = test<T>(int());
+	};
+	\end{lstlisting}
+	
+	\item last kind of implementation is use category. An example can be found in iterator.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	struct input_iterator_tag {};
+	struct output_iterator_tag {};
+	struct forward_iterator_tag: public input_iterator_tag {};
+	struct bidirectional_iterator_tag: public forward_iterator_tag {};
+	struct random_access_iterator_tag: public bidirectional_iterator_tag {};
+	
+	template < ... > // template params elided
+	class deque {
+	class iterator {
+	public:
+	typedef random_access_iterator_tag iterator_category;
+	...
+	};
+	
+	template<typename IterT>
+	struct iterator_traits {
+	typedef typename IterT::iterator_category iterator_category;
+	...
+	};
+	
+	template<typename T> // partial template specialization
+	struct iterator_traits<T*> // for built-in pointer types
+	{
+	typedef random_access_iterator_tag iterator_category;
+	...
+	};
+	\end{lstlisting}
+
+
+\item How to deal with member funciton pointer? It may look a bit confusing, because if the type of \&A::fun was spelled out explicitly, it would have to be written int (A::*)() const \&. However, in the template's case, the type int () const \& is "hidden" behind the name U, so the pointer to member is then just U A::*. It's similar to how type names can be used to simplify the syntax of normal function pointers:
+	
+
+\begin{lstlisting}[frame=single, language=c++]
+int foo(char, double) { return 42; }
+
+using Fun = int (char, double);
+Fun *p = &foo;
+// instead of:
+int (*q)(char, double) = &foo;
+\end{lstlisting}
+
+	\begin{lstlisting}[frame=single, language=c++]
+struct A {
+	int fun() const&;
+};
+
+template<class T, class U>
+struct PM_traits<U T::*> {
+	using member_type = U;
+};
+
+int main() {
+	using T = PM_traits<decltype(&A::fun)>::member_type; // T is int() const&
+}
+
+	\end{lstlisting}
+
+\item Based on previous knowledge, we can implement 
+\begin{lstlisting}[frame=single, language=c++]
+template< class T >
+struct is_member_function_pointer_helper : std::false_type {};
+
+template< class T, class U>
+struct is_member_function_pointer_helper<T U::*> : std::is_function<T> {};
+
+template< class T >
+struct is_member_function_pointer : is_member_function_pointer_helper< std::remove_cv_t<T> > {};
+
+class A {
+public:
+void member() { }
+};
+
+int main()
+{
+// fails at compile time if A::member is a data member and not a function
+static_assert(std::is_member_function_pointer<decltype(&A::member)>::value,
+"A::member is not a member function."); 
+}
+
+\end{lstlisting}
+
+\item summary:
+\begin{enumerate}
+	\item template specification: is\_integer
+	\item use basic trait: is\_swap
+	\item use template paramter deduciton : std::is\_function and
+	 is\_member\_function, is\_array, is\_class(T::*)
+	\item define trait in existing class : iterator\_trait.
+	\item overload template function, deduct return or function parameter based on template parameter T's expression:  has\_serialize, isIsFunction
+\end{enumerate}
+	
+\end{itemize}
+
+\subsubsection{usage}
+\begin{itemize}
+	\item This is where type traits come in handy. A type trait is a way for you to get information about the types passed in as template arguments, at compile time, so you can make more intelligent decisions. 
+	
+	\item A type trait can return any information or customization about a type. A simple example is is\_integer, it just return bool value information. A complex example is char\_trait. it can return a few functions. In this way, you also can think that char_trait is a policy. 
+	
+
+
+	\item Now question is how can you know if a type T has a member function? There are two articles which are good.
+	"An introduction to C++'s SFINAE concept: compile-time introspection of a class member" and "checking expression validity in-place with C++17"
+
+\end{itemize}
 
 \subsection{template common usage and idiom}
-
-
-\subsubsection{Templates Parameterised by independent class}
 \begin{itemize}
-
-\item A common used idiom in std
-\begin{enumerate}
-	\item concept
-	\item traits
-	\item tag dispatching
-	\item adaptors
-	\item type generators
-	\item object generators
-	\item policy classes
-\end{enumerate}
-
-\item A easy way of "call back" is function pointer, but it can't be used inline. so There is efficiency problem. 
-
-\item Based on function pointer, you can use inheritance, It's runtime polymorphism, and has some runtime overhead. 
-
-\item If this polymorphism can be known at compile time, we can use "static polymorphism". Use template parameter inject a class with static method. They can be inline and without any runtime overhead. 
-\begin{lstlisting}[frame=single, language=c++]
-// char_traits::eq
-#include <iostream>   // std::cout
-#include <string>     // std::basic_string, std::char_traits
-#include <cctype>     // std::tolower
-#include <cstddef>    // std::size_t
-
-// traits with case-insensitive eq:
-struct custom_traits: std::char_traits<char> {
-  static bool eq (char c, char d) { 
-  return std::tolower(c)==std::tolower(d); 
-}
-   
-  // some (non-conforming) implementations of basic_string::find call this instead of eq:
-  static const char* find (const char* s, std::size_t n, char c)
-  { while( n-- && (!eq(*s,c)) ) ++s; return s; }
-};
-
-int main ()
-{
-  std::basic_string<char,custom_traits> str ("Test");
-  std::cout << "T found at position " << str.find('t') << '\n';
-  return 0;
-}
-\end{lstlisting}
-
-\item This kind of examples can be found a lot in the STL, most of time by a kind of functor. Basic idea is the same.
-
+	
+	\item A common used idiom in std
+	\begin{enumerate}
+		\item concept
+		\item traits
+		\item tag dispatching
+		\item adaptors
+		\item type generators
+		\item object generators
+		\item policy classes
+	\end{enumerate}
 \end{itemize}
 
-
-
-\subsubsection{Templates with a non-template base}
-
-\begin{itemize}
-
-\item If an enum is used by several member functions of the std::codecvt template class, and does not relate to the template parameters. Hence it can exist in a separate base class.
-
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T>
-class codecvt_base{
-public:
-    enum result {ok, partial, error, noconv};
-};
-\end{lstlisting}
-
-\item Another example is here: A variation on this principle is used by the STL for vectors of pointers. First the STL instantiates vector<void*>. While vector<void*> is a template class, once instantiated it is pretty much the same as a normal class, the fact that it was created from a template no longer affects anything.
-
-Then the STL provides a specialisation of vector<T*>. This will be used for any vector of pointers, except for a vector of void* (since we already have a vector<void*> and void* is more specific than T*).
-
-vector<T*> is declared to have a private base of vector<void*>. All functions which place a new element into the vector, such as push\_back(), call the equivalent function on this private base, so internally our vector<T*> is using a vector<void*> for storage. All functions which return an element from the vector, such as front(), perform a static\_cast on the result of calling the equivalent function on the private base. Since the only way to get a pointer into the vector<void*> (apart from deliberately dangerous tricks) is through the interface offered by vector<T*> it is safe to staticly cast the void* back to T* (or the void*\& back to T*\&, and so on).
-
-\end{itemize}
-
-\subsubsection{Non-Template Classes with a Template Base}
-\begin{itemize}
-\item An example of u8toU16
-\begin{lstlisting}[frame=single, language=c++]
-class u8toU16 : public std::codecvt<wchar_t, char, std::mbstate_t>{
-};
-\end{lstlisting}
-
-\end{itemize}
-
-
-
-\subsubsection{Templates with a Template Base}
-\begin{lstlisting}[frame=single, language=c++]
-template<typename Str> class node{/* … */};
-template<typename Str> class element : public node<Str>{/* … */};
-template<typename Str> class textnode : public node<Str>{/* … */};
-template<typename Str> class attribute : public node<Str>{/* … */};
-\end{lstlisting}
-
-\begin{itemize}
-
-\item Factor parameter-independent code out of templates. detail can be found in effective item 44.
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T> // size-independent base class for
-class SquareMatrixBase { // square matrices
-protected:
-...
-void invert(std::size_t matrixSize); // invert matrix of the given size
-...
-};
-
-template<typename T, std::size_t n>
-class SquareMatrix: private SquareMatrixBase<T> {
-private:
-using SquareMatrixBase<T>::invert; // make base class version of invert
-// visible in this class; see Items 33
-// and 43
-public:
-...
-void invert() { invert(n); } // make inline call to base class
-}; // version of invert
-\end{lstlisting}
-
-\item A good article is google "Templates and Inheritance" in hackcraft.net;
-
-\end{itemize}
 
 \subsubsection{member function templates}
 \begin{itemize}
@@ -8910,154 +9033,330 @@ public:
 \item TMP has two great strengths. First, it makes some things easy that would otherwise be hard or impossible. Second, because template metaprograms execute during C++ compilation, TMP can be more efficient than a “normal” C++ program, because the traits approach is TMP. \textbf{Remember, traits enable compile-time if...else computations on types by overload}
 \end{itemize}
 
-\subsubsection{type traits}
+
+\subsubsection{policy}
 \begin{itemize}
-\item This is where type traits come in handy. A type trait is a way for you to get information about the types passed in as template arguments, at compile time, so you can make more intelligent decisions. 
-
-\item A type trait can return any information or custimzation about a type. A simple example is is\_integer, it just return bool value information. A complex example is char\_trait. it can return a few functions. 
-
-\item You use a templated structure, usually named with the type trait you are after. Eg) is\_integer, is\_pointer, is\_void. The structure contains a static const bool named value which defaults to a sensible state. You use a type trait by querying its value, like: my\_type\_trait<T>::value
-
-\item basic idea behind it is template class specification. 
-\begin{lstlisting}[frame=single, language=c++]
-template <typename T>
-struct is_swapable {
-  static const bool value = false;
-};
- 
-template <>
-struct is_swapable<short> {
-  static const bool value = true;
-};
- 
-template <>
-struct is_swapable<int> {
-  static const bool value = true;
-};
-
-assert( is_swapable<T>::value && "Cannot swap this type" );
-\end{lstlisting}
-
-\item A good article is "A simple introduction to type traits"
-
-\item Another type trait implementation method, use sizeof and static\_cast, these two can be done at compile time. 
-\begin{lstlisting}[frame=single, language=c++]
-template<typename D, typename B>
-class IsDerivedFromHelper
-{
-    class No { };
-    class Yes { No no[3]; };
-    
-    static Yes Test( B* );
-    static No Test( ... );
-public:
-    enum { Is = sizeof(Test(static_cast<D*>(0))) == sizeof(Yes) };
-    
-};
-
-
-template <class C, class P> 
-bool IsDerivedFrom() {
-    return IsDerivedFromHelper<C, P>::Is;
-}
-\end{lstlisting}
-
-\item In C++11, you can use constexpr instead of sizeof, and \textbf{decltype also get type in the compiling time.}  
-\begin{lstlisting}[frame=single, language=c++]
-template <class T> struct hasSerialize
-{
-    // We test if the type has serialize using decltype and declval.
-    template <typename C> static constexpr decltype(std::declval<C>().serialize(), bool()) test(int /* unused */)
-    {
-        // We can return values, thanks to constexpr instead of playing with sizeof.
-        return true;
-    }
-
-    template <typename C> static constexpr bool test(...)
-    {
-        return false;
-    }
-
-    // int is used to give the precedence!
-    static constexpr bool value = test<T>(int());
-};
-\end{lstlisting}
-
-\item last kind of implementation is use category. An example can be found in iterator.
-
-\begin{lstlisting}[frame=single, language=c++]
-struct input_iterator_tag {};
-struct output_iterator_tag {};
-struct forward_iterator_tag: public input_iterator_tag {};
-struct bidirectional_iterator_tag: public forward_iterator_tag {};
-struct random_access_iterator_tag: public bidirectional_iterator_tag {};
-
-template < ... > // template params elided
-class deque {
-class iterator {
-public:
-typedef random_access_iterator_tag iterator_category;
-...
-};
-
-template<typename IterT>
-struct iterator_traits {
-typedef typename IterT::iterator_category iterator_category;
-...
-};
-
-template<typename T> // partial template specialization
-struct iterator_traits<T*> // for built-in pointer types
-{
-typedef random_access_iterator_tag iterator_category;
-...
-};
-\end{lstlisting}
-
-\item Now question is how can you know if a type T has a member function? There are two articles which are good.
-"An introduction to C++'s SFINAE concept: compile-time introspection of a class member" and "checking expression validity in-place with C++17"
-
-\item All above technologies are part of generic programming. A good and more example about generic programming examples can be found in "Modern C++ desing" a book. The first chapter introduce policy pattern. The second chapter introduce a lot of ways to manage Type information at compile time. 
-
-\item The Policy class can be thought a optional way to used as bridge pattern and multi-inheritance. You can move this part to OOP chapter if you have time later.
-
+	\item \item All above technologies are part of generic programming. A good and more example about generic programming examples can be found in "Modern C++ desing" a book. The first chapter introduce policy pattern. The second chapter introduce a lot of ways to manage Type information at compile time. 
+	
+	\item The Policy class can be thought a optional way to used as bridge pattern and multi-inheritance. You can move this part to OOP chapter if you have time later.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	template <typename OutputPolicy, typename LanguagePolicy>
+	class HelloWorld : private OutputPolicy, private LanguagePolicy{
+	using OutputPolicy::print;
+	using LanguagePolicy::message;
+	
+	public:
+	// Behaviour method
+	void run() const{
+	// Two policy methods
+	print(message());
+	}
+	};
+	
+	class OutputPolicyWriteToCout{
+	protected:
+	template<typename MessageType>
+	void print(MessageType const &message) const{
+	std::cout << message << std::endl;
+	}
+	};
+	
+	class LanguagePolicyEnglish{
+	protected:
+	std::string message() const{
+	return "Hello, World!";
+	}
+	};
+	
+	class LanguagePolicyGerman{
+	protected:
+	std::string message() const{
+	return "Hallo Welt!";
+	}
+	};
+	
+	int main(){
+	/* Example 1 */
+	typedef HelloWorld<OutputPolicyWriteToCout, LanguagePolicyEnglish> HelloWorldEnglish;
+	
+	HelloWorldEnglish hello_world;
+	hello_world.run(); // prints "Hello, World!"
+	
+	/* Example 2 * Does the same, but uses another language policy */
+	typedef HelloWorld<OutputPolicyWriteToCout, LanguagePolicyGerman> HelloWorldGerman;
+	
+	HelloWorldGerman hello_world2;
+	hello_world2.run(); // prints "Hallo Welt!"
+	}
+	\end{lstlisting}
+	
+	item Templates Parameterised by a Derived Class (Static polymorphism)
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	template <class T> 
+	struct Base{
+	void interface()    {
+	// ...
+	static_cast<T*>(this)->implementation();
+	// ...
+	}
+	
+	static void static_func()    {
+	// ...
+	T::static_sub_func();
+	// ...
+	}
+	};
+	
+	struct Derived : Base<Derived>{
+	void implementation();
+	static void static_sub_func();
+	};
+	\end{lstlisting}
+	
+	\item A easy way of "call back" is function pointer, but it can't be used inline. so There is efficiency problem. 
+	
+	\item Based on function pointer, you can use inheritance, It's runtime polymorphism, and has some runtime overhead. 
+	
+	\item If this polymorphism can be known at compile time, we can use "static polymorphism". Use template parameter inject a class with static method. They can be inline and without any runtime overhead. 
+	\begin{lstlisting}[frame=single, language=c++]
+	// char_traits::eq
+	#include <iostream>   // std::cout
+	#include <string>     // std::basic_string, std::char_traits
+	#include <cctype>     // std::tolower
+	#include <cstddef>    // std::size_t
+	
+	// traits with case-insensitive eq:
+	struct custom_traits: std::char_traits<char> {
+	static bool eq (char c, char d) { 
+	return std::tolower(c)==std::tolower(d); 
+	}
+	
+	// some (non-conforming) implementations of basic_string::find call this instead of eq:
+	static const char* find (const char* s, std::size_t n, char c)
+	{ while( n-- && (!eq(*s,c)) ) ++s; return s; }
+	};
+	
+	int main ()
+	{
+	std::basic_string<char,custom_traits> str ("Test");
+	std::cout << "T found at position " << str.find('t') << '\n';
+	return 0;
+	}
+	\end{lstlisting}
+	
+	\item This kind of examples can be found a lot in the STL, most of time by a kind of functor. Basic idea is the same.
+	
 \end{itemize}
 
 \subsubsection{mixin}
 \begin{itemize}
 	\item method 1, use Mixin
 	\begin{enumerate}
-		\item 
+		\item Mixin refers to the following idiom - a template class that is parameterised on its base class
+		\item The function name (Execute) can be different. Here, we use the same name because we can recursive use it. such as: LoggingTask< TimingTask< MyTask > > Task;
+		
+		\item if you have a MyTask value, you can build a helper function to build Mixin class 
+		\begin{lstlisting}[frame=single, language=c++]
+		template<typename Task>
+		LogTask<Task> getLogTask(Task const& task){
+			//Call the below explicit ctor in LogTask class
+			return LogTask<Task>(task);
+		}
+		
+		getLogTask(task).Execute //with log funcitons
+		\end{lstlisting}
+		
+		
+		\item A detail can be found "C++ Mixins - Reuse through inheritance is good... when done the right way" and "Mixin Classes: The Yang of the CRTP"
 	\end{enumerate}
 \begin{lstlisting}[frame=single, language=c++]
+class MyTask{
+	public:
+	
+	void Execute(){
+	std::cout << "...This is where the task is executed..." << std::endl;
+	}
+};
+
+template< class T >
+class LoggingTask : public T{
+	public:
+	
+	explicit LoggingTask(T const& t) : T(t) {}
+	
+	void Execute(){
+	std::cout << "LOG: The task is starting - " <<std::endl;
+	T::Execute(); 
+	std::cout << "LOG: The task has completed - " <<  std::endl;
+	}
+};
+
+LoggingTask<  MyTask  > t;
+t.Execute();
 \end{lstlisting}
+
+
 	\item method 2, use CRTP
 \begin{enumerate}
-	\item 
+	\item Use base class extend and reuse function(Execute_imp)
+	\item Expose Execute interface to client by base class 
+	\item Client can directly use MyTask.
 \end{enumerate}
 \begin{lstlisting}[frame=single, language=c++]
+template< class Task >
+class LoggingTask {
+	public:
+	void Execute(){
+		std::cout << "LOG: The task is starting - " <<std::endl;
+		static_cast<Task const&>(*this).Execute_imp();
+		std::cout << "LOG: The task has completed - " <<  std::endl;
+	}
+};
+
+class MyTask:public LoggingTask<MyTask> {
+	public:
+	void Execute_imp(){
+	std::cout << "...This is where the task is executed..." << std::endl;
+	}
+};
+
+MyTask t;
+t.Execute();
 \end{lstlisting}
 
 	\item method 3, template Method
 \begin{enumerate}
-	\item 
+	\item No template, just use run time polymorphism
+	\item Base class define a basic flow of action, some part of action is override in the Child class, That is Template Method pattern in design pattern.
 \end{enumerate}
 \begin{lstlisting}[frame=single, language=c++]
+class BaseLoggingTask
+{
+public:
+virtual void Execute()
+{
+std::cout << "LOG: The task is starting - " << std::endl;
+OnExecute();
+std::cout << "LOG: The task has completed - " <<std::endl;
+}
+
+virtual void OnExecute() = 0;
+};
+
+// Concrete Task implementation that reuses the logging code of the BaseLoggingTask
+class MyTask : public BaseLoggingTask
+{
+public:
+virtual void OnExecute()
+{
+std::cout << "...This is where the task is executed..." << std::endl;
+}
+
+};
 \end{lstlisting}
 
 	\item method 4, command pattern
 \begin{enumerate}
-	\item 
+	\item That is command pattern.
+	\item For Logging Task, you can see the class \textbf{includes and derived from ITask at the same time}. 
+	\item Base picture.
+	\includegraphics[scale=0.6]{pics/command.png}
+	
 \end{enumerate}
 \begin{lstlisting}[frame=single, language=c++]
+
+class LoggingTask : public ITask
+{
+ITask* task_;
+public:
+LoggingTask( ITask* task ) : task_( task )
+{
+}
+
+~LoggingTask()
+{
+delete task_;
+}
+
+virtual void Execute()
+{
+	std::cout << "LOG: The task is starting - " << GetName().c_str() << std::endl;
+	if( task_ ) task_->Execute();
+	std::cout << "LOG: The task has completed - " << GetName().c_str() << std::endl;
+}
+};
+
+
+
+class MyTask : public ITask
+{
+public:
+virtual void Execute()
+{
+std::cout << "...This is where the task is executed..." << std::endl;
+}
+
+virtual std::string GetName()
+{
+return "My task name";
+}
+};
+
+ITask* t = new LoggingTask( 
+new TimingTask( 
+new MyTask() ) );
+t->Execute();
+
 \end{lstlisting}
 
 
-	\item method 5, mixin
+	\item method 5, mixin many mixin
 \begin{enumerate}
 	\item 
 \end{enumerate}
 \begin{lstlisting}[frame=single, language=c++]
+template< class T >
+class LoggingTask : public T
+{
+public:
+void Execute()
+{
+std::cout << "LOG: The task is starting - " << GetName().c_str() << std::endl;
+T::Execute();
+std::cout << "LOG: The task has completed - " << GetName().c_str() << std::endl;
+}
+};
+
+template< class T >
+class TimingTask : public T
+{
+Timer timer_;
+public:
+void Execute()
+{
+timer_.Reset();
+T::Execute();
+double t = timer_.GetElapsedTimeSecs();
+std::cout << "Task Duration: " << t << " seconds" << std::endl;
+}
+};
+
+class MyTask
+{
+public:
+void Execute()
+{
+std::cout << "...This is where the task is executed..." << std::endl;
+}
+};
+
+edef LoggingTask< 
+TimingTask< 
+MyTask > > Task;
+Task t4;
+t4.Execute();
 \end{lstlisting}
 
 	\item method 6, policy base
@@ -9065,9 +9364,40 @@ typedef random_access_iterator_tag iterator_category;
 	\item 
 \end{enumerate}
 \begin{lstlisting}[frame=single, language=c++]
+class coutLog{
+	void beginLog(){
+	cout<<"std::cout << "LOG: The task is starting - " <<endl
+	}
+	
+	void endLog(){
+	std::cout << "LOG: The task has completed - "
+	}
+}
+
+
+template<typename LogPolicy, typename TimePolicy>
+class Task: private LogPolicy, TimePolicy{
+
+void Execute()
+{
+	beginLog();
+	beginTime();
+	std::cout << "...This is where the task is executed..." << std::endl;
+	endTime();
+	endLog();
+
+}
+
 \end{lstlisting}
 
 \item summary:(insert a picture)
+\begin{enumerate}
+	\item Policy use can be used when you log and time funciton change a lot
+	\item Mixin and command can be compose the multi-actions
+	\item template is more effeicent than inheritance. 
+	\item Command pattern can also be thought as composite pattern.
+	\item Mixin will not change current class, but CRTP change the current class interface.
+\end{enumerate}
 
 
 \end{itemize}
