@@ -6885,7 +6885,35 @@ const Empty* operator&() const ;
 \item If you just define a class without any special member function, all six member function will be declared by compiler implicitly. \\
 \includegraphics[scale=0.6]{pics/sm2.png} \newline
 
+
+\item Default can mean "deleted"
+
+\begin{lstlisting}[frame=single, language=c++]
+
+class A{
+A() = delete;
+};
+
+
+class B{
+
+A a;
+};
+
+int main()
+{
+B b;
+
+}
+
+main.cpp:16:7: note: ‘B::B()’ is implicitly deleted because the default definition would be ill-formed:
+\end{lstlisting}
+
 \item Why defaulted move member sometimes "deleted"? Detail can be found in "CWG 1402 is (imho) the most important bug fix to C++11". Another good article is google "Why is the move constructor neither declared nor deleted with clang? " In clang, it support C++11 standard better. 
+
+\item \textbf{There are two differences: 1) user define empty and declared default 2) not declare and declare delete}
+\includegraphics[scale=0.6]{pics/ctor.png} \newline
+
 
 
 \item Next question is what differences are between =default and user define empty ctor? problems of below code snippet are:
@@ -9148,6 +9176,149 @@ public:
 	\item This kind of examples can be found a lot in the STL, most of time by a kind of functor. Basic idea is the same.
 	
 \end{itemize}
+\subsubsection{tag dispatch}
+\begin{itemize}
+	\item A famous usage of tag dispatch is iterator 
+	\begin{enumerate}
+		\item Pay attention to iterator\_traits. Why do we use it here? It's also a template. With specialization, it also support common pointer type.
+		\item Client side may or may not be template. For advance, it should be template, because it need template parameter Inputiterator.
+		\item There is some tag type which need to be defined. And you should use these tags in the functions which you want to dispatched by overload resolve in compiling time. 
+	\end{enumerate}
+	\begin{lstlisting}[frame=single, language=c++]
+	namespace std {
+	struct input_iterator_tag { };
+	struct bidirectional_iterator_tag { };
+	struct random_access_iterator_tag { };
+	
+	namespace detail {
+	template <class InputIterator, class Distance>
+	void advance_dispatch(InputIterator& i, Distance n, input_iterator_tag) {
+	while (n--) ++i;
+	}
+	
+	template <class BidirectionalIterator, class Distance>
+	void advance_dispatch(BidirectionalIterator& i, Distance n, 
+	bidirectional_iterator_tag) {
+	if (n >= 0)
+	while (n--) ++i;
+	else
+	while (n++) --i;
+	}
+	
+	template <class RandomAccessIterator, class Distance>
+	void advance_dispatch(RandomAccessIterator& i, Distance n, 
+	random_access_iterator_tag) {
+	i += n;
+	}
+	}
+	
+	template <class InputIterator, class Distance>
+	void advance(InputIterator& i, Distance n) {
+	typename iterator_traits<InputIterator>::iterator_category category;
+	detail::advance_dispatch(i, n, category);
+	}
+	}
+	\end{lstlisting}
+	
+	\item The second implementation of tag dispatch is use integral\_constant
+	\begin{enumerate}
+		\item \textbf{std::true\_type use inegral\_constant(type generator)to define a new type. is\_arithmetic derived form true\_type or false\_type}
+		\begin{lstlisting}[frame=single, language=c++]
+		std::integral_constant<bool, true>
+		
+		template< class T >
+		struct is_arithmetic : std::integral_constant<bool,
+		std::is_integral<T>::value ||
+		std::is_floating_point<T>::value> {
+		};
+		\end{lstlisting}
+		
+		\item client side is also template
+		\item is\_arithmetic is a kind of trait, When you input T, it return a unnamed type,but it inheriated from ture\_type, Then use overload resolving.
+	\end{enumerate}
+	\begin{lstlisting}[frame=single, language=c++]
+	template <typename T>
+	int foo_impl(T value, std::true_type) {
+	// Implementation for arithmetic values
+	}
+	
+	template <typename T>
+	double foo_impl(T value, std::false_type) {
+	// Implementation for non-arithmetic values
+	}
+	
+	template <typename T>
+	auto foo(T value) {
+	// Calls the correct implementation function, which return different types.
+	// foo's return type is `int` if it calls the `std::true_type` overload
+	// and `double` if it calls the `std::false_type` overload
+	return foo_impl(value, std::is_arithmetic<T>{});
+	}
+	\end{lstlisting}
+	
+	\item The third method: build your own trait, it define a value
+	\begin{enumerate}
+		\item build you own trait has\_serialize, it includes a bool memeber ::value
+		\item You can use decltype, declval and constexpr to build this trait. 
+		\item From this trait, it return value, not a type. So you need use enable\_if template in the client code. change the value to a type, then use the type to overload resolving.
+		\item For false, enable\_if is empty define.
+		\begin{lstlisting}[frame=single, language=c++]
+		template <bool, typename T = void>
+		struct enable_if
+		{};
+		
+		template <typename T>
+		struct enable_if<true, T> {
+		typedef T type;
+		};
+		\end{lstlisting}
+	\end{enumerate}
+	\begin{lstlisting}[frame=single, language=c++]
+	template <class T> struct has_serialize
+	{
+	// We test if the type has serialize using decltype and declval.
+	template <typename C>
+	static constexpr decltype(std::declval<C>().serialize(), bool())
+	test(int /* unused */)
+	{
+	// We can return values, thanks to constexpr instead of playing with sizeof.
+	return true;
+	}
+	template <typename C>
+	static constexpr bool test(...)
+	{
+	return false;
+	}
+	// int is used to give the precedence!
+	static constexpr bool value = test<T>(int());
+	};
+	
+	
+	//client side
+	template <class T>
+	enable_if<has_serialize<T>::value, std::string>::type
+	serialize(const T& obj)
+	{
+	return obj.serialize();
+	}
+	// Contra-SFINAE to avoid ambiguity
+	template <class T>
+	enable_if<!has_serialize<T>::value, std::string>::type // Watch out for the “!”
+	serialize(const T& obj)
+	{
+	return to_string(obj);
+	}
+	
+	
+	\end{lstlisting}
+	
+	\item summary:
+	
+	\includegraphics[scale=0.6]{pics/tag_dispatch.png}
+	
+\end{itemize}
+
+
 
 \subsubsection{mixin}
 \begin{itemize}
@@ -9448,14 +9619,14 @@ void Execute()
 	}
 	\end{lstlisting}
 	
-	\item Baisc type erasure tech.
-	\item When you implement type erasure (in C++ or even in Go), it always starts with making a list of the things you want to be able to do with your type-erased object — call it, destroy it, copy it, and so on. Don Norman, in the book The Design of Everyday Things (1988), calls this a list of affordances. A std::function affords copying and calling. A std::any affords copying, but not calling. A unique_function affords calling and moving, but not copying.
 	
-	Each affordance in your list turns into a virtual member function of AbstractWhatever, which will be overridden by WrappingWhatever<T> appropriately for T. Finally, the top-level Whatever will store a unique_ptr<AbstractWhatever> ptr\_ (and/or an SBO buffer), and provide a clean non-virtual interface implemented completely in terms of calling virtual member functions on *ptr\_.
 	
 	In this way you can write a type-erased wrapper for any Whatever whatever — callbacks, counters, output streams, input generators.
 	
-	\item A good article is "What is Type Erasure"
+	\item A good article is "What is Type Erasure" A detail implementation can be found in \verb|http://blog.bitfoc.us/p/525|
+	\item A picture 
+	\includegraphics[scale=0.6]{pics/function1.png}
+	
 	\begin{lstlisting}[frame=single, language=c++]
 	struct Plus1 {
 	int call(int x) const { return x+1; }
@@ -9498,150 +9669,23 @@ void Execute()
 \end{itemize}
 
 \subsubsection{type erasure}
-
-
-\subsubsection{tag dispatch}
 \begin{itemize}
-	\item A famous usage of tag dispatch is iterator 
-	\begin{enumerate}
-		\item Pay attention to iterator\_traits. Why do we use it here? It's also a template. With specialization, it also support common pointer type.
-		\item Client side may or may not be template. For advance, it should be template, because it need template parameter Inputiterator.
-		\item There is some tag type which need to be defined. And you should use these tags in the functions which you want to dispatched by overload resolve in compiling time. 
-	\end{enumerate}
-\begin{lstlisting}[frame=single, language=c++]
-namespace std {
-struct input_iterator_tag { };
-struct bidirectional_iterator_tag { };
-struct random_access_iterator_tag { };
+\item Baisc type erasure tech.
+\item When you implement type erasure (in C++ or even in Go), it always starts with making a list of the things you want to be able to do with your type-erased object — call it, destroy it, copy it, and so on. Don Norman, in the book The Design of Everyday Things (1988), calls this a list of affordances. A std::function affords copying and calling. A std::any affords copying, but not calling. A unique\_function affords calling and moving, but not copying.
 
-namespace detail {
-template <class InputIterator, class Distance>
-void advance_dispatch(InputIterator& i, Distance n, input_iterator_tag) {
-while (n--) ++i;
-}
+\item Each affordance in your list turns into a virtual member function of AbstractWhatever, which will be overridden by WrappingWhatever<T> appropriately for T. Finally, the top-level Whatever will store a unique\_ptr<AbstractWhatever> ptr\_ (and/or an SBO buffer), and provide a clean non-virtual interface implemented completely in terms of calling virtual member functions on *ptr\_.
 
-template <class BidirectionalIterator, class Distance>
-void advance_dispatch(BidirectionalIterator& i, Distance n, 
-bidirectional_iterator_tag) {
-if (n >= 0)
-while (n--) ++i;
-else
-while (n++) --i;
-}
-
-template <class RandomAccessIterator, class Distance>
-void advance_dispatch(RandomAccessIterator& i, Distance n, 
-random_access_iterator_tag) {
-i += n;
-}
-}
-
-template <class InputIterator, class Distance>
-void advance(InputIterator& i, Distance n) {
-typename iterator_traits<InputIterator>::iterator_category category;
-detail::advance_dispatch(i, n, category);
-}
-}
-\end{lstlisting}
-
-\item The second implementation of tag dispatch is use integral\_constant
+\item A concept is a set of requirements consisting of valid expressions, associated types, invariants, and complexity guarantees. A type that satisfies the requirements is said to model the concept. A concept can extend the requirements of another concept, which is called refinement.
 \begin{enumerate}
-	\item \textbf{std::true\_type use inegral\_constant(type generator)to define a new type. is\_arithmetic derived form true\_type or false\_type}
-\begin{lstlisting}[frame=single, language=c++]
-std::integral_constant<bool, true>
+	\item Valid Expressions are C++ expressions which must compile successfully for the objects involved in the expression to be considered models of the concept.
 
-template< class T >
-struct is_arithmetic : std::integral_constant<bool,
-std::is_integral<T>::value ||
-std::is_floating_point<T>::value> {
-};
-\end{lstlisting}
 
-	\item client side is also template
-	\item is\_arithmetic is a kind of trait, When you input T, it return a unnamed type,but it inheriated from ture\_type, Then use overload resolving.
+\item Associated Types are types that are related to the modeling type in that they participate in one or more of the valid expressions. Typically associated types can be accessed either through typedefs nested within a class definition for the modeling type, or they are accessed through a traits class.
+
+\item Invariants are run-time characteristics of the objects that must always be true, that is, the functions involving the objects must preserve these characteristics. The invariants often take the form of pre-conditions and post-conditions.
+\item Complexity Guarantees are maximum limits on how long the execution of one of the valid expressions will take, or how much of various resources its computation will use.
 \end{enumerate}
-\begin{lstlisting}[frame=single, language=c++]
-template <typename T>
-int foo_impl(T value, std::true_type) {
-// Implementation for arithmetic values
-}
-
-template <typename T>
-double foo_impl(T value, std::false_type) {
-// Implementation for non-arithmetic values
-}
-
-template <typename T>
-auto foo(T value) {
-// Calls the correct implementation function, which return different types.
-// foo's return type is `int` if it calls the `std::true_type` overload
-// and `double` if it calls the `std::false_type` overload
-return foo_impl(value, std::is_arithmetic<T>{});
-}
-\end{lstlisting}
-
-\item The third method: build your own trait, it define a value
-\begin{enumerate}
-	\item build you own trait has\_serialize, it includes a bool memeber ::value
-	\item You can use decltype, declval and constexpr to build this trait. 
-	\item From this trait, it return value, not a type. So you need use enable\_if template in the client code. change the value to a type, then use the type to overload resolving.
-	\item For false, enable\_if is empty define.
-	\begin{lstlisting}[frame=single, language=c++]
-	template <bool, typename T = void>
-	struct enable_if
-	{};
-	
-	template <typename T>
-	struct enable_if<true, T> {
-	typedef T type;
-	};
-	\end{lstlisting}
-\end{enumerate}
-\begin{lstlisting}[frame=single, language=c++]
-template <class T> struct has_serialize
-{
-// We test if the type has serialize using decltype and declval.
-template <typename C>
-static constexpr decltype(std::declval<C>().serialize(), bool())
-test(int /* unused */)
-{
-// We can return values, thanks to constexpr instead of playing with sizeof.
-return true;
-}
-template <typename C>
-static constexpr bool test(...)
-{
-return false;
-}
-// int is used to give the precedence!
-static constexpr bool value = test<T>(int());
-};
-
-
-//client side
-template <class T>
-enable_if<has_serialize<T>::value, std::string>::type
-serialize(const T& obj)
-{
-return obj.serialize();
-}
-// Contra-SFINAE to avoid ambiguity
-template <class T>
-enable_if<!has_serialize<T>::value, std::string>::type // Watch out for the “!”
-serialize(const T& obj)
-{
-return to_string(obj);
-}
-
-
-\end{lstlisting}
-
-\item summary:
-
-\includegraphics[scale=0.6]{pics/tag_dispatch.png}
-
 \end{itemize}
-
 
 
 \subsubsection{enable\_if}
