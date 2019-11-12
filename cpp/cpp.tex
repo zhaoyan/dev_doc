@@ -8628,7 +8628,7 @@ int main(){
 
 \begin{itemize}
 	
-	\item Non-Template class Derived from Template Base class specification}
+	\item Non-Template class Derived from Template Base class specification
 
 	\begin{lstlisting}[frame=single, language=c++]
 	class u8toU16 : public std::codecvt<wchar_t, char, std::mbstate_t>{
@@ -8716,7 +8716,7 @@ int main(){
 	class Derived: public T
 	\end{lstlisting}
 	
-	\item \textbf{Two famous idioms are Mixin and Policy, can be found below sections. In this chapter, we only focuse syntaxtic level, not semantic level. 
+	\item \textbf{Two famous idioms are Mixin and Policy, can be found below sections. In this chapter, we only focuse syntaxtic level, not semantic level.}
 
 \end{enumerate}
 
@@ -8849,7 +8849,6 @@ static constexpr bool value = test<T>(0);
 };
 \end{lstlisting}
 
-\end{lstlisting}
 	\begin{lstlisting}[frame=single, language=c++]
 	template <class T> struct hasSerialize
 	{
@@ -8971,7 +8970,7 @@ static_assert(std::is_member_function_pointer<decltype(&A::member)>::value,
 \begin{itemize}
 	\item This is where type traits come in handy. A type trait is a way for you to get information about the types passed in as template arguments, at compile time, so you can make more intelligent decisions. 
 	
-	\item A type trait can return any information or customization about a type. A simple example is is\_integer, it just return bool value information. A complex example is char\_trait. it can return a few functions. In this way, you also can think that char_trait is a policy. 
+	\item A type trait can return any information or customization about a type. A simple example is is\_integer, it just return bool value information. A complex example is char\_trait. it can return a few functions. In this way, you also can think that char\_trait is a policy. 
 	
 
 
@@ -9200,7 +9199,7 @@ t.Execute();
 
 	\item method 2, use CRTP
 \begin{enumerate}
-	\item Use base class extend and reuse function(Execute_imp)
+	\item Use base class extend and reuse function(Execute\_imp)
 	\item Expose Execute interface to client by base class 
 	\item Client can directly use MyTask.
 \end{enumerate}
@@ -9401,6 +9400,105 @@ void Execute()
 
 
 \end{itemize}
+
+\subsection{type erasure and concept}
+\subsubsection{function}
+
+\begin{itemize}
+	\item function template support copyable and callable 
+	\begin{lstlisting}[frame=single, language=c++]
+	#include <cmath>
+	#include <functional>
+	#include <iostream>
+	#include <map>
+	
+	double add(double a, double b){
+		return a + b;
+	}
+	
+	struct Sub{
+		double operator()(double a, double b){
+			return a - b;
+		}
+	};
+	
+	double multThree(double a, double b, double c){
+		return a * b * c;
+	}
+	
+	int main(){
+		
+		using namespace std::placeholders;
+		
+		std::cout << std::endl;
+		
+		std::map<const char , std::function<double(double, double)>> dispTable{  // (1)
+			{'+', add },                                         // (2)
+			{'-', Sub() },                                       // (3)
+			{'*', std::bind(multThree, 1, _1, _2) },             // (4)
+			{'/',[](double a, double b){ return a / b; }}};      // (5)
+		
+		std::cout << "3.5 + 4.5 = " << dispTable['+'](3.5, 4.5) << std::endl;
+		std::cout << "3.5 - 4.5 = " << dispTable['-'](3.5, 4.5) << std::endl;
+		std::cout << "3.5 * 4.5 = " << dispTable['*'](3.5, 4.5) << std::endl;
+		std::cout << "3.5 / 4.5 = " << dispTable['/'](3.5, 4.5) << std::endl;
+		
+		std::cout << std::endl;
+		
+	}
+	\end{lstlisting}
+	
+	\item Baisc type erasure tech.
+	\item When you implement type erasure (in C++ or even in Go), it always starts with making a list of the things you want to be able to do with your type-erased object — call it, destroy it, copy it, and so on. Don Norman, in the book The Design of Everyday Things (1988), calls this a list of affordances. A std::function affords copying and calling. A std::any affords copying, but not calling. A unique_function affords calling and moving, but not copying.
+	
+	Each affordance in your list turns into a virtual member function of AbstractWhatever, which will be overridden by WrappingWhatever<T> appropriately for T. Finally, the top-level Whatever will store a unique_ptr<AbstractWhatever> ptr\_ (and/or an SBO buffer), and provide a clean non-virtual interface implemented completely in terms of calling virtual member functions on *ptr\_.
+	
+	In this way you can write a type-erased wrapper for any Whatever whatever — callbacks, counters, output streams, input generators.
+	
+	\item A good article is "What is Type Erasure"
+	\begin{lstlisting}[frame=single, language=c++]
+	struct Plus1 {
+	int call(int x) const { return x+1; }
+	};
+	
+	struct AbstractCallback {
+	virtual int call(int) const = 0;
+	virtual ~AbstractCallback() = default;
+	};
+	
+	template<class T>
+	struct WrappingCallback : AbstractCallback {
+	T cb_;
+	explicit WrappingCallback(T &&cb) : cb_(std::move(cb)) {}
+	int call(int x) const override { return cb_(x); }
+	};
+	
+	struct Callback {
+	std::unique_ptr<AbstractCallback> ptr_;
+	
+	template<class T>
+	Callback(T t) {
+	ptr_ = std::make_unique<WrappingCallback<T>>(std::move(t));
+	}
+	int operator()(int x) const {
+	return ptr_->call(x);
+	}
+	};
+	
+	int run_twice(const Callback& callback) {
+	return callback(1) + callback(1);
+	}
+	
+	int main() {
+	int y = run_twice([](int x) { return x+1; });
+	assert(y == 4);
+	}
+	\end{lstlisting}
+	
+\end{itemize}
+
+\subsubsection{type erasure}
+
 
 \subsubsection{tag dispatch}
 \begin{itemize}
