@@ -3053,11 +3053,45 @@ sprintf(.....);
 
 \section{initialization}
 
-
-\begin{enumerate}
-	\item always initialize variable before you use it.
-	\item Manually initialize non-member objects of built-in types. including a pointer.
+\subsection{basic}
+\begin{itemize}
+	\item \textbf{always initialize variable before you use it.} Manually initialize non-member objects of built-in types. including a pointer.
+	
 	\item Use \textbf{member initialization list} to initialize all members inside an object.
+		\item There are three name: 1)initilizer list, 2) brace(list) initilization, 3) member initilization list(mem-init)
+	\begin{enumerate}
+		\item member initilization list is used in C++ ctor. it has some advantages: Detail can be found in "OOP" section. 
+		
+		\item brace initialization is a generic initialization syntax(method), it support more initialization, such as class member and aggregation. At the same time, it will avoid narrowing and vexing parsing problem. 
+		
+		\item std::initializer\_list is a \textbf{new data type. just like std::list.}
+	\end{enumerate}
+\end{itemize}
+
+\subsection{initialization order}
+\begin{itemize}
+	\item \item In the same translation unit, formally, C++ initializes static and global variables in three phases: 1. Zero initialization 2. Static initialization 3. Dynamic initialization
+	
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	int g0;  //zero initialization
+	int g1 = 42;    //  static initialization
+	extern int f();
+	int g2 = f();   //  dynamic initialization
+	\end{lstlisting}
+	
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	int a = f(); // a exists just to call f
+	int x = 22;
+	int f() {
+	++x;
+	return 123; // unimportant arbitrary number
+	}
+	// x equals to 23, not 22
+	// bcause static initialization
+	// is earlier than dynamic initialization
+	\end{lstlisting}
+	
+	\item Pay attention to the global object which are initialized in right order. Because the order can be arranged in the same translation unit, but not \textbf{between translation units}, see effective c++ Item 47. So we don't encourage you to use global object unless it's very necessary.
 	
 	\item The initialization order uncertainty that afflicts non-local static objects defined in separate translation units. The questions is below:
 	
@@ -3092,38 +3126,16 @@ sprintf(.....);
 	}
 	\end{lstlisting}
 	
-	\item Pay attention to the global object which are initialized in right order. Because the order can be arranged in the same translation unit, but not \textbf{between translation units}, see effective c++ Item 47. So we don't encourage you to use global object unless it's very necessary.
 	
-	\item Even in the same translation unit, formally, C++ initializes static and global variables in three phases: 1. Zero initialization 2. Static initialization 3. Dynamic initialization
 	
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	int g0;  //zero initialization
-	int g1 = 42;    //  static initialization
-	extern int f();
-	int g2 = f();   //  dynamic initialization
-	\end{lstlisting}
-	
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	int a = f(); // a exists just to call f
-	int x = 22;
-	int f() {
-	++x;
-	return 123; // unimportant arbitrary number
-	}
-	// x equals to 23, not 22
-	// bcause static initialization
-	// is earlier than dynamic initialization
-	\end{lstlisting}
-	
-\end{enumerate}
+\end{itemize}
 
 
-
-\subsection{Init}
+\subsection{Init method}
 In this section,I will introduce a few conceptions togther. They are related. The first one is vexing parsing. The second one is value-initization. The third one is brace init and the last one is initilizer\_list
-\subsubsection{basic}
+\subsubsection{Six init methods}
 \begin{itemize}
-	\item There are six initializations forms: default, value, direct, copy and list, aggregate init and reference init
+	\item There are six initializations forms: default, value, direct, copy, aggregate init and reference init
 	\begin{lstlisting}[frame=single, language=c++]
 	T t;
 	new T;  //default
@@ -3152,32 +3164,9 @@ In this section,I will introduce a few conceptions togther. They are related. Th
 	
 	
 	\end{lstlisting}
+	\item for one word \textbf{1)without parentheses, it's default, tell the compiler to use it's default method; 2) use empty parentheses or brace, it's value, tell the compiler to init them, (if there is user define one, use user-define, otherwise zero), 3) use parentheses with value, direct init, just command compile to init what I want.}
 	
 	
-	\item for one word \textbf{1)with parenthese, it's default, tell the compiler to use it's default method; 2) use empty parentheses or brace, it's value, tell the compiler to init them, (if there is user define one, use user-define, otherwise zero), 3) use parenthese with value, direct init, just command compile to init what I want.}
-	\begin{lstlisting}[frame=single, language=c++]
-	class exec{
-	public:
-	exec() = default;
-	int i;
-	};
-	
-	class exec2
-	{
-	public:
-	exec2();
-	int i;
-	};
-	exec2::exec2() = default;
-	
-	const exec e;      //erro, exec has default ctor
-	const exec2 e2;    //right, exec2 has user-define ctor
-	exec e    //default init, so e.i is random
-	exec e{}  //value init, but there is no user-define ctor, so e.i == 0
-	
-	exec2 e  // default init, so e.i is random
-	exec2 e{}  //value init, but there is user-define ctor, so e.i is random
-	\end{lstlisting}
 	
 	\item for list init, there are value list init, direct list init and copy list init
 	\begin{lstlisting}[frame=single, language=c++]
@@ -3208,28 +3197,78 @@ In this section,I will introduce a few conceptions togther. They are related. Th
 	
 	\item reference init is easy, it must has a reference symbol, 
 	\begin{lstlisting}[frame=single, language=c++]
-	T object = {arg1, arg2, ...};   // If T is an array or a simple struct
-	T object{arg1, arg2, ...};      // If T is an array or a simple struct
-	\end{lstlisting}
-	
-	\item Member in Class Initialization.
-	\begin{lstlisting}[frame=single, language=c++]
 	T & ref = object ;
 	T & ref = { arg1, arg2, ... };
 	T & ref ( object ) ;
 	T & ref { arg1, arg2, ... } ;
 	\end{lstlisting}
 	
-	\item difference between copy init and direct init. ct4 is direct init call copy ctor. ct2 and ct3 is copy init. if it's copy init, so it need two steps, create temp, then copy temp.  if it's direct init, just call one ctor(by overload resolve)
-	above it's therotical definition. When optimization kick in, it hide the deep therotical definition.  ct2 call single argument ctor directly. 
+\end{itemize}
+
+\subsubsection{value init}
+\begin{itemize}
+	\item basic knowlege. googling "Value-initialization with C++"
 	
-	\item In other word, compile analyze the syntax according therotical definition, for ct2, if copy ctor is private, then compile will stop. if copy ctor is public, then optimizaiton kick in, it call single arugment ctor directly. 
+	\item For value init, It's depends on if you have user define ctor. if you don't have, set it to zero. But if you have one, compiler will not set it to zero any more. That is easy to understand, you have higher authorization than compiler. 
+	\begin{lstlisting}[frame=single, language=c++]
+	class exec{
+	public:
+	exec() = default;
+	int i;
+	};
 	
-	\item for ct3, it think the ct1(temp) has been created, then call copy ctor driectly. but in fact, it's still copy init. 
+	class exec2
+	{
+	public:
+	exec2();
+	int i;
+	};
+	exec2::exec2() = default;
 	
-	\item for ct4, it's direct, because in therotic it's only one step, call a ctor by overload. 
+	const exec e;      //erro, exec has default ctor
+	const exec2 e2;    //right, exec2 has user-define ctor
+	exec e    //default init, so e.i is random
+	exec e{}  //value init, but there is no user-define ctor, so e.i == 0
 	
-	\item in one word, if it's a copy init is not depend on whether it call copy ctor.  it's depend on (in therotic) whether it has two steps(has equal sign).
+	exec2 e  // default init, so e.i is random
+	exec2 e{}  //value init, but there is user-define ctor, so e.i is random
+	\end{lstlisting}
+	
+	\item There are difference when you use new with parenthesizes. Detail can be found: "Do the parentheses after the type name make a difference with new?"
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	struct A { int m; }; // POD
+	struct B { ~B(); int m; }; // non-POD, compiler generated default ctor
+	struct C { C() : m() {}; ~C(); int m; }; // non-POD, default-initialising m
+	\end{lstlisting}
+	
+	In a C++03 compiler, things should work like so:
+	\begin{itemize}
+		\item new A - indeterminate value
+		\item new A() - value-initialize A, which is zero-initialization since it's a POD.
+		
+		\item new B - default-initializes (leaves B::m uninitialized)
+		
+		\item new B() - value-initializes B which zero-initializes all fields since its default ctor is compiler generated as opposed to user-defined.
+		
+		\item new C - default-initializes C, which calls the default ctor.
+		
+		\item new C() - value-initializes C, which calls the default ctor.
+	\end{itemize}
+\end{itemize}
+
+
+\subsubsection{copy init and direct init}
+\begin{itemize}
+	\item difference between copy init and direct init. if it's copy init, so it need two steps, create temp, then copy temp.  if it's direct init, just call one ctor(by overload resolve). Above it's therotical definition. When optimization kick in, it hide the deep therotical definition.  ct2 call single argument ctor directly. \textbf{difference between copy init and copy ctor}
+	\begin{enumerate}
+		\item ct4 is direct init call copy ctor.because in therotic it's only one step, call a ctor by overload. 
+		\item ct2 is copy init. compile analyze the syntax according therotical definition, for ct2, if copy ctor is private, then compile will stop. if copy ctor is public, then optimizaiton kick in, it call single argument ctor directly.
+		
+		\item for ct3, It's copy init. it think the ct1(temp) has been created, then call copy ctor directly. but in fact, it's still copy init.
+		
+		\item in one word, if it's a copy init is not depend on whether it call copy ctor.  it's depend on (in therotic) whether it has two steps(has equal sign).
+	\end{enumerate}
 	\begin{lstlisting}[frame=single, language=c++]
 	ClassTest ct1("ab");//direct
 	ClassTest ct2 = "ab";//copy
@@ -3241,17 +3280,8 @@ In this section,I will introduce a few conceptions togther. They are related. Th
 	ClassTest ct5 = ClassTest();//copy
 	\end{lstlisting}
 	
-	
+
 	\item a good link is \verb|https://www.cnblogs.com/pluse/p/7088880.html|
-	
-	\item There are three name: 1)initilizer list, 2) brace(list) initilization, 3) member initilization list(mem-init)
-	\begin{enumerate}
-		\item member initilization list is used in C++ ctor. it has some advantages: Detail can be found in "OOP" section. 
-		
-		\item brace initialization is a generic initialization syntax(method), it support more initialization, such as class member and aggregation. At the same time, it will avoid narrowing and vexing parsing problem. 
-		
-		\item std::initializer\_list is a \textbf{new data type. just like std::list.}
-	\end{enumerate}
 	
 	\item difference between A a(a1) and A a = a1.  1) They are almost same. 2) When copy ctor is explicit,  A a= a1 will not work. 3) Usually, we don't make copy ctor explicit, becuase it will disable function call and return value. 
 	
@@ -3289,14 +3319,22 @@ In this section,I will introduce a few conceptions togther. They are related. Th
 	
 	
 	
-	\item Does parentheses directly after a class name create a new? Detail can be found by googling "Does parentheses directly after a class name create a new instance".
+	\item Below is also copy init. We have a unnamed temporary A object, then copy it to a by calling copy ctor.
 	\begin{lstlisting}[frame=single, language=c++]
-	a = A();
-	i = int(2.3f);
+class A{
+public:
+A(int k): i(k){}
+int i;
+};
+
+int main()
+{
+A a = A(233);
+cout<<a.i<<endl;
+}
 	\end{lstlisting}
 	
-	\item \textbf{When you use Type\{\} to define a nameless temporary variable.  don't give variable name.}
-	
+	\item You also can use \{\} in the above example. \textbf{When you use Type\{\} to define a nameless temporary variable.  don't give variable name.}
 	\begin{enumerate}
 		\item In C++, anonymous variables are primarily used either to pass or return values without having to create lots of temporary variables to do so.
 		
@@ -3432,36 +3470,6 @@ In this section,I will introduce a few conceptions togther. They are related. Th
 	\item A good refernce is \verb|https://timesong-cpp.github.io/cppwp/n4140/stmt.ambig| or google search 
 	"everything that can be a declaration is a declaration" 
 \end{enumerate}
-
-
-
-\subsubsection{value-initization}
-\begin{itemize}
-	\item basic knowlege. googling "Value-initialization with C++"
-	
-	\item There are difference when you use new with parenthesizes.detail can be found:
-	You can google "Do the parentheses after the type name make a difference with new?"
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	struct A { int m; }; // POD
-	struct B { ~B(); int m; }; // non-POD, compiler generated default ctor
-	struct C { C() : m() {}; ~C(); int m; }; // non-POD, default-initialising m
-	\end{lstlisting}
-	
-	In a C++03 compiler, things should work like so:
-	\begin{itemize}
-		\item new A - indeterminate value
-		\item new A() - value-initialize A, which is zero-initialization since it's a POD.
-		
-		\item new B - default-initializes (leaves B::m uninitialized)
-		
-		\item new B() - value-initializes B which zero-initializes all fields since its default ctor is compiler generated as opposed to user-defined.
-		
-		\item new C - default-initializes C, which calls the default ctor.
-		
-		\item new C() - value-initializes C, which calls the default ctor.
-	\end{itemize}
-\end{itemize}
 
 \subsubsection{Brace Init}
 
