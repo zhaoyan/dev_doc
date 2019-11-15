@@ -3125,9 +3125,6 @@ sprintf(.....);
 	$\Hilight{4}$getX().goBowling();
 	}
 	\end{lstlisting}
-	
-	
-	
 \end{itemize}
 
 
@@ -3165,7 +3162,6 @@ In this section,I will introduce a few conceptions togther. They are related. Th
 	
 	\end{lstlisting}
 	\item for one word \textbf{1)without parentheses, it's default, tell the compiler to use it's default method; 2) use empty parentheses or brace, it's value, tell the compiler to init them, (if there is user define one, use user-define, otherwise zero), 3) use parentheses with value, direct init, just command compile to init what I want.}
-	
 	
 	
 	\item for list init, there are value list init, direct list init and copy list init
@@ -3316,8 +3312,6 @@ In this section,I will introduce a few conceptions togther. They are related. Th
 	TestOverload tot(to); //OK - EXPLICIT copying allowed
 	}
 	\end{lstlisting}
-	
-	
 	
 	\item Below is also copy init. We have a unnamed temporary A object, then copy it to a by calling copy ctor.
 	\begin{lstlisting}[frame=single, language=c++]
@@ -3471,8 +3465,9 @@ cout<<a.i<<endl;
 	"everything that can be a declaration is a declaration" 
 \end{enumerate}
 
-\subsubsection{Brace Init}
+\subsection{Brace Init}
 
+\subsubsection{Brace syntax}
 \begin{itemize}
 	
 	\item The basic syntax examples. 
@@ -3503,7 +3498,9 @@ cout<<a.i<<endl;
 	
 	\begin{enumerate}
 		\item (b) is function declaration. That is why we prefer use brace init, it will avoid this vex problem.
-		\item (d) and (e) Assuming x is not the name of a type, these are both direct initialization. That’s because the variable w is initialized “directly” from the value of x by calling widget::widget(x). If x is also of type widget, this invokes the copy constructor. Otherwise, it invokes a converting constructor.
+		
+		\item (d) and (e) Assuming x is not the name of a type, these are both direct initialization. That’s because the variable w is initialized “directly” from the value of x by calling widget::widget(x). If x is also of type widget, this invokes the copy constructor. Otherwise, it invokes a ds.
+		
 		\item (e) is better than (d) to avoid narrowing, for example:
 		\begin{lstlisting}[frame=single, language=c++,mathescape=true]
 		Class A{
@@ -3515,6 +3512,7 @@ cout<<a.i<<endl;
 		\item for (e), it prefer constructor that takes an initializer\_list
 		
 		\item For (f), when x is type of widget, just like (d), but can't work when copy ctor is explicit(introudced before)
+		
 		\item for (f), when x is not type of widget, it will convert x to a temporary If x is of some other type, conceptually the compiler first implicitly converts x to a temporary widget object, then move-constructs w from that temporary rvalue, using copy construction as “the slow way to move” as a backup if no better move constructor is available. Assuming that an implicit conversion is available, (f) means the same as widget w( widget(x) );.Note that I said “conceptually” a few times above. That’s because practically compilers are allowed to, and routinely do, optimize away the temporary and, if an implicit conversion is available, convert (f) to (d), thus optimizing away the extra move operation. However, even when the compiler does this, the widget copy constructor must still be accessible, even if is not called—the copy constructor’s side effects may or may not happen, that’s all.
 		
 		
@@ -3563,44 +3561,58 @@ cout<<a.i<<endl;
 		A a={110};// will compile error
 		A a{110} //this will work here.
 		A b = {a}; // will compile error.
-		//because there are explicit before.
+		//because there are explicit before copy ctor.
 		}
 		\end{lstlisting}
 		
 		\item summary, (h) and (i) is the best way. stick to them when you write the problem in the future. 
 	\end{enumerate}
 	
-	\item I talked a lot about ctor and copy ctor, next give a assignment example. \textbf{When use in assignment}, as long as the type of 3Devc is float3. Both create a temporary float3 object using its 3-parameter constructor, pass that object to the move (or copy) assignment operator of vec3D, and then destroy the temporary. 
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	struct float3 {
-	float x; 
-	float y;
-	float z;
-	
-	float3 () : x(0), y(0), z(0) {}
-	float3 (float a, float b, float c) : x(a), y(b), z(c) {}
-	};
-	
-	//Assignment
-	3Dvec = {2.0, 2.0, 2.0}; //no any type information here, so it's better
-	3Dvec = float3 (2.0, 2.0, 2.0);
-	\end{lstlisting}
-	
-	
 	\item I'd say the brace one is better, because it's future proof. If you later rename the class, the brace one will continue to work as is, while the parenthesis one will require a name change. Also, if you change the type of vec3D, the brace one will still create an object of vec3D's type, while the second one will keep creating and assigning from a float3 object. It's not possible to say universally, but I'd say the former behaviour is usually preferred. 
 	
+\end{itemize}
+
+\subsubsection{Brace init advantage}
+\begin{itemize}
 	
-	\item A more code examples. Brace initilization is "generic init method", because it can be used in 1) POD type, 2) aggregation type 3) class member
+	\item \textbf{zero init single or aggreaged varaible} An empty pair of braces indicates value initialization. value initialization of POD types usually means initialization to binary zeros, whereas for non-POD types value initialization means 1) zero if you don't user defined ctor 2) use user defined ctor:
+	
 	\begin{lstlisting}[frame=single, language=c++,mathescape=true]
-	// Initialization of a C-Array as attribute of a class
-	class Array{
-	public:
-	Array(): myData{1,2,3,4,5}{}    
-	private:
-	int myData[5];
-	};
+	//C++11: default initialization using {}
+	int *p{}; //initialized to nullptr
+	char s[12]{}; //all 12 characters are initialized to '\0'
+	char *p=new char [5]{}; // all five chars are initialized to '\0'
 	
+	int i{};                // i becomes 0, can't use () here
+	std::string s{};        // s becomes "" can't use () here
+	std::vector<float> v{}; // v becomes an empty vector
+	double d{};             // d becomes 0.0, can't use () here
+	
+	\end{lstlisting}
+	
+	\item \textbf{class aggregated member}
+
+\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+	class Array{
+public:
+Array(): myData{1,2,3,4,5}{}    
+private:
+int myData[5];
+};
+\end{lstlisting}
+
+\item \textbf{direct init aggreaged varaible}
+\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+	int intArray[]= {1,2,3,4,5};   
+	std::vector<int> intArray1{1,2,3,4,5};  
+	std::map<std::string,int> myMap{{"Scott",1976}, {"Dijkstra",1972}};
+	
+	// Initialization of a const heap array
+	const float* pData= new const float[3]{1.1,2.2,3.3};
+	\end{lstlisting}
+	
+\item \textbf{ init a class event without ctor}
+	\begin{lstlisting}[frame=single, language=c++,mathescape=true]
 	class MyClass{			
 	public: 
 	int x;
@@ -3615,24 +3627,6 @@ cout<<a.i<<endl;
 	double y;
 	};
 	
-	int main(){
-	
-	// Direct Initialization of a standard container
-	int intArray[]= {1,2,3,4,5};   
-	std::vector<int> intArray1{1,2,3,4,5};  
-	std::map<std::string,int> myMap{{"Scott",1976}, {"Dijkstra",1972}};
-	
-	// Initialization of a const heap array
-	const float* pData= new const float[3]{1.1,2.2,3.3};
-	
-	Array arr;
-	
-	// Defaut Initialization of a arbitrary object   
-	int i{};                // i becomes 0, can't use () here
-	std::string s{};        // s becomes "" can't use () here
-	std::vector<float> v{}; // v becomes an empty vector
-	double d{};             // d becomes 0.0, can't use () here
-	
 	// Initializations of an arbitrary object using public attributes	
 	MyClass myClass{2011,3.14};      
 	MyClass myClass1= {2011,3.14};    
@@ -3640,62 +3634,40 @@ cout<<a.i<<endl;
 	// Initializations of an arbitrary object using the constructor
 	MyClass2 myClass2{2011,3.14};     
 	MyClass2 myClass3= {2011,3.14};   
-	}
 	\end{lstlisting}
 	
-	\item we can found more useful extension;
-	
+	\item textbf{omit type name}
 	
 	\begin{lstlisting}
-	// Initializations of an arbitrary object using the constructor
-	MyClass2 myClass2{2011,3.14};     
-	MyClass2 myClass3= {2011,3.14}; //almost the same
-	
 	MyClass2 fun (MyClass2 m) 
+	
 	fun ( {2011,3.14} ){
 	return {2011,3.14};  //pay attention, there is ; in the end
 	}
 	
 	fun ( MyClass2(2011,3.14) ) // fun ( (2011,3.14) ) doesn't work
+	
+	MyClass2 mc2;
+	mc2 = {2011,3.14}  // or MyClass2(2011, 3.14)
 	\end{lstlisting}
 	
-	
+	\item compared with c++98, we can see the improvment of brace init.
 	\begin{lstlisting}[frame=single, language=c++,mathescape=true]
-	int a{0};
-	string s{"hello"};
-	string s2{s}; //copy construction
-	vector<string> v{"foo", "bar"}; 
-	// Basically the same, ignoring some small technicalities.
-	vector<string> v = {"foo", "bar"};
-	// Vector takes a braced-init-list of elements.
-	// Usable with 'new' expressions.
-	auto p = new vector<string>{"foo", "bar"};
-	
-	// A map can take a list of pairs. Nested braced-init-lists work.
-	map<int, string> m{{1, "one"}, {2, "2"}};
-	
 	double *pd= new double [3] {0.5, 1.2, 12.99}; 
 	$\Hilight{22}$//before { no =,  or compile error
 	
-	
 	// C++98 
 	rectangle       w( origin(), extents() );       // oops, vexing parse 
-	complex<double> c( 2.71828, 3.14159 ); 
-	mystruct        m = { 1, 2 };
-	int             a[] = { 1, 2, 3, 4 };
 	vector<int>     v;                              // urk, need more code
 	for( int i = 1; i <= 4; ++i ) v.push_back(i);   //   to initialize this
 	
 	// C++11 (note: "=" is mostly optional)
 	rectangle       w   = { origin(), extents() }; 
-	complex<double> c   = { 2.71828, 3.14159 }; 
-	mystruct        m   = { 1, 2 }; 
-	int             a[] = { 1, 2, 3, 4 };
 	vector<int>     v   = { 1, 2, 3, 4 };
 	
 	\end{lstlisting}
 	
-	\item And note that this isn’t just an aesthetic issue. Consider writing generic code that should be able to initialize any type… and while we’re at it, let’s gratuitously use perfect forwarding as an example:
+	\item \textbf{Also work in template}And note that this isn’t just an aesthetic issue. Consider writing generic code that should be able to initialize any type… and while we’re at it, let’s gratuitously use perfect forwarding as an example:
 	
 	\begin{lstlisting}[frame=single, language=c++,mathescape=true]
 	template<typename T, typename ...Args>
@@ -3713,22 +3685,13 @@ cout<<a.i<<endl;
 	forwarder<vector<int>>    ( 1, 2, 3, 4 );          // ok because of {}
 	\end{lstlisting}
 	
-	\item An empty pair of braces indicates default initialization. Default initialization of POD types usually means initialization to binary zeros, whereas for non-POD types default initialization means default construction:
-	
-	\begin{lstlisting}[frame=single, language=c++,mathescape=true]
-	//C++11: default initialization using {}
-	int n{}; //zero initialization: n is initialized to 0
-	int *p{}; //initialized to nullptr
-	double d{}; //initialized to 0.0
-	char s[12]{}; //all 12 characters are initialized to '\0'
-	string s{}; //same as: string s;
-	char *p=new char [5]{}; // all five chars are initialized to '\0'
-	\end{lstlisting}
+	\item A good reference article is GotW \#1 Solution: Variable Initialization – or Is It?
+\end{itemize}
+
+\subsubsection{initilizaer\_list}
+\begin{itemize}
 	
 	\item \textbf{Am empty pair of braces can be 1)default initialization, 2) a empty std::initializaer\_list. You should know how to distinguish them. }
-	
-	
-	
 	
 	
 	\item Mostly, the two features I presented play very well together, for example if you want to initialize a map you can use an initializer-list of braced-init-lists of the key value pairs: Here, the type of the pairs is clear and the compiler will deduce, that `{“Alex”, 522}` in fact means `std::pair<std::string const, int>{“Alex”, 522}`.
@@ -3739,15 +3702,6 @@ cout<<a.i<<endl;
 	};
 	\end{lstlisting}
 	
-	
-	\item A good reference article is GotW \#1 Solution: Variable Initialization – or Is It?
-	
-	
-	
-\end{itemize}
-
-\subsubsection{initilizaer\_list}
-\begin{itemize}
 	\item When use with auto, you need to be careful. The only situation where = is preferred over \verb={}= is when using auto keyword to get the type determined by the initializer.
 	\begin{lstlisting}[frame=single, language=c++]
 	auto z1 {99}; // z1 is an initializer_list<int>
@@ -3832,8 +3786,15 @@ cout<<a.i<<endl;
 \end{itemize}
 
 
-\subsubsection{summary}
+\subsection{summary}
 \begin{itemize}
+	\item \textbf{First, decide one way in six method, then use auto if possible, then use brace if possible, last use parentheses}
+	
+	\item \textbf{six methods and brace are irrelenvant. brace can be use in all six method and bring its own advantage.
+		
+	\includegraphics[scale=0.8]{pics/init.png}
+	
+	
 	\item \item If the values you are initializing with are a list of values to be stored in the object (like the elements of a vector/array, or real/imaginary part of a complex number), use curly braces initialization if available.
 	
 	\item Some syntactic examples:
@@ -3950,7 +3911,6 @@ cout<<a.i<<endl;
 	
 	\item One word. When right hand is expr, use auto; If it's not expr, and you can use ctor diretly, such as previous example, use brace init, When there is initilizer\_list overload, use parentheses. Three different levels.
 \end{itemize}
-
 
 \section{pointer and smart pointer}
 
