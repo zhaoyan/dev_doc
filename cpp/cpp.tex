@@ -3891,22 +3891,201 @@ Widget w2{};
 \end{itemize}
 
 \subsection{auto}
+
 \begin{itemize}
-	\item \item When use with auto, you need to be careful. The only situation where = is preferred over \verb={}= is when using auto keyword to get the type determined by the initializer.
-\begin{lstlisting}[frame=single, language=c++]
-auto z1 {99}; // z1 is an initializer_list<int>
-auto z2 = 99; // z2 is an int
-\end{lstlisting}
+	\item When use with auto, you need to be careful. The only situation where = is preferred over \verb={}= is when using auto keyword to get the type determined by the initializer.
+	\begin{lstlisting}[frame=single, language=c++]
+	auto z1 {99}; // z1 is an initializer_list<int>
+	auto z2 = 99; // z2 is an int
+	\end{lstlisting}
 	
-\begin{lstlisting}[frame=single, language=c++]
-auto d = {1.23};
-// d is a std::initializer_list<double>
-auto d = double{1.23};
-auto d = 1.23
-// Good -- d is a double, not a std::initializer_list.
-\end{lstlisting}
+	\begin{lstlisting}[frame=single, language=c++]
+	auto d = {1.23};
+	// d is a std::initializer_list<double>
+	auto d = double{1.23};
+	auto d = 1.23
+	// Good -- d is a double, not a std::initializer_list.
+	\end{lstlisting}
 	
 \end{itemize}
+
+
+\subsubsection{auto type deduction}
+\begin{itemize}
+	\item Just like a template type, auto follow the same deduction rule. template type deduction happens when you call a function or build a customize type. \textbf{auto deduction happen when you initialize use assignment. Here  just think the auto is T in the template deduction.} The basic rules can be referred in type deduction in generic programming
+	
+\begin{lstlisting}[frame=single, language=c++]
+auto x = 27; // (x is neither ptr nor reference)
+const auto cx = x; // (cx isn't either)
+const auto& rx = x; //  (rx is a non-universal ref.)
+	
+\end{lstlisting}
+	
+	\item \textbf{When combine auto and brace init, it means std::initializer\_list<T>}
+	
+\begin{lstlisting}[frame=single, language=c++]
+auto x = { 11, 23, 9 }; // x's type is  std::initializer_list<int>
+	
+template<typename T> // template with parameter
+void f(T x);
+f({ 11, 23, 9 }); // error! can't deduce type for T
+	
+void f(std::initializer_list<T> initList); //it will work
+\end{lstlisting}
+	
+	\item auto in a function return type or a lambda parameter implies template type deduction, not auto type deduction.
+\begin{lstlisting}[frame=single, language=c++]
+auto createInitList(){
+	return { 1, 2, 3 }; // error: can't deduce type
+} // for { 1, 2, 3 }
+	
+std::vector<int> v;
+auto resetV =
+	[&v](const auto& newValue) { v = newValue; }; // C++14
+	
+resetV({ 1, 2, 3 }); // error! can't deduce type for { 1, 2, 3 }
+\end{lstlisting}
+
+\item When auto use in forward reference.
+\begin{lstlisting}[frame=single, language=c++]
+auto&& uref1 = x; // x is int and lvalue,
+// so uref1's type is int&
+auto&& uref2 = cx; // cx is const int and lvalue,
+// so uref2's type is const int&
+auto&& uref3 = 27; // 27 is int and rvalue,
+// so uref3's type is int&&
+\end{lstlisting}
+
+\end{itemize}
+
+\subsubsection{auto declaration}
+\begin{itemize}
+	
+	\item \textbf{auto sets the type of a declared variable from its initializing expression while compiling.}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	auto x = {5}; //x is a std::initializer_list<double>
+	auto p = &x  //p is int* type
+	
+	auto p = new vector<pair<int, string> >;
+	std::vector<std::pair<int, std::string>> array;
+	auto it = array.begin(); // they are more useful.
+	
+	double fm(double, int);
+	auto pf = fm // pf is double(*)(double,int)
+	
+	for (const auto& element : myarray) {
+	//do stuff that reads from element
+	}
+	\end{lstlisting}
+	
+	\item If you want your auto declaration to be const, or if you want your auto declaration to be a reference, you have to add them explicitly
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	const std::map<int, Module>::iterator iter = modmap.find(123);
+	const auto iter = modmap.find(123);
+	
+	Module& mod = vec[17];
+	auto& mod = vec[17];
+	
+	auto p = std::make_shared<Module>();
+	auto p = std::shared_ptr<Module>(new Module); // not safe!
+	\end{lstlisting}
+	
+	\item Both of these are the same and will declare a pointer. But you may go for auto* var; if you think it stresses the intent (that var is a pointer) better.
+	\begin{lstlisting}[frame=single, language=c++]
+	auto var = new int(1);
+	auto *var = new int(1);
+	\end{lstlisting}
+	
+	
+	\item four advantages:
+	\begin{enumerate}
+		\item avoidance of uninitialized variables
+		\item verbose variable declarations
+		\begin{lstlisting}[frame=single, language=c++]
+		auto x2; // error! initializer required
+		auto x3 = 0; // fine, x's value is well-defined
+		
+		template<typename It>
+		void dwim(It b, It e) {
+		typename std::iterator_traits<It>::value_type
+		currValue = *b;
+		
+		void dwim(It b, It e) { // better with auto
+		auto currValue = *b;
+		\end{lstlisting}
+		
+		\item the ability to directly hold closures(lambda), and in C++14, It can be used as function return type
+		\begin{lstlisting}[frame=single, language=c++]
+		auto derefUPLess =               // comparison func.
+		[](const std::unique_ptr<Widget>& p1, // for Widgets
+		const std::unique_ptr<Widget>& p2) // pointed to by
+		{ return *p1 < *p2; };                 // std::unique_ptrs
+		
+		//C++14 version
+		auto derefLess = // C++14 comparison
+		[](const auto& p1,  const auto& p2) // values pointed
+		{ return *p1 < *p2; }; // to by anything pointer-like
+		\end{lstlisting}
+		
+		\item avoid what I call problems related to "type shortcuts."
+		\begin{lstlisting}[frame=single, language=c++]
+		std::vector<int> v;
+		...
+		unsigned sz = v.size();
+		auto sz = v.size();
+		
+		std::unordered_map<std::string, int> m;
+		for (const std::pair<std::string, int>& p : m){
+		... // do something with p
+		}
+		
+		for (const auto& p : m){
+		... // as before
+		}
+		\end{lstlisting}
+	\end{enumerate}
+	
+	\item two pitfalls 1) "invisible" proxy classes 2) init brace return init\_list. An invisible proxy class example is vector<bool> [] operator.
+	
+	\item auto can also be used as return type. Below will produce compile error, because it has ambiguity.
+	\begin{lstlisting}[frame=single, language=c++]
+	auto f(int i){  // It will cause compile error.
+	if ( i < 0 )
+	return -1;
+	else
+	return 2.0
+	}
+	\end{lstlisting}
+	
+	\item return deducing
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	struct record {
+	std::string name;
+	int id;
+	//GUID id; $\Hilight{36}$//change id type, below doesn't need change
+	};
+	
+	$\Hilight{3}$ auto find_id(const std::vector<record> &people,
+	const std::string &name){...}
+	
+	$\Hilight{3}$ auto ii = find_if(people.begin(), people.end(), match_name );
+	if (ii != people.end()){...}
+	\end{lstlisting}
+	
+	\begin{enumerate}
+		\item find\_id return auto type. It means that it can be used return type of function.( C++14),
+		\item \verb=auto ii= is another usage of auto,  use auto as declaration. It's helpful to reduce complexity of complex type, such as iterator.
+	\end{enumerate}
+	
+	\item generic lambda( just like template lambda)
+	\begin{lstlisting}[frame=single, language=c++]
+	auto adder  = [](auto op1, auto op2){ return op1 + op2; };
+	\end{lstlisting}
+	
+\end{itemize}
+
 
 \subsection{summary}
 
@@ -12569,47 +12748,6 @@ f(rx); // T's and param's types are still both int
 
 \end{enumerate}
 
-\subsubsection{auto type deduction}
-\begin{itemize}
-\item Just like a template type, auto follow the same deduction rule. template type deduction happen when you call a function or build a customize type. \textbf{auto deduction happen when you initialize use assignment. Here  just think the auto is T in the template deduction}
-
-\begin{lstlisting}[frame=single, language=c++]
-auto x = 27; // case 3 (x is neither ptr nor reference)
-const auto cx = x; // case 3 (cx isn't either)
-const auto& rx = x; // case 1 (rx is a non-universal ref.)
-
-auto&& uref1 = x; // x is int and lvalue,
-// so uref1's type is int&
-auto&& uref2 = cx; // cx is const int and lvalue,
-// so uref2's type is const int&
-auto&& uref3 = 27; // 27 is int and rvalue,
-// so uref3's type is int&&
-\end{lstlisting}
-
-\item When combine auto and brace init, it means std::initializer\_list<T>
-\begin{lstlisting}[frame=single, language=c++]
-auto x = { 11, 23, 9 }; // x's type is  std::initializer_list<int>
-
-template<typename T> // template with parameter
-void f(T x);
-f({ 11, 23, 9 }); // error! can't deduce type for T
-
-void f(std::initializer_list<T> initList); //it will work
-\end{lstlisting}
-
-\item auto in a function return type or a lambda parameter implies template type deduction, not auto type deduction.
-\begin{lstlisting}[frame=single, language=c++]
-auto createInitList(){
-return { 1, 2, 3 }; // error: can't deduce type
-} // for { 1, 2, 3 }
-
-std::vector<int> v;
-auto resetV =
-[&v](const auto& newValue) { v = newValue; }; // C++14
-
-resetV({ 1, 2, 3 }); // error! can't deduce type for { 1, 2, 3 }
-\end{lstlisting}
-\end{itemize}
 
 \subsubsection{decltype deduction}
 \begin{itemize}
@@ -12777,133 +12915,6 @@ std::cout << typeid(x).name() << '\n'; // display types for
 
 \end{itemize}
 
-\subsubsection{auto declaration}
-\begin{itemize}
-
-\item \textbf{auto sets the type of a declared variable from its initializing expression while compiling.}
-
-\begin{lstlisting}[frame=single, language=c++]
-auto x = {5}; //x is a std::initializer_list<double>
-auto p = &x  //p is int* type
-
-auto p = new vector<pair<int, string> >;
-std::vector<std::pair<int, std::string>> array;
-auto it = array.begin(); // they are more useful.
-
-double fm(double, int);
-auto pf = fm // pf is double(*)(double,int)
-
-for (const auto& element : myarray) {
-  //do stuff that reads from element
-}
-\end{lstlisting}
-
-\item If you want your auto declaration to be const, or if you want your auto declaration to be a reference, you have to add them explicitly
-
-\begin{lstlisting}[frame=single, language=c++]
-const std::map<int, Module>::iterator iter = modmap.find(123);
-const auto iter = modmap.find(123);
-
-Module& mod = vec[17];
-auto& mod = vec[17];
-
-auto p = std::make_shared<Module>();
-auto p = std::shared_ptr<Module>(new Module); // not safe!
-\end{lstlisting}
-
-\item Both of these are the same and will declare a pointer. But you may go for auto* var; if you think it stresses the intent (that var is a pointer) better.
-\begin{lstlisting}[frame=single, language=c++]
-auto var = new int(1);
-auto *var = new int(1);
-\end{lstlisting}
-
-
-\item four advantages:
-\begin{enumerate}
-\item avoidance of uninitialized variables
-\item verbose variable declarations
-\begin{lstlisting}[frame=single, language=c++]
-auto x2; // error! initializer required
-auto x3 = 0; // fine, x's value is well-defined
-
-template<typename It>
-void dwim(It b, It e) {
-typename std::iterator_traits<It>::value_type
-currValue = *b;
-
-void dwim(It b, It e) { // better with auto
-auto currValue = *b;
-\end{lstlisting}
-
-\item the ability to directly hold closures(lambda), and in C++14, It can be used as function return type
-\begin{lstlisting}[frame=single, language=c++]
-auto derefUPLess =               // comparison func.
-[](const std::unique_ptr<Widget>& p1, // for Widgets
-const std::unique_ptr<Widget>& p2) // pointed to by
-{ return *p1 < *p2; };                 // std::unique_ptrs
-
-//C++14 version
-auto derefLess = // C++14 comparison
-[](const auto& p1,  const auto& p2) // values pointed
-{ return *p1 < *p2; }; // to by anything pointer-like
-\end{lstlisting}
-
-\item avoid what I call problems related to "type shortcuts."
-\begin{lstlisting}[frame=single, language=c++]
-std::vector<int> v;
-...
-unsigned sz = v.size();
-auto sz = v.size();
-
-std::unordered_map<std::string, int> m;
-for (const std::pair<std::string, int>& p : m){
-... // do something with p
-}
-
-for (const auto& p : m){
-... // as before
-}
-\end{lstlisting}
-\end{enumerate}
-
-\item two pitfalls 1) "invisible" proxy classes 2) init brace return init\_list. An invisible proxy class example is vector<bool> [] operator.
-
-\item auto can also be used as return type. Below will produce compile error, because it has ambiguity.
-\begin{lstlisting}[frame=single, language=c++]
-auto f(int i){  // It will cause compile error.
-  if ( i < 0 )
-    return -1;
-  else
-    return 2.0
-}
-\end{lstlisting}
-
-\item return deducing
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-struct record {
-   std::string name;
-   int id;
-   //GUID id; $\Hilight{36}$//change id type, below doesn't need change
-};
-
-$\Hilight{3}$ auto find_id(const std::vector<record> &people,
-             const std::string &name){...}
-
-  $\Hilight{3}$ auto ii = find_if(people.begin(), people.end(), match_name );
-  if (ii != people.end()){...}
-\end{lstlisting}
-
-\begin{enumerate}
-\item find\_id return auto type. It means that it can be used return type of function.( C++14),
-\item \verb=auto ii= is another usage of auto,  use auto as declaration. It's helpful to reduce complexity of complex type, such as iterator.
-\end{enumerate}
-
-\item generic lambda( just like template lambda)
-\begin{lstlisting}[frame=single, language=c++]
-auto adder  = [](auto op1, auto op2){ return op1 + op2; };
-\end{lstlisting}
-
-\end{itemize}
 
 \subsection{callable}
 \subsubsection{std::function}
