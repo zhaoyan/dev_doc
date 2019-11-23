@@ -4007,6 +4007,7 @@ unique_ptr<widget> w                 auto w = make_unique<widget>();
 \section{auto}
 
 \subsection{auto type deduction}
+
 \begin{itemize}
 	\item Just like a template type, auto follow the same deduction rule. template type deduction happens when you call a function or build a customize type. \textbf{auto deduction happen when you initialize use assignment. Here  just think the auto is T in the template deduction.} The basic rules can be referred in type deduction in generic programming
 	
@@ -4093,49 +4094,12 @@ unique_ptr<widget> w                 auto w = make_unique<widget>();
 	
 \end{lstlisting}
 
-\item another example auto\&\& comes from generic lambda, 
-\begin{lstlisting}[frame=single, language=c++]
-auto timeFuncInvocation = [](auto&& func, auto&&... params) {
-// start timer;
-std::forward<decltype(func)>(func)(
-std::forward<decltype(params)>(params)...
-);
-// stop timer and record elapsed time;
-};
 
-struct Functor
-{
-void operator ()() const &  { std::cout << "lvalue functor\n"; }
-void operator ()() const && { std::cout << "rvalue functor\n"; }
-};
-
-
-int main()
-{
-
-auto perfectLambda = [](auto&& func, auto&&... params) {
-std::forward<decltype(func)>(func)(
-std::forward<decltype(params)>(params)...
-);
-};
-
-auto lambda = [](auto func, auto&&... params) {
-func(std::forward<decltype(params)>(params)...);
-};
-
-Functor fun;
-
-lambda(fun);
-lambda(Functor{});
-
-perfectLambda(fun);
-perfectLambda(Functor{});
-}
-\end{lstlisting}
 
 	\item Summary
 	\includegraphics[scale=0.8]{pics/type_deduct.png}
 \end{itemize}
+
 
 \subsection{auto declaration}
 \subsubsection{advantage}
@@ -4178,12 +4142,8 @@ perfectLambda(Functor{});
 	auto *var = new int(1);
 	\end{lstlisting}
 	
-	\item generic lambda( just like template lambda)
-	\begin{lstlisting}[frame=single, language=c++]
-	auto adder  = [](auto op1, auto op2){ return op1 + op2; };
-	\end{lstlisting}
-	
-	\item four advantages:
+
+	\item three advantages:
 	\begin{enumerate}
 		\item avoidance of uninitialized variables
 		\item verbose variable declarations
@@ -4197,19 +4157,6 @@ perfectLambda(Functor{});
 		
 		void dwim(It b, It e) { // better with auto
 		auto currValue = *b;
-		\end{lstlisting}
-		
-		\item the ability to directly hold closures(lambda), and in C++14, It can be used as function return type
-		\begin{lstlisting}[frame=single, language=c++]
-		auto derefUPLess =               // comparison func.
-		[](const std::unique_ptr<Widget>& p1, // for Widgets
-		const std::unique_ptr<Widget>& p2) // pointed to by
-		{ return *p1 < *p2; };                 // std::unique_ptrs
-		
-		//C++14 version
-		auto derefLess = // C++14 comparison
-		[](const auto& p1,  const auto& p2) // values pointed
-		{ return *p1 < *p2; }; // to by anything pointer-like
 		\end{lstlisting}
 		
 		\item avoid what I call problems related to "type shortcuts."
@@ -4268,10 +4215,114 @@ perfectLambda(Functor{});
 
 	
 \end{itemize}
+\subsection{auto in function}
 
-\subsection{atuo in lambda and template}
+\subsubsection{auto in return}
 \begin{itemize}
-	\item 
+\item auto can be used in function parameter, it should be a short hand of template function.
+\begin{lstlisting}[frame=single, language=c++]
+void fun1(auto i)
+{
+	cout<<i<<endl;
+}
+
+	fun1(23);
+	fun1("abc");
+\end{lstlisting}
+
+	\item auto can be used in common function return.
+\begin{lstlisting}[frame=single, language=c++]
+auto fun1(){
+	return 12;
+}
+\end{lstlisting}
+
+\end{itemize}
+
+
+
+\subsubsection{atuo in lambda and template}
+\begin{itemize}
+	\item \item the ability to directly hold closures(lambda), and in C++14, It can be used as lambda return type
+	\begin{lstlisting}[frame=single, language=c++]
+	auto derefUPLess =               // comparison func.
+	[](const std::unique_ptr<Widget>& p1, // for Widgets
+	const std::unique_ptr<Widget>& p2) // pointed to by
+	{ return *p1 < *p2; };                 // std::unique_ptrs
+	
+	//C++14 version
+	auto derefLess = // C++14 comparison
+	[](const auto& p1,  const auto& p2) // values pointed
+	{ return *p1 < *p2; }; // to by anything pointer-like
+	\end{lstlisting}
+	
+		\item generic lambda( just like template lambda)
+	\begin{lstlisting}[frame=single, language=c++]
+	auto adder  = [](auto op1, auto op2){ return op1 + op2; };
+	\end{lstlisting}
+	
+	\item another example auto\&\& comes from generic lambda, 
+	\begin{lstlisting}[frame=single, language=c++]
+	auto timeFuncInvocation = [](auto&& func, auto&&... params) {
+	// start timer;
+	std::forward<decltype(func)>(func)(
+	std::forward<decltype(params)>(params)...
+	);
+	// stop timer and record elapsed time;
+	};
+	
+	struct Functor
+	{
+	void operator ()() const &  { std::cout << "lvalue functor\n"; }
+	void operator ()() const && { std::cout << "rvalue functor\n"; }
+	};
+	
+	
+	int main()
+	{
+	
+	auto perfectLambda = [](auto&& func, auto&&... params) {
+	std::forward<decltype(func)>(func)(
+	std::forward<decltype(params)>(params)...
+	);
+	};
+	
+	auto lambda = [](auto func, auto&&... params) {
+	func(std::forward<decltype(params)>(params)...);
+	};
+	
+	Functor fun;
+	
+	lambda(fun);
+	lambda(Functor{});
+	
+	perfectLambda(fun);
+	perfectLambda(Functor{});
+	}
+	\end{lstlisting}
+	
+\item For template function return type, we can use two different ways.
+\begin{enumerate}
+	\item C++ 11, use auto + trailing type.
+		\begin{lstlisting}[frame=single, language=c++]
+	template <class T>
+	auto addFooAndBar(T const& t) -> decltype(t.foo() + t.bar()) {
+		return t.foo() + t.bar();
+	}
+		\end{lstlisting}
+	\item C++ 14, directly use auto.
+	\begin{lstlisting}[frame=single, language=c++]
+	template <class T>
+	auto addFooAndBar(T const& t) {
+		return t.foo() + t.bar();
+	}
+	\end{lstlisting}
+	\item use decltype(auto), detail can be found in Effective Modern C++ item 3.
+	\begin{lstlisting}[frame=single, language=c++]
+
+	\end{lstlisting}
+\end{enumerate}
+	
 \end{itemize}
 
 
