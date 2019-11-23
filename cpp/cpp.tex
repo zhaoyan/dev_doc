@@ -4006,101 +4006,7 @@ unique_ptr<widget> w                 auto w = make_unique<widget>();
 
 \section{auto}
 
-\subsection{auto type deduction}
-
-\begin{itemize}
-	\item Just like a template type, auto follow the same deduction rule. template type deduction happens when you call a function or build a customize type. \textbf{auto deduction happen when you initialize use assignment. Here  just think the auto is T in the template deduction.} The basic rules can be referred in type deduction in generic programming
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	auto x = 27; // (x is neither ptr nor reference)
-	const auto& rx = x; //  (rx is a non-universal ref.)
-	auto && ax = 27 // ()ax is forwarding ref)
-	\end{lstlisting}
-	
-
-	\item \textbf{When combine auto and brace init, it means std::initializer\_list<T>}
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	auto x = { 11, 23, 9 }; // x's type is  std::initializer_list<int>
-	
-	template<typename T> // template with parameter
-	void f(T x);
-	f({ 11, 23, 9 }); // error! can't deduce type for T
-	
-	void f(std::initializer_list<T> initList); //it will work
-	\end{lstlisting}
-	
-	\item auto in a function return type or a lambda parameter implies template type deduction, not auto type deduction.
-	\begin{lstlisting}[frame=single, language=c++]
-	auto createInitList(){
-	return { 1, 2, 3 }; // error: can't deduce type
-	} // for { 1, 2, 3 }
-	
-	std::vector<int> v;
-	auto resetV =
-	[&v](const auto& newValue) { v = newValue; }; // C++14
-	
-	resetV({ 1, 2, 3 }); // error! can't deduce type for { 1, 2, 3 }
-	\end{lstlisting}
-	
-	
-	\item When use with auto, you need to be careful. The only situation where = is preferred over \verb={}= is when using auto keyword to get the type determined by the initializer.
-	\begin{lstlisting}[frame=single, language=c++]
-	auto z1 {99}; // z1 is an initializer_list<int>
-	auto z2 = 99; // z2 is an int
-	\end{lstlisting}
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	auto d = {1.23};
-	// d is a std::initializer_list<double>
-	auto d = double{1.23};
-	auto d = 1.23
-	// Good -- d is a double, not a std::initializer_list.
-	\end{lstlisting}
-	
-	\item When auto use in forward reference. auto\&\& is a kind of forwarding reference.
-	\begin{lstlisting}[frame=single, language=c++]
-	auto&& uref1 = x; // x is int and lvalue,
-	// so uref1's type is int&
-	auto&& uref2 = cx; // cx is const int and lvalue,
-	// so uref2's type is const int&
-	auto&& uref3 = 27; // 27 is int and rvalue,
-	// so uref3's type is int&&
-	\end{lstlisting}
-	
-	\item When to use auto\&\&. I will accept any initializer regardless of whether it is an lvalue or rvalue expression and I will preserve its constness. This is typically used for forwarding (usually with T\&\&). The reason this works is because a "universal reference", auto\&\& or T\&\&, will bind to anything. 
-\begin{lstlisting}[frame=single, language=c++]
-	std::vector<int> global_vec{1, 2, 3, 4};
-	
-	template <typename T>
-	T get_vector(){
-		return global_vec;
-	}
-	
-	template <typename T>
-	void foo(){
-		auto&& vec = get_vector<T>(); 
-		//only auto&& work here. 
-		//auto, auto& , const auto&, const auto&& all failed.
-		auto i = std::begin(vec);
-		(*i)++;
-		std::cout << vec[0] << std::endl;
-	}
-	
-	foo<std::vector<int>>();
-	std::cout << global_vec[0] << std::endl;
-	foo<std::vector<int>&>();
-	std::cout << global_vec[0] << std::endl;
-	
-\end{lstlisting}
-
-
-
-	\item Summary
-	\includegraphics[scale=0.8]{pics/type_deduct.png}
-\end{itemize}
-
-
+About the auto type deduction, please refer to the next chapter Generic programming type inference section.
 \subsection{auto declaration}
 \subsubsection{advantage}
 \begin{itemize}
@@ -4323,6 +4229,7 @@ auto fun1(){
 	\end{lstlisting}
 \end{enumerate}
 	
+	\item \textbf{prefer to use function return type deduciton wherever applicable, avoid trailing return type unless you really need them. they make your code harder to read}
 \end{itemize}
 
 
@@ -8223,6 +8130,8 @@ shared_ptr<SchoolBus> pBus
 \end{itemize}
 
 \section{Generic programming}
+
+
 \subsection{Template Basic}
 \begin{itemize}
 \item A simple way to simulate template is \verb=typedef int Item=; But when you change the data type, you need to change header file, and you can't have int and double to template class at the same programme. so C++ introduces a better method: template<typename T>.
@@ -8645,6 +8554,419 @@ class HasFriend{
 		\item bound template will produce more function implementation , but non-bound template will only produce ONE function implementation.
 	\end{enumerate}
 
+\end{itemize}
+\subsection{Type Inference}
+
+
+\subsubsection{template type deduction}
+
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T>
+void f(ParamType param);
+
+f(expr); // deduce T and ParamType from expr
+\end{lstlisting}
+
+\begin{enumerate}
+	
+	\item ParamType is a Reference or Pointer, but not a Universal Reference. If expr's type is a reference, ignore the reference part. Then pattern-match expr's type against ParamType to determine T.
+	\begin{lstlisting}[frame=single, language=c++]
+	template<typename T>
+	void f(T& param); // param is a reference
+	
+	int x = 27; // x is an int
+	const int cx = x; // cx is a const int
+	const int& rx = x; // rx is a reference to x as a const int
+	
+	f(x); // T is int, param's type is int&
+	f(cx); // T is const int, param's type is const int&
+	f(rx); // T is const int, param's type is const int&
+	\end{lstlisting}
+	
+	\item ParamType is a Universal Reference
+	
+	\begin{enumerate}
+		\item If expr is an lvalue, both T and ParamType are deduced to be lvalue references.
+		\textbf{although ParamType is declared using the syntax for an rvalue reference, its deduced type is an lvalue reference.}
+		\item If expr is an rvalue, the "normal" (i.e., Case 1) rules apply.
+	\end{enumerate}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	template<typename T>
+	void f(T&& param); // param is now a universal reference
+	int x = 27; // as before
+	const int cx = x; // as before
+	const int& rx = x; // as before
+	
+	f(x); // x is lvalue, so T is int&, param's type is also int&
+	f(cx); //cx is lvalue, so T  and param's type are const int&
+	f(rx); //rx is lvalue, so T  and param's type are const int&
+	f(27); //27 is rvalue, so T is int, param's is therefore int&&
+	\end{lstlisting}
+	
+	\item ParamType is Neither a Pointer nor a Reference. As before, if expr's type is a reference, ignore the reference part. If, after ignoring expr's reference-ness, expr is const, ignore that, too. If it's
+	volatile, also ignore that.
+	\begin{lstlisting}[frame=single, language=c++]
+	template<typename T>
+	void f(T param); // param is now passed by value
+	
+	int x = 27; // as before
+	const int cx = x; // as before
+	const int& rx = x; // as before
+	f(x); // T's and param's types are both int
+	f(cx); // T's and param's types are again both int
+	f(rx); // T's and param's types are still both int
+	\end{lstlisting}
+	
+	\item  drops const and volatile qualifiers only for by-value parameters. for parameters that are fererences-to-const or pointers-to-const, we don't skip const.
+	
+\begin{lstlisting}[frame=single, language=c++]
+	template<typename T>
+	void f(T param); // param is now passed by value
+	
+	const int* const p1 = &x;
+	f(p1)  //param is const int*, top const has been skipped. 
+	
+	const int*& rp = p1;
+	f(p1)  //param is const int*, top const is default for reference. 
+\end{lstlisting}
+	
+	\item \textbf{Conclusion:  Take four steps to decide:}
+	\begin{enumerate}
+		\item array or function decay to pointer, if they are not used to reference ParamType
+		\item universal reference for lvaue, T is lvalue reference. (keep const)
+		\item reference is ignored
+		\item for value-type ParamType, const and volatile are ignored.
+	\end{enumerate}
+	
+\end{enumerate}
+
+\subsubsection{auto type deduction}
+
+\begin{itemize}
+	\item Just like a template type, auto follow the same deduction rule. template type deduction happens when you call a function or build a customize type. \textbf{auto deduction happen when you initialize use assignment. Here  just think the auto is T in the template deduction.} The basic rules can be referred in type deduction in generic programming
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	auto x = 27; // (x is neither ptr nor reference)
+	const auto& rx = x; //  (rx is a non-universal ref.)
+	auto && ax = 27 // ()ax is forwarding ref)
+	\end{lstlisting}
+	
+	
+	\item \textbf{When combine auto and brace init, it means std::initializer\_list<T>}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	auto x = { 11, 23, 9 }; // x's type is  std::initializer_list<int>
+	
+	template<typename T> // template with parameter
+	void f(T x);
+	f({ 11, 23, 9 }); // error! can't deduce type for T
+	
+	void f(std::initializer_list<T> initList); //it will work
+	\end{lstlisting}
+	
+	\item auto in a function return type or a lambda parameter implies template type deduction, not auto type deduction.
+	\begin{lstlisting}[frame=single, language=c++]
+	auto createInitList(){
+	return { 1, 2, 3 }; // error: can't deduce type
+	} // for { 1, 2, 3 }
+	
+	std::vector<int> v;
+	auto resetV =
+	[&v](const auto& newValue) { v = newValue; }; // C++14
+	
+	resetV({ 1, 2, 3 }); // error! can't deduce type for { 1, 2, 3 }
+	\end{lstlisting}
+	
+	
+	\item When use with auto, you need to be careful. The only situation where = is preferred over \verb={}= is when using auto keyword to get the type determined by the initializer.
+	\begin{lstlisting}[frame=single, language=c++]
+	auto z1 {99}; // z1 is an initializer_list<int>
+	auto z2 = 99; // z2 is an int
+	\end{lstlisting}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	auto d = {1.23};
+	// d is a std::initializer_list<double>
+	auto d = double{1.23};
+	auto d = 1.23
+	// Good -- d is a double, not a std::initializer_list.
+	\end{lstlisting}
+	
+	\item When auto use in forward reference. auto\&\& is a kind of forwarding reference.
+	\begin{lstlisting}[frame=single, language=c++]
+	auto&& uref1 = x; // x is int and lvalue,
+	// so uref1's type is int&
+	auto&& uref2 = cx; // cx is const int and lvalue,
+	// so uref2's type is const int&
+	auto&& uref3 = 27; // 27 is int and rvalue,
+	// so uref3's type is int&&
+	\end{lstlisting}
+	
+	\item When to use auto\&\&. I will accept any initializer regardless of whether it is an lvalue or rvalue expression and I will preserve its constness. This is typically used for forwarding (usually with T\&\&). The reason this works is because a "universal reference", auto\&\& or T\&\&, will bind to anything. 
+	\begin{lstlisting}[frame=single, language=c++]
+	std::vector<int> global_vec{1, 2, 3, 4};
+	
+	template <typename T>
+	T get_vector(){
+	return global_vec;
+	}
+	
+	template <typename T>
+	void foo(){
+	auto&& vec = get_vector<T>(); 
+	//only auto&& work here. 
+	//auto, auto& , const auto&, const auto&& all failed.
+	auto i = std::begin(vec);
+	(*i)++;
+	std::cout << vec[0] << std::endl;
+	}
+	
+	foo<std::vector<int>>();
+	std::cout << global_vec[0] << std::endl;
+	foo<std::vector<int>&>();
+	std::cout << global_vec[0] << std::endl;
+	
+	\end{lstlisting}
+	
+\end{itemize}
+
+
+
+\subsubsection{decltype deduction}
+\begin{itemize}
+	\item Basic knowledge of decltype detail can be found "How decltype Deduces the Type of an Expression: Case 1"
+	
+	\begin{enumerate}
+		\item Case1: expression whose type is to be determined is a plain variable or function parameter, like x, or a class member access, like p->m\_x. In that case, decltype lives up to its name: it determines the type of the expression to be the declared type,
+		\begin{lstlisting}[frame=single, language=c++]
+		vector<int> v; // decltype(v) is vector<int>
+		
+		struct S {
+		int m_x;
+		};
+		
+		int x;
+		const int cx = 42;
+		const int& crx = x;
+		const S* p = new S();
+		
+		decltype(x) a;  // a is int
+		auto a = x;  // a is int
+		
+		decltype(cx) b; // b is const int
+		auto b = cx;  //auto ignore const, b is int
+		
+		decltype(crx) c;  // c is const int&.
+		auto c = crx; //ignore reference and const, c is int
+		
+		// S::m_x is declared as int: m_x_type is int
+		// Note that p->m_x cannot be assigned to. It is effectively
+		// constant because p is a pointer to const. But decltype goes
+		// by the declared type, which is int.
+		decltype(p->m_x) d; // d is int
+		auto d = p->m_x; //auto ignore const, d is int
+		\end{lstlisting}
+		
+		\item Case 2: If expr is an lvalue, then decltype(expr) is T\&. If expr is an xvalue, then decltype(expr) is T\&\&. Otherwise, expr is a prvalue, and decltype(expr) is T.
+		
+		\begin{lstlisting}[frame=single, language=c++]
+		struct S {
+		int m_x;
+		};
+		
+		int x;
+		const int cx = 42;
+		const int& crx = x;
+		const S* p = new S();
+		//---------------------------------------
+		// (x) has type int, and decltype adds references to lvalues.
+		// Therefore, x_with_parens_type is int&.
+		
+		typedef decltype((x)) x_with_parens_type;
+		
+		// The type of (cx) is const int. Since (cx) is an lvalue,
+		// decltype adds a reference to that: cx_with_parens_type
+		// is const int&.
+		typedef decltype((cx)) cx_with_parens_type;
+		
+		// The type of (crx) is const int&1, and it is an lvalue.
+		// decltype adds a reference. By the C++11 reference
+		// collapsing rules, that makes no difference. Hence,
+		// crx_with_parens_type is const int&.
+		typedef decltype((crx)) crx_with_parens_type;
+		
+		// S::m_x is declared as int. Since p is a pointer to const,
+		// the type of (p->m_x) is const int. Since (p->m_x) is an
+		// lvalue, decltype adds a reference to that. Therefore,
+		// m_x_with_parens_type is const int&.
+		typedef decltype((p->m_x)) m_x_with_parens_type;
+		\end{lstlisting}
+		
+		\begin{lstlisting}[frame=single, language=c++]
+		const S foo();
+		const int& foobar();
+		std::vector<int> vect = {42, 43};
+		
+		// foo() is declared as returning const S. The type of foo()
+		// is const S. Since foo() is a prvalue, decltype does not
+		// add a reference. Therefore, foo_type is const S.
+		typedef decltype(foo()) foo_type;
+		
+		// The type of foobar() is const int&1, and it is an lvalue. 
+		// Therefore, decltype adds a reference. By the C++11 reference
+		// collapsing rules, that makes no difference. Therefore,
+		// foobar_type is const int&.
+		typedef decltype(foobar()) foobar_type;
+		
+		// std::vector<int>'s operator[] is declared to have return
+		// type int&. Therefore, the type of the expression vect[0]
+		// is int&1. Since vect[0] is an lvalue, decltype adds a
+		// reference. By the C++11 reference collapsing rules,
+		// that makes no difference. Therefore, first_element has
+		// type int&.  
+		decltype(vect[0]) first_element = vect[0];
+		
+		// The type of the expresson is double, and the expression
+		// is an lvalue. Therefore, a reference is added, and
+		// cond_type is double&.
+		typedef decltype(d1 < d2 ? d1 : d2) cond_type;
+		
+		// The type of the expresson is double. The expression
+		// is a prvalue, because in order to accomodate the
+		// promotion of x to a double, a temporary has to be
+		// created. Therefore, no reference is added, and
+		// cond_type_mixed is double.
+		typedef decltype(x < d2 ? x : d2) cond_type_mixed;
+		\end{lstlisting}
+		
+	\end{enumerate}
+	
+	\item \textbf{decltype is mainly used in template function return value.}
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	template<typename Container, typename Index> // works
+	auto authAndAccess(Container& c, Index i) -> decltype(c[i]){
+	// ->decltype(c.begin())
+	authenticateUser();
+	return c[i];
+	}
+	
+	template<typename T, typename U>
+	auto eff(T t U u) -> decltype(T*U){
+	....
+	}
+	
+	template<typename Container, typename Index> // C++14; works,
+	$\Hilight{6}$decltype(auto) authAndAccess(Container& c, Index i) {
+	authenticateUser();
+	return c[i];
+	}
+	\end{lstlisting}
+	
+	\item make template function support universal reference.
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	template<typename Container, typename Index> // final c++14
+	decltype(auto) authAndAccess(Container&& c, Index i) {
+	authenticateUser();
+	return std::forward<Container>(c)[i];
+	}
+	
+	template<typename Container, typename Index> // final c++11
+	auto authAndAccess(Container&& c, Index i)
+	-> decltype(std::forward<Container>(c)[i]){
+	authenticateUser();
+	return std::forward<Container>(c)[i];
+	}
+	\end{lstlisting}
+	
+	\item The use of decltype(auto) is not limited to function return types. It can also be convenient for declaring variables when you want to apply the decltype type deduction rules to the initializing expression.
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	Widget w;
+	const Widget& cw = w;
+	
+	auto myWidget1 = cw; // auto type deduction:
+	// myWidget1's type is Widget
+	
+	decltype(auto) myWidget2 = cw;
+	// myWidget2's type is  const Widget&
+	\end{lstlisting}
+	
+	\item  If you're declaring variables inside a class. Instead of typing out the full name of the type of the iterator, you can use decltype:, you can't use auto.  This works because decltype doesn't actually execute the expression given as its argument-- it is only used by the type checker to determine a type.
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	class A {
+	std::vector<std::pair<int, std::string>> array;
+	decltype(array.begin()) iter;
+	$\Hilight{25}$// You don't need init expression here.
+	};
+	\end{lstlisting}
+	
+	\item We could have also done the above example with declval. allows you to use decltype without constructing the object,the type doesn't even need a default constructor, and in fact, it can be used with an incomplete type. The above example could be rewritten as:
+	
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	template <typename C>
+	$\Hilight{30}$//Here no any variable in below expression.
+	decltype(std::declval<const C>().begin())
+	foo(const C& c){
+	return one iterator of c
+	}
+	\end{lstlisting}
+	
+	\item declval is commonly used in templates where acceptable template parameters may have no constructor in common, but have the same member function whose return type is needed.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	struct Default { int foo() const { return 1; } };
+	
+	struct NonDefault{
+	NonDefault(const NonDefault&) { }
+	int foo() const { return 1; }
+	};
+	
+	decltype(Default().foo()) n1 = 1;   // type of n1 is int
+	//decltype(NonDefault().foo()) n2 = n1; // error: no default ctor
+	decltype(std::declval<NonDefault>().foo()) n2 = n1;
+	//ok now,  n2 is int
+	\end{lstlisting}
+	
+	\item result\_of usage. result\_of was introduced in Boost, and then included in TR1, and finally in C++0x. Therefore result\_of has an advantage that is backward-compatible (with a suitable library). decltype is an entirely new thing in C++, does not restrict only to return type of a function, and is a language feature.
+	\begin{lstlisting}[frame=single, language=c++]
+	struct foo {
+	double operator()(char, int);
+	};
+	//same
+	std::result_of<foo(char, int)>::type d1 = 10.0;
+	decltype(foo()('c', 1)) d2 = 10.0;
+	\end{lstlisting}
+	
+	
+	
+	\item There are three ways to view deducted type
+	\begin{enumerate}
+		\item use IDE
+		\item use Compiler
+		\begin{lstlisting}[frame=single, language=c++]
+		template<typename T> // declaration only for TD;
+		class TD; // TD == "Type Displayer"
+		
+		TD<decltype(x)> xType; // elicit errors containing
+		TD<decltype(y)> yType; // x's and y's types
+		\end{lstlisting}
+		\item use typeid and std::type\_info::name
+		\begin{lstlisting}[frame=single, language=c++]
+		std::cout << typeid(x).name() << '\n'; // display types for
+		\end{lstlisting}
+		
+	\end{enumerate}
+	
+\end{itemize}
+
+\subsubsection{summary}
+\begin{itemize}
+	\item auto, template T and decltype are three kinds of type deduction context. auto and template T are almost same, beside when we meet initilizaer\_list. but decltype are quite different with the other two. 
+	
+	\item When you use decltype(auto), auto tell compiler to automaticly type deduction, but please use decltype rules. They are most used when we deal with someexpression which return back lvalue, such as a[0], in this way, if you use auto, it will ignore reference. but decltype will keep it. 
+	
+	\item Basic idea can be illustrated below:
+	\includegraphics[scale=0.8]{pics/type_deduct.png}
 \end{itemize}
 
 
@@ -12801,245 +13123,6 @@ printLength(myarray);
 	
 \end{itemize}
 
-
-\subsection{Type Inference}
-
-\subsubsection{template type}
-
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T>
-void f(ParamType param);
-
-f(expr); // deduce T and ParamType from expr
-\end{lstlisting}
-
-\begin{enumerate}
-
-\item ParamType is a Reference or Pointer, but not a Universal Reference. If expr's type is a reference, ignore the reference part. Then pattern-match expr's type against ParamType to determine T.
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T>
-void f(T& param); // param is a reference
-
-int x = 27; // x is an int
-const int cx = x; // cx is a const int
-const int& rx = x; // rx is a reference to x as a const int
-
-f(x); // T is int, param's type is int&
-f(cx); // T is const int, param's type is const int&
-f(rx); // T is const int, param's type is const int&
-\end{lstlisting}
-
-\item ParamType is a Universal Reference
-
-\begin{enumerate}
-\item If expr is an lvalue, both T and ParamType are deduced to be lvalue references.
-\textbf{although ParamType is declared using the syntax for an rvalue reference, its deduced type is an lvalue reference.}
-\item If expr is an rvalue, the "normal" (i.e., Case 1) rules apply.
-\end{enumerate}
-
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T>
-void f(T&& param); // param is now a universal reference
-int x = 27; // as before
-const int cx = x; // as before
-const int& rx = x; // as before
-
-f(x); // x is lvalue, so T is int&, param's type is also int&
-f(cx); //cx is lvalue, so T  and param's type are const int&
-f(rx); //rx is lvalue, so T  and param's type are const int&
-f(27); //27 is rvalue, so T is int, param's is therefore int&&
-\end{lstlisting}
-
-\item ParamType is Neither a Pointer nor a Reference. As before, if expr's type is a reference, ignore the reference part. If, after ignoring expr's reference-ness, expr is const, ignore that, too. If it's
-volatile, also ignore that.
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T>
-void f(T param); // param is now passed by value
-
-int x = 27; // as before
-const int cx = x; // as before
-const int& rx = x; // as before
-f(x); // T's and param's types are both int
-f(cx); // T's and param's types are again both int
-f(rx); // T's and param's types are still both int
-\end{lstlisting}
-
-\item \textbf{Conclusion:  Take four steps to decide:}
-\begin{enumerate}
-\item array or function decay to pointer, if they are not used to reference ParamType
-\item universal reference for lvaue, T is lvalue reference. (keep const)
-\item reference is ignored
-\item for value-type ParamType, const and volatile are ignored.
-\end{enumerate}
-
-\end{enumerate}
-
-
-\subsubsection{decltype deduction}
-\begin{itemize}
-\item Basic knowledge of decltype detail can be found "How decltype Deduces the Type of an Expression: Case 1"
-
-\begin{enumerate}
-\item Case1: expression whose type is to be determined is a plain variable or function parameter, like x, or a class member access, like p->m\_x. In that case, decltype lives up to its name: it determines the type of the expression to be the declared type,
-\begin{lstlisting}[frame=single, language=c++]
-vector<int> v; // decltype(v) is vector<int>
-if (v[0] == 0) // decltype(v[0]) is int&
-
-struct S {
-  int m_x;
-};
-
-int x;
-const int cx = 42;
-const int& crx = x;
-const S* p = new S();
-
-decltype(x) a;  // a is int
-auto a = x;  // auto is int
-
-decltype(cx) b; // b is const int
-auto b = cx;  //auto ignore const, b is int
-
-decltype(crx) c;  // c is const int&.
-auto c = crx; //ignore reference and const, c is int
-
-// S::m_x is declared as int: m_x_type is int
-// Note that p->m_x cannot be assigned to. It is effectively
-// constant because p is a pointer to const. But decltype goes
-// by the declared type, which is int.
-decltype(p->m_x) d; // d is int
-auto d = p->m_x; //auto ignore const, d is int
-\end{lstlisting}
-
-\item Case 2: If expr is an lvalue, then decltype(expr) is T\&. If expr is an xvalue, then decltype(expr) is T\&\&. Otherwise, expr is a prvalue, and decltype(expr) is T.
-
-\begin{lstlisting}[frame=single, language=c++]
-int x;
-// (x) has type int, and decltype adds references to lvalues.
-// Therefore, x_with_parens_type is int&.
-//This is only way to get lvalue in case 2: add () around x
-typedef decltype((x)) x_with_parens_type;
-\end{lstlisting}
-
-\item \textbf{Conclusion: Only T\& comes from case2 lvalue, that is (x). T\&\& comes from case2 move().  All the other is T.}
-\end{enumerate}
-
-\item \textbf{decltype is mainly used in template function return value.}
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-template<typename Container, typename Index> // works
-auto authAndAccess(Container& c, Index i) -> decltype(c[i]){
-// ->decltype(c.begin())
-authenticateUser();
-return c[i];
-}
-
-template<typename T, typename U>
-auto eff(T t U u) -> decltype(T*U){
-....
-}
-
-template<typename Container, typename Index> // C++14; works,
-$\Hilight{6}$decltype(auto) authAndAccess(Container& c, Index i) {
-authenticateUser();
-return c[i];
-}
-\end{lstlisting}
-
-\item make template function support universal reference.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-template<typename Container, typename Index> // final c++14
-decltype(auto) authAndAccess(Container&& c, Index i) {
-authenticateUser();
-return std::forward<Container>(c)[i];
-}
-
-template<typename Container, typename Index> // final c++11
-auto authAndAccess(Container&& c, Index i)
--> decltype(std::forward<Container>(c)[i]){
-authenticateUser();
-return std::forward<Container>(c)[i];
-}
-\end{lstlisting}
-
-\item The use of decltype(auto) is not limited to function return types. It can also be convenient for declaring variables when you want to apply the decltype type deduction rules to the initializing expression.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-Widget w;
-const Widget& cw = w;
-
-auto myWidget1 = cw; // auto type deduction:
-// myWidget1's type is Widget
-
-decltype(auto) myWidget2 = cw;
-// myWidget2's type is  const Widget&
-\end{lstlisting}
-
-\item  If you're declaring variables inside a class. Instead of typing out the full name of the type of the iterator, you can use decltype:, you can't use auto.  This works because decltype doesn't actually execute the expression given as its argument-- it is only used by the type checker to determine a type.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-class A {
-  std::vector<std::pair<int, std::string>> array;
-  decltype(array.begin()) iter;
-  $\Hilight{25}$// You don't need init expression here.
-};
-\end{lstlisting}
-
-\item We could have also done the above example with declval. allows you to use decltype without constructing the object,the type doesn't even need a default constructor, and in fact, it can be used with an incomplete type. The above example could be rewritten as:
-
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-template <typename C>
-$\Hilight{30}$//Here no any variable in below expression.
-decltype(std::declval<const C>().begin())
-foo(const C& c){
-  return one iterator of c
-}
-\end{lstlisting}
-
-\item declval is commonly used in templates where acceptable template parameters may have no constructor in common, but have the same member function whose return type is needed.
-
-\begin{lstlisting}[frame=single, language=c++]
-struct Default { int foo() const { return 1; } };
-
-struct NonDefault{
-    NonDefault(const NonDefault&) { }
-    int foo() const { return 1; }
-};
-
-decltype(Default().foo()) n1 = 1;   // type of n1 is int
-//decltype(NonDefault().foo()) n2 = n1; // error: no default ctor
-decltype(std::declval<NonDefault>().foo()) n2 = n1;
-//ok now,  n2 is int
-\end{lstlisting}
-
-\item result\_of usage. result\_of was introduced in Boost, and then included in TR1, and finally in C++0x. Therefore result\_of has an advantage that is backward-compatible (with a suitable library). decltype is an entirely new thing in C++, does not restrict only to return type of a function, and is a language feature.
-\begin{lstlisting}[frame=single, language=c++]
-struct foo {
-    double operator()(char, int);
-};
-//same
-std::result_of<foo(char, int)>::type d1 = 10.0;
-decltype(foo()('c', 1)) d2 = 10.0;
-\end{lstlisting}
-
-
-
-\item There are three ways to view deducted type
-\begin{enumerate}
-\item use IDE
-\item use Compiler
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T> // declaration only for TD;
-class TD; // TD == "Type Displayer"
-
-TD<decltype(x)> xType; // elicit errors containing
-TD<decltype(y)> yType; // x's and y's types
-\end{lstlisting}
-\item use typeid and std::type\_info::name
-\begin{lstlisting}[frame=single, language=c++]
-std::cout << typeid(x).name() << '\n'; // display types for
-\end{lstlisting}
-
-\end{enumerate}
-
-\end{itemize}
 
 
 \subsection{callable}
