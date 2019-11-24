@@ -81,6 +81,27 @@
         \item local, function local and class local. 
     \end{enumerate}
     
+    	\item Only statement, which end with semicolon is executed. Most statements are expression statements. Statement and expression are two important conceptions, you can see their definition in cppreference.com to see academic explanation.
+    
+    \begin{enumerate}
+    	\item Expression: Something which evaluates to a value. Example: 1+2/x
+    	\item Statement: A line of code which does something. Example: GOTO 100; and statements are all end with semi-comma.
+    \end{enumerate}
+    
+    \item \textbf{All expressions yield a value, So expression is a value, statement is an action.}
+    
+    \item And function call is a expression, because it can yield a value.
+    
+    \item The designers of C realized that no harm was done if you were allowed to evaluate an expression and throw away the result. In C, every syntactic expression can be a made into a statement just by tacking a semicolon along the end:
+    
+    \begin{lstlisting}[frame=single, language=c++]
+    i //is expression;
+    x+y //is expression;
+    x+y; //is statement
+    j=i; is a statement.
+    fun(i) //is expression;
+    \end{lstlisting}
+    
 \end{itemize}
 
 \subsubsection{Combine C and C++}
@@ -4007,6 +4028,7 @@ unique_ptr<widget> w                 auto w = make_unique<widget>();
 \section{auto}
 
 About the auto type deduction, please refer to the next chapter Generic programming type inference section.
+
 \subsection{auto declaration}
 \subsubsection{advantage}
 \begin{itemize}
@@ -5269,21 +5291,45 @@ Everything You ever wanted to know about move semantics
 
 \section{reference and rvalue reference}
 \subsection{reference basic}
+
 \begin{itemize}
-\item \textbf{Reference has two characteristics, no null, no change}
-\begin{enumerate}
-\item Reference has not wild pointer problem, when there is a reference, it must refer to an object. That is when you declare a reference, you must initialize it. So a reference doesn't need to be test if it's null reference. different with pointer. But if you have reference to a local variable inside a function, when the function finishes, it still have dangling reference problem. 
+\item \textbf{Reference has two characteristics, no null, no change}.In other words, top level of const of reference is default. You can't change it. That is why you have to initiliaze it. Imaging reference is a kind of top level const pointer.
 \begin{lstlisting}[frame=single, language=c++]
-if(pointer) // don't need to do it for a reference.
-   cout<< *pointer<<endl;
+int x = 12;
+int* const p = &x; // you have to init it.
+p  = &y ; //you can't point to different object.
 \end{lstlisting}
 
+\begin{enumerate}
 \item No change, a reference always refers to the object with which it's initialized firstly.
 \begin{lstlisting}[frame=single, language=c++]
 string &rs = s1;
 rs = s2; // s1's value is modified, rs still refer to s1.
 \end{lstlisting}
+
+\item Reference has not wild pointer problem. So a reference doesn't need to be test if it's null reference. different with pointer. 
+\begin{lstlisting}[frame=single, language=c++]
+if(pointer) // don't need to do it for a reference.
+cout<< *pointer<<endl;
+\end{lstlisting}
+
+\item If you have reference to a local variable inside a function, when the function finishes, it still have dangling reference problem. 
 \end{enumerate}
+
+\item you can have reference to pointer, but pointer to reference is illegal. In grammar level, reference to reference has different means, it's called rvalue reference. 
+\begin{lstlisting}[frame=single, language=c++]
+int *p;
+int **p;
+int *& rp = p
+int &* pr //not illegal in c++
+int && rv //rvalue reference.
+\end{lstlisting}
+
+\item non-const reference can't refer to const object.
+\begin{lstlisting}[frame=single, language=c++]
+const int i = 12;
+int& j = i;
+\end{lstlisting}
 
 \item A \texttt{const} object reference passed into a function, if you want to return it , it must be \texttt{const} too. Usually, It has no any practical meanings when you do in this way. 
 \begin{lstlisting}[frame=single, language=c++]
@@ -5328,10 +5374,247 @@ Foo f3 = f1+f2;
 \end{lstlisting}
 \end{itemize}
 
-\subsection{rvalue reference and move scenario}
+\subsection{lvalue, rvalue and xvalue}
+\begin{itemize}
+	\item In this section, there are four important points
+	\begin{enumerate}
+		\item Academic definition of xvalue.
+		\item Give some practical expressions which are xvalue.
+		\item Relationship between xvalue and rvalue reference.
+		\item Why do we need a new value type--xvalue?
+	\end{enumerate}
+	
+\end{itemize}
+
+\subsubsection{definition of xvalue}
 
 \begin{itemize}
-\item rvalue reference can only bind to rvalue, and rvalue is composed of prvalue+ xvalue. A plain reference can only bind to lvalue. Const lvalue reference can bind to both lvalue and rvalue, but you can't change it.
+	\item Each C++ expression (an operator with its operands, a literal, a variable name, etc.) is characterized by two independent properties: \text{a type and a value category}. Each expression is certain kind of type,such as int type, reference type or rvalue reference type. Each expression belongs to exactly one of the three primary value categories: \textbf{lvalue, prvalue, and xvalue;} 
+	
+	\item lvalue is not defined "can be put on the left side of =". Because \texttt{const int a} is also a lvalue, and you can't put a on the left side of = . It has three characteristics:
+	\begin{enumerate}
+		\item\textbf{lvalue has Identity}, (can get address by \& operator),
+		\item \textbf{lvalue can be persist beyond the expression. }
+		\item \textbf{lvalue can't be move(stolen),} because you need to keep original one intact.
+	\end{enumerate}
+	
+	\item On the contrary, prvalue has no \textbf{identity}, and will not \textbf{persist} beyond expression and can be move(stolen)
+	
+	\item Why pvalue doesn't persist. it because that how do rvalues in C++ stored in memory. The main reasoning behind this is as always freedom for the compiler to improve performances of your code. A more concrete way to understand this is to remember that a value can be stored in a register of your CPU and never actually be in your memory which more or less means that the value has no address. I won't bet everything i have on it but this is probably one of the main reasons why "we cannot get an address of an rvalue".
+	
+	\item In a more general way since an rvalue is semantically temporary it is more likely to be put in temporary places or optimised in a way where it cannot easily be mapped to an address and even if it can that would be counter productive in terms of performance.
+	
+	\item First, we can use \textbf{persist and identity} to classify value into lvalue and rvalue, then c++11 introduce \textbf{rvalue reference}. rref can persist and move at the same time.  So we divide lvalue into lvalue and xvalue.  and give them new name.  lvalue+xvalue = glvalue(persist)  and xvalue + prvalue = rvalue(move).
+	
+	\item \textbf{Any value must be one of three, lvalue, xvalue, or prvalue.} These three categories are complementary.  \textbf{lvalue pay attention to  identity and persist, rvalue=(xvalue + prvalue) shout "I can be moved" loudly.  So we call \&\& rvalue reference, don't call it xvalue reference. }
+	
+	\item To know this conception can help you to understand decltype. 
+	
+	\item Summary table: \newline
+	\begin{tabular}{|c|c|c|}
+		\hline
+		& persist(Identity) & move \\
+		\hline
+		lvalue & Yes & No \\
+		\hline
+		pvalue & No & Yes \\
+		\hline
+		xvalue & Yes & Yes \\
+		\hline
+	\end{tabular}
+
+\item An example shows that xvalue has identity and persist, and will persist beyond expression and can be move(stolen). it usually near the end of its lifetime (so that its resources may be moved).
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+string&& xvalue_fun();
+xvalue_fun(); // after you call this fun, value still exist.
+xvalue_fun() = "hello" // you can modify because it persist
+&xvalue_fun(); // you can get address because it has identity.
+string a = xvalue_fun(); // call move ctor, can move
+\end{lstlisting}
+
+\end{itemize}
+
+\subsubsection{Example of xvalue}
+
+\begin{itemize}
+	\item Remember that any expression that evaluates to an lvalue reference (e.g., a function call, an overloaded assignment operator, etc.) is \textbf{an lvalue}. Any expression that \textbf{returns an object by value is an rvalue}.
+	
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	string& lvalue_fun();
+	lvalue_fun(); // after you call this fun, lvalue still exist.
+	lvalue_fun() = "hello" // you can modify because it persist
+	&lvalue_fun(); // you can get address because it has identity.
+	string a = lvalue_fun //call copy ctor, can't move
+	
+	string pvalue_fun();
+	pvalue_fun(); // after call this fun, value disappear.
+	pvalue_fun() = "hello" //NOT modify because it doesn't persist
+	&pvalue_fun(); // NOT get address because it no identity.
+	string a = pvalue_fun() //call move ctor, can move
+	\end{lstlisting}
+	
+	\item An xvalue is the result of certain kinds of expressions involving rvalue references. \textbf{The result of calling a function whose return type is an rvalue reference is an xvalue.}
+	
+	\item textbf{fun return lvalue reference is lvalue, fun return value is pvalue, and fun return rvalue reference is xvalue.}
+	
+	\item In definition,  xvalue is just value with Identity and can be movable. \textbf{In real life, it's  return value of std::move() or static\_cast<A\&\&>}. A better introduction can be seen: " C++11 Tutorial: Explaining the Ever-Elusive Lvalues and Rvalues"
+	
+	\item More xvalue examples.
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	struct A {
+	int m;
+	};
+	
+	A&& operator+(A, A); // a+a is xvalue
+	A&& f();  //f() is xvalue
+	f().m // f().m is also xvluae
+	A a;
+	A&& ar = static_cast<A&&>(a);
+	//static_cast<A&&>(a) is xvalue, but ar is lvalue
+	\end{lstlisting}
+	
+	\item After C++11, we added two new xvalues.\\
+	1) a[n], the built-in subscript expression, where one operand is an array rvalue;\\
+	2) a.m, the member of object expression, where a is an rvalue and m is a non-static data member of non-reference
+\end{itemize}
+
+\subsubsection{xvalue and rvalue reference}
+
+\begin{itemize}
+	\item \textbf{xvalue is defined based on rvalue reference. But you can't think that a rvalue reference is a xvalue. }
+	
+	\item \textbf{A named rvalue reference is lvalue, and unnamed rvalue reference is xvalue};
+	
+	\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+	void foo(int&& t) {
+	// t is initialized with an rvalue expression
+	// but is actually an lvalue expression itself
+	}
+	
+	std::string a;   //a, b, c are all lvalue.
+	std::string& b;
+	std::string&& c;
+	\end{lstlisting}
+	
+	
+	\item goo is declared as an rvalue reference and does not have a name, and is therefore an rvalue.
+	\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+	X&& goo();
+	X x = goo();
+	// calls X(X&& rhs) because the thing on
+	// the right hand side has no name
+	
+	std::move(x)  // get rid of x name,
+	//then return rvalue reference
+	\end{lstlisting}
+	
+	\item Why is there such confusion? Here are the circumstances under which it is safe to move something:\\
+	1) When it's a temporary or sub-object thereof. (prvalue) \\
+	2) When the user has explicitly said to move it.
+	\begin{lstlisting}[frame=single, language=c++]
+	SomeType &&Func() { ... }
+	
+	SomeType &&val = Func();
+	SomeType otherVal{val}; // Do you really want to move 
+	....
+	cout<<val; //what happen if you have forget you have move.
+	//so here, we think val is lvalue. because it's a named rvalue reference.
+	\end{lstlisting}
+	
+	\item Another deep trap happen when you implement move ctor in derived class
+	\begin{lstlisting}[frame=single, language=c++]
+	Derived(Derived&& rhs) 
+	: Base(rhs) // wrong: rhs is an lvalue
+	{
+	// Derived-specific stuff
+	}
+	
+	Derived(Derived&& rhs) 
+	: Base(std::move(rhs)) // good, calls Base(Base&& rhs)
+	{
+	// Derived-specific stuff
+	}
+	\end{lstlisting}
+	
+\end{itemize}
+
+
+\subsubsection{Why need xvalue}
+\begin{itemize}
+	\item given a type T, you can have lvalues of type T as well as rvalues of typeT. It's especially important to remember this when dealing with a parameter of rvalue reference type, because the parameter itself is an lvalue.
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	int && i = 2;  //i expression is rvalue referene type lvalue
+	int && fun()
+	fun() //fun() expression is vralue reference type rvalue. 
+	\end{lstlisting}
+	
+	\item before C++11, we have used value category to overload function. plain lvalue reference can only bind to lvalue, can't bind to rvalue. So we use \textbf{const lvalue reference}.  Const lvalue reference can bind to both lvalue and rvalue, but you can't change it. We have used this technology in copy ctor very common before C++11.
+	
+	\item After C++11, in order to improve efficiency when deal with rvalue, we introduced rvalue reference.  rvalue referencecan only bind to rvalue, (rvalue is composed of prvalue+ xvalue). \textbf{That is how funciton overload kick in?}
+	
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	int a = 7;  // a is lvalue, It has Identity
+	int && r1 = 13,  $\Hilight{16}$//r1, r2 and r3 are lvalue
+	int && r2= x+y; //x+y is prvalue
+	int && r3 = sqrt(2.0);  //sqrt(2.0) is prvalue
+	int && r4 = a //error, rvalue reference can't refer to lvalue.
+	
+	cont int & lv = x+y; //lv is lvalue
+	int & r = x+y; //error,lvalue reference can not bind with an rvalue.
+	\end{lstlisting}
+	
+	\begin{tabular}{|c|c|}
+		\hline 
+		type & value category \\ 
+		\hline 
+		lvalue reference & lvalue(non-const)  \\ 
+		\hline 
+		rvalue reference &  rvalue(non-const)\\ 
+		\hline 
+		const lvalue reference & lvalue or rvalue(const or non-const)  \\ 
+		\hline 
+	\end{tabular} 
+	
+	\item C++11 allows you to use move semantics not just on rvalues, but, at your discretion, on lvalues as well. An good example is swap function, here if you can move lvalue, the efficiency will be better. 
+	
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	template<class T> 
+	void swap(T& a, T& b) { 
+	T tmp(std::move(a));
+	a = std::move(b); 
+	b = std::move(tmp);
+	} 
+	\end{lstlisting}
+	
+	\item So for std::move() function, return value can be value(rvalue), but it can't support dynamic binding in C++.  return value can be reference(lvalue), but it can't be used move context. So we have to use rvalue reference as return type. 
+	
+	\item for this kind of rvalue reference, we can put it on the left side of assignment, so it's not prvalue. At the same time, you can move it, so it's not lvalue.  \textbf{In this way, we have to introduced a new value type--xvalue.}    
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	string str = "hello"
+	std::move(str)[0] = 'z';
+	cout<<str<<endl // print zello here.
+	// so std::move() return a xvalue, it can persist and move.
+	\end{lstlisting}
+	
+	\item In one word: \\
+	1) We have rvalue reference to bind temporary value to move it.\\
+	2) We want to move a lvalue, such as swap, so we have std::move() function \\
+	3) std::move() return neither lvalue nor prvalue, so we have to define a new type of value--xvalue. 
+	
+	\begin{figure}
+		\centering
+		\includegraphics[width=0.9\linewidth]{pics/xvalue}
+		\caption{}
+		\label{fig:xvalue}
+	\end{figure}
+	
+\end{itemize}
+
+\subsection{rvalue reference and move scenario}
+\subsubsection{basic of rvalue reference}
+\begin{itemize}
+
+\item You need to know,  previous codes and explanations just give the basic idea of rvalue reference. Just like function pointer, we never use function pointer in simple way, instead, we use it as a function argument to implement call back.  \textbf{For rvalue reference, We just use it as move semantic.} I will explain it in the next section.
 
 \item because const reference can bind both lvalue and rvalue, so we can't distinguish when to move, when to copy, that is why we need rvalue reference. 
 
@@ -5340,6 +5623,29 @@ Foo f3 = f1+f2;
 \item How to understand move semantics? Move is not really move a big chunk of data, It just move index of data. just like you move file in the hard disk. 
 
 \item rvalue references will implicitly bind to rvalues and to temporaries that are the result of an implicit conversion. i.e. float f = 0f; int\&\& i = f; is well formed because float is implicitly convertible to int; the reference would be to a temporary that is the result of the conversion.
+
+\item Rvalue references can be used to extend the lifetimes of temporary objects (note, lvalue references to const can extend the lifetimes of temporary objects too, but they are not modifiable through them):
+
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+std::string s1 = "Test";
+//  std::string&& r1 = s1;           
+// error: rvalue ref can't bind to lvalue
+
+const std::string& r2 = s1 + s1; 
+// okay: lvalue reference to const extends lifetime
+//  r2 += "Test";                    
+// error: can't modify through reference to const
+
+std::string&& r3 = s1 + s1;      
+// okay: rvalue reference extends lifetime
+r3 += "Test";                    
+// okay: can modify through reference to non-const
+\end{lstlisting}
+
+\end{itemize}
+
+\subsubsection{move semantic}
+\begin{itemize}
 
 \item Rvalue references allow a function to branch at compile time (via overload resolution) on the condition "Am I being called on an lvalue or an rvalue?" It is true that you can overload any function in this manner, as shown above. \textbf{But in the overwhelming majority of cases, this kind of overload should occur only for copy constructors and assignment operators, for the purpose of achieving move semantics. }
 
@@ -5353,8 +5659,7 @@ X foobar(); //return a X obj
 foo(x); // argument is lvalue: calls foo(X&)
 foo(std::move(x) // argument is xvalue: calls foo(x&&)
 foo(foobar());  // argument is rvalue: calls foo(X&&)
-\end{lstlisting}
-
+\end{lstlisting}	
 
 \item First, don't declare objects \texttt{const} if you want to be able to move from them. Move requests on \texttt{const} objects are silently transformed into copy operations.
 
@@ -5366,13 +5671,12 @@ explicit Annotation(const std::string text)
 // doesn't do what it seems to, because text is const
 \end{lstlisting}
 
-
-\item You need to know,  previous codes and explanations just give the basic idea of rvalue reference. Just like function pointer, we never use function pointer in simple way, instead, we use it as a function argument to implement call back.  \textbf{For rvalue reference, We just use it as move semantic.} I will explain it in the next section.
+\item forward reference can be type dedcuted both lvalue and rvalue. T will be different depend on the value categorye, will talk in the later section.
 
 \end{itemize}
 
 
-\subsection{move copy and assignment }
+\subsubsection{move copy and assignment }
 \begin{itemize}
 \item \textbf{copy ctor will copy a obj inside of function, So all the knowledge discussed in previous section can be used to help you understand copy ctor. A better method is overload function to deal with lvalue and rvalue separately. }
 
@@ -5674,259 +5978,6 @@ $\Hilight{19}$//with const, It's not univerisal reference any more.
 				\item \textbf{Forward}, because I want to forward parameter to corresponding ctor.Forward only used inside a wrapper, that is to say, to receive universal reference from template wrapper, and forward it to the specific function. The specific function has "COPY" semantic. 
 		\end{enumerate}
 		
-\end{itemize}
-
-\subsection{lvalue, rvalue and xvalue}
-\begin{itemize}
-
-\item About this section, there are four important points
-
-\begin{enumerate}
-\item Academic definition of xvalue.
-\item Give some practical expressions which are xvalue.
-\item Relationship between xvalue and rvalue reference.
-\item Why do we need a new value type--xvalue?
-\end{enumerate}
-
-\end{itemize}
-
-\subsubsection{definition of xvalue}
-
-\begin{itemize}
-		
-	\item How rvalues in c++ stored in memory?  It's depends! The main reasoning behind this is as always freedom for the compiler to improve performances of your code. A more concrete way to understand this is to remember that a value can be stored in a register of your CPU and never actually be in your memory which more or less means that the value has no address. I won't bet everything i have on it but this is probably one of the main reasons why "we cannot get an address of an rvalue".
-
-	\item In a more general way since an rvalue is semantically temporary it is more likely to be put in temporary places or optimised in a way where it cannot easily be mapped to an address and even if it can that would be counter productive in terms of performance.
-
-	\item Only statement, which end with semicolon is executed. Most statements are expression statements. Statement and expression are two important conceptions, you can see their definition in cppreference.com to see academic explanation.
-	
-\begin{enumerate}
-\item Expression: Something which evaluates to a value. Example: 1+2/x
-\item Statement: A line of code which does something. Example: GOTO 100; and statements are all end with semi-comma.
-\end{enumerate}
-
-\item \textbf{All expressions yield a value, So expression is a value, statement is an action.}
-
-\item And function call is a expression, because it can yield a value.
-
-\item The designers of C realized that no harm was done if you were allowed to evaluate an expression and throw away the result. In C, every syntactic expression can be a made into a statement just by tacking a semicolon along the end:
-
-\begin{lstlisting}[frame=single, language=c++]
-i //is expression;
-x+y //is expression;
-x+y; //is statement
-j=i; is a statement.
-fun(i) //is expression;
-\end{lstlisting}
-
-\item lvalue is not defined "can be put on the left side of =". Because \texttt{const int a} is also a lvalue, and you can't put a on the left side of = . It has three characteristics:
-\begin{enumerate}
-\item\textbf{ lvalue has Identity}, (can get address by \& operator),
-\item \textbf{lvalue can be persist beyond the expression. }
-\item \textbf{lvalue can't be move(stolen),} because you need to keep original one intact.
-\end{enumerate}
-
-\item On the contrary, prvalue has no \textbf{identity}, and will not \textbf{persist} beyond expression and can be move(stolen)
-
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-int a = 7;  // a is lvalue, It has Identity
-int && r1 = 13,  $\Hilight{16}$//r1, r2 and r3 are lvalue
-int && r2= x+y; //x+y is prvalue
-int && r3 = sqrt(2.0);  //sqrt(2.0) is prvalue
-
-cont int & lv = x+y; //lv is lvalue
- int & r = x+y; //error,
-// lvalue reference can not bind with an rvalue.
-\end{lstlisting}
-
-\item Rvalue references can be used to extend the lifetimes of temporary objects (note, lvalue references to const can extend the lifetimes of temporary objects too, but they are not modifiable through them):
-
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-    std::string s1 = "Test";
-//  std::string&& r1 = s1;           // error: can't bind to lvalue
- 
-    const std::string& r2 = s1 + s1; // okay: lvalue reference to const extends lifetime
-//  r2 += "Test";                    // error: can't modify through reference to const
- 
-    std::string&& r3 = s1 + s1;      // okay: rvalue reference extends lifetime
-    r3 += "Test";                    // okay: can modify through reference to non-const
-    std::cout << r3 << '\n';
-\end{lstlisting}
-
-\item First, we can use \textbf{persist and identity} to classify value into lvalue and rvalue, then c++11 introduce \textbf{rvalue reference}. rref can persist and move at the same time.  So we divide lvalue into lvalue and xvalue.  and give them new name.  lvalue+xvalue = glvalue(persist)  and xvalue + prvalue = rvalue(move).
-
-\item \textbf{Any value must be one of three, lvalue, xvalue, or prvalue.} These three categories are complementary.  \textbf{lvalue pay attention to  identity and persist, rvalue=(xvalue + prvalue) shout "I can be moved" loudly.  So we call \&\& rvalue reference, don't call it xvalue reference. }
-
-\item To know this conception can help you to understand decltype. Detail can be seen in the last chapter.
-
-\item Summary table:
-\begin{tabular}{|c|c|c|}
-\hline
- & persist(Identity) & move \\
-\hline
-lvalue & Yes & No \\
-\hline
-pvalue & No & Yes \\
-\hline
-xvalue & Yes & Yes \\
-\hline
-\end{tabular}
-
-\end{itemize}
-
-\subsubsection{Example of xvalue}
-
-\begin{itemize}
-
-\item Remember that any expression that evaluates to an lvalue reference (e.g., a function call, an overloaded assignment operator, etc.) is \textbf{an lvalue}. Any expression that \textbf{returns an object by value is an rvalue}.
-
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-string& lvalue_fun();
-lvalue_fun(); // after you call this fun, lvalue still exist.
-lvalue_fun() = "hello" // you can modify because it persist
-&lvalue_fun(); // you can get address because it has identity.
-string a = lvalue_fun //call copy ctor, can't move
-
-string pvalue_fun();
-pvalue_fun(); // after call this fun, value disappear.
-pvalue_fun() = "hello" //NOT modify because it doesn't persist
-&pvalue_fun(); // NOT get address because it no identity.
-string a = pvalue_fun() //call move ctor, can move
-\end{lstlisting}
-
-\item An xvalue is the result of certain kinds of expressions involving rvalue references. [Example: The result of calling a function whose return type is an rvalue reference is an xvalue.]
-
-\item xvalue has identity and persist, and will persist beyond expression and can be move(stolen). it usually near the end of its lifetime (so that its resources may be moved, for example).
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-string&& xvalue_fun();
-xvalue_fun(); // after you call this fun, value still exist.
-xvalue_fun() = "hello" // you can modify because it persist
-&xvalue_fun(); // you can get address because it has identity.
-string a = xvalue_fun(); // call move ctor, can move
-\end{lstlisting}
-
-\item In definition,  xvalue is just value with Identity and can be movable. \textbf{In real life, it's  return value of std::move() or static\_cast<A\&\&>}. A better introduction can be seen: " C++11 Tutorial: Explaining the Ever-Elusive Lvalues and Rvalues"
-
-\item Another xvalue examples.
-\begin{lstlisting}[frame=single, language=c++]
-struct A {
-    int m;
-};
-
-A&& operator+(A, A); // a+a is xvalue
-A&& f();  //f() is xvalue
-f().m // f().m is also xvluae
-A a;
-A&& ar = static_cast<A&&>(a);
-//static_cast<A&&>(a) is xvalue, but ar is lvalue
-\end{lstlisting}
-
-
-\end{itemize}
-
-\subsubsection{xvalue and rvalue reference}
-
-\begin{itemize}
-
-\item \textbf{xvalue is defined based on rvalue reference. But you can't think that a rvalue reference is a xvalue. }
-
-\item Each C++ expression (an operator with its operands, a literal, a variable name, etc.) is characterized by two independent properties: a type and a value category. Each expression is certain kind of type,such as int type, reference type and \textbf{rvalue reference type}. Each expression belongs to exactly one of the three primary value categories: lvalue, prvalue, and xvalue;
-
-\begin{lstlisting}[frame=single, language=c++]
-int&& rr = n;    // Error: n is an lvalue
-
-int &r = i+j;  //Error: i+j is a rvalue
-
-const int& cr = i+j; // Yes, but you can't change cr
-\end{lstlisting}
-
-\item \textbf{A named rvalue reference is lvalue, and unnamed rvalue reference is xvalue};
-
-\item named rvalue references are lvalues:
-\begin{lstlisting}[frame=single, language=c++]
-void foo(int&& t) {
-  // t is initialized with an rvalue expression
-  // but is actually an lvalue expression itself
-}
-
-std::string a;   //a, b, c are all lvalue.
-std::string& b;
-std::string&& c;
-\end{lstlisting}
-
-
-\item goo is declared as an rvalue reference and does not have a name, and is therefore an rvalue.
-\begin{lstlisting}[frame=single, language=c++]
-X&& goo();
-X x = goo();
-// calls X(X&& rhs) because the thing on
-  // the right hand side has no name
-
-std::move(x)  // get rid of x name,
-                  //then return rvalue reference
-\end{lstlisting}
-
-\item A easy confusion happen here: \textbf{type of x is rvalue refernece, but it's a lvalue}
-\begin{lstlisting}[frame=single, language=c++]
-void foo(X&& x){
-//x is a named rvalue reference.
-  X anotherX = x; // calls X(X const & rhs)
-}
-\end{lstlisting}
-
-\item Why is there such confusion? Here are the circumstances under which it is safe to move something:
-1) When it's a temporary or subobject thereof. (prvalue) 2) When the user has explicitly said to move it.
-\begin{lstlisting}[frame=single, language=c++]
-SomeType &&Func() { ... }
-
-SomeType &&val = Func();
-SomeType otherVal{val}; // Do you really want to move 
-....
-cout<<val; //what happen if you have forget you have move.
-//so here, we think val is lvalue. because it's a named rvalue reference.
-\end{lstlisting}
-
-\item Another deep trap happen when you implement move ctor in derived class
-\begin{lstlisting}[frame=single, language=c++]
-Derived(Derived&& rhs) 
-  : Base(rhs) // wrong: rhs is an lvalue
-{
-  // Derived-specific stuff
-}
-
-Derived(Derived&& rhs) 
-  : Base(std::move(rhs)) // good, calls Base(Base&& rhs)
-{
-  // Derived-specific stuff
-}
-\end{lstlisting}
-
-\end{itemize}
-
-
-\subsubsection{Why need xvalue}
-\begin{itemize}
-\item C++11 allows you to use move semantics not just on rvalues, but, at your discretion, on lvalues as well. An good example is swap function, here if you can move lvalue, the efficiency will be better. 
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-template<class T> 
-void swap(T& a, T& b) { 
-  T tmp(std::move(a));
-  a = std::move(b); 
-  b = std::move(tmp);
-} 
-\end{lstlisting}
-
-\item So for std::move() function, return value can be value(rvalue), but it can't support dynamic binding in C++.  return value can be reference(lvalue), but it can't be used move context. So we have to use rvalue reference as return type. 
-
-\item for this kind of rvalue reference, we can put it on the left side of assignment, so it's not prvalue. At the same time, you can move it, so it's not lvalue.  \textbf{In this way, we have to introduced a new value type--xvalue.}    
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-string str = "hello"
-std::move(str)[0] = 'z';
-cout<<str<<endl // print zello here.
-// so std::move() return a xvalue, it can persist and move.
-\end{lstlisting}
-
-\item In one word: 1) We have rvalue reference to bind temporary value to move it. 2) We want to move a lvalue, such as swap, so we have std::move() function 3) std::move() return neither lvalue nor prvalue, so we have to define a new type of value--xvalue. 
 \end{itemize}
 
 
@@ -8735,114 +8786,114 @@ f(expr); // deduce T and ParamType from expr
 
 \subsubsection{decltype deduction}
 \begin{itemize}
-	\item Basic knowledge of decltype detail can be found "How decltype Deduces the Type of an Expression: Case 1"
+	\item decltype has two different deduct rules when facing different kinds of expression.
 	
 	\begin{enumerate}
 		\item Case1: expression whose type is to be determined is a plain variable or function parameter, like x, or a class member access, like p->m\_x. In that case, decltype lives up to its name: it determines the type of the expression to be the declared type,
-		\begin{lstlisting}[frame=single, language=c++]
-		vector<int> v; // decltype(v) is vector<int>
-		
-		struct S {
-		int m_x;
-		};
-		
-		int x;
-		const int cx = 42;
-		const int& crx = x;
-		const S* p = new S();
-		
-		decltype(x) a;  // a is int
-		auto a = x;  // a is int
-		
-		decltype(cx) b; // b is const int
-		auto b = cx;  //auto ignore const, b is int
-		
-		decltype(crx) c;  // c is const int&.
-		auto c = crx; //ignore reference and const, c is int
-		
-		// S::m_x is declared as int: m_x_type is int
-		// Note that p->m_x cannot be assigned to. It is effectively
-		// constant because p is a pointer to const. But decltype goes
-		// by the declared type, which is int.
-		decltype(p->m_x) d; // d is int
-		auto d = p->m_x; //auto ignore const, d is int
-		\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+vector<int> v; // decltype(v) is vector<int>
+
+struct S {
+int m_x;
+};
+
+int x;
+const int cx = 42;
+const int& crx = x;
+const S* p = new S();
+
+decltype(x) a;  // a is int
+auto a = x;  // a is int
+
+decltype(cx) b; // b is const int
+auto b = cx;  //auto ignore const, b is int
+
+decltype(crx) c;  // c is const int&.
+auto c = crx; //ignore reference and const, c is int
+
+// S::m_x is declared as int: m_x_type is int
+// Note that p->m_x cannot be assigned to. It is effectively
+// constant because p is a pointer to const. But decltype goes
+// by the declared type, which is int.
+decltype(p->m_x) d; // d is int
+auto d = p->m_x; //auto ignore const, d is int
+\end{lstlisting}
 		
 		\item Case 2: If expr is an lvalue, then decltype(expr) is T\&. If expr is an xvalue, then decltype(expr) is T\&\&. Otherwise, expr is a prvalue, and decltype(expr) is T.
 		
-		\begin{lstlisting}[frame=single, language=c++]
-		struct S {
-		int m_x;
-		};
-		
-		int x;
-		const int cx = 42;
-		const int& crx = x;
-		const S* p = new S();
-		//---------------------------------------
-		// (x) has type int, and decltype adds references to lvalues.
-		// Therefore, x_with_parens_type is int&.
-		
-		typedef decltype((x)) x_with_parens_type;
-		
-		// The type of (cx) is const int. Since (cx) is an lvalue,
-		// decltype adds a reference to that: cx_with_parens_type
-		// is const int&.
-		typedef decltype((cx)) cx_with_parens_type;
-		
-		// The type of (crx) is const int&1, and it is an lvalue.
-		// decltype adds a reference. By the C++11 reference
-		// collapsing rules, that makes no difference. Hence,
-		// crx_with_parens_type is const int&.
-		typedef decltype((crx)) crx_with_parens_type;
-		
-		// S::m_x is declared as int. Since p is a pointer to const,
-		// the type of (p->m_x) is const int. Since (p->m_x) is an
-		// lvalue, decltype adds a reference to that. Therefore,
-		// m_x_with_parens_type is const int&.
-		typedef decltype((p->m_x)) m_x_with_parens_type;
-		\end{lstlisting}
-		
-		\begin{lstlisting}[frame=single, language=c++]
-		const S foo();
-		const int& foobar();
-		std::vector<int> vect = {42, 43};
-		
-		// foo() is declared as returning const S. The type of foo()
-		// is const S. Since foo() is a prvalue, decltype does not
-		// add a reference. Therefore, foo_type is const S.
-		typedef decltype(foo()) foo_type;
-		
-		// The type of foobar() is const int&1, and it is an lvalue. 
-		// Therefore, decltype adds a reference. By the C++11 reference
-		// collapsing rules, that makes no difference. Therefore,
-		// foobar_type is const int&.
-		typedef decltype(foobar()) foobar_type;
-		
-		// std::vector<int>'s operator[] is declared to have return
-		// type int&. Therefore, the type of the expression vect[0]
-		// is int&1. Since vect[0] is an lvalue, decltype adds a
-		// reference. By the C++11 reference collapsing rules,
-		// that makes no difference. Therefore, first_element has
-		// type int&.  
-		decltype(vect[0]) first_element = vect[0];
-		
-		// The type of the expresson is double, and the expression
-		// is an lvalue. Therefore, a reference is added, and
-		// cond_type is double&.
-		typedef decltype(d1 < d2 ? d1 : d2) cond_type;
-		
-		// The type of the expresson is double. The expression
-		// is a prvalue, because in order to accomodate the
-		// promotion of x to a double, a temporary has to be
-		// created. Therefore, no reference is added, and
-		// cond_type_mixed is double.
-		typedef decltype(x < d2 ? x : d2) cond_type_mixed;
-		\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+struct S {
+int m_x;
+};
+
+int x;
+const int cx = 42;
+const int& crx = x;
+const S* p = new S();
+//---------------------------------------
+// (x) has type int, and decltype adds references to lvalues.
+// Therefore, x_with_parens_type is int&.
+
+typedef decltype((x)) x_with_parens_type;
+
+// The type of (cx) is const int. Since (cx) is an lvalue,
+// decltype adds a reference to that: cx_with_parens_type
+// is const int&.
+typedef decltype((cx)) cx_with_parens_type;
+
+// The type of (crx) is const int&1, and it is an lvalue.
+// decltype adds a reference. By the C++11 reference
+// collapsing rules, that makes no difference. Hence,
+// crx_with_parens_type is const int&.
+typedef decltype((crx)) crx_with_parens_type;
+
+// S::m_x is declared as int. Since p is a pointer to const,
+// the type of (p->m_x) is const int. Since (p->m_x) is an
+// lvalue, decltype adds a reference to that. Therefore,
+// m_x_with_parens_type is const int&.
+typedef decltype((p->m_x)) m_x_with_parens_type;
+\end{lstlisting}
+\item for some complex expression examples
+\begin{lstlisting}[frame=single, language=c++]
+const S foo();
+const int& foobar();
+std::vector<int> vect = {42, 43};
+
+// foo() is declared as returning const S. The type of foo()
+// is const S. Since foo() is a prvalue, decltype does not
+// add a reference. Therefore, foo_type is const S.
+typedef decltype(foo()) foo_type;
+
+// The type of foobar() is const int&1, and it is an lvalue. 
+// Therefore, decltype adds a reference. By the C++11 reference
+// collapsing rules, that makes no difference. Therefore,
+// foobar_type is const int&.
+typedef decltype(foobar()) foobar_type;
+
+// std::vector<int>'s operator[] is declared to have return
+// type int&. Therefore, the type of the expression vect[0]
+// is int&1. Since vect[0] is an lvalue, decltype adds a
+// reference. By the C++11 reference collapsing rules,
+// that makes no difference. Therefore, first_element has
+// type int&.  
+decltype(vect[0]) first_element = vect[0];
+
+// The type of the expresson is double, and the expression
+// is an lvalue. Therefore, a reference is added, and
+// cond_type is double&.
+typedef decltype(d1 < d2 ? d1 : d2) cond_type;
+
+// The type of the expresson is double. The expression
+// is a prvalue, because in order to accomodate the
+// promotion of x to a double, a temporary has to be
+// created. Therefore, no reference is added, and
+// cond_type_mixed is double.
+typedef decltype(x < d2 ? x : d2) cond_type_mixed;
+\end{lstlisting}
 		
 	\end{enumerate}
 	
-	\item \textbf{decltype is mainly used in template function return value.}
+	\item \textbf{decltype can be used in template function return value.}
 	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
 	template<typename Container, typename Index> // works
 	auto authAndAccess(Container& c, Index i) -> decltype(c[i]){
@@ -8861,6 +8912,7 @@ f(expr); // deduce T and ParamType from expr
 	authenticateUser();
 	return c[i];
 	}
+	$\Hilight{26}$//Pay attention to decltype(auto)
 	\end{lstlisting}
 	
 	\item make template function support universal reference.
@@ -8891,69 +8943,108 @@ f(expr); // deduce T and ParamType from expr
 	// myWidget2's type is  const Widget&
 	\end{lstlisting}
 	
+	\item An important property of decltype is that its operand never gets evaluated. For example, you can use an out-of-bounds element access to a vector as the operand of decltype with impunity:
+	
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+std::vector<int> vect;
+assert(vect.empty());
+typedef decltype(vect[0]) integer; //vect is empty now, but we use vect[0]
+                                   //in decltype.
+\end{lstlisting}
+	
+	\item Another property of decltype that is worth pointing out is that when decltype(expr) is the name of a plain user defined type (not a reference or pointer, not a basic or function type), then decltype(expr) is also a class name. This means that you can access nested types directly:
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+template<typename R>
+class SomeFunctor {
+public:
+typedef R result_type;
+result_type operator()() {
+return R();
+}
+SomeFunctor(){}
+};
+
+SomeFunctor<int> func;
+typedef decltype(func)::result_type integer; // access nested type
+\end{lstlisting}
+	
 	\item  If you're declaring variables inside a class. Instead of typing out the full name of the type of the iterator, you can use decltype:, you can't use auto.  This works because decltype doesn't actually execute the expression given as its argument-- it is only used by the type checker to determine a type.
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
 	class A {
 	std::vector<std::pair<int, std::string>> array;
 	decltype(array.begin()) iter;
+	$\Hilight{25}$// you can't use auto here, because auto need init expression
 	$\Hilight{25}$// You don't need init expression here.
 	};
-	\end{lstlisting}
+\end{lstlisting}
 	
-	\item We could have also done the above example with declval. allows you to use decltype without constructing the object,the type doesn't even need a default constructor, and in fact, it can be used with an incomplete type. The above example could be rewritten as:
+	\item We could have also done the above example with declval. allows you to use decltype without constructing the object. The type doesn't even need a default constructor, and in fact, it can be used with an incomplete type. The above example could be rewritten as:
 	
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	template <typename C>
-	$\Hilight{30}$//Here no any variable in below expression.
-	decltype(std::declval<const C>().begin())
-	foo(const C& c){
-	return one iterator of c
-	}
-	\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+template <typename C>
+$\Hilight{30}$//Here no any variable in below expression.
+decltype(std::declval<const C>().begin())
+foo(const C& c){
+return one iterator of c
+}
+\end{lstlisting}
 	
 	\item declval is commonly used in templates where acceptable template parameters may have no constructor in common, but have the same member function whose return type is needed.
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	struct Default { int foo() const { return 1; } };
+\begin{lstlisting}[frame=single, language=c++]
+struct Default { int foo() const { return 1; } };
+
+struct NonDefault{
+NonDefault(const NonDefault&) { }
+int foo() const { return 1; }
+};
 	
-	struct NonDefault{
-	NonDefault(const NonDefault&) { }
-	int foo() const { return 1; }
-	};
-	
-	decltype(Default().foo()) n1 = 1;   // type of n1 is int
-	//decltype(NonDefault().foo()) n2 = n1; // error: no default ctor
-	decltype(std::declval<NonDefault>().foo()) n2 = n1;
-	//ok now,  n2 is int
-	\end{lstlisting}
+decltype(Default().foo()) n1 = 1;   // type of n1 is int
+//decltype(NonDefault().foo()) n2 = n1; // error: no default ctor
+decltype(std::declval<NonDefault>().foo()) n2 = n1;
+//ok now,  n2 is int
+\end{lstlisting}
 	
 	\item result\_of usage. result\_of was introduced in Boost, and then included in TR1, and finally in C++0x. Therefore result\_of has an advantage that is backward-compatible (with a suitable library). decltype is an entirely new thing in C++, does not restrict only to return type of a function, and is a language feature.
-	\begin{lstlisting}[frame=single, language=c++]
-	struct foo {
-	double operator()(char, int);
-	};
-	//same
-	std::result_of<foo(char, int)>::type d1 = 10.0;
-	decltype(foo()('c', 1)) d2 = 10.0;
-	\end{lstlisting}
-	
-	
-	
+\begin{lstlisting}[frame=single, language=c++]
+struct foo {
+double operator()(char, int);
+};
+//same
+std::result_of<foo(char, int)>::type d1 = 10.0;
+decltype(foo()('c', 1)) d2 = 10.0;
+\end{lstlisting}
+
+\item Basic knowledge of decltype detail can be found "How decltype Deduces the Type of an Expression: Case 1"
+\end{itemize}
+
+\subsubsection{check type}
+
+\begin{itemize}
+	\item \textbf{How to determine programmatically if an expression is rvalue or lvalue}
+\begin{lstlisting}[frame=single, language=c++]
+template <typename T>
+constexpr bool is_lvalue(T&&) {
+return std::is_lvalue_reference<T>{};
+}
+\end{lstlisting}
 	\item There are three ways to view deducted type
 	\begin{enumerate}
 		\item use IDE
 		\item use Compiler
-		\begin{lstlisting}[frame=single, language=c++]
-		template<typename T> // declaration only for TD;
-		class TD; // TD == "Type Displayer"
-		
-		TD<decltype(x)> xType; // elicit errors containing
-		TD<decltype(y)> yType; // x's and y's types
-		\end{lstlisting}
-		\item use typeid and std::type\_info::name
-		\begin{lstlisting}[frame=single, language=c++]
-		std::cout << typeid(x).name() << '\n'; // display types for
-		\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T> // declaration only for TD;
+class TD; // TD == "Type Displayer"
+
+TD<decltype(x)> xType; // elicit errors containing
+TD<decltype(y)> yType; // x's and y's types
+\end{lstlisting}
+
+	\item use typeid and std::type\_info::name
+	
+\begin{lstlisting}[frame=single, language=c++]
+std::cout << typeid(x).name() << '\n'; // display types for
+\end{lstlisting}
 		
 	\end{enumerate}
 	
@@ -8965,8 +9056,235 @@ f(expr); // deduce T and ParamType from expr
 	
 	\item When you use decltype(auto), auto tell compiler to automaticly type deduction, but please use decltype rules. They are most used when we deal with someexpression which return back lvalue, such as a[0], in this way, if you use auto, it will ignore reference. but decltype will keep it. 
 	
+	\item auto can be used to set the type of a newly declared variable from its initializing expression. It removes the reference, if any, from the expression's type, then removes topmost const and volatile qualifiers.
+	
+	\item decltype can be used in a wider variety of contexts, such as typedefs, function return types, and even in places where a class name is expected. There are two different ways in which decltype(expr) can work, depending on the nature of expr
+	
+	\item decltype(auto) is an alternate way of setting the type of a newly declared variable from its initializing expression. It uses the type deduction rules of decltype instead of those of auto.
+	
 	\item Basic idea can be illustrated below:
 	\includegraphics[scale=0.8]{pics/type_deduct.png}
+\end{itemize}
+\subsection{type traits and policy}
+\subsubsection{implementation}
+\begin{itemize}
+	\item \textbf{The most common way of implementation is template class specification.}
+	\begin{enumerate}
+		\item most common usage of trait is member constants is\_integer<T>::value
+		
+		\item You use a templated structure, usually named with the type trait you are after. Eg) is\_integer, is\_pointer, is\_void. The structure contains a static const bool named value which defaults to a sensible state. You use a type trait by querying its value, like: my\_type\_trait<T>::value
+		
+		
+		\begin{lstlisting}[frame=single, language=c++]
+		template <typename T>
+		struct is_swapable {
+		static const bool value = false;
+		};
+		
+		template <>
+		struct is_swapable<short> {
+		static const bool value = true;
+		};
+		
+		template <>
+		struct is_swapable<int> {
+		static const bool value = true;
+		};
+		
+		assert( is_swapable<T>::value && "Cannot swap this type" );
+		\end{lstlisting}
+		\item A good article is "A simple introduction to type traits"
+	\end{enumerate}
+	
+	\item Another good way is to build new trait based on existing trait.
+	\begin{lstlisting}[frame=single, language=c++]
+	template <typename T>
+	struct is_swapable {
+	static const bool value = std::is_integral< T >::value && sizeof( T ) >= 2;
+	};
+	\end{lstlisting}
+	
+	\item Another type trait implementation method, use sizeof and static\_cast, these two can be done at compile time. That is to test if a class derived from another class.
+	\begin{lstlisting}[frame=single, language=c++]
+	template<typename D, typename B>
+	class IsDerivedFromHelper
+	{
+	class No { };
+	class Yes { No no[3]; };
+	
+	static Yes Test( B* );
+	static No Test( ... );
+	public:
+	enum { Is = sizeof(Test(static_cast<D*>(0))) == sizeof(Yes) };
+	
+	};
+	
+	
+	template <class C, class P> 
+	bool IsDerivedFrom() {
+	return IsDerivedFromHelper<C, P>::Is;
+	}
+	\end{lstlisting}
+	
+	\item In C++11, you can use constexpr instead of sizeof, and \textbf{decltype and declval also get type in the compiling time.}. 
+	\begin{enumerate}
+		\item two overload template test functions. One return true, default return false.
+		\item in the funciton which return true, use decltype and declval to simulate call some functions you want to judge. make these type used in function parameter or return 
+		\item use test function to initialized constexpr \textbf{value} 
+		\item There are two examples, one is judge if T has member function. Another it so test if T is function.
+	\end{enumerate}
+	\begin{lstlisting}[frame=single, language=c++]
+	template <class T> struct IsFunction
+	{
+	
+	//This is pointer to array of function.
+	// int (*p)[1]  pointer to int [1]
+	// int *p[1], that is array of pointer to int.
+	//Pay attention to these difference. 
+	template <typename C> 
+	static constexpr bool test(U (*)[1] ){
+	return true;
+	}
+	
+	template <typename C> 
+	static constexpr bool test(...){
+	return false;
+	}
+	
+	// int is used to give the precedence!
+	//use 0 as pretend pointer.
+	static constexpr bool value = test<T>(0);
+	};
+	\end{lstlisting}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	template <class T> struct hasSerialize
+	{
+	// We test if the type has serialize using decltype and declval.
+	template <typename C> static constexpr decltype(std::declval<C>().serialize(), bool()) test(int /* unused */)
+	{
+	// We can return values, thanks to constexpr instead of playing with sizeof.
+	return true;
+	}
+	
+	template <typename C> static constexpr bool test(...)
+	{
+	return false;
+	}
+	
+	// int is used to give the precedence!
+	static constexpr bool value = test<T>(int());
+	};
+	\end{lstlisting}
+	
+	\item last kind of implementation is use category. An example can be found in iterator.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	struct input_iterator_tag {};
+	struct output_iterator_tag {};
+	struct forward_iterator_tag: public input_iterator_tag {};
+	struct bidirectional_iterator_tag: public forward_iterator_tag {};
+	struct random_access_iterator_tag: public bidirectional_iterator_tag {};
+	
+	template < ... > // template params elided
+	class deque {
+	class iterator {
+	public:
+	typedef random_access_iterator_tag iterator_category;
+	...
+	};
+	
+	template<typename IterT>
+	struct iterator_traits {
+	typedef typename IterT::iterator_category iterator_category;
+	...
+	};
+	
+	template<typename T> // partial template specialization
+	struct iterator_traits<T*> // for built-in pointer types
+	{
+	typedef random_access_iterator_tag iterator_category;
+	...
+	};
+	\end{lstlisting}
+	
+	
+	\item How to deal with member funciton pointer? It may look a bit confusing, because if the type of \&A::fun was spelled out explicitly, it would have to be written int (A::*)() const \&. However, in the template's case, the type int () const \& is "hidden" behind the name U, so the pointer to member is then just U A::*. It's similar to how type names can be used to simplify the syntax of normal function pointers:
+	
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	int foo(char, double) { return 42; }
+	
+	using Fun = int (char, double);
+	Fun *p = &foo;
+	// instead of:
+	int (*q)(char, double) = &foo;
+	\end{lstlisting}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	struct A {
+	int fun() const&;
+	};
+	
+	template<class T, class U>
+	struct PM_traits<U T::*> {
+	using member_type = U;
+	};
+	
+	int main() {
+	using T = PM_traits<decltype(&A::fun)>::member_type; // T is int() const&
+	}
+	
+	\end{lstlisting}
+	
+	\item Based on previous knowledge, we can implement 
+	\begin{lstlisting}[frame=single, language=c++]
+	template< class T >
+	struct is_member_function_pointer_helper : std::false_type {};
+	
+	template< class T, class U>
+	struct is_member_function_pointer_helper<T U::*> : std::is_function<T> {};
+	
+	template< class T >
+	struct is_member_function_pointer : is_member_function_pointer_helper< std::remove_cv_t<T> > {};
+	
+	class A {
+	public:
+	void member() { }
+	};
+	
+	int main()
+	{
+	// fails at compile time if A::member is a data member and not a function
+	static_assert(std::is_member_function_pointer<decltype(&A::member)>::value,
+	"A::member is not a member function."); 
+	}
+	
+	\end{lstlisting}
+	
+	\item summary:
+	\begin{enumerate}
+		\item template specification: is\_integer
+		\item use basic trait: is\_swap
+		\item use template paramter deduciton : std::is\_function and
+		is\_member\_function, is\_array, is\_class(T::*)
+		\item define trait in existing class : iterator\_trait.
+		\item overload template function, deduct return or function parameter based on template parameter T's expression:  has\_serialize, isIsFunction
+	\end{enumerate}
+	
+\end{itemize}
+
+\subsubsection{usage}
+\begin{itemize}
+	\item This is where type traits come in handy. A type trait is a way for you to get information about the types passed in as template arguments, at compile time, so you can make more intelligent decisions. 
+	
+	\item A type trait can return any information or customization about a type. A simple example is is\_integer, it just return bool value information. A complex example is char\_trait. it can return a few functions. In this way, you also can think that char\_trait is a policy. 
+	
+	
+	
+	\item Now question is how can you know if a type T has a member function? There are two articles which are good.
+	"An introduction to C++'s SFINAE concept: compile-time introspection of a class member" and "checking expression validity in-place with C++17"
+	
 \end{itemize}
 
 
@@ -9489,227 +9807,6 @@ typedef WidgetManager< OpNewCreator<Widget> > MyWidgetMgr;
 \end{itemize}
 
 
-\subsection{type traits and policy}
-\subsubsection{implementation}
-\begin{itemize}
-	\item \textbf{The most common way of implementation is template class specification.}
-	\begin{enumerate}
-	\item most common usage of trait is member constants is\_integer<T>::value
-	
-	\item You use a templated structure, usually named with the type trait you are after. Eg) is\_integer, is\_pointer, is\_void. The structure contains a static const bool named value which defaults to a sensible state. You use a type trait by querying its value, like: my\_type\_trait<T>::value
-		
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	template <typename T>
-	struct is_swapable {
-	static const bool value = false;
-	};
-	
-	template <>
-	struct is_swapable<short> {
-	static const bool value = true;
-	};
-	
-	template <>
-	struct is_swapable<int> {
-	static const bool value = true;
-	};
-	
-	assert( is_swapable<T>::value && "Cannot swap this type" );
-	\end{lstlisting}
-	\item A good article is "A simple introduction to type traits"
-	\end{enumerate}
-
-\item Another good way is to build new trait based on existing trait.
-	\begin{lstlisting}[frame=single, language=c++]
-	template <typename T>
-	struct is_swapable {
-		static const bool value = std::is_integral< T >::value && sizeof( T ) >= 2;
-	};
-	\end{lstlisting}
-	
-	\item Another type trait implementation method, use sizeof and static\_cast, these two can be done at compile time. That is to test if a class derived from another class.
-	\begin{lstlisting}[frame=single, language=c++]
-	template<typename D, typename B>
-	class IsDerivedFromHelper
-	{
-	class No { };
-	class Yes { No no[3]; };
-	
-	static Yes Test( B* );
-	static No Test( ... );
-	public:
-	enum { Is = sizeof(Test(static_cast<D*>(0))) == sizeof(Yes) };
-	
-	};
-	
-	
-	template <class C, class P> 
-	bool IsDerivedFrom() {
-	return IsDerivedFromHelper<C, P>::Is;
-	}
-	\end{lstlisting}
-	
-	\item In C++11, you can use constexpr instead of sizeof, and \textbf{decltype and declval also get type in the compiling time.}. 
-	\begin{enumerate}
-		\item two overload template test functions. One return true, default return false.
-		\item in the funciton which return true, use decltype and declval to simulate call some functions you want to judge. make these type used in function parameter or return 
-		\item use test function to initialized constexpr \textbf{value} 
-		\item There are two examples, one is judge if T has member function. Another it so test if T is function.
-	\end{enumerate}
-\begin{lstlisting}[frame=single, language=c++]
-template <class T> struct IsFunction
-{
-
-//This is pointer to array of function.
-// int (*p)[1]  pointer to int [1]
-// int *p[1], that is array of pointer to int.
-//Pay attention to these difference. 
-template <typename C> 
-static constexpr bool test(U (*)[1] ){
-return true;
-}
-
-template <typename C> 
-static constexpr bool test(...){
-return false;
-}
-
-// int is used to give the precedence!
-//use 0 as pretend pointer.
-static constexpr bool value = test<T>(0);
-};
-\end{lstlisting}
-
-	\begin{lstlisting}[frame=single, language=c++]
-	template <class T> struct hasSerialize
-	{
-	// We test if the type has serialize using decltype and declval.
-	template <typename C> static constexpr decltype(std::declval<C>().serialize(), bool()) test(int /* unused */)
-	{
-	// We can return values, thanks to constexpr instead of playing with sizeof.
-	return true;
-	}
-	
-	template <typename C> static constexpr bool test(...)
-	{
-	return false;
-	}
-	
-	// int is used to give the precedence!
-	static constexpr bool value = test<T>(int());
-	};
-	\end{lstlisting}
-	
-	\item last kind of implementation is use category. An example can be found in iterator.
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	struct input_iterator_tag {};
-	struct output_iterator_tag {};
-	struct forward_iterator_tag: public input_iterator_tag {};
-	struct bidirectional_iterator_tag: public forward_iterator_tag {};
-	struct random_access_iterator_tag: public bidirectional_iterator_tag {};
-	
-	template < ... > // template params elided
-	class deque {
-	class iterator {
-	public:
-	typedef random_access_iterator_tag iterator_category;
-	...
-	};
-	
-	template<typename IterT>
-	struct iterator_traits {
-	typedef typename IterT::iterator_category iterator_category;
-	...
-	};
-	
-	template<typename T> // partial template specialization
-	struct iterator_traits<T*> // for built-in pointer types
-	{
-	typedef random_access_iterator_tag iterator_category;
-	...
-	};
-	\end{lstlisting}
-
-
-\item How to deal with member funciton pointer? It may look a bit confusing, because if the type of \&A::fun was spelled out explicitly, it would have to be written int (A::*)() const \&. However, in the template's case, the type int () const \& is "hidden" behind the name U, so the pointer to member is then just U A::*. It's similar to how type names can be used to simplify the syntax of normal function pointers:
-	
-
-\begin{lstlisting}[frame=single, language=c++]
-int foo(char, double) { return 42; }
-
-using Fun = int (char, double);
-Fun *p = &foo;
-// instead of:
-int (*q)(char, double) = &foo;
-\end{lstlisting}
-
-	\begin{lstlisting}[frame=single, language=c++]
-struct A {
-	int fun() const&;
-};
-
-template<class T, class U>
-struct PM_traits<U T::*> {
-	using member_type = U;
-};
-
-int main() {
-	using T = PM_traits<decltype(&A::fun)>::member_type; // T is int() const&
-}
-
-	\end{lstlisting}
-
-\item Based on previous knowledge, we can implement 
-\begin{lstlisting}[frame=single, language=c++]
-template< class T >
-struct is_member_function_pointer_helper : std::false_type {};
-
-template< class T, class U>
-struct is_member_function_pointer_helper<T U::*> : std::is_function<T> {};
-
-template< class T >
-struct is_member_function_pointer : is_member_function_pointer_helper< std::remove_cv_t<T> > {};
-
-class A {
-public:
-void member() { }
-};
-
-int main()
-{
-// fails at compile time if A::member is a data member and not a function
-static_assert(std::is_member_function_pointer<decltype(&A::member)>::value,
-"A::member is not a member function."); 
-}
-
-\end{lstlisting}
-
-\item summary:
-\begin{enumerate}
-	\item template specification: is\_integer
-	\item use basic trait: is\_swap
-	\item use template paramter deduciton : std::is\_function and
-	 is\_member\_function, is\_array, is\_class(T::*)
-	\item define trait in existing class : iterator\_trait.
-	\item overload template function, deduct return or function parameter based on template parameter T's expression:  has\_serialize, isIsFunction
-\end{enumerate}
-	
-\end{itemize}
-
-\subsubsection{usage}
-\begin{itemize}
-	\item This is where type traits come in handy. A type trait is a way for you to get information about the types passed in as template arguments, at compile time, so you can make more intelligent decisions. 
-	
-	\item A type trait can return any information or customization about a type. A simple example is is\_integer, it just return bool value information. A complex example is char\_trait. it can return a few functions. In this way, you also can think that char\_trait is a policy. 
-	
-
-
-	\item Now question is how can you know if a type T has a member function? There are two articles which are good.
-	"An introduction to C++'s SFINAE concept: compile-time introspection of a class member" and "checking expression validity in-place with C++17"
-
-\end{itemize}
 
 \subsection{template common usage and idiom}
 \begin{itemize}
