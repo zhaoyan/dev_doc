@@ -48,14 +48,13 @@
 \setcounter{secnumdepth}{4}
 \setcounter{tocdepth}{4}
 \tableofcontents
-\chapter{CPP Language}
+\chapter{CPP Language Basic}
 
-\section{Basic Knowledge}
-\subsection{C and C++}
 
-\subsubsection{Basic conception}
+\section{Basic C/C++ Contents}
+\subsection{basic definition}
 \begin{itemize}
-    \item C++ inherits basic data type, variable name, statement, expression, and operator, control flow, function, file, head file and library, array, pointer and structure from C language. C++ is subset of C, so any C programs can be compiled by C++. Compared with C language.
+    \item C++ inherits basic data type, variable name, statement, expression, and operator, control flow, function, file, head file and library, array, pointer and structure from C language. C++ is subset of C, so any C programs can be compiled by C++.
     
     \item In C++, there are four sub-topics: 
     
@@ -81,7 +80,7 @@
         \item local, function local and class local. 
     \end{enumerate}
     
-    	\item Only statement, which end with semicolon is executed. Most statements are expression statements. Statement and expression are two important conceptions, you can see their definition in cppreference.com to see academic explanation.
+    \item Only statement, which end with semicolon is executed. Most statements are expression statements. Statement and expression are two important conceptions, you can see their definition in cppreference.com to see academic explanation.
     
     \begin{enumerate}
     	\item Expression: Something which evaluates to a value. Example: 1+2/x
@@ -104,7 +103,7 @@
     
 \end{itemize}
 
-\subsubsection{Combine C and C++}
+\subsection{Combine C and C++}
 \begin{itemize}
     \item The C++ compiler must be used to compile main(), and must be used to direct the linking process. \textbf{most of time, you want your C++ application to call some existing C functions}
     
@@ -148,485 +147,361 @@ Foo (int a, int b);
     
 \end{itemize}
 
-\subsection{Style}
-\subsubsection{Basic Principles}
+
+\subsection{Numerical}
+\subsubsection{Numerical Overflow}
+
 \begin{itemize}
-\item \textbf{Keep consistent with your style!} Don't change it very often.
-
-\item \textbf{Don't sweat on the small stuff.} Such as how many spaces to indent? space or tab? Or must have comment etc. In any interview, style is not an important question.
-
-\item \textbf{Use descriptive function and variable name. Even it's a little longer.} Most code is read a lot more than typed. With good function and variable name, comment is unnecessary.
-
-\item \textbf{Don't use abbreviation name unless it's very common, such as CPU and TCP/IP.}
-
-\item \textbf{Don't need to use type indicator for all variable.} Hungarian notation offer no benefit for object-oriented language, especially it's impossible to use in generic programming. But for some generic concept, such as reference, pointer and STL container, you can use it such as: "ptr\_map\_dic". Modern IDE(such as Visual Studio and Understand) support pop up message when you hover your mouse over a variable.
+	\item Integer type has \textbf{overflow} problem, and float has \textbf{precision} problem. So prefer to use \textbf{long long} and \textbf{double} as your numerical type.
+	
+	\item In C and C++, you can use limits.h or <limit> to get the all the type limit information.
+	\begin{lstlisting}[frame=single, language=c++]
+	INT_MAX //use in C
+	INT_MIN
+	//use in C++
+	cout<< std::numeric_limits<int>::lowest() << '\t'
+	cout<< std::numeric_limits<int>::max() << '\n';
+	\end{lstlisting}
+	
+	\item For integer addition or subtraction, It just a round-trip. When you reach a position in the circle, how to understanding depends on its context and type.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	unsigned int ui = 1;
+	int i = -2;
+	// i+ui will stop in one position in the round clock.
+	//how to interpret it depends on the programe context;
+	int j = i+ui; // as int interpret this position CORRECT
+	(ui+i)<6 //  as unsigned interpret this position. ERROR!
+	\end{lstlisting}
+	
+	\item Most unsigned implicit cast error happen when you compare with a constant number. 
+	
+	\item  Judge it before calculation.
+	\begin{lstlisting}[frame=single, language=c++]
+	if ((x > 0) && (a > INT_MAX - x)) /* `a + x` would overflow */;
+	// a is point, x>0 clockwise turn, then it will overflow
+	
+	if ((x < 0) && (a < INT_MIN - x)) /* `a + x` would underflow */;
+	// a is point, x<0 anti-clockwise turn,  so it will underflow
+	//It's easy to understand if you draw a clock figure.
+	
+	if ((x < 0) && (a > INT_MAX + x)) /* `a - x` would overflow */;
+	if ((x > 0) && (a < INT_MIN + x)) /* `a - x` would underflow */;
+	
+	if (a > INT_MAX / x) /* `a * x` would overflow */;
+	if ((a < INT_MIN / x)) /* `a * x` would underflow */;
+	// need to check for -1 for two's complement machines
+	if ((a == -1) && (x == INT_MIN)) /* `a * x` overflow */
+	if ((x == -1) && (a == INT_MIN)) /* `a * x` (or `a / x`) overflow */
+	\end{lstlisting}
+	
+	\item Judge it after calculation
+	\begin{lstlisting}[frame=single, language=c++]
+	uint32 a,b;
+	//assign values
+	uint32 result = a + b;
+	if (result < a) {
+	//Overflow
+	}
+	\end{lstlisting}
+	
+	\item Build your own template function.
+	\begin{lstlisting}[frame=single, language=c++]
+	template <class T>
+	void increment_without_wraparound(T& value) {
+	if (value < numeric_limits<T>::max())
+	value++;
+	}
+	\end{lstlisting}
+	
+	\item There's no simple, general, portable way to avoid integer overflow.
+	\item You cannot safely check whether a signed integer addition or subtraction overflowed after the fact. An overflow in signed arithmetic causes undefined behavior. Typically the result wraps around, but in principle your program could crash before you have a chance to examine the result.
+	
+	\item Clang 3.4+ and GCC 5+ offer checked arithmetic builtins. They offer a very fast solution to this problem, especially when compared to bit-testing safety checks.
+	\begin{lstlisting}[frame=single, language=c++]
+	unsigned long b, c, c_test;
+	if (__builtin_umull_overflow(b, c, &c_test)){
+	// returned non-zero: there has been an overflow
+	}
+	\end{lstlisting}
+	
+	\item When you do some calculation, you can have some tricks to avoid overflow. n! the last three digit. You need use mod to keep last two digits in each calculation.
+	\begin{lstlisting}[frame=single, language=c++]
+	(a+b)/2  //a+b maybe overflow
+	a/2+b/2 +(a&b&1);
+	\end{lstlisting}
+	
 \end{itemize}
 
 
-\subsubsection{Naming}
+\subsubsection{Numerical conversions}
+
 \begin{itemize}
-
-\item For global scope, use g\_ prefix;
-
-\item For member variable in class, use tailing underscore. Why? 
-\begin{enumerate}
-\item Prefix underscore uses for reserved word mostly.
-\item When you use trailing underscore, you can use auto completion better. For example for variable name \texttt{test\_}, When you type t, the name will appear, but for \texttt{\_test}, you have to type \_t two characters, and options are much more than \texttt{test\_}.
-\end{enumerate}
-
-\item For member variable in struct, just like an ordinary variable name. 
-
-\item For constant name, use k\_ prefix and upperCamelCase;
-
-\item Using upper-case and underscores for pre-processor Macro;
-
-\item \textbf{Using upperCamelCase for Classes, Structures, Enumerations, Typedef and  Constants;}
-
-\item \textbf{Using lowerCamelCase and verb for function. Such as \texttt{getSth} and \texttt{doSth}}
-
-\item \textbf{Using lowercase and underscore  and noun for variable and parameter name. Because for long variable name, It's easier to read. Such as \texttt{sth\_for\_dinner}}
-
-\item Using \texttt{other} or \texttt{rhs} as name for copy ctor and assignment operator.
-
-\item The prefix \texttt{is} should be used for boolean variables and methods which return bool.
-
+	\item Type conversions happen in three contexts:
+	\begin{enumerate}
+		\item Assign a value of one \textbf{arithmetic type} to a variable of another arithmetic type.
+		\item Combine mixed types in expressions
+		\item Pass arguments to function.
+	\end{enumerate}
+	
+	\item
+	
+	
+	\item In an expression, C++ makes two kinds of automatic conversion.
+	\begin{enumerate}
+		\item Some type are automatically converted whenever they occur. For example, when you add char to char. Detail can be seen in the promotion section below.
+		
+		\item Some type are converted when they are combined with other types in an expression. When an operation involves two types, the smaller is converted to the larger. For example, when you add an int to a float, int is converted to float type. (You have to do it, because two types have the different inside binary representations.)
+	\end{enumerate}
+	
+	\item There are two kinds of conversion, one is \textbf{implicit}, and the other is \textbf{explicit}.
+	
+	\item Assigned to a bool, zero converts to false, and nonzero converts to true.
+	
+	\item Assigning a value to a type with a greater range usually poses no problem. If shorter range or different type, maybe there are some problems.
+	
+	\item When conversion, maybe lost precision(double -> float, long long ->float) loss fragment(float -> i) or Undefine (int i = 666, then char c = i;). Detail example can be seen in my evernote bookmark.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	int i, float f;
+	i=f;
+	//1) fragment will be lost,  f= 3.99, i will be 3 (not rounding)
+	//2) If f is too big.  undefined behave
+	
+	f = i;
+	// 1) will lost precision if i is big.
+	\end{lstlisting}
+	
+	\item A implicit conversion will happen when you call a function.(Just like you use assignment operator=). Below they all compile successfully. 
+	\begin{lstlisting}[frame=single, language=c++]
+	bool isLucky(int number);
+	
+	isLucky('a') //i = 'a' , promotion
+	isLucky(false) //i = false, promotion
+	isLucky(1.2f) //i = f , standard conversion.
+	\end{lstlisting}
+	
+	\item Compile with -Wconversion flag, it doesn't included in -Wall in g++; It just give warning when standard conversion happen. (no warning for promotion conversion).
+	
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	isLucky('a') //promotion, $\Hilight{2}$NO warning
+	isLucky(false) //promotion, $\Hilight{2}$NO warning
+	isLucky(1.2f) //standard conversion, Warning
+	\end{lstlisting}
+	
+	\item In C++, introduce braces initialization \{\}, It will not allow narrowing happen. But in g++, it just show a -Wnarrowing message, Anyway, I think that it's helpful.
+	\begin{lstlisting}[frame=single, language=c++]
+	int x = 66;
+	char c1 = {x}; //ok
+	
+	int x = 666;
+	char c2 = {x};  // not allowed;
+	\end{lstlisting}
+	
+	\subsubsection{Promotion}
+	\item C++ converts bool, char, unsigned char, signed char and short to int. Because int type is generally chosen to be the computer's most natural type. \textbf{It does calculations faster for that type.} It's called \textbf{integer promotions.}
+	
+	\item unsigned short convert to int if short is shorter than int, if they have the same size. unsigned short convert to unsigned int.  So no data loss in promoting.
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	char c1, c2, c //c1 and c2 convert to int first.
+	c = c1+c2;  // then change int result back to char.
+	/*  LLVM IR code below
+	store i8 97, i8* %c1, align 1
+	store i8 2, i8* %c2, align 1
+	%0 = load i8, i8* %c1, align 1
+	%conv = $\Hilight{3}$sext i8 %0 to i32
+	%1 = load i8, i8* %c2, align 1
+	%conv1 = sext i8 %1 to i32
+	%add = add nsw i32 %conv, %conv1
+	%conv2 = $\Hilight{3}$trunc i32 %add to i8
+	*/
+	
+	i+f // i will promoted to f and value keep the same.
+	
+	float f1, f2, f
+	f = f1+f2 // whether f1 change to double debpends on compiler
+	//clang++ has fadd in LLVM IR, so it doesn't change f to double.
+	\end{lstlisting}
 \end{itemize}
 
-\begin{lstlisting}[frame=single, language=c++]
-#define ARRAY_NUM 10
-bool isVisible;
-
-struct Student{
-  name;
-};
-enum BackgroundColor{
-  Red,  //constant
-  Green
-};
-class Teacher{
-  name_;  // not m_strName;  
-};
-
-typedef struct Student StuStruct ;
-StuStruct g_global_varaible;
-const int k_DaysInWeek = 7;
-main(){
-  string teacher_name;  //meaning variable name
-}
-
-printTeacherName(const string& name){...} //function name
-\end{lstlisting}
-
-\subsubsection{Comment and Document}
-
+\subsubsection{Explicit numerical conversion}
 \begin{itemize}
-\item There are five levels of comment:
-\begin{tabular}{|c|c|c|}
-    \hline 
-type & tool & user \\ 
-    \hline 
-good name convention & no & developer  \\ 
-    \hline 
-source code comment & with source code &  developer \\ 
-    \hline 
-API & source code+ doxgen  & developer + user  \\ 
-    \hline 
-developer document & latex &  developer \\ 
-    \hline 
-End user & Word, power point & end users  \\ 
-    \hline 
-\end{tabular} 
-
-\item Only use comment when it's very necessary. If you give function and variable good name, don't need to comment them at all. 
-
-\item source code comment are most inside of a function. API comments are most before function, class. You can use doxygen to produce a html from it. 
-
-\item Use C++ and doxygen style comment more, use C style comment less.
-
-\begin{lstlisting}[frame=single, language=c++]
-/// \brief fooFun does ...
-///
-///if \p flag is true, when happen
-///\param [out] result will be filled
-///\return 0 on success.
-bool fooFun(bool flag, int& result);
-\end{lstlisting}
-
-\item When you want to comment a large block of code out, use \texttt{\#if 0} ...  \texttt{\#endif}, It's better than using /* ... */. 
-
-\item Don't duplicate the function or class name in comment. Maybe you will change name later, this inconsistency will confuse comment readers in the future.
-
-\item Install Doxygen in linux, then run \linuxcommand{doxygen -g} in the terminal to produce configure file, the name is Doxyfile.  In Doxyfile, modify two items:
-\begin{verbatim}
-GENERATE_LATEX = NO
-INPUT = ./src
-\end{verbatim}
-then run \linuxcommand{doxygen Doxyfile}, A html directory will be built.
-
-\item Install doxygen on Windows, you can run doxywizard application, or you can use GUI to set Doxyfile configuration file.
-
-\item Usually you have a standard tree structure of project, that is to say every .cpp has .h file.  Under this circumstance, you should put comment command in .h file. Because .h file is an interface to customer.
-
-\item If a .cpp file include a .h file,  doxygen will not parse the .cpp file automatically, It only parse all .h file in certain directory and extract all types, such as class and struct information. \textbf{No function and global variable information is extracted.} 
-
-\item For class and struct which are declared inside a .h file, Doxygen will show them under Classes tab in the index.html. Even you don't have any comment on it.
-
-\item If you want global functions, variables, enums, typedefs, and defines to be documented, you should document the file in which these contents are located using a comment block containing a $\backslash$file (or @file) command. Even this global function is inside of .h file. With $\backslash$file in .h file, You'd better to use HIDE\_UNDOC\_MEMBERS to ignore all the other global function members without comment inside this .h file. It will make last result looks clean. 
-
-\item In order to make Doxygen to parse a .cpp file , you need to put Doxygen command\textbf{$\backslash$file} in a separate line in the .cpp file, then Doxygen will parse this .cpp file and produce the corresponding html page.
-
-\item Given a C++ source code section, Doxygen will produce below html page.  \textbf{References} and \textbf{Referenced} can be turn on in the configure files.
-
-\begin{lstlisting}[frame=single, language=c++]
-/// \brief Return the function this instruction belongs to.
-///
-/// Note: it is undefined behavior to call this on an
-/// instruction not currently inserted into a function.
-const Function *getFunction() const;
-\end{lstlisting}
-
-\includegraphics[scale=0.45]{pics/dox1.png} \newline
-
-\includegraphics[scale=0.45]{pics/dox2.png} 
-
+	\item In order to suppress conversion warning, you can use explicit numerical conversion to state your intention clearly and loudly.
+	
+	\item In C language, there exist two main syntax for generic type-casting: functional and C-style cast.  \textbf{Prefer C-style cast}
+	
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	double x = 10.3;
+	int y;
+	unsigned int n1 = (unsigned int)f; $\Hilight{10}$// C-style cast
+	unsigned int n2 = unsigned(f);     // functional cast
+	//functional cast only be used in one word type.
+	//unsigned int (f)  is not right,
+	//int *(f) is not right either.
+	\end{lstlisting}
+	
 \end{itemize}
 
 
-\subsubsection{Code Convention}
-\begin{itemize}
-
-\item Pointer and reference symbol is near to data type, not near to a variable name.
-
-
-
-\item For forward function, 1) prefer to use reference 2) don't inline f function. Detail can be found in GotW27. When do we need to use forward function.
-
-\begin{lstlisting}[frame=single, language=c++]
-bool f( X& x ){
-return g( x );
-}
-\end{lstlisting}
-
-\item Use \texttt{const} as many as possible. Detail can be found in \texttt{const} section below. 
-
-\item Declare variables as locally as possible and minimize usage of global variables.
-
-\item Avoid macro, use inline function;  Avoid magic numbers, instead of using \texttt{const} and \texttt{enum}
-
-\item Format lambdas like blocks of code.
-\begin{lstlisting}[frame=single, language=c++]
-int cutoff = 7;
-std::find(foo.begin(),foo.end(),[&](const Foo &a ) ->bool{
-    return a.blah<cutoff  //use reference to get local var
-});
-\end{lstlisting}
-
-
-\item Use \_FILE\_ and \_LINE\_ to capture the current file name and line number.  \texttt{assert} just uses this kind of macro inside.
-
-\item Use \texttt{const} replace \texttt{\#define} to define global constants. \texttt{static const} can be used to define constant class member. (\texttt{const} means that it will not change, so I don't need keep multi copy in multi objs, so I use static.)
-
-\item Use more \texttt{typedef} or \texttt{alias} to simplify Complicated Type Expressions, It's helpful especially in STL. 
- \begin{lstlisting}[frame=single, language=c++]
-typedef std::map< int, int > IntMap;
-typedef IntMap::const_iterator IntMapConstIter;
-for( IntMapConstIter it = layout.begin();
-                            it != layout.end(); ++it ) {
-
-typedef int(*CB)(int, const char*); //C++11 use function<>
-CB callBack;  //decare a functions pointer.
-
-int sort(int, const char*){..}
-callBack = sort; // & operator is optional here!
-\end{lstlisting}
-
-\item Using alias(C++11) is better than typedef. 
-\begin{enumerate}
-\item First word is \texttt{using}, \textbf{There are no sharp symbol before \texttt{using} .} 
-\item Second is TypeName. 
-\item Third is assignment \texttt{=}.  
-\end{enumerate}
-
-\begin{lstlisting}[frame=single, language=c++]
-using UPtrMapSS =
-std::unique_ptr<std::unordered_map<std::string, int>>;
-
-using CB = int(*)(int, const char*);
-\end{lstlisting}
-
-\item Create a zero-valued enumerator to indicate an invalid or default state and make it the first item.
-
-\item \textbf{Declare all member variables private, then use getter and setter functions to access them.}
-\begin{enumerate}
-    \item Declare all member variables private firstly.
-    
-    \item If Outside need to access it's member variables, just build a public interface function. There are two advantages: 1) Inside set-function, You can test valid range. 2) Inside get-function, even type of member variable change, you just need to change get-function, and get all customer code unmodified. In this way, It's de-coupling.
-     
-    \item If child want to access its parent member, declare it as protected.
-    
-    \item Why overload operator << is friend? 1) It can't be member because it need to be written as cout<< a; not a<<cout. 2) It's need to friend so it can access private member variable. Don't use getter function unless this member variable should be a part of interface. It will break encapsulation 
-\end{enumerate}
-
-\item Don't use multi-thread unless you really need it. Simultaneously respond to many events. Just remember, synchronization has some overhead. Below are some typical scenarios.
-\begin{enumerate}
-\item A web server.
-\item Interface and working thread.
-\item Take advantage of with multiple processor.
-\end{enumerate}
-
-\item \textbf{Uses early exits to simplify code.}
-
-\begin{lstlisting}[frame=single, language=c++]
-if(IsValid){   //bad style
-   do something;
-} else{
-  return;
-}
-
-if(!IsValid)  // A better style is
-  return;
-..do something here.
-\end{lstlisting}
-
-\item Turn Predicate Loop into Predicate Function. It makes you code clean and easy to understand.
-
-\begin{lstlisting}[frame=single, language=c++]
-for(v.begin....){   /bad style
-  if(it->IsSth){
-      flag = true; break;
-  }
-}
-if(flag){...}
-
-// A better style is define isHasSth() return bool.
-if(isHasSth()){...}
-\end{lstlisting}
-
-\item Use \texttt{static\_assert} to test some compile-time boolean conditions. It supports a message parameter. It doesn't need to build execution application. It will stop when you are compiling your code. 
-\begin{lstlisting}[frame=single, language=c++]
-static_assert(sizeof(int) > 4, "int is too small");
-\end{lstlisting}
-
-\item Use assert more in your project. You don't need to include file name and line number in the string. assert will output these hint messages.
-\begin{lstlisting}[frame=single, language=c++]
-#include<cassert>
-assert(index>=0 && " index is negative");
-//Assertion failed: expression, file name, line num
-\end{lstlisting}
-
-\item \textbf{If you don't modify container inside loop}, don't need to evaluate end() every time through for loop. Please remember below code block. \textbf{Just remember auto i,e ++i}
-\begin{lstlisting}[frame=single, language=c++]
-//g++ -std=c++11
-vector<int> con={1,2,3}; //list initializer
-for(auto i = con.begin, e = con.end();i!=e; ++i){
-              ...........
-}
-\end{lstlisting}
-
-\item The C++11 standard (23.2.1) mandates that end has O(1) complexity, so previous item has no efficiency meaning in C++11.
-
-
-\item \textbf{Prefer Preincrement (++i), especially in a for loop.}  When you use ++i or i++ inside expression, there are differences. Otherwise, there is no differences.
-\begin{lstlisting}[frame=single, language=c++]
-for(int i = 0;i<10; ++i)
-j=++i; // j = i+1;
-j=i++; //j = i;  i=i+1;
-++*p;  //++(*p) ;
-*++p; //*(++p);
-\end{lstlisting}
-
-\item How to understand \texttt{*p++} ?
-
-\begin{enumerate}
-    \item Precedence of prefix ++ and * is same. Associativity of both is right to left.
-    \item Precedence of postfix ++ is higher than both * and prefix ++. Associativity of postfix ++ is left to right.
-    \item Prefix and postfix are both syntax sugar, in order to reduce typing.   But prefix represents \textbf{one statement}, postfix means \textbf{two statements};
-\end{enumerate}
-
-\begin{lstlisting}[frame=single, language=c++]
-++i;  //just like i = i+1 or  i+=1;
-//when i++ used in expression, treated as two statements;
-*p++; // *(p++);  *p ; p=p+1;
-
-while(*p != '\0'){
-p= p+1;
-}
-//can be written to
-while(*p++ != '\0')
-\end{lstlisting}
-
-\item Always turn on all warning options in your compiler with -Wall. Once you get warning, Eliminate warning before you go further.
-
-\item Sometimes, this warning is what you have to, or if warning comes from a header file you can't change. You can use \#pragma warning compile directive to temporary disable it, then restore it later.
-\begin{lstlisting}[frame=single, language=c++]
-#pragma warning(push)
-#pragma warning(disable:4512);
-#include<not_change.h>
-#pragma warning(pop) //restore original warning level
-\end{lstlisting}
-
-\end{itemize}
-
-
-\subsection{Declaring and definition}
+\section{Declaring and definition}
 \subsubsection{Basic conception}
 \begin{itemize}
-    \item A declaration introduces an identifier and describes its type, be it a type, object, or function. \textbf{A declaration is what the compiler needs to accept references to that identifier.} 
-    
-    \begin{lstlisting}[frame=single, language=c++]
-    extern int bar;
-    extern int g(int, int);
-    double f(int, double); 
-    // extern can be omitted for function declarations
-    class Foo; 
-    // no extern allowed for type declarations
-    \end{lstlisting}
-    
-    \item A definition actually instantiates/implements this identifier. It's what the linker needs in order to link references to those entities. These are definitions corresponding to the above declarations:
-    \begin{lstlisting}[frame=single, language=c++]
-    int bar;
-    int g(int lhs, int rhs) {return lhs*rhs;}
-    double f(int i, double d) {return i+d;}
-    class foo {}; //put ; after calss definition.
-    \end{lstlisting}
-    
-    \item The difference between declaring a symbol and defining a symbol: A declaration tells the compiler about the existence of a certain symbol and makes it possible to \textbf{refer to that symbol everywhere where the explicit memory address or required storage of that symbol is not required.}  A definition tells the compiler what the body of a function contains or how much memory it must allocate for a variable.
-    
-    \item One very important difference between declarations and definitions is that a symbol may be declared many times, but defined only once. For example, you can forward declare a function or class however often you want, but you may only ever have one definition for it. This is called the \textbf{One Definition Rule}.
-    
-    \item Even you can declare variable, function and class many times, it's not good smell to do that.  If you modify it's name, you need to trace back all the declaration. \textbf{If a function or class is used by many units, You'd better build a global header file "global.h". and put all the declaration there.} 
+	\item A declaration introduces an identifier and describes its type, be it a type, object, or function. \textbf{A declaration is what the compiler needs to accept references to that identifier.} 
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	extern int bar;
+	extern int g(int, int);
+	double f(int, double); 
+	// extern can be omitted for function declarations
+	class Foo; 
+	// no extern allowed for type declarations
+	\end{lstlisting}
+	
+	\item A definition actually instantiates/implements this identifier. It's what the linker needs in order to link references to those entities. These are definitions corresponding to the above declarations:
+	\begin{lstlisting}[frame=single, language=c++]
+	int bar;
+	int g(int lhs, int rhs) {return lhs*rhs;}
+	double f(int i, double d) {return i+d;}
+	class foo {}; //put ; after calss definition.
+	\end{lstlisting}
+	
+	\item The difference between declaring a symbol and defining a symbol: A declaration tells the compiler about the existence of a certain symbol and makes it possible to \textbf{refer to that symbol everywhere where the explicit memory address or required storage of that symbol is not required.}  A definition tells the compiler what the body of a function contains or how much memory it must allocate for a variable.
+	
+	\item One very important difference between declarations and definitions is that a symbol may be declared many times, but defined only once. For example, you can forward declare a function or class however often you want, but you may only ever have one definition for it. This is called the \textbf{One Definition Rule}.
+	
+	\item Even you can declare variable, function and class many times, it's not good smell to do that.  If you modify it's name, you need to trace back all the declaration. \textbf{If a function or class is used by many units, You'd better build a global header file "global.h". and put all the declaration there.} 
 \end{itemize}
 
 \subsubsection{forward declaration}
 
 \begin{itemize}
-    \item In C++, there exists the concept of forward declaring a symbol. We declare the type and name of a symbol so that we can use it where its definition is not required. There are three usages as below:
-    \begin{enumerate}
-        \item It will reduce compile-time dependencies --PIMPL.
-        \item Hide all the detail. 
-        \item Break cyclic references
-    \end{enumerate}
-    
-    \begin{lstlisting}[frame=single, language=c++]
-    // file.hpp
-    class C1; // that is forward declaring.
-    
-    class C2{
-    ...
-    C1* pc1;
-    }
-    \end{lstlisting}
-    
-    \item Forward declaration doesn't work if you need to build or access its member. It's only work when you refer it by pointer or reference.
-    
-    \begin{lstlisting}[frame=single, language=c++]
-    class Foo;
-    Foo* f1 = new Foo //error, you need #include Foo.h
-    // so compile can know all detail.
-    
-    fun(Foo* f1){
-    f1->a; 
-    //error, compiler need to know if there is a 
-    }
-    fun(Foo f1) //error, compiler need to know the size.
-    \end{lstlisting}
-    
-    \item About cyclic include, you need to know below:
-    \begin{enumerate}
-        \item You can't write the code below, because the compiler will not know the size of A and B. 
-        \begin{lstlisting}[frame=single, language=c++]
-        class A{
-           B b;
-        }
-        
-        class B{
-          A a;
-        }
-        \end{lstlisting}
-        \item Use pointer or reference to tackle size cyclic dependent problem. But it still has include cyclic dependent problem. 
-        \begin{lstlisting}[frame=single, language=c++]
-        #include "b.h"
-        class A{
-        B* b;
-        }
-        
-        #include "a.h"
-        class B{
-        A a;
-        }
-        \end{lstlisting}
-        \item In the end, you can use forward declaration to remove \#include statement. 
-        \begin{lstlisting}[frame=single, language=c++]
-        //#include "b.h"
-        class B;
-        class A{
-        B* b;
-        }
-        \end{lstlisting}
-    \end{enumerate}
-    
-    \item About pimpl, you need to know below:
-    
-    \begin{enumerate}
-        
-        \item In you .h file, when you use Foo* p or Foo\& rp; You don't need include Foo.h file. you can use forward declaration.
-        \begin{lstlisting}[frame=single, language=c++]
-        class Foo;
-        Foo* p;
-        \end{lstlisting}
-        
-        \item Base on previous forward declaration, you can use "Pimpl" idiom.
-        \begin{lstlisting}[frame=single, language=c++]
-        // widget.h file
-        class Widget { // still in header "widget.h"
-        private:
-        struct Impl; // declare implementation struct
-        std::unique_ptr<Impl> pImpl;
-        };
-        
-        //widget.cpp file
-        #include "Foo.h"  // just include Foo.h in .cpp file.
-        struct Widget::Impl {
-        Foo f1;
-        Gadget g1;
-        };
-        \end{lstlisting}
-        
-        \item Pimpl Idiom is one of std::unique\_ptrs most common use cases. But different with raw pointer,  you need to declare or implement some special member functions, such as dtor ctor and move ctor. Explanation can be seen in "effective modern C++ item 22". 
-        \begin{lstlisting}[frame=single, language=c++, mathescape=true]
-        // widget.h file
-        class Widget { // still in header "widget.h"
-        
-        Widget(Widget&& rhs); // declarations
-        Widget& operator=(Widget&& rhs); // only
-        $\Hilight{12}$Widget::~Widget()
-        Widget(const Widget& rhs); // declarations
-        Widget& operator=(const Widget& rhs); // only
-        
-        private:
-        struct Impl; // declare implementation struct
-        std::unique_ptr<Impl> pImpl;
-        };
-        
-        //widget.cpp file
-        #include "Foo.h"  // just include Foo.h in .cpp file.
-        
-        Widget::~Widget() = default; // as before
-        Widget::Widget(Widget&& rhs) = default; // definitions
-        Widget& Widget::operator=(Widget&& rhs) = default;
-        Widget::Widget(const Widget& rhs) // copy ctor
-        : pImpl(std::make_unique<Impl>(*rhs.pImpl))
-        {}
-        
-        Widget& Widget::operator=(const Widget& rhs) {
-        *pImpl = *rhs.pImpl;
-        return *this;
-        }
-        \end{lstlisting}
-        
-    \end{enumerate}
-    
-    
+	\item In C++, there exists the concept of forward declaring a symbol. We declare the type and name of a symbol so that we can use it where its definition is not required. There are three usages as below:
+	\begin{enumerate}
+		\item It will reduce compile-time dependencies --PIMPL.
+		\item Hide all the detail. 
+		\item Break cyclic references
+	\end{enumerate}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	// file.hpp
+	class C1; // that is forward declaring.
+	
+	class C2{
+	...
+	C1* pc1;
+	}
+	\end{lstlisting}
+	
+	\item Forward declaration doesn't work if you need to build or access its member. It's only work when you refer it by pointer or reference.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	class Foo;
+	Foo* f1 = new Foo //error, you need #include Foo.h
+	// so compile can know all detail.
+	
+	fun(Foo* f1){
+	f1->a; 
+	//error, compiler need to know if there is a 
+	}
+	fun(Foo f1) //error, compiler need to know the size.
+	\end{lstlisting}
+	
+	\item About cyclic include, you need to know below:
+	\begin{enumerate}
+		\item You can't write the code below, because the compiler will not know the size of A and B. 
+		\begin{lstlisting}[frame=single, language=c++]
+		class A{
+		B b;
+		}
+		
+		class B{
+		A a;
+		}
+		\end{lstlisting}
+		\item Use pointer or reference to tackle size cyclic dependent problem. But it still has include cyclic dependent problem. 
+		\begin{lstlisting}[frame=single, language=c++]
+		#include "b.h"
+		class A{
+		B* b;
+		}
+		
+		#include "a.h"
+		class B{
+		A a;
+		}
+		\end{lstlisting}
+		\item In the end, you can use forward declaration to remove \#include statement. 
+		\begin{lstlisting}[frame=single, language=c++]
+		//#include "b.h"
+		class B;
+		class A{
+		B* b;
+		}
+		\end{lstlisting}
+	\end{enumerate}
+	
+	\item About pimpl, you need to know below:
+	
+	\begin{enumerate}
+		
+		\item In you .h file, when you use Foo* p or Foo\& rp; You don't need include Foo.h file. you can use forward declaration.
+		\begin{lstlisting}[frame=single, language=c++]
+		class Foo;
+		Foo* p;
+		\end{lstlisting}
+		
+		\item Base on previous forward declaration, you can use "Pimpl" idiom.
+		\begin{lstlisting}[frame=single, language=c++]
+		// widget.h file
+		class Widget { // still in header "widget.h"
+		private:
+		struct Impl; // declare implementation struct
+		std::unique_ptr<Impl> pImpl;
+		};
+		
+		//widget.cpp file
+		#include "Foo.h"  // just include Foo.h in .cpp file.
+		struct Widget::Impl {
+		Foo f1;
+		Gadget g1;
+		};
+		\end{lstlisting}
+		
+		\item Pimpl Idiom is one of std::unique\_ptrs most common use cases. But different with raw pointer,  you need to declare or implement some special member functions, such as dtor ctor and move ctor. Explanation can be seen in "effective modern C++ item 22". 
+		\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+		// widget.h file
+		class Widget { // still in header "widget.h"
+		
+		Widget(Widget&& rhs); // declarations
+		Widget& operator=(Widget&& rhs); // only
+		$\Hilight{12}$Widget::~Widget()
+		Widget(const Widget& rhs); // declarations
+		Widget& operator=(const Widget& rhs); // only
+		
+		private:
+		struct Impl; // declare implementation struct
+		std::unique_ptr<Impl> pImpl;
+		};
+		
+		//widget.cpp file
+		#include "Foo.h"  // just include Foo.h in .cpp file.
+		
+		Widget::~Widget() = default; // as before
+		Widget::Widget(Widget&& rhs) = default; // definitions
+		Widget& Widget::operator=(Widget&& rhs) = default;
+		Widget::Widget(const Widget& rhs) // copy ctor
+		: pImpl(std::make_unique<Impl>(*rhs.pImpl))
+		{}
+		
+		Widget& Widget::operator=(const Widget& rhs) {
+		*pImpl = *rhs.pImpl;
+		return *this;
+		}
+		\end{lstlisting}
+		
+	\end{enumerate}
+	
+	
 \end{itemize}
 
 
@@ -634,695 +509,102 @@ while(*p++ != '\0')
 \subsubsection{Translation unit}
 
 \begin{itemize}
-
-\item When you write an implementation file (.cpp, .cxx, etc),  your compiler generates a translation unit. This is the object file from your implementation file plus all the headers you \#include in it.
-
-\item Each .cpp is a translation unit. Basically, you should put each class into a single .cpp file, and make sure each .cpp file has a corresponding .h file.  If two classes are highly correlated, they maybe be put in the same .cpp file.
-
-\item A translation unit roughly consists of a source file after it has been processed by the C preprocessor, meaning that header files listed in \#include directives are literally included, sections of code within \#ifdef may be included, and macros have been expanded.
-
-\item If you just want a function or variable visible to only current translation unit. You can declare it as static. Or you can use unnamed namespace.  You don't need to put it into a header file.  But in C++, you have to declare function and variable before you use them. Different with C language, In C language, compiler will guess a function prototype from it's usage, It's not good most of time.
-
-\item C/C++ use separate compilation. If you need to use a function or variable in two different files, you should put them in the  global.h file and include them when necessary. (add extern keyword before variable name).  It will keep declaration just once, \textbf{DO NOT copy declaration to the other positions in the other .cpp file. It will lead to many duplication, it's bad smell of code.}
-
-\item \textbf{In your project, you can global search function or variable declaration, if you find more than two, It's strong indication to make a global head file and put it into it.}
-
-\item A better suggestion is to have a single global.h file for a complex system. Then put some common type, defined type, constant and global function in this single global.h file. So it will help to reduce duplication, just keep once appearance.
-
-\item Three rules about header file:
-
-\begin{enumerate}
-\item Use \textbf{\#pragma once} to add include guard, It's not standard, but It has been supported by many compiler. Including g++, clang and MSVC.
-
-\item \textbf{Put your local/private header file in front of system header file. }  Why? There are two advantages, 1) You can know what header file should be included, It's helpful to achieve the goal of demand 2.  2) Sometimes, if you have you own function with same name as system or library, It can give you a compile error; Below example will give you a compile error. But if you put <cmath> before myHead.h. Then, main will use acos in cmath, and your acos will be override.
-
-\begin{lstlisting}[frame=single, language=c++]
-#include "myHead.h"  //double acos(double)
-#include <cmath>
-main{
-acos(0.5);
-}
-\end{lstlisting}
-
-\item You will need to put the minimal set of \#include statements that are needed to make the header compilable when your local/private header is included on the first place.  It will make your header file self-sufficient.
-\end{enumerate}
-
-\item In .h file, you can include template and inline function.  In fact, you have to put template into .h file. 
-
-\item \textbf{Putting a semicolon in the end of head file is good suggestion.} You also need semicolon after declare class. In .cpp file, no semicolon after each function definition.
-
+	
+	\item When you write an implementation file (.cpp, .cxx, etc),  your compiler generates a translation unit. This is the object file from your implementation file plus all the headers you \#include in it.
+	
+	\item Each .cpp is a translation unit. Basically, you should put each class into a single .cpp file, and make sure each .cpp file has a corresponding .h file.  If two classes are highly correlated, they maybe be put in the same .cpp file.
+	
+	\item A translation unit roughly consists of a source file after it has been processed by the C preprocessor, meaning that header files listed in \#include directives are literally included, sections of code within \#ifdef may be included, and macros have been expanded.
+	
+	\item If you just want a function or variable visible to only current translation unit. You can declare it as static. Or you can use unnamed namespace.  You don't need to put it into a header file.  But in C++, you have to declare function and variable before you use them. Different with C language, In C language, compiler will guess a function prototype from it's usage, It's not good most of time.
+	
+	\item C/C++ use separate compilation. If you need to use a function or variable in two different files, you should put them in the  global.h file and include them when necessary. (add extern keyword before variable name).  It will keep declaration just once, \textbf{DO NOT copy declaration to the other positions in the other .cpp file. It will lead to many duplication, it's bad smell of code.}
+	
+	\item \textbf{In your project, you can global search function or variable declaration, if you find more than two, It's strong indication to make a global head file and put it into it.}
+	
+	\item A better suggestion is to have a single global.h file for a complex system. Then put some common type, defined type, constant and global function in this single global.h file. So it will help to reduce duplication, just keep once appearance.
+	
+	\item Three rules about header file:
+	
+	\begin{enumerate}
+		\item Use \textbf{\#pragma once} to add include guard, It's not standard, but It has been supported by many compiler. Including g++, clang and MSVC.
+		
+		\item \textbf{Put your local/private header file in front of system header file. }  Why? There are two advantages, 1) You can know what header file should be included, It's helpful to achieve the goal of demand 2.  2) Sometimes, if you have you own function with same name as system or library, It can give you a compile error; Below example will give you a compile error. But if you put <cmath> before myHead.h. Then, main will use acos in cmath, and your acos will be override.
+		
+		\begin{lstlisting}[frame=single, language=c++]
+		#include "myHead.h"  //double acos(double)
+		#include <cmath>
+		main{
+		acos(0.5);
+		}
+		\end{lstlisting}
+		
+		\item You will need to put the minimal set of \#include statements that are needed to make the header compilable when your local/private header is included on the first place.  It will make your header file self-sufficient.
+	\end{enumerate}
+	
+	\item In .h file, you can include template and inline function.  In fact, you have to put template into .h file. 
+	
+	\item \textbf{Putting a semicolon in the end of head file is good suggestion.} You also need semicolon after declare class. In .cpp file, no semicolon after each function definition.
+	
 \end{itemize}
 
 \subsubsection{ODR}
 \begin{itemize}
-
-\item For C language, there is tentative definition rule. You can define the same variable in two different .c file. The result will be undefined. But in the C++, this is not allowed any more. 
-
-\begin{lstlisting}[frame=single, language=c++]
-a.c
-int g_i = 100;
-////////////////////////////////
-b.c
-int g_i;
-fun(){
-printf("%d",g_i) //will print 100
-//gcc a.c b.c report no error.
-//g++ report error
-//in b.c, if you g_i= 2; gcc report error.
-\end{lstlisting}
-
-\item For C++ language ,tentative definition of variable is not allowed. At the same time, multi-definition of function is not allowed either. but there are another implicit risk as below. 
-
-\item In the same unit, you can't define class C1 again, but if you put two class C1 in two different .cpp file. compiler will not complain at all. When you run you application probably crash, it's dangerous. It's a little different with function and global variable. Because function and global variable all need allocation memory.
-
-\item \textbf{Either a name is for everyone (and declared in a header file) or is translation-unit-local in an anonymous namespace.} Detail can be found in "The One-Definition Rule  Andrzej's C++ blog".
-
-\item  If an inline function appears in foo.cpp (either because it was written in it, or because it \#includes a header in which it was written, in which case the preprocessor basically makes it so). Now you compile foo.cpp, and possibly also some other bar.cpp which also contains an inline function with the same signature (possibly the exact same one; probably due to both \#includeing the same header). When the linker links the two object files, it will not be considered a violation of the ODR, as the inline directive made each copy of the file local to its translation unit (the object file created by compiling it, effectively). This is not a suggestion, it is binding.
-
-It is not coincidental that these two things go together. The most common case is for an inline function to appear in a header \#included by several source files, probably because the programmer wanted to request fast inline expansion. This requires the translation-unit locality rule, though, so that linker errors shouldn't arise.
-
-\item In one word \textbf{Put inline function into the header file.}
+	
+	\item For C language, there is tentative definition rule. You can define the same variable in two different .c file. The result will be undefined. But in the C++, this is not allowed any more. 
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	a.c
+	int g_i = 100;
+	////////////////////////////////
+	b.c
+	int g_i;
+	fun(){
+	printf("%d",g_i) //will print 100
+	//gcc a.c b.c report no error.
+	//g++ report error
+	//in b.c, if you g_i= 2; gcc report error.
+	\end{lstlisting}
+	
+	\item For C++ language ,tentative definition of variable is not allowed. At the same time, multi-definition of function is not allowed either. but there are another implicit risk as below. 
+	
+	\item In the same unit, you can't define class C1 again, but if you put two class C1 in two different .cpp file. compiler will not complain at all. When you run you application probably crash, it's dangerous. It's a little different with function and global variable. Because function and global variable all need allocation memory.
+	
+	\item \textbf{Either a name is for everyone (and declared in a header file) or is translation-unit-local in an anonymous namespace.} Detail can be found in "The One-Definition Rule  Andrzej's C++ blog".
+	
+	\item  If an inline function appears in foo.cpp (either because it was written in it, or because it \#includes a header in which it was written, in which case the preprocessor basically makes it so). Now you compile foo.cpp, and possibly also some other bar.cpp which also contains an inline function with the same signature (possibly the exact same one; probably due to both \#includeing the same header). When the linker links the two object files, it will not be considered a violation of the ODR, as the inline directive made each copy of the file local to its translation unit (the object file created by compiling it, effectively). This is not a suggestion, it is binding.
+	
+	It is not coincidental that these two things go together. The most common case is for an inline function to appear in a header \#included by several source files, probably because the programmer wanted to request fast inline expansion. This requires the translation-unit locality rule, though, so that linker errors shouldn't arise.
+	
+	\item In one word \textbf{Put inline function into the header file.}
 \end{itemize}
 
 \subsubsection{Linkage}
 \begin{itemize}
-\item Internal linkage refers to everything only in scope of a translation unit.
-
-\item External linkage refers to things that exist beyond a particular translation unit. In other words, accessible through the whole program, which is the combination of all translation units (or object files).
-
-\item scope is a property handled by compiler, whereas linkage is a property handled by linker.
-
-\item Another property of internal linkage is that it is only implemented when the variable has global scope. static has internal linkage. non-const global variable has external linkage. All constants are by default internally linked. So you can put \texttt{const int g\_num = 10;} into a global header file, but you can't put a static variable into the global header file.
-
-\item \textbf{const variables internally link by default} unless otherwise declared as \texttt{extern}. It means that:
-
-\begin{enumerate}
-\item You can put \texttt{const int g\_num = 10;} into a header file or global.h file. Then when you need g\_num, just include this header file into you .cpp and it will not cause redefine linkage error.
-
-\item You also can put \texttt{const int g\_num = 10;} in one .cpp file. then declare \texttt{extern const int g\_num ;} in global.h file.
-
-\item \textbf{For const used just in one .cpp, use static and put it in the .cpp file.}
-\end{enumerate}
-
-
-
-\item When internal linkage, it means that 1) you can put two same static variable name in two different .cpp file, no linkage error. 2) you can't put extern before static, in another word, you can't access static variable in another .cpp file. 
-\end{itemize}
-
-
-
-\subsection{malloc and remalloc}
-\subsubsection{malloc}
-\begin{itemize}
-\item That is a long story. In C language, if you forget a header file, what will happen? (I have add answer to my evernote). In one word, It will(c99) or will not produce(c89) warning, and compiler will assume a "implicit int" rule. That is to say, It presumes that the function without prototype (declaring in the header file) just return int type.
-
-\item continue: if you have code below: you comment stdlib.h. Then compiler will assume that malloc return a int.  This code will run on 32 bit computer, because int and int* have same length. but on some 64 bit computer, int* is 64 bit and int is 32 bit.  so half data will be lost, and you code will crash.
-And if you add (int*) cast, it will suppress the warning message.(You kill the only clue, it's bad).
- \begin{lstlisting}[frame=single, language=c++]
- // include "stdlib.h"
-// with cast, it will NOT produce a (missing protype)warning.
-int *sieve = (int *)malloc(sizeof(int)*length);
-
-// without cast, will produce a warning.
-int *sieve = malloc(sizeof(int)*length);
-\end{lstlisting}
-
-\item continue: So don't recommend to use (int*) cast at all. Next question is that malloc actually return void*. Can void* automatically implicit be cast to int* or other pointer type in assignment? the answer is \textbf{YES}.
-
-\item  continue: In C language:
- \begin{lstlisting}[frame=single, language=c++]
-#define NULL ( (void*) 0)
-int *p = NULL;  //legal
-FILE * f = NULL;  //legal
-\end{lstlisting}
-
-\item continue: In C++, int *p = (void *) 0 is not legal any more.(C++ is type safe language).  So in C++ NULL is literal 0. But It produce another ambiguity problem.  So In C++11, we define nullptr to resolve this problem.
- \begin{lstlisting}[frame=single, language=c++]
-#define NULL 0
-int *p = NULL //legal
---------------------------------------
-f(int i)
-f(int * p);
-
-f(NULL);  //which one will be called. Answer is f(int i).
-f(nullptr) //will call f(int *p)
-\end{lstlisting}
-
-\item calloc() zero-initializes the buffer, while malloc() leaves the memory uninitialized. Zeroing out the memory may take a little time, so you probably want to use malloc() if that performance is an issue. If initializing the memory is more important, use calloc(). For example, calloc() might save you a call to memset().
-\end{itemize}
-
-\subsubsection{realloc}
-\begin{itemize}
+	\item Internal linkage refers to everything only in scope of a translation unit.
 	
-\item Reallocates the given area of memory. It must be previously allocated by malloc(), calloc() or realloc() and not yet freed with a call to free or realloc. Otherwise, the results are undefined.
-
-
-\item Don't return value assign to input ptr, use another local pointer, such as new\_ptr;
- \begin{lstlisting}[frame=single, language=c++]
-void *new_ptr = realloc(ptr, new_size);
-if (!new_ptr) {
-    // deal with error;
-}
-ptr = new_ptr
-\end{lstlisting}
-\end{itemize}
-
-
-\subsection{new operator}
-\subsubsection{Basic}
-\begin{itemize}
-
-\item There are four sub-topics about new operator:
-\begin{enumerate}
-\item new\_handler
-\item no throw, but return nullptr(since c++11)
-\item placement new (not allocate, just ctor)
-\item operator new (just allocate, no ctor)
-\end{enumerate}
-
-\begin{lstlisting}[frame=single, language=c++]
-std::set_new_handler(noMem);
-MyClass * p1 = new MyClass;  //1: if fail, call noMem
-
-MyClass * p2 = new (std::nothrow) MyClass; //2: no throw
-
-new (p2) MyClass;  //3: placement new
-
-//4: operator new
-MyClass * p3 = (MyClass*) ::operator new (sizeof(MyClass));
-      // allocates memory by calling: operator new
-      // but does not call MyClass's ctor
-\end{lstlisting}
-
-\item \texttt{new} will call constructor function of a class, but \texttt{malloc} will not call constructor function.  \textbf{So in C++, you should use new instead of \texttt{malloc}.}
-
-\item For default new operator, you can use \texttt{set\_new\_handler} to adjust the behavior when you can't allocate enough memory. Detail can be found in the below sub section.
-
-\item When you should provide your own operator new?  You want to add log function; You want to add some cookie before and after allocated memory(Visual Studio use this way to detect overflow in debug mode). You want to have quicker speed(memory pool). You want to have better alignment and so on..
-
-\item If you use new int[100], use delete [];  \textbf{Any time you want to use new to allocate an array, ask yourself if you can replace it with vector or string.}
-\end{itemize}
-
-\subsubsection{Inside of new operator}
-\begin{itemize}
-\item \textbf{There is three level knowledges: 1) new operator, 2)operator new, 3)new\_handler. new operator calling operator new, operator new calling new\_handler.} 
-
-\item Basic logic of new operator and delete operator.
-\begin{lstlisting}[frame=single, language=c++]
-Point3d *origin = new Point3d;
-
-//C++ pseudo code
-if(origin = operator new(sizeof(Point3d))){
-	try{
-		origin = Point3d::Point3d(origin);
-	}
-	catch(...){
-		operator delete(origin);
-		throw
-	}
-}
-\end{lstlisting}
-
-\begin{lstlisting}[frame=single, language=c++]
-delete origin;
-
-//C++ pseudo code
-if (origin != NULL) {
-origin->~Foo();
-operator delete(origin);
-}
-\end{lstlisting}
-
-\begin{enumerate}
-\item call operator new to allocate space in memory. (different with new opeator), in this way, ctor will not be called.
-\item call ctor of a class. (You can't call ctor explicit in this way, but compiler can.)
-\item If ctor throw an exception, no memory leak by calling operator delete.
-
-\item So for a class, if you declare its dtor private or protected, You can't use "delete p".
-\end{enumerate}
-
-
-\item Basic logic of operator new and operator delete
-\begin{lstlisting}[frame=single, language=c++]
-void * operator new(std::size_t size) throw(std::bad_alloc){                      
-// your operator new might
-using namespace std; // take additional params
-
-if (size == 0) {   // handle 0-byte requests
-size = 1;              // by treating them as
-}                 // 1-byte requests
-void *last_alloc;
-while (true) {
-	*ast_alloc = malloc(size)
-	if (last_alloc)
-		return last_alloc;
-
-	// allocation was unsuccessful; find out what the
-	// current new-handling function is (see below)
-	$\Hilight{35}$new_handler globalHandler = set_new_handler(0);
-	$\Hilight{30}$set_new_handler(globalHandler);
-
-	if (globalHandler) 
-		(*globalHandler)();
-	else 
-		throw std::bad_alloc();
-}
-}
-\end{lstlisting}
-
-\begin{lstlisting}[frame=single, language=c++]
-operator delete (void *ptr){
-	if (ptr)
-	free(ptr)
-}
-\end{lstlisting}
-\begin{enumerate}
-	\item if size is 0, change it to 1
-	\item Why we need to call set\_new\_handler twice, The first one get the current handler, and the second one change it back. That is only way we can get the current handler.
+	\item External linkage refers to things that exist beyond a particular translation unit. In other words, accessible through the whole program, which is the combination of all translation units (or object files).
 	
-	\item This idiom is also used in set\_terminate and set\_unexpect. 
+	\item scope is a property handled by compiler, whereas linkage is a property handled by linker.
 	
-	\item In C++11, introduce get\_new\_handler() function. We don't need to call set\_new\_handler twice. 
-
-	\item Most of time, we use malloc and free to allocate and free physical memory.
-\end{enumerate}
-\end{itemize}
-
-\subsubsection{new\_handler}
-\begin{itemize}
-
-\item At program startup, new-handler is a null pointer. allocation function finds that std::get\_new\_handler returns a null pointer value, it will throw \texttt{std::bad\_alloc}.
-
-\item  As shown by the previous section, The new\_handler function is the function called by allocation functions whenever a memory allocation attempt fails. Its intended purpose is one of three things:
-
-
-\begin{enumerate}
-\item make more memory available. \textbf{resolve the problem by myself.}
-
-\item throw exception of type std::bad\_alloc or derived from std::bad\_alloc. \textbf{resolve the problem by a user.}
-
-\item terminate the program. e.g. by calling std::terminate. \textbf{(No resolve)}
-\end{enumerate}
-
-\begin{lstlisting}[frame=single, language=c++]
-void noMemory(){
-closeIE; // method 1 release mem
-set_new_handler(nullptr); //mehtod 2 throw bad_alloc exception.
-abort();  //method 3, end application.
-}
-//in the beginning of main() function.
-set_new_handler(noMemory)
-\end{lstlisting}
-
-
-\item What can we do in side new handler function? Below choices give you considerable flexibility in implementing new-handler functions.
-\begin{enumerate}
-
-\item Make more memory available. This may allow the next memory allocation attempt inside operator new to succeed. One way to implement this strategy is to allocate a large block of memory at program start-up, then release it for use in the program the first time the new-handler is invoked.
-
-\item Install a different new-handler. If the current new-handler can't make any more memory available, perhaps it knows of a different new-handler that can. If so, the current new-handler can install the other new-handler in its place (by calling \texttt{set\_new\_handler}). The next time operator new calls the new-handler function, it will get the one most recently installed. (A variation on this theme is for a new-handler to modify its own behavior, so the next time it's invoked, it does something different. One way to achieve this is to have the new-handler modify static, namespace-specific, or global data that affects the new-handler's behavior.)
-
-\item Deinstall the new-handler, i.e., pass the null pointer to \texttt{set\_new\_handler}. With no new-handler installed, operator new will throw an exception when memory allocation is unsuccessful.
-
-\item Throw an exception of type \texttt{bad\_alloc} or some type derived from \texttt{bad\_alloc}. Such exceptions will not be caught by operator new, so they will propagate to the site originating the request for memory.
-
-\item Not return, typically by calling abort or exit.
-\end{enumerate}
-\item If you want to have customized new\_handler for specific class, "effective C++ item 49" gives a good example. It use Mixin idiom. Detail can be found in generic programming section in this book.
-
-\end{itemize}
-\subsubsection{placement new}
-
-\begin{itemize}
-	\item construct an object in memory you've already got a pointer to ,use placement new. If you use placement new to create an object in some memory, you should avoid using the delete operator on that memory.  Detail can be seen in C++ primer
-	\begin{lstlisting}[frame=single, language=c++]
-	Foo* p;
-	// don't catch exceptions thrown by the allocator itself
-	// Return a void type pointer
-	void* raw = operator new(sizeof(Foo)*100);
+	\item Another property of internal linkage is that it is only implemented when the variable has global scope. static has internal linkage. non-const global variable has external linkage. All constants are by default internally linked. So you can put \texttt{const int g\_num = 10;} into a global header file, but you can't put a static variable into the global header file.
 	
-	// catch any exceptions thrown by the ctor
-	try {
-	p = new(raw) Foo();  // call the ctor with raw as this
-	}
-	catch (...) {
-	// oops, ctor throw an exception
-	operator delete(raw);
-	throw;  // rethrow the ctor's exception
-	}
-	\end{lstlisting}
+	\item \textbf{const variables internally link by default} unless otherwise declared as \texttt{extern}. It means that:
 	
-	\item Another example to use placement new.
-	\begin{lstlisting}[frame=single, language=c++]
-	void* buffer = operator new(sizeof(FOO)*100);
-	p1 = new(buffer) FOO();
-	p2 = new(buffer+sizeof(FOO) ) FOO();
-	
-	p1->~FOO(); // call dtor directly,
-	p2->~FOO(); //don't call delete p1.
-	
-	delete[] buffer;
-	\end{lstlisting}
-	
-	\item placement operator new is defined as below. \textbf{You are not allowed to customize it.}
-	\begin{lstlisting}[frame=single, language=c++]
-	void operator new(size_t, void* p){
-	return p;
-	}
-	\end{lstlisting}
-	
-	\item You can build a object on an existing object. Pay attention, this is only place where you can call destructor directly. Don't call delete. 
-	\begin{lstlisting}[frame=single, language=c++]
-	FOO* p1 = new(buffer) FOO();
-	.....
-	p1->~FOO();
-	//Don't use delete p1!!!
-	
-	//A new object in an existing object.
-	p1 = new(buffer) FOO(); 
-	\end{lstlisting}
-	
-	\item If operator new receive another parameter beside that size\_t, that is placement new.There is special version with void* pMemeory
-	
-\begin{lstlisting}[frame=single, language=c++]
-void* operator new (std::size_t size, void* pMemeory) throw();
-\end{lstlisting}
-	
-	\item If you define your own placement operator new(non-pMemeory version). You must provide your own placement operator delete. Because when the constructor throw exception, it will call the corresponding custimzied placement operator delete. Detail can be found in "effective C++ item 52"
-\begin{lstlisting}[frame=single, language=c++]
-void* operator new (std::size_t size, void* pMemeory) throw();
-void* operator new (std::size_t size, ostream& logStream) throw();
-Widget* pw = new(std::cerr) Widget
-//When Widget ctor throw exception, it will call 
-void operator delete(void* pM, ostream& logStream). 
-//If no such function, placement new do nothing and memory leak.
-\end{lstlisting}
-	
-	\item A good article is "The many faces of operator new in C++", It give  detail information about operator new and how to rewrite it. I have added it to my ref.
-\end{itemize}
-
-
-
-\subsubsection{array new}
-\begin{itemize}
-	\item \textbf{When you use array new to allocate an arry, must use the array delete.} If you don't use array delete, maybe you just delete the frist object in array. If you use array delete to single new, it's undefined. 
-\begin{lstlisting}[frame=single, language=c++]
-Foo pa* = new Foo[10];
-delete [] pa;
-//system will remember the size corresponding with pa, 
-//with [], it will iterate with size. 
-//When you forget [], it will just free the first object.
-\end{lstlisting}
-\item Basic logic of array new. An basic implementation can be found in"Inside the C++ Object Model" 6.2 chapter
-\begin{lstlisting}[frame=single, language=c++]
-vec_new(int elem_count, int size, funptr ctor){
-	total_size = size*elem_count;
-	ptr_array = new char[total_size];
-	regist pair of ptr_array elem_count to system
-	while(elem<end of address){
-		(*ctor)(elem) //call the ctor
-		elem+=size;
-	}
-}
-\end{lstlisting}
-\item When you use array new with inheriance. There is one important thing to notice. Don't use base pointer to point the array with derived class. 
-\begin{lstlisting}[frame=single, language=c++]
-base *bp = new derived[10]
-//always use derived *dp = new derived[10];
-bp[2] //dangerous, undefine. size is wrong: bp+sizeof(base)*2
-
-delete [] bp //dangerous, 1)size is wrong, 2) it will call base::~base() destructor. 
-\end{lstlisting}
-\item Above code, Don't use pointer to understand it, When you use delete [] bp, it will think that is a base array, and each element in it is just base object, so virtual function doesn't play a role here. Please refer the section "inheritance" in this book for more detail.
-\end{itemize}
-\subsubsection{Customize operator new}
-\begin{itemize}
-	\item The operator new and nothrow version are also replaceable: A program may provide its own definition that replaces the one provided by default to produce the result described above, or can overload it for specific types. 
-	\item For placement new, You can't replace it. There is no "operator new array", it use operator new to allocate memory. 
-\begin{lstlisting}[frame=single, language=c++]
-void* operator new (std::size_t size) throw (std::bad_alloc);
-void* operator new (std::size_t size, const std::nothrow_t& nothrow_value) throw();
-void* operator new (std::size_t size, void* ptr) throw();
-\end{lstlisting}
-	
-	\item You can't change "new operator" behavior, but you can override global "operator new" and overload class its own "operator new". Pay attention its argument and return void*. 
-	
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	//global operator new
-	$\Hilight{4}$ void* operator new($\Hilight{7}$size_t size){
-	cout<<"Yan's own operator new" ;
-	void* mem = malloc(size);
-	if(mem)
-	return mem;
-	else
-	throw bad_alloc();
-	}
-	
-	class Foo{ //class operator new
-	public:
-	static void* operator new(size_t size);
-	// use $\Hilight{4}$ static
-	}
-	
-	void* Foo::operator new(size_t size){
-	cout<<"Foo's own operator new";
-	....
-	}
-	
-	int *p = new int[100]; //output Yan's own operator new
-	Foo* fp = new Foo();  //output Foo's own operator new
-	\end{lstlisting}
-	
-	\item Above code is just a simple demo, In the new\_handler section, you can see a better operator new demo with support of call your own new\_handler. You need to combine above code and code in new\_handler section together. 
-	
-	\item operator new usually call \texttt{malloc} function. \texttt{malloc} usually call \texttt{brk} for small chunk and \texttt{mmap} for big chunk. So in the end, C langauge is basic langauge.
-	
-	\item Why do I need my own operator new?
 	\begin{enumerate}
-		\item Performance: the default memory allocator is designed to be general purpose. Sometimes you have very specific objects you want to allocate, chapter 4 in "Modern C++ Design" presents a very well designed and implemented custom allocator for small objects.
+		\item You can put \texttt{const int g\_num = 10;} into a header file or global.h file. Then when you need g\_num, just include this header file into you .cpp and it will not cause redefine linkage error.
 		
-		\item Debugging \& statistics: having full control of the way memory is allocated and released provides great flexibility for debugging, statistics and performance analysis.
+		\item You also can put \texttt{const int g\_num = 10;} in one .cpp file. then declare \texttt{extern const int g\_num ;} in global.h file.
 		
-		\item Customization to cluster related object together, and reduce size. put guard block to avoid overrun and underrun. More detail can be seen in effective c++( third edition) Item 50
+		\item \textbf{For const used just in one .cpp, use static and put it in the .cpp file.}
 	\end{enumerate}
 	
-	\item \textbf{Don't rewrite operator new unless you have to.} There are not as easy as you think. such as alignment. First consider some library, such as \textbf{Boost Pool library} for large number small object allocations. 
-	
-	\item If you have to rewrite operator new, You need to read  effective c++( third edition) Item 51 in detail. For example, All operator new should contain a loop calling a new-handling function.  should deal with request of zero size. you can see the pseudocode in Item 51.
-	
-	\item In C++, after you define a name in a scope (e.g., in a class scope), it will hide the same name in all enclosing scopes (e.g., in base classes or enclosing namespaces), and overloading never happens across scopes. And when said name is operator new, If you provide any class-specific new, provide all of the standard forms(plain, in-place, and nothrow)
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	class C {
-	static void* operator new(size_t, MemoryPool&);
-	// hides three normal forms
-	};
-	$\Hilight{12}$//1) plain new
-	void* operator new(std::size_t);
-	
-	$\Hilight{12}$//2) nothrow new
-	void* operator new(std::size_t, std::nothrow_t) throw();
-	
-	$\Hilight{12}$//3) inplace new
-	void* operator new(std::size_t, void*);
-	\end{lstlisting}
-	
-	\item Always provide new and delete together, see "C++ coding standards" item 45 and 46.
+	\item When internal linkage, it means that 1) you can put two same static variable name in two different .cpp file, no linkage error. 2) you can't put extern before static, in another word, you can't access static variable in another .cpp file. 
 \end{itemize}
 
 
-\subsection{Numerical}
-\subsubsection{Numerical Overflow}
 
-\begin{itemize}
-\item Integer type has \textbf{overflow} problem, and float has \textbf{precision} problem. So prefer to use \textbf{long long} and \textbf{double} as your numerical type.
-
-\item In C and C++, you can use limits.h or <limit> to get the all the type limit information.
-\begin{lstlisting}[frame=single, language=c++]
-INT_MAX //use in C
-INT_MIN
-//use in C++
-cout<< std::numeric_limits<int>::lowest() << '\t'
-cout<< std::numeric_limits<int>::max() << '\n';
-\end{lstlisting}
-
-\item For integer addition or subtraction, It just a round-trip. When you reach a position in the circle, how to understanding depends on its context and type.
-
-\begin{lstlisting}[frame=single, language=c++]
-unsigned int ui = 1;
-int i = -2;
-// i+ui will stop in one position in the round clock.
-//how to interpret it depends on the programe context;
-int j = i+ui; // as int interpret this position CORRECT
-(ui+i)<6 //  as unsigned interpret this position. ERROR!
-\end{lstlisting}
-
-\item Most unsigned implicit cast error happen when you compare with a constant number. 
-
-\item  Judge it before calculation.
-\begin{lstlisting}[frame=single, language=c++]
-if ((x > 0) && (a > INT_MAX - x)) /* `a + x` would overflow */;
-// a is point, x>0 clockwise turn, then it will overflow
-
-if ((x < 0) && (a < INT_MIN - x)) /* `a + x` would underflow */;
-// a is point, x<0 anti-clockwise turn,  so it will underflow
-//It's easy to understand if you draw a clock figure.
-
-if ((x < 0) && (a > INT_MAX + x)) /* `a - x` would overflow */;
-if ((x > 0) && (a < INT_MIN + x)) /* `a - x` would underflow */;
-
-if (a > INT_MAX / x) /* `a * x` would overflow */;
-if ((a < INT_MIN / x)) /* `a * x` would underflow */;
-// need to check for -1 for two's complement machines
-if ((a == -1) && (x == INT_MIN)) /* `a * x` overflow */
-if ((x == -1) && (a == INT_MIN)) /* `a * x` (or `a / x`) overflow */
-\end{lstlisting}
-
-\item Judge it after calculation
-\begin{lstlisting}[frame=single, language=c++]
-uint32 a,b;
-//assign values
-uint32 result = a + b;
-if (result < a) {
-    //Overflow
-}
-\end{lstlisting}
-
-\item Build your own template function.
-\begin{lstlisting}[frame=single, language=c++]
-template <class T>
-void increment_without_wraparound(T& value) {
-   if (value < numeric_limits<T>::max())
-     value++;
-}
-\end{lstlisting}
-
-\item There's no simple, general, portable way to avoid integer overflow.
-\item You cannot safely check whether a signed integer addition or subtraction overflowed after the fact. An overflow in signed arithmetic causes undefined behavior. Typically the result wraps around, but in principle your program could crash before you have a chance to examine the result.
-
-\item Clang 3.4+ and GCC 5+ offer checked arithmetic builtins. They offer a very fast solution to this problem, especially when compared to bit-testing safety checks.
-\begin{lstlisting}[frame=single, language=c++]
-unsigned long b, c, c_test;
-if (__builtin_umull_overflow(b, c, &c_test)){
-    // returned non-zero: there has been an overflow
-}
-\end{lstlisting}
-
-\item When you do some calculation, you can have some tricks to avoid overflow. n! the last three digit. You need use mod to keep last two digits in each calculation.
-\begin{lstlisting}[frame=single, language=c++]
-(a+b)/2  //a+b maybe overflow
-a/2+b/2 +(a&b&1);
-\end{lstlisting}
-
-\end{itemize}
-
-
-\subsubsection{Numerical conversions}
-
-\begin{itemize}
-\item Type conversions happen in three contexts:
-\begin{enumerate}
-\item Assign a value of one \textbf{arithmetic type} to a variable of another arithmetic type.
-\item Combine mixed types in expressions
-\item Pass arguments to function.
-\end{enumerate}
-
-\item
-
-
-\item In an expression, C++ makes two kinds of automatic conversion.
-\begin{enumerate}
-	\item Some type are automatically converted whenever they occur. For example, when you add char to char. Detail can be seen in the promotion section below.
-	
-	\item Some type are converted when they are combined with other types in an expression. When an operation involves two types, the smaller is converted to the larger. For example, when you add an int to a float, int is converted to float type. (You have to do it, because two types have the different inside binary representations.)
-\end{enumerate}
-
-\item There are two kinds of conversion, one is \textbf{implicit}, and the other is \textbf{explicit}.
-
-\item Assigned to a bool, zero converts to false, and nonzero converts to true.
-
-\item Assigning a value to a type with a greater range usually poses no problem. If shorter range or different type, maybe there are some problems.
-
-\item When conversion, maybe lost precision(double -> float, long long ->float) loss fragment(float -> i) or Undefine (int i = 666, then char c = i;). Detail example can be seen in my evernote bookmark.
-
-\begin{lstlisting}[frame=single, language=c++]
-int i, float f;
-i=f;
-//1) fragment will be lost,  f= 3.99, i will be 3 (not rounding)
-//2) If f is too big.  undefined behave
-
-f = i;
-// 1) will lost precision if i is big.
-\end{lstlisting}
-
-\item A implicit conversion will happen when you call a function.(Just like you use assignment operator=). Below they all compile successfully. 
-\begin{lstlisting}[frame=single, language=c++]
-bool isLucky(int number);
-
-isLucky('a') //i = 'a' , promotion
-isLucky(false) //i = false, promotion
-isLucky(1.2f) //i = f , standard conversion.
-\end{lstlisting}
-
-\item Compile with -Wconversion flag, it doesn't included in -Wall in g++; It just give warning when standard conversion happen. (no warning for promotion conversion).
-
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-isLucky('a') //promotion, $\Hilight{2}$NO warning
-isLucky(false) //promotion, $\Hilight{2}$NO warning
-isLucky(1.2f) //standard conversion, Warning
-\end{lstlisting}
-
-\item In C++, introduce braces initialization \{\}, It will not allow narrowing happen. But in g++, it just show a -Wnarrowing message, Anyway, I think that it's helpful.
-\begin{lstlisting}[frame=single, language=c++]
-int x = 66;
-char c1 = {x}; //ok
-
-int x = 666;
-char c2 = {x};  // not allowed;
-\end{lstlisting}
-
-\subsubsection{Promotion}
-\item C++ converts bool, char, unsigned char, signed char and short to int. Because int type is generally chosen to be the computer's most natural type. \textbf{It does calculations faster for that type.} It's called \textbf{integer promotions.}
-
-\item unsigned short convert to int if short is shorter than int, if they have the same size. unsigned short convert to unsigned int.  So no data loss in promoting.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-char c1, c2, c //c1 and c2 convert to int first.
-c = c1+c2;  // then change int result back to char.
-/*  LLVM IR code below
-  store i8 97, i8* %c1, align 1
-  store i8 2, i8* %c2, align 1
-  %0 = load i8, i8* %c1, align 1
-  %conv = $\Hilight{3}$sext i8 %0 to i32
-  %1 = load i8, i8* %c2, align 1
-  %conv1 = sext i8 %1 to i32
-  %add = add nsw i32 %conv, %conv1
-  %conv2 = $\Hilight{3}$trunc i32 %add to i8
-*/
-
-i+f // i will promoted to f and value keep the same.
-
-float f1, f2, f
-f = f1+f2 // whether f1 change to double debpends on compiler
-//clang++ has fadd in LLVM IR, so it doesn't change f to double.
-\end{lstlisting}
-\end{itemize}
-
-\subsubsection{Explicit numerical conversion}
-\begin{itemize}
-\item In order to suppress conversion warning, you can use explicit numerical conversion to state your intention clearly and loudly.
-
-\item In C language, there exist two main syntax for generic type-casting: functional and C-style cast.  \textbf{Prefer C-style cast}
-
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-double x = 10.3;
-int y;
-unsigned int n1 = (unsigned int)f; $\Hilight{10}$// C-style cast
-unsigned int n2 = unsigned(f);     // functional cast
-//functional cast only be used in one word type.
-//unsigned int (f)  is not right,
-//int *(f) is not right either.
-\end{lstlisting}
-
-\end{itemize}
+\section{type}
 
 \subsection{Type cast in c++}
 
@@ -1930,215 +1212,6 @@ main(){
 
 \end{itemize}
 
-\subsection{Namespace}
-\subsubsection{namespace basic knowledge}
-\begin{itemize}
-
-\item Basic namespace style:
-\begin{enumerate}
-\item If you develop a library of functions or classes, put them in a namespace, just like std:: namespace in STL.
-
-\item Don't put a lot of stuff in global-scope, learn to using namespace instead of global-scope.
-
-\item Don't put your own class into namespace std;
-
-\item Usually, namespace should be your project name, you can add company name in front of it if you like.
-\end{enumerate}
-
-
-\item Use :: before function will means that global namespace, For example, ::max will hide std::max, in this way, you can define your own max function and use ::max call your own max function. 
-
-\item \textbf{Namespaces can be located at the global level or inside other namespaces. They can't be placed in a block.} So it has external linkage by default, that is to say it can be accessed by multi translation unit(files).
-
-
-\item There are three kinds of namespace usages.
-\begin{lstlisting}[frame=single, language=c++]
-using sp::name;   //1) using declaration
-using namespace sp;   //2) using directive
-sp::name   //3) specific refer it
-
-namespace ns{
-int zy;
-}
-using namespace ns;
-
-int main(){
-int zy = 0; //it will hide ns::zy
-cin>>zy; //read into local zy
-}
-\end{lstlisting}
-
-\item Using-declaration introduces a member of another namespace into current namespace or block scope.
-
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-#include <iostream>
-#include <string>
-$\Hilight{15}$using std::string;
-int main(){
-    string str = "Example";
-    $\Hilight{15}$using std::cout;
-    cout << str;
-}
-\end{lstlisting}
-
-
-\item For implement code, there are four methods to put it into namespace. Prefer method 3 and method 4.
-
-\begin{lstlisting}[frame=single, language=c++]
-//a.h
-namespace Yan{
- Class Foo{
-     void mem_fun();
- };
-}
-
-//a.cpp
-//mehtod 1. then use name, using declaration
-using Yan::Foo;
-void Foo::mem_fun(){.......}
-
-//method 2.  using directive
-//It's BAD
-using namespace Yan;
-void Foo::mem_fun(){.........}
-
-// method 3.
-//Good style
-void Yan::Foo::mem_fun(){.........}
-
-//method 4.
- //Also good, when you have a lot of function need to be define,
- //compared with method3, save your typing.
-namespace Yan{
-   void Foo::mem_fun(){......}
-}
-\end{lstlisting}
-
-\item About "using" directive usage
-\begin{enumerate}
-\item  \textbf{Don't use using directive in any .h file,  because It will pollute all the .cpp file which include this head file.}
-
-\item  Less use using directive in any .cpp file, you should using scope-resolution or using declaring more. It will avoid polluting namespace.
-
-\item \textbf{You should remember below code. It's good C++ style!} 
-\begin{lstlisting}[frame=single, language=c++]
-#include <iostream>
-using std::cout;
-using std::endl;
-
-Int main(){
-cout<<"Hello world"<<endl;
-}
-\end{lstlisting}
-
-\item If you \textbf{have to} use using directory in your .cpp file, put it after all the include files.
-\end{enumerate}
-
-\item unnamed namespace just like static to specify it to local file scope. At the same time, make anonymous namespace as small as possible.  see C++ primer p492
-
-\begin{lstlisting}[frame=single, language=c++]
-// a.cpp file
-static int count;
-
-// A better method to use namespace.
-namespace{
-int count;
-}
-\end{lstlisting}
-
-\end{itemize}
-
-\subsubsection{Name lookup}
-\begin{itemize}
-
-\item Koenig(ADL) lookup: If you supply a function argument of class type (here x, of type A::X), then to look up the correct function name the compiler considers matching names in the namespace (here A) containing the argument's type.
-
-\begin{lstlisting}[frame=single, language=c++]
-namespace NS{
-class T { };
-void f(T);
-}
-
-NS::T parm;
-int main() {
-f(parm); // OK, calls NS::f
-}
-\end{lstlisting}
-
-\item ADL can bring name lookup ambiguous problem.  When you call f(parm) f is in global scope, So number 2 is in the \textbf{searching scope} default. But ADL bring namespace NS scope into searching scope. In searching scope, there are two options, so compiler will bark.
-
-\begin{lstlisting}[frame=single, language=c++]
-namespace NS { // some header T.h
-class T { };
-void f( T ); //  number 1, add new function
-}
-void f( NS::T ); //number 2
-
-int main(){
-NS::T parm;
-f(parm); // ambiguous: NS::f  or global f?
-}
-\end{lstlisting}
-
-\item Just like the previous example, g is in the namespace B, with help of ADL, \textbf{searching scope is namespace A + namespace B}. there are two f in the searching scope.
-
-\begin{lstlisting}[frame=single, language=c++]
-namespace A{
-class X { };
-void f( X ); // <-- new function
-}
-
-namespace B{
-void f( A::X );
-void g( A::X parm ){
-f(parm); // ambiguous: A::f or B::f?
-}
-}
-\end{lstlisting}
-
-\item In name lookup, the C++ language deliberately says that a member function is to be considered more strongly related to a class than a nonmember.
-\begin{lstlisting}[frame=single, language=c++]
-namespace A{
-class X { };
-void f( X );
-}
-
-class B{ // <-- class, not namespace
-void f( A::X );
-void g( A::X parm ){
-f(parm); // OK: B::f, not ambiguous
-}
-};
-\end{lstlisting}
-
-\item For a class X, all functions, including free functions, that both "Mention" X
-and "supplied with" X are logically part of X, because they form part of the interface of X. supplied with X means that that function is defined in the same .h file with type X. 
-
-\item Keep a type and its nonmember function interface in the same namespace, 1) in logic, these nonmember function can be regarded as type interface, 2) avoid name ambiguous problem in the future.
-\begin{lstlisting}[frame=single, language=c++]
-namespace N{
-class X {};
-
-X operator+( const X&, const X& );
-}
-
-x3 = x1+x2;
-\end{lstlisting}
-
-\item Keep types and functions in separate namespaces unless they're specifically intended to work together
-
-\begin{lstlisting}[frame=single, language=c++]
-#include <vector>
-namespace N {
-struct X {};
-
-// this template should not be put in the namespace N
-template<typename T>
-int* operator+( T , unsigned ) {/* do something */}
-}
-\end{lstlisting}
-
-\end{itemize}
 
 \subsection{size\_t and ptrdiff\_t}
 
@@ -2398,6 +1471,218 @@ template <class T> void copy(T* source, T* destination, int n, trivial_true_type
 
 \end{itemize}
 
+
+\section{name}
+\subsection{Namespace}
+\subsubsection{namespace basic knowledge}
+\begin{itemize}
+	
+	\item Basic namespace style:
+	\begin{enumerate}
+		\item If you develop a library of functions or classes, put them in a namespace, just like std:: namespace in STL.
+		
+		\item Don't put a lot of stuff in global-scope, learn to using namespace instead of global-scope.
+		
+		\item Don't put your own class into namespace std;
+		
+		\item Usually, namespace should be your project name, you can add company name in front of it if you like.
+	\end{enumerate}
+	
+	
+	\item Use :: before function will means that global namespace, For example, ::max will hide std::max, in this way, you can define your own max function and use ::max call your own max function. 
+	
+	\item \textbf{Namespaces can be located at the global level or inside other namespaces. They can't be placed in a block.} So it has external linkage by default, that is to say it can be accessed by multi translation unit(files).
+	
+	
+	\item There are three kinds of namespace usages.
+	\begin{lstlisting}[frame=single, language=c++]
+	using sp::name;   //1) using declaration
+	using namespace sp;   //2) using directive
+	sp::name   //3) specific refer it
+	
+	namespace ns{
+	int zy;
+	}
+	using namespace ns;
+	
+	int main(){
+	int zy = 0; //it will hide ns::zy
+	cin>>zy; //read into local zy
+	}
+	\end{lstlisting}
+	
+	\item Using-declaration introduces a member of another namespace into current namespace or block scope.
+	
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	#include <iostream>
+	#include <string>
+	$\Hilight{15}$using std::string;
+	int main(){
+	string str = "Example";
+	$\Hilight{15}$using std::cout;
+	cout << str;
+	}
+	\end{lstlisting}
+	
+	
+	\item For implement code, there are four methods to put it into namespace. Prefer method 3 and method 4.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	//a.h
+	namespace Yan{
+	Class Foo{
+	void mem_fun();
+	};
+	}
+	
+	//a.cpp
+	//mehtod 1. then use name, using declaration
+	using Yan::Foo;
+	void Foo::mem_fun(){.......}
+	
+	//method 2.  using directive
+	//It's BAD
+	using namespace Yan;
+	void Foo::mem_fun(){.........}
+	
+	// method 3.
+	//Good style
+	void Yan::Foo::mem_fun(){.........}
+	
+	//method 4.
+	//Also good, when you have a lot of function need to be define,
+	//compared with method3, save your typing.
+	namespace Yan{
+	void Foo::mem_fun(){......}
+	}
+	\end{lstlisting}
+	
+	\item About "using" directive usage
+	\begin{enumerate}
+		\item  \textbf{Don't use using directive in any .h file,  because It will pollute all the .cpp file which include this head file.}
+		
+		\item  Less use using directive in any .cpp file, you should using scope-resolution or using declaring more. It will avoid polluting namespace.
+		
+		\item \textbf{You should remember below code. It's good C++ style!} 
+		\begin{lstlisting}[frame=single, language=c++]
+		#include <iostream>
+		using std::cout;
+		using std::endl;
+		
+		Int main(){
+		cout<<"Hello world"<<endl;
+		}
+		\end{lstlisting}
+		
+		\item If you \textbf{have to} use using directory in your .cpp file, put it after all the include files.
+	\end{enumerate}
+	
+	\item unnamed namespace just like static to specify it to local file scope. At the same time, make anonymous namespace as small as possible.  see C++ primer p492
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	// a.cpp file
+	static int count;
+	
+	// A better method to use namespace.
+	namespace{
+	int count;
+	}
+	\end{lstlisting}
+	
+\end{itemize}
+
+\subsubsection{Name lookup}
+\begin{itemize}
+	
+	\item Koenig(ADL) lookup: If you supply a function argument of class type (here x, of type A::X), then to look up the correct function name the compiler considers matching names in the namespace (here A) containing the argument's type.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	namespace NS{
+	class T { };
+	void f(T);
+	}
+	
+	NS::T parm;
+	int main() {
+	f(parm); // OK, calls NS::f
+	}
+	\end{lstlisting}
+	
+	\item ADL can bring name lookup ambiguous problem.  When you call f(parm) f is in global scope, So number 2 is in the \textbf{searching scope} default. But ADL bring namespace NS scope into searching scope. In searching scope, there are two options, so compiler will bark.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	namespace NS { // some header T.h
+	class T { };
+	void f( T ); //  number 1, add new function
+	}
+	void f( NS::T ); //number 2
+	
+	int main(){
+	NS::T parm;
+	f(parm); // ambiguous: NS::f  or global f?
+	}
+	\end{lstlisting}
+	
+	\item Just like the previous example, g is in the namespace B, with help of ADL, \textbf{searching scope is namespace A + namespace B}. there are two f in the searching scope.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	namespace A{
+	class X { };
+	void f( X ); // <-- new function
+	}
+	
+	namespace B{
+	void f( A::X );
+	void g( A::X parm ){
+	f(parm); // ambiguous: A::f or B::f?
+	}
+	}
+	\end{lstlisting}
+	
+	\item In name lookup, the C++ language deliberately says that a member function is to be considered more strongly related to a class than a nonmember.
+	\begin{lstlisting}[frame=single, language=c++]
+	namespace A{
+	class X { };
+	void f( X );
+	}
+	
+	class B{ // <-- class, not namespace
+	void f( A::X );
+	void g( A::X parm ){
+	f(parm); // OK: B::f, not ambiguous
+	}
+	};
+	\end{lstlisting}
+	
+	\item For a class X, all functions, including free functions, that both "Mention" X
+	and "supplied with" X are logically part of X, because they form part of the interface of X. supplied with X means that that function is defined in the same .h file with type X. 
+	
+	\item Keep a type and its nonmember function interface in the same namespace, 1) in logic, these nonmember function can be regarded as type interface, 2) avoid name ambiguous problem in the future.
+	\begin{lstlisting}[frame=single, language=c++]
+	namespace N{
+	class X {};
+	
+	X operator+( const X&, const X& );
+	}
+	
+	x3 = x1+x2;
+	\end{lstlisting}
+	
+	\item Keep types and functions in separate namespaces unless they're specifically intended to work together
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	#include <vector>
+	namespace N {
+	struct X {};
+	
+	// this template should not be put in the namespace N
+	template<typename T>
+	int* operator+( T , unsigned ) {/* do something */}
+	}
+	\end{lstlisting}
+	
+\end{itemize}
+
 \subsection{Name lookup and overload}
 \begin{itemize}
 
@@ -2629,8 +1914,408 @@ class A & operator=(const class A& rhs)
 
 \end{itemize}
 
+\section{memory}
 
-\subsection{I/O}
+\subsection{malloc and remalloc}
+\subsubsection{malloc}
+\begin{itemize}
+	\item That is a long story. In C language, if you forget a header file, what will happen? (I have add answer to my evernote). In one word, It will(c99) or will not produce(c89) warning, and compiler will assume a "implicit int" rule. That is to say, It presumes that the function without prototype (declaring in the header file) just return int type.
+	
+	\item continue: if you have code below: you comment stdlib.h. Then compiler will assume that malloc return a int.  This code will run on 32 bit computer, because int and int* have same length. but on some 64 bit computer, int* is 64 bit and int is 32 bit.  so half data will be lost, and you code will crash.
+	And if you add (int*) cast, it will suppress the warning message.(You kill the only clue, it's bad).
+	\begin{lstlisting}[frame=single, language=c++]
+	// include "stdlib.h"
+	// with cast, it will NOT produce a (missing protype)warning.
+	int *sieve = (int *)malloc(sizeof(int)*length);
+	
+	// without cast, will produce a warning.
+	int *sieve = malloc(sizeof(int)*length);
+	\end{lstlisting}
+	
+	\item continue: So don't recommend to use (int*) cast at all. Next question is that malloc actually return void*. Can void* automatically implicit be cast to int* or other pointer type in assignment? the answer is \textbf{YES}.
+	
+	\item  continue: In C language:
+	\begin{lstlisting}[frame=single, language=c++]
+	#define NULL ( (void*) 0)
+	int *p = NULL;  //legal
+	FILE * f = NULL;  //legal
+	\end{lstlisting}
+	
+	\item continue: In C++, int *p = (void *) 0 is not legal any more.(C++ is type safe language).  So in C++ NULL is literal 0. But It produce another ambiguity problem.  So In C++11, we define nullptr to resolve this problem.
+	\begin{lstlisting}[frame=single, language=c++]
+	#define NULL 0
+	int *p = NULL //legal
+	--------------------------------------
+	f(int i)
+	f(int * p);
+	
+	f(NULL);  //which one will be called. Answer is f(int i).
+	f(nullptr) //will call f(int *p)
+	\end{lstlisting}
+	
+	\item calloc() zero-initializes the buffer, while malloc() leaves the memory uninitialized. Zeroing out the memory may take a little time, so you probably want to use malloc() if that performance is an issue. If initializing the memory is more important, use calloc(). For example, calloc() might save you a call to memset().
+\end{itemize}
+
+\subsubsection{realloc}
+\begin{itemize}
+	
+	\item Reallocates the given area of memory. It must be previously allocated by malloc(), calloc() or realloc() and not yet freed with a call to free or realloc. Otherwise, the results are undefined.
+	
+	
+	\item Don't return value assign to input ptr, use another local pointer, such as new\_ptr;
+	\begin{lstlisting}[frame=single, language=c++]
+	void *new_ptr = realloc(ptr, new_size);
+	if (!new_ptr) {
+	// deal with error;
+	}
+	ptr = new_ptr
+	\end{lstlisting}
+\end{itemize}
+
+
+\subsection{new operator}
+\subsubsection{Basic}
+\begin{itemize}
+	
+	\item There are four sub-topics about new operator:
+	\begin{enumerate}
+		\item new\_handler
+		\item no throw, but return nullptr(since c++11)
+		\item placement new (not allocate, just ctor)
+		\item operator new (just allocate, no ctor)
+	\end{enumerate}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	std::set_new_handler(noMem);
+	MyClass * p1 = new MyClass;  //1: if fail, call noMem
+	
+	MyClass * p2 = new (std::nothrow) MyClass; //2: no throw
+	
+	new (p2) MyClass;  //3: placement new
+	
+	//4: operator new
+	MyClass * p3 = (MyClass*) ::operator new (sizeof(MyClass));
+	// allocates memory by calling: operator new
+	// but does not call MyClass's ctor
+	\end{lstlisting}
+	
+	\item \texttt{new} will call constructor function of a class, but \texttt{malloc} will not call constructor function.  \textbf{So in C++, you should use new instead of \texttt{malloc}.}
+	
+	\item For default new operator, you can use \texttt{set\_new\_handler} to adjust the behavior when you can't allocate enough memory. Detail can be found in the below sub section.
+	
+	\item When you should provide your own operator new?  You want to add log function; You want to add some cookie before and after allocated memory(Visual Studio use this way to detect overflow in debug mode). You want to have quicker speed(memory pool). You want to have better alignment and so on..
+	
+	\item If you use new int[100], use delete [];  \textbf{Any time you want to use new to allocate an array, ask yourself if you can replace it with vector or string.}
+\end{itemize}
+
+\subsubsection{Inside of new operator}
+\begin{itemize}
+	\item \textbf{There is three level knowledges: 1) new operator, 2)operator new, 3)new\_handler. new operator calling operator new, operator new calling new\_handler.} 
+	
+	\item Basic logic of new operator and delete operator.
+	\begin{lstlisting}[frame=single, language=c++]
+	Point3d *origin = new Point3d;
+	
+	//C++ pseudo code
+	if(origin = operator new(sizeof(Point3d))){
+	try{
+	origin = Point3d::Point3d(origin);
+	}
+	catch(...){
+	operator delete(origin);
+	throw
+	}
+	}
+	\end{lstlisting}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	delete origin;
+	
+	//C++ pseudo code
+	if (origin != NULL) {
+	origin->~Foo();
+	operator delete(origin);
+	}
+	\end{lstlisting}
+	
+	\begin{enumerate}
+		\item call operator new to allocate space in memory. (different with new opeator), in this way, ctor will not be called.
+		\item call ctor of a class. (You can't call ctor explicit in this way, but compiler can.)
+		\item If ctor throw an exception, no memory leak by calling operator delete.
+		
+		\item So for a class, if you declare its dtor private or protected, You can't use "delete p".
+	\end{enumerate}
+	
+	
+	\item Basic logic of operator new and operator delete
+	\begin{lstlisting}[frame=single, language=c++]
+	void * operator new(std::size_t size) throw(std::bad_alloc){                      
+	// your operator new might
+	using namespace std; // take additional params
+	
+	if (size == 0) {   // handle 0-byte requests
+	size = 1;              // by treating them as
+	}                 // 1-byte requests
+	void *last_alloc;
+	while (true) {
+	*ast_alloc = malloc(size)
+	if (last_alloc)
+	return last_alloc;
+	
+	// allocation was unsuccessful; find out what the
+	// current new-handling function is (see below)
+	$\Hilight{35}$new_handler globalHandler = set_new_handler(0);
+	$\Hilight{30}$set_new_handler(globalHandler);
+	
+	if (globalHandler) 
+	(*globalHandler)();
+	else 
+	throw std::bad_alloc();
+	}
+	}
+	\end{lstlisting}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	operator delete (void *ptr){
+	if (ptr)
+	free(ptr)
+	}
+	\end{lstlisting}
+	\begin{enumerate}
+		\item if size is 0, change it to 1
+		\item Why we need to call set\_new\_handler twice, The first one get the current handler, and the second one change it back. That is only way we can get the current handler.
+		
+		\item This idiom is also used in set\_terminate and set\_unexpect. 
+		
+		\item In C++11, introduce get\_new\_handler() function. We don't need to call set\_new\_handler twice. 
+		
+		\item Most of time, we use malloc and free to allocate and free physical memory.
+	\end{enumerate}
+\end{itemize}
+
+\subsubsection{new\_handler}
+\begin{itemize}
+	
+	\item At program startup, new-handler is a null pointer. allocation function finds that std::get\_new\_handler returns a null pointer value, it will throw \texttt{std::bad\_alloc}.
+	
+	\item  As shown by the previous section, The new\_handler function is the function called by allocation functions whenever a memory allocation attempt fails. Its intended purpose is one of three things:
+	
+	
+	\begin{enumerate}
+		\item make more memory available. \textbf{resolve the problem by myself.}
+		
+		\item throw exception of type std::bad\_alloc or derived from std::bad\_alloc. \textbf{resolve the problem by a user.}
+		
+		\item terminate the program. e.g. by calling std::terminate. \textbf{(No resolve)}
+	\end{enumerate}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	void noMemory(){
+	closeIE; // method 1 release mem
+	set_new_handler(nullptr); //mehtod 2 throw bad_alloc exception.
+	abort();  //method 3, end application.
+	}
+	//in the beginning of main() function.
+	set_new_handler(noMemory)
+	\end{lstlisting}
+	
+	
+	\item What can we do in side new handler function? Below choices give you considerable flexibility in implementing new-handler functions.
+	\begin{enumerate}
+		
+		\item Make more memory available. This may allow the next memory allocation attempt inside operator new to succeed. One way to implement this strategy is to allocate a large block of memory at program start-up, then release it for use in the program the first time the new-handler is invoked.
+		
+		\item Install a different new-handler. If the current new-handler can't make any more memory available, perhaps it knows of a different new-handler that can. If so, the current new-handler can install the other new-handler in its place (by calling \texttt{set\_new\_handler}). The next time operator new calls the new-handler function, it will get the one most recently installed. (A variation on this theme is for a new-handler to modify its own behavior, so the next time it's invoked, it does something different. One way to achieve this is to have the new-handler modify static, namespace-specific, or global data that affects the new-handler's behavior.)
+		
+		\item Deinstall the new-handler, i.e., pass the null pointer to \texttt{set\_new\_handler}. With no new-handler installed, operator new will throw an exception when memory allocation is unsuccessful.
+		
+		\item Throw an exception of type \texttt{bad\_alloc} or some type derived from \texttt{bad\_alloc}. Such exceptions will not be caught by operator new, so they will propagate to the site originating the request for memory.
+		
+		\item Not return, typically by calling abort or exit.
+	\end{enumerate}
+	\item If you want to have customized new\_handler for specific class, "effective C++ item 49" gives a good example. It use Mixin idiom. Detail can be found in generic programming section in this book.
+	
+\end{itemize}
+\subsubsection{placement new}
+
+\begin{itemize}
+	\item construct an object in memory you've already got a pointer to ,use placement new. If you use placement new to create an object in some memory, you should avoid using the delete operator on that memory.  Detail can be seen in C++ primer
+	\begin{lstlisting}[frame=single, language=c++]
+	Foo* p;
+	// don't catch exceptions thrown by the allocator itself
+	// Return a void type pointer
+	void* raw = operator new(sizeof(Foo)*100);
+	
+	// catch any exceptions thrown by the ctor
+	try {
+	p = new(raw) Foo();  // call the ctor with raw as this
+	}
+	catch (...) {
+	// oops, ctor throw an exception
+	operator delete(raw);
+	throw;  // rethrow the ctor's exception
+	}
+	\end{lstlisting}
+	
+	\item Another example to use placement new.
+	\begin{lstlisting}[frame=single, language=c++]
+	void* buffer = operator new(sizeof(FOO)*100);
+	p1 = new(buffer) FOO();
+	p2 = new(buffer+sizeof(FOO) ) FOO();
+	
+	p1->~FOO(); // call dtor directly,
+	p2->~FOO(); //don't call delete p1.
+	
+	delete[] buffer;
+	\end{lstlisting}
+	
+	\item placement operator new is defined as below. \textbf{You are not allowed to customize it.}
+	\begin{lstlisting}[frame=single, language=c++]
+	void operator new(size_t, void* p){
+	return p;
+	}
+	\end{lstlisting}
+	
+	\item You can build a object on an existing object. Pay attention, this is only place where you can call destructor directly. Don't call delete. 
+	\begin{lstlisting}[frame=single, language=c++]
+	FOO* p1 = new(buffer) FOO();
+	.....
+	p1->~FOO();
+	//Don't use delete p1!!!
+	
+	//A new object in an existing object.
+	p1 = new(buffer) FOO(); 
+	\end{lstlisting}
+	
+	\item If operator new receive another parameter beside that size\_t, that is placement new.There is special version with void* pMemeory
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	void* operator new (std::size_t size, void* pMemeory) throw();
+	\end{lstlisting}
+	
+	\item If you define your own placement operator new(non-pMemeory version). You must provide your own placement operator delete. Because when the constructor throw exception, it will call the corresponding custimzied placement operator delete. Detail can be found in "effective C++ item 52"
+	\begin{lstlisting}[frame=single, language=c++]
+	void* operator new (std::size_t size, void* pMemeory) throw();
+	void* operator new (std::size_t size, ostream& logStream) throw();
+	Widget* pw = new(std::cerr) Widget
+	//When Widget ctor throw exception, it will call 
+	void operator delete(void* pM, ostream& logStream). 
+	//If no such function, placement new do nothing and memory leak.
+	\end{lstlisting}
+	
+	\item A good article is "The many faces of operator new in C++", It give  detail information about operator new and how to rewrite it. I have added it to my ref.
+\end{itemize}
+
+
+
+\subsubsection{array new}
+\begin{itemize}
+	\item \textbf{When you use array new to allocate an arry, must use the array delete.} If you don't use array delete, maybe you just delete the frist object in array. If you use array delete to single new, it's undefined. 
+	\begin{lstlisting}[frame=single, language=c++]
+	Foo pa* = new Foo[10];
+	delete [] pa;
+	//system will remember the size corresponding with pa, 
+	//with [], it will iterate with size. 
+	//When you forget [], it will just free the first object.
+	\end{lstlisting}
+	\item Basic logic of array new. An basic implementation can be found in"Inside the C++ Object Model" 6.2 chapter
+	\begin{lstlisting}[frame=single, language=c++]
+	vec_new(int elem_count, int size, funptr ctor){
+	total_size = size*elem_count;
+	ptr_array = new char[total_size];
+	regist pair of ptr_array elem_count to system
+	while(elem<end of address){
+	(*ctor)(elem) //call the ctor
+	elem+=size;
+	}
+	}
+	\end{lstlisting}
+	\item When you use array new with inheriance. There is one important thing to notice. Don't use base pointer to point the array with derived class. 
+	\begin{lstlisting}[frame=single, language=c++]
+	base *bp = new derived[10]
+	//always use derived *dp = new derived[10];
+	bp[2] //dangerous, undefine. size is wrong: bp+sizeof(base)*2
+	
+	delete [] bp //dangerous, 1)size is wrong, 2) it will call base::~base() destructor. 
+	\end{lstlisting}
+	\item Above code, Don't use pointer to understand it, When you use delete [] bp, it will think that is a base array, and each element in it is just base object, so virtual function doesn't play a role here. Please refer the section "inheritance" in this book for more detail.
+\end{itemize}
+\subsubsection{Customize operator new}
+\begin{itemize}
+	\item The operator new and nothrow version are also replaceable: A program may provide its own definition that replaces the one provided by default to produce the result described above, or can overload it for specific types. 
+	\item For placement new, You can't replace it. There is no "operator new array", it use operator new to allocate memory. 
+	\begin{lstlisting}[frame=single, language=c++]
+	void* operator new (std::size_t size) throw (std::bad_alloc);
+	void* operator new (std::size_t size, const std::nothrow_t& nothrow_value) throw();
+	void* operator new (std::size_t size, void* ptr) throw();
+	\end{lstlisting}
+	
+	\item You can't change "new operator" behavior, but you can override global "operator new" and overload class its own "operator new". Pay attention its argument and return void*. 
+	
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	//global operator new
+	$\Hilight{4}$ void* operator new($\Hilight{7}$size_t size){
+	cout<<"Yan's own operator new" ;
+	void* mem = malloc(size);
+	if(mem)
+	return mem;
+	else
+	throw bad_alloc();
+	}
+	
+	class Foo{ //class operator new
+	public:
+	static void* operator new(size_t size);
+	// use $\Hilight{4}$ static
+	}
+	
+	void* Foo::operator new(size_t size){
+	cout<<"Foo's own operator new";
+	....
+	}
+	
+	int *p = new int[100]; //output Yan's own operator new
+	Foo* fp = new Foo();  //output Foo's own operator new
+	\end{lstlisting}
+	
+	\item Above code is just a simple demo, In the new\_handler section, you can see a better operator new demo with support of call your own new\_handler. You need to combine above code and code in new\_handler section together. 
+	
+	\item operator new usually call \texttt{malloc} function. \texttt{malloc} usually call \texttt{brk} for small chunk and \texttt{mmap} for big chunk. So in the end, C langauge is basic langauge.
+	
+	\item Why do I need my own operator new?
+	\begin{enumerate}
+		\item Performance: the default memory allocator is designed to be general purpose. Sometimes you have very specific objects you want to allocate, chapter 4 in "Modern C++ Design" presents a very well designed and implemented custom allocator for small objects.
+		
+		\item Debugging \& statistics: having full control of the way memory is allocated and released provides great flexibility for debugging, statistics and performance analysis.
+		
+		\item Customization to cluster related object together, and reduce size. put guard block to avoid overrun and underrun. More detail can be seen in effective c++( third edition) Item 50
+	\end{enumerate}
+	
+	\item \textbf{Don't rewrite operator new unless you have to.} There are not as easy as you think. such as alignment. First consider some library, such as \textbf{Boost Pool library} for large number small object allocations. 
+	
+	\item If you have to rewrite operator new, You need to read  effective c++( third edition) Item 51 in detail. For example, All operator new should contain a loop calling a new-handling function.  should deal with request of zero size. you can see the pseudocode in Item 51.
+	
+	\item In C++, after you define a name in a scope (e.g., in a class scope), it will hide the same name in all enclosing scopes (e.g., in base classes or enclosing namespaces), and overloading never happens across scopes. And when said name is operator new, If you provide any class-specific new, provide all of the standard forms(plain, in-place, and nothrow)
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	class C {
+	static void* operator new(size_t, MemoryPool&);
+	// hides three normal forms
+	};
+	$\Hilight{12}$//1) plain new
+	void* operator new(std::size_t);
+	
+	$\Hilight{12}$//2) nothrow new
+	void* operator new(std::size_t, std::nothrow_t) throw();
+	
+	$\Hilight{12}$//3) inplace new
+	void* operator new(std::size_t, void*);
+	\end{lstlisting}
+	
+	\item Always provide new and delete together, see "C++ coding standards" item 45 and 46.
+\end{itemize}
+
+
+\section{I/O}
 \subsubsection{I/O basic knowledge}
 \begin{itemize}
 \item Neither C++ nor C has built input and output in the language. They use functions(C) or other I/O objects(C++) in language library.
@@ -3071,7 +2756,327 @@ sprintf(.....);
 
 \end{itemize}
 
+\section{Style}
+\subsubsection{Basic Principles}
+\begin{itemize}
+	\item \textbf{Keep consistent with your style!} Don't change it very often.
+	
+	\item \textbf{Don't sweat on the small stuff.} Such as how many spaces to indent? space or tab? Or must have comment etc. In any interview, style is not an important question.
+	
+	\item \textbf{Use descriptive function and variable name. Even it's a little longer.} Most code is read a lot more than typed. With good function and variable name, comment is unnecessary.
+	
+	\item \textbf{Don't use abbreviation name unless it's very common, such as CPU and TCP/IP.}
+	
+	\item \textbf{Don't need to use type indicator for all variable.} Hungarian notation offer no benefit for object-oriented language, especially it's impossible to use in generic programming. But for some generic concept, such as reference, pointer and STL container, you can use it such as: "ptr\_map\_dic". Modern IDE(such as Visual Studio and Understand) support pop up message when you hover your mouse over a variable.
+\end{itemize}
 
+
+\subsubsection{Naming}
+\begin{itemize}
+	
+	\item For global scope, use g\_ prefix;
+	
+	\item For member variable in class, use tailing underscore. Why? 
+	\begin{enumerate}
+		\item Prefix underscore uses for reserved word mostly.
+		\item When you use trailing underscore, you can use auto completion better. For example for variable name \texttt{test\_}, When you type t, the name will appear, but for \texttt{\_test}, you have to type \_t two characters, and options are much more than \texttt{test\_}.
+	\end{enumerate}
+	
+	\item For member variable in struct, just like an ordinary variable name. 
+	
+	\item For constant name, use k\_ prefix and upperCamelCase;
+	
+	\item Using upper-case and underscores for pre-processor Macro;
+	
+	\item \textbf{Using upperCamelCase for Classes, Structures, Enumerations, Typedef and  Constants;}
+	
+	\item \textbf{Using lowerCamelCase and verb for function. Such as \texttt{getSth} and \texttt{doSth}}
+	
+	\item \textbf{Using lowercase and underscore  and noun for variable and parameter name. Because for long variable name, It's easier to read. Such as \texttt{sth\_for\_dinner}}
+	
+	\item Using \texttt{other} or \texttt{rhs} as name for copy ctor and assignment operator.
+	
+	\item The prefix \texttt{is} should be used for boolean variables and methods which return bool.
+	
+\end{itemize}
+
+\begin{lstlisting}[frame=single, language=c++]
+#define ARRAY_NUM 10
+bool isVisible;
+
+struct Student{
+name;
+};
+enum BackgroundColor{
+Red,  //constant
+Green
+};
+class Teacher{
+name_;  // not m_strName;  
+};
+
+typedef struct Student StuStruct ;
+StuStruct g_global_varaible;
+const int k_DaysInWeek = 7;
+main(){
+string teacher_name;  //meaning variable name
+}
+
+printTeacherName(const string& name){...} //function name
+\end{lstlisting}
+
+\subsubsection{Comment and Document}
+
+\begin{itemize}
+	\item There are five levels of comment:
+	\begin{tabular}{|c|c|c|}
+		\hline 
+		type & tool & user \\ 
+		\hline 
+		good name convention & no & developer  \\ 
+		\hline 
+		source code comment & with source code &  developer \\ 
+		\hline 
+		API & source code+ doxgen  & developer + user  \\ 
+		\hline 
+		developer document & latex &  developer \\ 
+		\hline 
+		End user & Word, power point & end users  \\ 
+		\hline 
+	\end{tabular} 
+	
+	\item Only use comment when it's very necessary. If you give function and variable good name, don't need to comment them at all. 
+	
+	\item source code comment are most inside of a function. API comments are most before function, class. You can use doxygen to produce a html from it. 
+	
+	\item Use C++ and doxygen style comment more, use C style comment less.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	/// \brief fooFun does ...
+	///
+	///if \p flag is true, when happen
+	///\param [out] result will be filled
+	///\return 0 on success.
+	bool fooFun(bool flag, int& result);
+	\end{lstlisting}
+	
+	\item When you want to comment a large block of code out, use \texttt{\#if 0} ...  \texttt{\#endif}, It's better than using /* ... */. 
+	
+	\item Don't duplicate the function or class name in comment. Maybe you will change name later, this inconsistency will confuse comment readers in the future.
+	
+	\item Install Doxygen in linux, then run \linuxcommand{doxygen -g} in the terminal to produce configure file, the name is Doxyfile.  In Doxyfile, modify two items:
+	\begin{verbatim}
+	GENERATE_LATEX = NO
+	INPUT = ./src
+	\end{verbatim}
+	then run \linuxcommand{doxygen Doxyfile}, A html directory will be built.
+	
+	\item Install doxygen on Windows, you can run doxywizard application, or you can use GUI to set Doxyfile configuration file.
+	
+	\item Usually you have a standard tree structure of project, that is to say every .cpp has .h file.  Under this circumstance, you should put comment command in .h file. Because .h file is an interface to customer.
+	
+	\item If a .cpp file include a .h file,  doxygen will not parse the .cpp file automatically, It only parse all .h file in certain directory and extract all types, such as class and struct information. \textbf{No function and global variable information is extracted.} 
+	
+	\item For class and struct which are declared inside a .h file, Doxygen will show them under Classes tab in the index.html. Even you don't have any comment on it.
+	
+	\item If you want global functions, variables, enums, typedefs, and defines to be documented, you should document the file in which these contents are located using a comment block containing a $\backslash$file (or @file) command. Even this global function is inside of .h file. With $\backslash$file in .h file, You'd better to use HIDE\_UNDOC\_MEMBERS to ignore all the other global function members without comment inside this .h file. It will make last result looks clean. 
+	
+	\item In order to make Doxygen to parse a .cpp file , you need to put Doxygen command\textbf{$\backslash$file} in a separate line in the .cpp file, then Doxygen will parse this .cpp file and produce the corresponding html page.
+	
+	\item Given a C++ source code section, Doxygen will produce below html page.  \textbf{References} and \textbf{Referenced} can be turn on in the configure files.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	/// \brief Return the function this instruction belongs to.
+	///
+	/// Note: it is undefined behavior to call this on an
+	/// instruction not currently inserted into a function.
+	const Function *getFunction() const;
+	\end{lstlisting}
+	
+	\includegraphics[scale=0.45]{pics/dox1.png} \newline
+	
+	\includegraphics[scale=0.45]{pics/dox2.png} 
+	
+\end{itemize}
+
+
+\subsubsection{Code Convention}
+\begin{itemize}
+	
+	\item Pointer and reference symbol is near to data type, not near to a variable name.
+	
+	
+	
+	\item For forward function, 1) prefer to use reference 2) don't inline f function. Detail can be found in GotW27. When do we need to use forward function.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	bool f( X& x ){
+	return g( x );
+	}
+	\end{lstlisting}
+	
+	\item Use \texttt{const} as many as possible. Detail can be found in \texttt{const} section below. 
+	
+	\item Declare variables as locally as possible and minimize usage of global variables.
+	
+	\item Avoid macro, use inline function;  Avoid magic numbers, instead of using \texttt{const} and \texttt{enum}
+	
+	\item Format lambdas like blocks of code.
+	\begin{lstlisting}[frame=single, language=c++]
+	int cutoff = 7;
+	std::find(foo.begin(),foo.end(),[&](const Foo &a ) ->bool{
+	return a.blah<cutoff  //use reference to get local var
+	});
+	\end{lstlisting}
+	
+	
+	\item Use \_FILE\_ and \_LINE\_ to capture the current file name and line number.  \texttt{assert} just uses this kind of macro inside.
+	
+	\item Use \texttt{const} replace \texttt{\#define} to define global constants. \texttt{static const} can be used to define constant class member. (\texttt{const} means that it will not change, so I don't need keep multi copy in multi objs, so I use static.)
+	
+	\item Use more \texttt{typedef} or \texttt{alias} to simplify Complicated Type Expressions, It's helpful especially in STL. 
+	\begin{lstlisting}[frame=single, language=c++]
+	typedef std::map< int, int > IntMap;
+	typedef IntMap::const_iterator IntMapConstIter;
+	for( IntMapConstIter it = layout.begin();
+	it != layout.end(); ++it ) {
+	
+	typedef int(*CB)(int, const char*); //C++11 use function<>
+	CB callBack;  //decare a functions pointer.
+	
+	int sort(int, const char*){..}
+	callBack = sort; // & operator is optional here!
+	\end{lstlisting}
+	
+	\item Using alias(C++11) is better than typedef. 
+	\begin{enumerate}
+		\item First word is \texttt{using}, \textbf{There are no sharp symbol before \texttt{using} .} 
+		\item Second is TypeName. 
+		\item Third is assignment \texttt{=}.  
+	\end{enumerate}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	using UPtrMapSS =
+	std::unique_ptr<std::unordered_map<std::string, int>>;
+	
+	using CB = int(*)(int, const char*);
+	\end{lstlisting}
+	
+	\item Create a zero-valued enumerator to indicate an invalid or default state and make it the first item.
+	
+	\item \textbf{Declare all member variables private, then use getter and setter functions to access them.}
+	\begin{enumerate}
+		\item Declare all member variables private firstly.
+		
+		\item If Outside need to access it's member variables, just build a public interface function. There are two advantages: 1) Inside set-function, You can test valid range. 2) Inside get-function, even type of member variable change, you just need to change get-function, and get all customer code unmodified. In this way, It's de-coupling.
+		
+		\item If child want to access its parent member, declare it as protected.
+		
+		\item Why overload operator << is friend? 1) It can't be member because it need to be written as cout<< a; not a<<cout. 2) It's need to friend so it can access private member variable. Don't use getter function unless this member variable should be a part of interface. It will break encapsulation 
+	\end{enumerate}
+	
+	\item Don't use multi-thread unless you really need it. Simultaneously respond to many events. Just remember, synchronization has some overhead. Below are some typical scenarios.
+	\begin{enumerate}
+		\item A web server.
+		\item Interface and working thread.
+		\item Take advantage of with multiple processor.
+	\end{enumerate}
+	
+	\item \textbf{Uses early exits to simplify code.}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	if(IsValid){   //bad style
+	do something;
+	} else{
+	return;
+	}
+	
+	if(!IsValid)  // A better style is
+	return;
+	..do something here.
+	\end{lstlisting}
+	
+	\item Turn Predicate Loop into Predicate Function. It makes you code clean and easy to understand.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	for(v.begin....){   /bad style
+	if(it->IsSth){
+	flag = true; break;
+	}
+	}
+	if(flag){...}
+	
+	// A better style is define isHasSth() return bool.
+	if(isHasSth()){...}
+	\end{lstlisting}
+	
+	\item Use \texttt{static\_assert} to test some compile-time boolean conditions. It supports a message parameter. It doesn't need to build execution application. It will stop when you are compiling your code. 
+	\begin{lstlisting}[frame=single, language=c++]
+	static_assert(sizeof(int) > 4, "int is too small");
+	\end{lstlisting}
+	
+	\item Use assert more in your project. You don't need to include file name and line number in the string. assert will output these hint messages.
+	\begin{lstlisting}[frame=single, language=c++]
+	#include<cassert>
+	assert(index>=0 && " index is negative");
+	//Assertion failed: expression, file name, line num
+	\end{lstlisting}
+	
+	\item \textbf{If you don't modify container inside loop}, don't need to evaluate end() every time through for loop. Please remember below code block. \textbf{Just remember auto i,e ++i}
+	\begin{lstlisting}[frame=single, language=c++]
+	//g++ -std=c++11
+	vector<int> con={1,2,3}; //list initializer
+	for(auto i = con.begin, e = con.end();i!=e; ++i){
+	...........
+	}
+	\end{lstlisting}
+	
+	\item The C++11 standard (23.2.1) mandates that end has O(1) complexity, so previous item has no efficiency meaning in C++11.
+	
+	
+	\item \textbf{Prefer Preincrement (++i), especially in a for loop.}  When you use ++i or i++ inside expression, there are differences. Otherwise, there is no differences.
+	\begin{lstlisting}[frame=single, language=c++]
+	for(int i = 0;i<10; ++i)
+	j=++i; // j = i+1;
+	j=i++; //j = i;  i=i+1;
+	++*p;  //++(*p) ;
+	*++p; //*(++p);
+	\end{lstlisting}
+	
+	\item How to understand \texttt{*p++} ?
+	
+	\begin{enumerate}
+		\item Precedence of prefix ++ and * is same. Associativity of both is right to left.
+		\item Precedence of postfix ++ is higher than both * and prefix ++. Associativity of postfix ++ is left to right.
+		\item Prefix and postfix are both syntax sugar, in order to reduce typing.   But prefix represents \textbf{one statement}, postfix means \textbf{two statements};
+	\end{enumerate}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	++i;  //just like i = i+1 or  i+=1;
+	//when i++ used in expression, treated as two statements;
+	*p++; // *(p++);  *p ; p=p+1;
+	
+	while(*p != '\0'){
+	p= p+1;
+	}
+	//can be written to
+	while(*p++ != '\0')
+	\end{lstlisting}
+	
+	\item Always turn on all warning options in your compiler with -Wall. Once you get warning, Eliminate warning before you go further.
+	
+	\item Sometimes, this warning is what you have to, or if warning comes from a header file you can't change. You can use \#pragma warning compile directive to temporary disable it, then restore it later.
+	\begin{lstlisting}[frame=single, language=c++]
+	#pragma warning(push)
+	#pragma warning(disable:4512);
+	#include<not_change.h>
+	#pragma warning(pop) //restore original warning level
+	\end{lstlisting}
+	
+\end{itemize}
+
+
+\chapter{initialization}
 \section{initialization}
 
 \subsection{basic}
@@ -4255,7 +4260,7 @@ auto fun1(){
 \end{itemize}
 
 
-\section{pointer and smart pointer}
+\chapter{pointer and smart pointer}
 
 \subsection{function pointer}
 \begin{itemize}  
@@ -5289,8 +5294,8 @@ shared_ptr<Server> serverForClass2  = serverForClass1;
 \end{itemize}
 Everything You ever wanted to know about move semantics
 
-\section{reference and rvalue reference}
-\subsection{reference basic}
+\chapter{reference and rvalue reference}
+\section{reference basic}
 
 \begin{itemize}
 \item \textbf{Reference has two characteristics, no null, no change}.In other words, top level of const of reference is default. You can't change it. That is why you have to initiliaze it. Imaging reference is a kind of top level const pointer.
@@ -5374,7 +5379,7 @@ Foo f3 = f1+f2;
 \end{lstlisting}
 \end{itemize}
 
-\subsection{lvalue, rvalue and xvalue}
+\section{lvalue, rvalue and xvalue}
 \begin{itemize}
 	\item In this section, there are four important points
 	\begin{enumerate}
@@ -5627,7 +5632,7 @@ if (std::is_lvalue_reference<decltype(var)>::value) {
 	
 \end{itemize}
 
-\subsection{rvalue reference and move scenario}
+\section{rvalue reference and move scenario}
 \subsubsection{basic of rvalue reference}
 \begin{itemize}
 
@@ -5757,7 +5762,7 @@ best = std::move(choices[3]);
 
 
 
-\subsection{universal(forwarding) reference }
+\section{universal(forwarding) reference }
 \subsubsection{definition}
 \begin{itemize}
 \item You need to know two prerequisites before you understand forwarding reference:
@@ -5961,9 +5966,10 @@ $\Hilight{19}$//with const, It's not univerisal reference any more.
 	
 \end{itemize}
 
-\subsection{function interface design}
 
-\subsubsection{parameter design-basic}
+\section{function interface design}
+
+\subsection{Generic function parameter design}
 \begin{itemize}
 \item Main content in this section illustrated below: \\
 \includegraphics[scale=0.9, angle=270]{pics/move.png}
@@ -5977,67 +5983,23 @@ writeFun(Foo &);
 writeFun(foo1+foo2) // will not compile, foo1+foo2 is rvalue.
 \end{lstlisting}
 
-\item Another tips is "Don’t copy your function arguments. Instead, pass them by value and let the compiler do the copying." You can google "Want speed pass by value" One place you can apply this guideline immediately is in assignment operators. The canonical, easy-to-write, always-correct, strong-guarantee, copy-and-swap assignment operator is often seen written this way:
-\begin{lstlisting}[frame=single, language=c++]
-T& T::operator=(T const& x) // x is a reference to the source
-{ 
-    T tmp(x);          // copy construction of tmp does the hard work
-    swap(*this, tmp);  // trade our resources for tmp's
-    return *this;      // our (old) resources get destroyed with tmp 
-}
+\item if the function read in some values and \textbf{build} other something based on the value which just read in. You need to consider the parameter design. When I say \textbf{build}, it could be:
+\begin{enumerate}
+	\item call ctor inside fun
+	\item assign these values to other.
+	\item put values to container.
+\end{enumerate} 
+\end{itemize}
 
-// A better one is below
-T& operator=(T x)    // x is a copy of the source; hard work already done
-{
-    swap(*this, x);  // trade our resources for x's
-    return *this;    // our (old) resources get destroyed with x
-}
-\end{lstlisting}
+\subsection{read-copy function parameter design}
+\begin{itemize}
 
-\item If a function is value return, rvalue reference parameter, you can use move in the return .
-\begin{lstlisting}[frame=single, language=c++]
-Matrix // by-value return , by rvalue parameter
-operator+(Matrix&& lhs, const Matrix& rhs){
- lhs += rhs;
-  return std::move(lhs); // move lhs into return value
-  return lhs // will copy lhs into return value 
-} 
-\end{lstlisting}
-
-\item the same idea apply to universial reference. At this time, you have to use forward 
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T>
-Fraction // by-value return
-reduceAndCopy(T&& frac) // universal reference param
-{
- frac.reduce();
- return std::forward<T>(frac); // move rvalue into return
-} /
-\end{lstlisting}
-
-\item For other condition, don't use move at all. 1) for local varaible  2) for function paramter 3) multi return points, compiler will use move implicitly. 
-\begin{lstlisting}[frame=single, language=c++]
-Widget makeWidget(){
- Widget w;
-
- return std::move(w); //Bad, no RVO here
- return w; //Good. 
-} // 
-\end{lstlisting}
-
-\begin{lstlisting}[frame=single, language=c++]
-Widget makeWidget( Widget w;){
-
- return std::move(w); //Bad, rudundant, 
- return w; //Good, compiler will use move here implicitly. 
-} // 
-\end{lstlisting}
-
-\item For copy, thing become interesting. Because for rvalue, we can move directly. Our goal is that we can use move for rvalue, so there are three options: 
+\item For read-copy, thing become interesting. Because for rvalue, we can move directly. Our goal is that we can use move for rvalue, so there are three options: 
 
 	\begin{enumerate}
-		\item overload copyFun to support const Foo\& and Foo \&\&.  
-		\item Use pass-value fun(Foo ) or Use pass-rvalue-reference fun(Foo\&\&)
+		\item overload fun to support const Foo\& and Foo \&\&.  
+		\item Use pass-value fun(Foo)  
+		\item Use pass-rvalue-reference fun(Foo\&\&)
 		\item Use universal reference
 	\end{enumerate}
 	
@@ -6058,6 +6020,8 @@ copyFun(T \&\&)}  & copy inside & move inside \\
 \hline
 \end{tabular}
 
+\subsubsection{overload solution}
+
 \item Use Overload function to deal with rvalue only. So usually function to accept rvalue reference doesn't exist by itself, it just stay with another version to accept lvalue, fun(const Foo\& foo);
 \begin{lstlisting}[frame=single, language=c++]
 //rvalue reference
@@ -6067,6 +6031,8 @@ fun(foo1+foo2) // will compile, It means that inside fun
 fun(f_return_foo()); // call move ctor.
 \end{lstlisting}
 
+
+\subsubsection{only value solution}
 \item Next, No overload, just pass value to deal with lvalue and rvalue at the same time. this idea can be seen in the "more effective C++ item ?"
 \begin{lstlisting}[frame=single, language=c++]
 struct S{
@@ -6085,6 +6051,27 @@ vect.push_back(std::move(value)); //use move to implement
 }
 \end{lstlisting}
 
+
+
+\item Another tips is "Don't copy your function arguments. Instead, pass them by value and let the compiler do the copying." You can google "Want speed pass by value" One place you can apply this guideline immediately is in assignment operators. The canonical, easy-to-write, always-correct, strong-guarantee, copy-and-swap assignment operator is often seen written this way:
+\begin{lstlisting}[frame=single, language=c++]
+T& T::operator=(T const& x) // x is a reference to the source
+{ 
+T tmp(x);          // copy construction of tmp does the hard work
+swap(*this, tmp);  // trade our resources for tmp's
+return *this;      // our (old) resources get destroyed with tmp 
+}
+
+// A better one is below
+T& operator=(T x)    // x is a copy of the source; hard work already done
+{
+swap(*this, x);  // trade our resources for x's
+return *this;    // our (old) resources get destroyed with x
+}
+\end{lstlisting}
+
+
+\subsubsection{only rvalue  reference solution}
 \item Last, No overload, just pass rvalue  reference to deal with lvalue and rvalue at the same time. This idea can be googled by "Pass By Rvalue Reference Or Pass By Value";
 \begin{lstlisting}[frame=single, language=c++]
 struct S{
@@ -6137,11 +6124,42 @@ foo(move_to_temp1(p));  //compile ok, return value is prvalue
 foo(move_to_temp2(p));  //compile ok, return value is xvalue
 \end{lstlisting}
 
+\subsubsection{forwarding reference}
+
+\item the same idea apply to universial reference. At this time, you have to use forward 
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T>
+Fraction // by-value return
+reduceAndCopy(T&& frac) // universal reference param
+{
+frac.reduce();
+return std::forward<T>(frac); // move rvalue into return
+} /
+\end{lstlisting}
+
+\item For other condition, don't use move at all. 1) for local varaible  2) for function paramter 3) multi return points, compiler will use move implicitly. 
+\begin{lstlisting}[frame=single, language=c++]
+Widget makeWidget(){
+Widget w;
+
+return std::move(w); //Bad, no RVO here
+return w; //Good. 
+} // 
+\end{lstlisting}
+
+\begin{lstlisting}[frame=single, language=c++]
+Widget makeWidget( Widget w;){
+
+return std::move(w); //Bad, rudundant, 
+return w; //Good, compiler will use move here implicitly. 
+} // 
+\end{lstlisting}
+
 \end{itemize}
 
 
 
-\subsubsection{RVO and copy elision}
+\subsection{RVO and copy elision}
 \begin{itemize}
 \item RVO is a kind of copy elision.
 		\item RVO is only effective for 1)local variable. 2)the type of the local object is the same as that returned by the function.
@@ -6231,7 +6249,7 @@ vector.push_back(std::move(f1));
 \end{enumerate}
 \end{itemize}
 
-\subsubsection{parameter design-value}
+\subsection{parameter design-value}
 \begin{itemize}
 \item usually, There is such scenarios:
 \begin{enumerate}
@@ -6288,9 +6306,22 @@ sorted2(std::vector<std::string> const& names) {
 
 \end{itemize}
 
-
+\subsection{return design}
 \subsubsection{return design-return value}
 \begin{itemize}
+	
+	
+	\item If a function is value return, rvalue reference parameter, you can use move in the return .
+	\begin{lstlisting}[frame=single, language=c++]
+	Matrix // by-value return , by rvalue parameter
+	operator+(Matrix&& lhs, const Matrix& rhs){
+	lhs += rhs;
+	return std::move(lhs); // move lhs into return value
+	return lhs // will copy lhs into return value 
+	} 
+	\end{lstlisting}
+	
+	
 		\item \textbf{Three basic knowledges about function return:}
 				\begin{enumerate}
 \item It's very important understand there are two phrases when you return from function. The first step  is from inside fun fauto to ouside of function ftemp(unname tempory), then fauto disappear.  Then in second step, \textbf{Move} from ftemp to flast. because ftemp is rvalue.
@@ -6546,7 +6577,7 @@ struct Beta {
 \end{itemize}
 
 
-\section{OOP}
+\chapter{OOP}
 \subsection{Design}
 \subsubsection{class categories}
 \begin{itemize}
@@ -8160,7 +8191,7 @@ shared_ptr<SchoolBus> pBus
 
 \end{itemize}
 
-\section{Generic programming}
+\chapter{Generic programming}
 
 
 \subsection{Template Basic}
@@ -10640,7 +10671,7 @@ return 0;
 \end{itemize}
 
 
-\section{Exception and error}
+\chapter{Exception and error}
 \subsection{End application}
 \begin{itemize}
 \item You can call abort(), exit(), quick\_exit and  \_exit to end you problem anytime. they are both declared in <cstdlib> head file.
@@ -10990,7 +11021,7 @@ try{
 \end{itemize}
 
 
-\section{STL}
+\chapter{STL}
 \begin{itemize}
 \item A Good reference book is "effective STL".
 \item Effective STL item 48. Always include the proper headers.
@@ -12928,7 +12959,7 @@ list<int> data(beg, end);
 
 \end{itemize}
 
-\section{concurrent}
+\chapter{concurrent}
 \subsection{data race}
 \begin{itemize}
 \item data race and race condition, you can see a good reference page: "Race Condition vs. Data Race", you can google it.
@@ -12952,7 +12983,7 @@ list<int> data(beg, end);
 
 \subsection{synchronization}
 
-\section{New Feature in C++14/C++17}
+\chapter{New Feature in C++17/20}
 
 \subsection{New Type}
 
