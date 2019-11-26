@@ -5974,7 +5974,7 @@ $\Hilight{19}$//with const, It's not univerisal reference any more.
 \item Main content in this section illustrated below: \\
 \includegraphics[scale=0.9, angle=270]{pics/move.png}
 
-\item The move ctor and move assignment operator give us an idea how to improve the function interface design. By now, you imagine you have a function, then you have three operations inside: \textbf{1) read 2) copy 3) write.}
+\item The move ctor and move assignment operator give us an idea how to improve the function interface design. By now, you imagine you have a function, then you have three main operations inside: \textbf{1) read 2) copy 3) write.}
 
 \item For read, "const type\&" is enough, For write, "type\&" is good, because I don't need to write sth into prvalue. Based on previous explanation, below code will not compile. 
 \begin{lstlisting}[frame=single, language=c++]
@@ -6033,6 +6033,61 @@ fun(f_return_foo()); // call move ctor.
 
 
 \subsubsection{only value solution}
+
+\item There is such scenarios:
+\begin{enumerate}
+	\item You have origin obj, but in your function , you want to copy from it, then modify, at last return this copied one
+	\item Obviously, in your function, you have to return value.
+	\item At this time you have two different options. Value parameter or reference parameter.
+\end{enumerate}
+
+\begin{lstlisting}[frame=single, language=c++]
+std::vector<std::string> 
+sorted(std::vector<std::string> names){
+std::sort(names);
+return names;
+}
+
+// names is an lvalue; a copy is required so we don't modify names
+std::vector<std::string> sorted_names1 = sorted( names );
+
+// get_names() is an rvalue expression; we can omit the copy!
+std::vector<std::string> sorted_names2 = sorted( get_names() );
+\end{lstlisting}
+
+\begin{lstlisting}[frame=single, language=c++]
+std::vector<std::string> 
+sorted2(std::vector<std::string> const& names) {
+std::vector<std::string> r(names);   // and explicitly copied
+std::sort(r);
+return r;
+}
+\end{lstlisting}
+
+\item A basic explanation can be found here: \\
+\includegraphics[scale=1.0]{pics/value1.png}
+\item basic analysis:
+\begin{enumerate}
+	\item For reference, When return, you can have RVO, no copy or move at all. It's good and green color.
+	\item For value, When return, you have to have one move, It's bad and color is red.
+	\item For lvalue, one more move, but for rvalue, although one more move, but I don't need a copy (Copy-elision at parameter).It's good and color is blue.
+\end{enumerate}
+
+\item summary:
+\begin{enumerate}
+	\item For c++03, we don't move semantic, all the move will be decayed to copy. \textbf{So reference WIN!}
+	
+	\item For non-cheap-move, such as all primitive type included class, move is just like copy, \textbf{So reference WIN!}
+	
+	\item For c++11 and cheap-move semantic, \textbf{value WIN!}
+	
+	\item For = operator, we don't need return value, but return reference, In this way, \textbf{value WIN!}. Detail can be found in use swap to implement = operator below. 
+	
+\end{enumerate}
+
+\item Two good articles about this topic are:"Want Speed? Pass by Value." and "WANT SPEED? DON’T (ALWAYS) PASS BY VALUE."
+
+
 \item Next, No overload, just pass value to deal with lvalue and rvalue at the same time. this idea can be seen in the "more effective C++ item ?"
 \begin{lstlisting}[frame=single, language=c++]
 struct S{
@@ -6249,62 +6304,7 @@ vector.push_back(std::move(f1));
 \end{enumerate}
 \end{itemize}
 
-\subsection{parameter design-value}
-\begin{itemize}
-\item usually, There is such scenarios:
-\begin{enumerate}
-\item You have origin obj, but in your function , you want to copy from it, then modify, at last return this copied one
-\item Obviously, in your function, you have to return value.
-\item At this time you have two different options. Value parameter or reference parameter.
-\end{enumerate}
 
-\begin{lstlisting}[frame=single, language=c++]
-std::vector<std::string> 
-sorted(std::vector<std::string> names){
-    std::sort(names);
-    return names;
-}
- 
-// names is an lvalue; a copy is required so we don't modify names
-std::vector<std::string> sorted_names1 = sorted( names );
- 
-// get_names() is an rvalue expression; we can omit the copy!
-std::vector<std::string> sorted_names2 = sorted( get_names() );
-\end{lstlisting}
-
-\begin{lstlisting}[frame=single, language=c++]
-std::vector<std::string> 
-sorted2(std::vector<std::string> const& names) {
-    std::vector<std::string> r(names);   // and explicitly copied
-    std::sort(r);
-    return r;
-}
-\end{lstlisting}
-
-\item A basic explanation can be found here: \\
-\includegraphics[scale=1.0]{pics/value.png}
-\item basic analysis:
-\begin{enumerate}
-\item For reference, When return, you can have RVO, no copy or move at all. It's good and green color.
-\item For value, When return, you have to have one move, It's bad and color is red.
-\item For lvalue, one more move, but for rvalue, although one more move, but I don't need a copy (Copy-elision at parameter).It's good and color is blue.
-\end{enumerate}
-
-\item summary:
-\begin{enumerate}
-\item For c++03, we don't move semantic, all the move will be decayed to copy. \textbf{So reference WIN!}
-
-\item For non-cheap-move, such as all primitive type included class, move is just like copy, \textbf{So reference WIN!}
-
-\item For c++11 and cheap-move semantic, \textbf{value WIN!}
-
-\item For = operator, we don't need return value, but return reference, In this way, \textbf{value WIN!}. Detail can be found in use swap to implement = operator below. 
-
-\end{enumerate}
-
-\item Two good articles about this topic are:"Want Speed? Pass by Value." and "WANT SPEED? DON’T (ALWAYS) PASS BY VALUE."
-
-\end{itemize}
 
 \subsection{return design}
 \subsubsection{return design-return value}
