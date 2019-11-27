@@ -5852,7 +5852,7 @@ std::cout << global_vec[0] << std::endl;
 
 \end{itemize}
 
-\subsubsection{pros and cons}
+\subsubsection{pros}
 \begin{itemize}
 \item It can provide the unify interface, with variadic template parameter, it support variadic number. That is make\_unique and make\_shared and emplace-kind function possible.
 
@@ -5887,6 +5887,7 @@ template<class T, class... Args> // from C++14
 unique_ptr<T> make_unique(Args&&... args); // Standard
 \end{lstlisting}
 
+\subsubsection{cons}
 
 \item You can use universal reference,  but inside, you have to use forward function, and implementation is a little difficult.  Detail can be seen "effective modern c++ item 41". As a template, implementation must typically be in a header file. It may yield several functions in object code, because it not only instantiates differently for lvalues and rvalues, it also instantiates differently for std::string and types that are convertible to std::string (see Item 25). 
 
@@ -5972,18 +5973,20 @@ $\Hilight{19}$//with const, It's not univerisal reference any more.
 \subsection{Generic function parameter design}
 \begin{itemize}
 \item Main content in this section illustrated below: \\
-\includegraphics[scale=0.9, angle=270]{pics/move.png}
+\includegraphics[scale=0.7, angle=270]{pics/move.png}
 
-\item The move ctor and move assignment operator give us an idea how to improve the function interface design. By now, you imagine you have a function, then you have three main operations inside: \textbf{1) read 2) copy 3) write.}
+\item  By now, you imagine you have a function with parameter, then you have three main operations inside to operate on the parameter: \textbf{1) only read 2) copy from the parameter 3) write to parameter.}
 
-\item For read, "const type\&" is enough, For write, "type\&" is good, because I don't need to write sth into prvalue. Based on previous explanation, below code will not compile. 
+\item For only read, "const type\&" is the best, For write, "type\&" is good, because I don't need to write any new thing into prvalue. Based on previous explanation, below code will not compile. 
 \begin{lstlisting}[frame=single, language=c++]
 writeFun(Foo &);
 
 writeFun(foo1+foo2) // will not compile, foo1+foo2 is rvalue.
 \end{lstlisting}
 
-\item if the function read in some values and \textbf{build} other something based on the value which just read in. You need to consider the parameter design. When I say \textbf{build}, it could be:
+\item For only read build-in type, such as int, char, short, double.. You can use value directly, it has the same performance as reference. If you want to change it, you still need to use reference.
+
+\item If the function read in some values and \textbf{build} other something based on the value which just read in. You need to consider the parameter design. When I say \textbf{build}, it could be:
 \begin{enumerate}
 	\item call ctor inside fun
 	\item assign these values to other.
@@ -5994,7 +5997,7 @@ writeFun(foo1+foo2) // will not compile, foo1+foo2 is rvalue.
 \subsection{read-copy function parameter design}
 \begin{itemize}
 
-\item For read-copy, thing become interesting. Because for rvalue, we can move directly. Our goal is that we can use move for rvalue, so there are three options: 
+\item For read-copy, thing become interesting. Because the move ctor and move assignment operator give us an idea how to improve the function interface design.  For rvalue, we can move directly. Our goal is that we can use move for rvalue, so there are four options: 
 
 	\begin{enumerate}
 		\item overload fun to support const Foo\& and Foo \&\&.  
@@ -6022,7 +6025,7 @@ copyFun(T \&\&)}  & copy inside & move inside \\
 
 \subsubsection{overload solution}
 
-\item Use Overload function to deal with rvalue only. So usually function to accept rvalue reference doesn't exist by itself, it just stay with another version to accept lvalue, fun(const Foo\& foo);
+\item Use Overload function to deal with rvalue only. So usually function which accepts rvalue reference doesn't exist by itself, it just stay with another version to accept lvalue, fun(const Foo\& foo);
 \begin{lstlisting}[frame=single, language=c++]
 //rvalue reference
 fun(Foo&& foo);
@@ -6030,6 +6033,8 @@ fun(foo1+foo2) // will compile, It means that inside fun
 // you will steal resource. 
 fun(f_return_foo()); // call move ctor.
 \end{lstlisting}
+
+\item The most common use of this is move ctor and move assignment. 
 
 
 \subsubsection{only value solution}
@@ -6068,14 +6073,17 @@ return r;
 \includegraphics[scale=1.0]{pics/value1.png}
 \item basic analysis:
 \begin{enumerate}
-	\item For reference, When return, you can have RVO, no copy or move at all. It's good and green color.
-	\item For value, When return, you have to have one move, It's bad and color is red.
-	\item For lvalue, one more move, but for rvalue, although one more move, but I don't need a copy (Copy-elision at parameter).It's good and color is blue.
+	
+	\item For method 3, When return, you can have RVO, no copy or move when we return. Only one copy inside the function.
+	
+	\item In method1, when return for lvalue, you have one move, It's bad and color is blue.
+	
+	\item In method1, for rvalue, although one more move, but It doesn't need a copy (Copy-elision at parameter, compared with method3 red part)
 \end{enumerate}
 
 \item summary:
 \begin{enumerate}
-	\item For c++03, we don't move semantic, all the move will be decayed to copy. \textbf{So reference WIN!}
+	\item For c++03, we don't have move semantic, all the move will be decayed to copy. \textbf{So reference WIN!}
 	
 	\item For non-cheap-move, such as all primitive type included class, move is just like copy, \textbf{So reference WIN!}
 	
@@ -6085,30 +6093,10 @@ return r;
 	
 \end{enumerate}
 
-\item Two good articles about this topic are:"Want Speed? Pass by Value." and "WANT SPEED? DON’T (ALWAYS) PASS BY VALUE."
 
+\item The same idea can be seen in the "more effective C++ item ?" 
 
-\item Next, No overload, just pass value to deal with lvalue and rvalue at the same time. this idea can be seen in the "more effective C++ item ?"
-\begin{lstlisting}[frame=single, language=c++]
-struct S{
-    void initByVal(SomeType param); // can now steal from param
-};
-
-SomeType t;
-s.initByVal(t); // deal with lvalue 
-s.initByVal(std::move(t)); // move data to param, then steal inside
-\end{lstlisting}
-
-\begin{lstlisting}[frame=single, language=c++]
-fun(Foo value){
-vector<Foo> vect;
-vect.push_back(std::move(value)); //use move to implement
-}
-\end{lstlisting}
-
-
-
-\item Another tips is "Don't copy your function arguments. Instead, pass them by value and let the compiler do the copying." You can google "Want speed pass by value" One place you can apply this guideline immediately is in assignment operators. The canonical, easy-to-write, always-correct, strong-guarantee, copy-and-swap assignment operator is often seen written this way:
+\item You can apply this guideline immediately is in assignment operators. The canonical, easy-to-write, always-correct, strong-guarantee, copy-and-swap assignment operator is often seen written this way:
 \begin{lstlisting}[frame=single, language=c++]
 T& T::operator=(T const& x) // x is a reference to the source
 { 
@@ -6125,9 +6113,10 @@ return *this;    // our (old) resources get destroyed with x
 }
 \end{lstlisting}
 
+\item Two good articles about this topic are:"Want Speed? Pass by Value." and "WANT SPEED? DON’T (ALWAYS) PASS BY VALUE."
 
 \subsubsection{only rvalue  reference solution}
-\item Last, No overload, just pass rvalue  reference to deal with lvalue and rvalue at the same time. This idea can be googled by "Pass By Rvalue Reference Or Pass By Value";
+\item A more academic optoins is to just pass rvalue  reference to deal with lvalue and rvalue at the same time. This idea can be googled by "Pass By Rvalue Reference Or Pass By Value";
 \begin{lstlisting}[frame=single, language=c++]
 struct S{
     void initByRef(SomeType&& param);
@@ -6162,7 +6151,7 @@ foo(std::move(p)); //here, p will not become empty.
 \end{lstlisting}
 
 
-\item More explanation.
+\item More interesting example:
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 T move_to_temp1(T& t) { return std::move(t); }
@@ -6179,17 +6168,266 @@ foo(move_to_temp1(p));  //compile ok, return value is prvalue
 foo(move_to_temp2(p));  //compile ok, return value is xvalue
 \end{lstlisting}
 
+
 \subsubsection{forwarding reference}
 
-\item the same idea apply to universial reference. At this time, you have to use forward 
+\item The last option is universial reference. At this time, you have to use std::forward 
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 Fraction // by-value return
 reduceAndCopy(T&& frac) // universal reference param
 {
-frac.reduce();
-return std::forward<T>(frac); // move rvalue into return
-} /
+	frac.reduce();
+	return std::forward<T>(frac); // move rvalue into return
+} 
+\end{lstlisting}
+
+\end{itemize}
+
+
+
+\subsection{RVO and copy elision}
+\subsubsection{Basic idea}
+\begin{itemize}
+	
+	\item \textbf{For no RVO, know there are two steps when we return value, for RVO, know we implicit pass the result by reference. These are two most important knowledge to understand all the detail below.}
+	
+	\item \textbf{Three basic knowledges about function return:}
+	\begin{enumerate}
+		\item It's very important understand there are two phrases when you return from function. The first step  is from inside fun fauto to ouside of function ftemp(unname tempory), then fauto disappear.  Then in second step, \textbf{Move} from ftemp to flast. because ftemp is rvalue.
+		\begin{lstlisting}[frame=single, language=c++]
+		Foo fun(){
+		return fauto;
+		}
+		
+		Foo flast = ($\Hilight{9}$ftemp created here)fun();
+		\end{lstlisting}
+		\item ftemp is not on the stack, so you can use const ref or rref to prolong its life. 
+		\item ftemp is same with fauto, but maybe not same with flast
+		\begin{lstlisting}[frame=single, language=c++]
+		Foo fun(){
+		return fauto;
+		}
+		
+		const Foo& flast = ($\Hilight{9}$ftemp created here)fun();
+		Foo&& flast = fun();
+		\end{lstlisting}
+	\end{enumerate}
+	
+	\item given below code
+\begin{lstlisting}[frame=single, language=c++]
+class Snitch {   // Note: All methods have side effects
+	Snitch() { cout << "c'tor" << endl; }
+	~Snitch() { cout << "d'tor" << endl; }
+	
+	Snitch(const Snitch&) { cout << "copy c'tor" << endl; }
+	Snitch(Snitch&&) { cout << "move c'tor" << endl; }
+	
+	Snitch& operator=(const Snitch&) {
+	cout << "copy assignment" << endl;
+	return *this;
+	}
+	
+	Snitch& operator=(Snitch&&) {
+	cout << "move assignment" << endl;
+	return *this;
+	}
+};
+
+Snitch CreateSnitch() {
+	return Snitch();
+}
+\end{lstlisting}
+
+	\item test 1 and output 
+\begin{lstlisting}[frame=single, language=c++]
+int main() {
+Snitch s = CreateSnitch();
+}
+
+with -fno-elide-constructors
+c'tor    //Snitch()
+move c'tor  //Snitch() to return value
+d'tor       //Snitch() destory
+move c'tor //return value to s
+d'tor     //return value destory
+d'tor     //s destory
+
+without -fno-elide-constructors
+c'tor   //s
+d'tor   //s destory
+\end{lstlisting}
+
+	\item test 2 and output
+\begin{lstlisting}[frame=single, language=c++]
+int main() {
+	Snitch s;
+	s = CreateSnitch();
+}
+with -fno-elide-constructors
+c'tor    //Snitch s
+c'tor    //Snitch() in side CreateSnitch
+move c'tor  //Snitch() to return value
+d'tor       //Snitch() destory
+move assignment //return value to s
+d'tor     //return value destory
+d'tor     //s destory
+
+without -fno-elide-constructors
+c'tor   //Snitch s
+c'tor   //Snitch()
+move assignment //s has been implicit passed to CreateSnitch, 
+                //so s = Snitch() happen inside CreateSnitch
+d'tor   //Snitch() destory
+d'tor   //s destory
+\end{lstlisting}
+
+	\item test 3 and output
+\begin{lstlisting}[frame=single, language=c++]
+Snitch CreateSnitch() {
+return Snitch();
+}
+
+Snitch CSnitch(Snitch&& rs) {
+return rs;
+}
+
+
+int main() {
+Snitch s = CSnitch(CreateSnitch());
+}
+
+with -fno-elide-constructors
+c'tor    //
+copy c'tor    //
+d'tor       /
+copy c'tor    //
+copy c'tor    //
+d'tor       /
+d'tor     //r
+d'tor     //
+
+without -fno-elide-constructors
+c'tor   //Snitch s
+copy c'tor //
+d'tor   //Snitch() destory
+d'tor   //s destory
+\end{lstlisting}
+\end{itemize}
+
+\subsubsection{RVO and Name RVO}
+\begin{itemize}
+	\item \item RVO is a kind of copy elision. \textbf{it happens when you return value from a function.} Three common cases are:
+	
+	\begin{enumerate}
+		\item Name RVO, t has a name
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+Thing f() {
+	Thing t;
+	return t;
+}
+Thing t2 = f();
+\end{lstlisting}
+
+		\item RVO, No name
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+Thing f() {
+return Thing();
+}
+Thing t2 = f();
+\end{lstlisting}
+
+		\item temporary is passed by value
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+void foo(Thing t);
+
+foo(Thing());
+\end{lstlisting}
+
+\item exception is thrown and caught by value
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+void foo() {
+	Thing c;
+	throw c;
+}
+
+int main() {
+	try {
+		foo();
+	}
+	catch(Thing c) {  
+	}             
+}
+\end{lstlisting}
+
+	\end{enumerate}
+
+	
+\end{itemize}
+
+\subsubsection{RVO limitations}
+\begin{itemize}
+	\item Different named object sample will not trigger RVO
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+RVO MyMethod (int i)
+{
+	RVO rvo;
+	rvo.mem_var = i;
+	if (rvo.mem_var == 10)
+		return RVO();
+	return rvo; 
+}
+	\end{lstlisting}
+	
+	\item returning a parameter or Global
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+Snitch global_snitch;
+
+Snitch ReturnParameter(Snitch snitch) {
+return snitch;
+}
+
+Snitch ReturnGlobal() {
+return global_snitch;
+}
+\end{lstlisting}
+
+\item return by std::move()
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+Snitch CreateSnitch() {
+	Snitch snitch;
+	return std::move(snitch);
+}
+\end{lstlisting}
+	
+\item In some cases even an unnamed variable can't RVO:
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+struct Wrapper {
+Snitch snitch;
+};
+
+Snitch foo() {
+return Wrapper().snitch;
+}
+
+int main() {
+Snitch s = foo();
+}
+\end{lstlisting}
+
+\end{itemize}
+
+
+\subsubsection{RVO and move}
+\begin{itemize}
+\item RVO is only effective for 1)local variable. 2)the type of the local object is the same as that returned by the function.
+
+\begin{lstlisting}[frame=single, language=c++]reret
+Matrix operator+{Matrix&& lhs, const Matrix& rhs){
+...
+return lhs; //here, no RVO.
+return move(lhs); //A better solution.
+}
 \end{lstlisting}
 
 \item For other condition, don't use move at all. 1) for local varaible  2) for function paramter 3) multi return points, compiler will use move implicitly. 
@@ -6210,24 +6448,9 @@ return w; //Good, compiler will use move here implicitly.
 } // 
 \end{lstlisting}
 
-\end{itemize}
+\subsubsection{RVO summary}
 
-
-
-\subsection{RVO and copy elision}
-\begin{itemize}
-\item RVO is a kind of copy elision.
-		\item RVO is only effective for 1)local variable. 2)the type of the local object is the same as that returned by the function.
-
-\begin{lstlisting}[frame=single, language=c++]
-Matrix operator+{Matrix&& lhs, const Matrix& rhs){
-...
-return lhs; //here, no RVO.
-return move(lhs); //A better solution.
-}
-\end{lstlisting}
-
-\item When you function return a value.
+\item When you function return a value. That is summary
 
 \begin{enumerate}
 \item Apply std::move to rvalue references and std::forward to universal references
@@ -6306,8 +6529,8 @@ vector.push_back(std::move(f1));
 
 
 
-\subsection{return design}
-\subsubsection{return design-return value}
+\subsection{function return design}
+\subsubsection{return value}
 \begin{itemize}
 	
 	
@@ -6322,27 +6545,7 @@ vector.push_back(std::move(f1));
 	\end{lstlisting}
 	
 	
-		\item \textbf{Three basic knowledges about function return:}
-				\begin{enumerate}
-\item It's very important understand there are two phrases when you return from function. The first step  is from inside fun fauto to ouside of function ftemp(unname tempory), then fauto disappear.  Then in second step, \textbf{Move} from ftemp to flast. because ftemp is rvalue.
-\begin{lstlisting}[frame=single, language=c++]
-Foo fun(){
- return fauto;
-}
 
-Foo flast = ($\Hilight{9}$ftemp created here)fun();
-\end{lstlisting}
-\item ftemp is not on the stack, so you can use const ref or rref to prolong its life. 
-\item ftemp is same with fauto, but maybe not same with flast
-\begin{lstlisting}[frame=single, language=c++]
-Foo fun(){
- return fauto;
-}
-
-const Foo& flast = ($\Hilight{9}$ftemp created here)fun();
-Foo&& flast = fun();
-\end{lstlisting}
-\end{enumerate}
 
 \item For local variable or value parameter, don't use move. compiler will use RVO or default think return value is rvalue.  Return local value can use RVO and move, so It has already had high efficiency.
 
@@ -6359,7 +6562,7 @@ return foo;
 }
 \end{lstlisting}
 \end{itemize}
-\subsubsection{return design-return plain reference} 
+\subsubsection{return plain reference} 
 
 \begin{itemize}
 \item Now talk about return reference: Never return local variable, it will cause dangling problem, So return plain reference only heppen 1) You input a reference first, such as overload <<. 2) member function return some member data, such as copy ctor and overload \verb=[]= inside a class.
@@ -6406,7 +6609,7 @@ operator << and >>
 
 \end{itemize}
 
-\subsubsection{return design-return rvalue reference}
+\subsubsection{return rvalue reference}
 \begin{itemize}
 \item return rvalue reference 1:   If you want to return plain reference, or rvalue reference from a function, you have to input a plain reference or rvalue reference first, because you can't return any reference bound to local auto obj.
 
