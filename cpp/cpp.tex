@@ -19,11 +19,17 @@
 \usepackage{listings}
 %\definecolor{mygray}{rgb}{0.9,0.9,0.9}
 
-\lstset{ %
+\lstset{ 
   %backgroundcolor=\color{mygray}, basicstyle=\footnotesize
-  basicstyle=\footnotesize
+  mathescape=true,
+  frame=single,
+  language=c++,
+  basicstyle=\footnotesize,
+  %literate={\ \ }{{\ }}1
+  tabsize=2,
+  morecomment=[s][\color{red}]{/*-}{*/},
 }
-\lstset{morecomment=[s][\color{red}]{/*-}{*/}}
+
 \newcommand{\Hilight}[1]{\makebox[0pt][l]{\color{yellow}\rule[-3pt]{#1em}{11pt}}}
 \newcommand{\HilightLine}[2][yellow]{\makebox[0pt][l]{\color{#1}\rule[-4pt]{#2em}{13.9pt}}}
 
@@ -54,6 +60,7 @@
 \subsection{basic definition}
 \begin{itemize}
     \item C++ inherits basic data type, variable name, statement, expression, and operator, control flow, function, file, head file and library, array, pointer and structure from C language. C++ is superset of C, so any C programs can be compiled by C++.
+
     
     \item C++is a Multi-paradigm language, there are four sub-topics: 
     
@@ -77,11 +84,11 @@
     \item Statements are fragments of the C++ program that are executed in sequence. Only statement, which end with semicolon is executed. Most statements are expression statements. 
 \begin{lstlisting}[frame=single, language=c++]    
 int main(){
-    int n = 1;               // declaration statement
-    n = n + 1;               // expression statement
-    std::cout << n << '\n'; // expression statement
-    return 0;               // return statement
-    }
+	int n = 1;               // declaration statement
+	n = n + 1;               // expression statement
+	std::cout << n << '\n'; // expression statement
+	return 0;               // return statement
+}
 \end{lstlisting}
 	\item An expression is a sequence of \textbf{operators} and their \textbf{operands}, that specifies a computation. Expression evaluation may produce a result
 
@@ -98,11 +105,11 @@ int main(){
     \item The designers of C realized that no harm was done if you were allowed to evaluate an expression and throw away the result. In C, every syntactic expression can be a made into a statement just by tacking a semicolon along the end:
     
 \begin{lstlisting}[frame=single, language=c++]
-    i //is expression;
-    x+y //is expression;
-    x+y; //is statement, but you throw away the result
-    j=i; is a statement.
-    fun(i) //is expression;
+//is expression;
+x+y //is expression;
+x+y; //is statement, but you throw away the result
+j=i; is a statement.
+fun(i) //is expression;
 \end{lstlisting}
     
 \end{itemize}
@@ -362,186 +369,35 @@ int b = static_cast<int>(f);  //in C++
 \end{itemize}
 
 
-\section{Declaring and definition}
-\subsection{Basic conception}
+\section{Separate Compilation and link}
+
+\subsection{declaration and header file}
 \begin{itemize}
-	\item A declaration introduces an identifier and describes its type, be it a type, object, or function. \textbf{A declaration is what the compiler needs to accept references to that identifier.} 
+	\item Having only one source file is unrealistic, so we break the code up into its logical structure. In this way, only changed parts need to be recompiled, and reduce the compile time.
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	extern int bar;
-	extern int g(int, int);
-	double f(int, double); 
-	// extern can be omitted for function declarations
-	class Foo; 
-	// no extern allowed for type declarations
-	\end{lstlisting}
+	\item \textbf{When we use the multiple source file, each part needs to know what information about functions and variables "used" from other files. That is why we need declaring.}
 	
-	\item A definition actually instantiates/implements this identifier. It's what the linker needs in order to link references to those entities. These are definitions corresponding to the above declarations:
-	\begin{lstlisting}[frame=single, language=c++]
-	int bar;
-	int g(int lhs, int rhs) {return lhs*rhs;}
-	double f(int i, double d) {return i+d;}
-	class foo {}; //put ; after calss definition.
-	\end{lstlisting}
-	
-	\item The difference between declaring a symbol and defining a symbol: A declaration tells the compiler about the existence of a certain symbol and makes it possible to \textbf{refer to that symbol everywhere where the explicit memory address or required storage of that symbol is not required.}  A definition tells the compiler what the body of a function contains or how much memory it must allocate for a variable.
-	
-	\item One very important difference between declarations and definitions is that a symbol may be declared many times, but defined only once. For example, you can forward declare a function or class however often you want, but you may only ever have one definition for it. This is called the \textbf{One Definition Rule}.
-	
-	\item Even you can declare variable, function and class many times, it's not good smell to do that.  If you modify it's name, you need to trace back all the declaration. \textbf{If a function or class is used by many units, You'd better build a global header file "global.h". and put all the declaration there.} 
-\end{itemize}
-
-\subsubsection{forward declaration}
-
-\begin{itemize}
-	\item In C++, there exists the concept of forward declaring a symbol. We declare the type and name of a symbol so that we can use it where its definition is not required. There are three usages as below:
-	\begin{enumerate}
-		\item It will reduce compile-time dependencies --PIMPL.
-		\item Hide all the detail. 
-		\item Break cyclic references
-	\end{enumerate}
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	// file.hpp
-	class C1; // that is forward declaring.
-	
-	class C2{
-	...
-	C1* pc1;
-	}
-	\end{lstlisting}
-	
-	\item Forward declaration doesn't work if you need to build or access its member. It's only work when you refer it by pointer or reference.
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	class Foo;
-	Foo* f1 = new Foo //error, you need #include Foo.h
-	// so compile can know all detail.
-	
-	fun(Foo* f1){
-	f1->a; 
-	//error, compiler need to know if there is a 
-	}
-	fun(Foo f1) //error, compiler need to know the size.
-	\end{lstlisting}
-	
-	\item About cyclic include, you need to know below:
-	\begin{enumerate}
-		\item You can't write the code below, because the compiler will not know the size of A and B. 
-		\begin{lstlisting}[frame=single, language=c++]
-		class A{
-		B b;
-		}
-		
-		class B{
-		A a;
-		}
-		\end{lstlisting}
-		\item Use pointer or reference to tackle size cyclic dependent problem. But it still has include cyclic dependent problem. 
-		\begin{lstlisting}[frame=single, language=c++]
-		#include "b.h"
-		class A{
-		B* b;
-		}
-		
-		#include "a.h"
-		class B{
-		A a;
-		}
-		\end{lstlisting}
-		\item In the end, you can use forward declaration to remove \#include statement. 
-		\begin{lstlisting}[frame=single, language=c++]
-		//#include "b.h"
-		class B;
-		class A{
-		B* b;
-		}
-		\end{lstlisting}
-	\end{enumerate}
-	
-	\item About pimpl, you need to know below:
-	
-	\begin{enumerate}
-		
-		\item In you .h file, when you use Foo* p or Foo\& rp; You don't need include Foo.h file. you can use forward declaration.
-		\begin{lstlisting}[frame=single, language=c++]
-		class Foo;
-		Foo* p;
-		\end{lstlisting}
-		
-		\item Base on previous forward declaration, you can use "Pimpl" idiom.
-		\begin{lstlisting}[frame=single, language=c++]
-		// widget.h file
-		class Widget { // still in header "widget.h"
-		private:
-		struct Impl; // declare implementation struct
-		std::unique_ptr<Impl> pImpl;
-		};
-		
-		//widget.cpp file
-		#include "Foo.h"  // just include Foo.h in .cpp file.
-		struct Widget::Impl {
-		Foo f1;
-		Gadget g1;
-		};
-		\end{lstlisting}
-		
-		\item Pimpl Idiom is one of std::unique\_ptrs most common use cases. But different with raw pointer,  you need to declare or implement some special member functions, such as dtor ctor and move ctor. Explanation can be seen in "effective modern C++ item 22". 
-		\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-		// widget.h file
-		class Widget { // still in header "widget.h"
-		
-		Widget(Widget&& rhs); // declarations
-		Widget& operator=(Widget&& rhs); // only
-		$\Hilight{12}$Widget::~Widget()
-		Widget(const Widget& rhs); // declarations
-		Widget& operator=(const Widget& rhs); // only
-		
-		private:
-		struct Impl; // declare implementation struct
-		std::unique_ptr<Impl> pImpl;
-		};
-		
-		//widget.cpp file
-		#include "Foo.h"  // just include Foo.h in .cpp file.
-		
-		Widget::~Widget() = default; // as before
-		Widget::Widget(Widget&& rhs) = default; // definitions
-		Widget& Widget::operator=(Widget&& rhs) = default;
-		Widget::Widget(const Widget& rhs) // copy ctor
-		: pImpl(std::make_unique<Impl>(*rhs.pImpl))
-		{}
-		
-		Widget& Widget::operator=(const Widget& rhs) {
-		*pImpl = *rhs.pImpl;
-		return *this;
-		}
-		\end{lstlisting}
-		
-	\end{enumerate}
-	
-	
-\end{itemize}
-
-
-
-\subsubsection{Translation unit}
-
-\begin{itemize}
-	
-	\item When you write an implementation file (.cpp, .cxx, etc),  your compiler generates a translation unit. This is the object file from your implementation file plus all the headers you \#include in it.
-	
-	\item Each .cpp is a translation unit. Basically, you should put each class into a single .cpp file, and make sure each .cpp file has a corresponding .h file.  If two classes are highly correlated, they maybe be put in the same .cpp file.
-	
-	\item A translation unit roughly consists of a source file after it has been processed by the C preprocessor, meaning that header files listed in \#include directives are literally included, sections of code within \#ifdef may be included, and macros have been expanded.
-	
-	\item If you just want a function or variable visible to only current translation unit. You can declare it as static. Or you can use unnamed namespace.  You don't need to put it into a header file.  But in C++, you have to declare function and variable before you use them. Different with C language, In C language, compiler will guess a function prototype from it's usage, It's not good most of time.
-	
-	\item C/C++ use separate compilation. If you need to use a function or variable in two different files, you should put them in the  global.h file and include them when necessary. (add extern keyword before variable name).  It will keep declaration just once, \textbf{DO NOT copy declaration to the other positions in the other .cpp file. It will lead to many duplication, it's bad smell of code.}
+	It's not good way to declare everywhere,\textbf{DO NOT copy declaration to the other positions in the other .cpp file. It will lead to many duplication, it's bad smell of code.} If you need to use a function or variable in many different files, you should put them in a header filer. export\_to.h for certain cpp source file or global.h file for the whole applicaiton.  (Add extern keyword before variable name).  It will keep declaration just once, 
 	
 	\item \textbf{In your project, you can global search function or variable declaration, if you find more than two, It's strong indication to make a global head file and put it into it.}
 	
+	\item When you write an single source file (.cpp, .cxx, etc),  your compiler generates a translation unit. This is the object file from your implementation file plus all the headers you \#include in it.  A translation unit roughly consists of a source file after it has been processed by the C preprocessor, meaning that header files listed in \#include directives are literally included, sections of code within \#ifdef may be included, and macros have been expanded.
+	
+	\item Each .cpp will become a translation unit. Basically, you should put each class definition into a single .cpp file, and make sure each .cpp file has a corresponding .h file.  If two classes are highly correlated, they maybe be put in the same .cpp file.
+	
+	\item If you just want a function or variable visible to only current translation unit. You can declare it as static. Or you can use unnamed namespace.  You don't need to put it into a header file.  Just remember in C++, you have to declare function and variable before you first use them. Different with C language, In C language, compiler will guess a function prototype from it's usage, but it's not good most of time.
+	
+
 	\item A better suggestion is to have a single global.h file for a complex system. Then put some common type, defined type, constant and global function in this single global.h file. So it will help to reduce duplication, just keep once appearance.
+	
+	\item Three main contents in header file:
+	\begin{enumerate}
+		\item "Everything" that should be exported (i.e., used in other files)
+		
+		\item "Nothing" that causes the compiler to immediately generate code
+		
+		\item Except, for a small number of exceptions.such as const and inline function, which has inline linkage
+	\end{enumerate}
 	
 	\item Three rules about header file:
 	
@@ -550,13 +406,13 @@ int b = static_cast<int>(f);  //in C++
 		
 		\item \textbf{Put your local/private header file in front of system header file. }  Why? There are two advantages, 1) You can know what header file should be included, It's helpful to achieve the goal of demand 2.  2) Sometimes, if you have you own function with same name as system or library, It can give you a compile error; Below example will give you a compile error. But if you put <cmath> before myHead.h. Then, main will use acos in cmath, and your acos will be override.
 		
-		\begin{lstlisting}[frame=single, language=c++]
-		#include "myHead.h"  //double acos(double)
-		#include <cmath>
-		main{
-		acos(0.5);
-		}
-		\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+#include "myHead.h"  //double acos(double)
+#include <cmath>
+main{
+	acos(0.5);
+}
+\end{lstlisting}
 		
 		\item You will need to put the minimal set of \#include statements that are needed to make the header compilable when your local/private header is included on the first place.  It will make your header file self-sufficient.
 	\end{enumerate}
@@ -565,8 +421,161 @@ int b = static_cast<int>(f);  //in C++
 	
 	\item \textbf{Putting a semicolon in the end of head file is good suggestion.} You also need semicolon after declare class. In .cpp file, no semicolon after each function definition.
 	
+	\item You can google "Advanced Software Engineering with C++ Templates".The first half part introduce separate compilation.
 \end{itemize}
 
+\subsection{declaration and definition}
+\begin{itemize}
+	\item A declaration introduces an identifier and describes its type, be it a type, object, or function. \textbf{A declaration is what the compiler needs to accept references to that identifier.} 
+	
+\begin{lstlisting}[frame=single, language=c++]
+extern int bar;
+extern int g(int, int);
+double f(int, double); 
+// extern can be omitted for function declarations
+class Foo; 
+// no extern allowed for type declarations
+	\end{lstlisting}
+	
+	\item A definition actually instantiates/implements this identifier. It's what the linker needs in order to link references to those entities. These are definitions corresponding to the above declarations:
+
+\begin{lstlisting}[frame=single, language=c++]
+int bar;
+int g(int lhs, int rhs) {return lhs*rhs;}
+double f(int i, double d) {return i+d;}
+class foo {}; //put ; after calss definition.
+\end{lstlisting}
+	
+	\item The difference between declaring a symbol and defining a symbol: A declaration tells the compiler about the existence of a certain symbol and makes it possible to \textbf{refer to that symbol everywhere where the explicit memory address or required storage of that symbol is not required.}  A definition tells the compiler what the body of a function contains or how much memory it must allocate for a variable.
+	
+	\item One very important difference between declarations and definitions is that a symbol may be declared many times in different translating unit, but defined in on translating unit only once. For example, you can forward declare a function or class however often you want, but you may only ever have one definition for it. This is called the \textbf{One Definition Rule}.
+	
+	\item Even you can declare variable, function and class many times, it's not good smell to do that.  If you modify it's name, you need to trace back all the declaration. \textbf{If a function or class is used by many units, You'd better build a header file. and put all the declaration there. When you need this declaration, just inlcudes it} 
+\end{itemize}
+
+
+\subsubsection{forward declaration}
+\begin{itemize}
+	\item In C++, there exists the concept of forward declaring a symbol. We declare the type and name of a symbol so that we can use it where its definition is not required. There are three usages as below:
+	\begin{enumerate}
+		\item It will reduce compile-time dependencies --PIMPL.
+		\item Hide all the detail. 
+		\item Break cyclic references
+	\end{enumerate}
+	
+\begin{lstlisting}[frame=single, language=c++]
+// file.hpp
+class C1; // that is forward declaring.
+
+class C2{
+...
+	C1* pc1;
+}
+\end{lstlisting}
+	
+	\item Forward declaration doesn't work if you need to build or access its member. It's only work when you refer it by pointer or reference.
+	
+\begin{lstlisting}[frame=single, language=c++]
+class Foo;
+Foo* f1 = new Foo //error, you need #include Foo.h
+// so compile can know all detail.
+	
+fun(Foo* f1){
+	f1->a; 
+	//error, compiler need to know if there is a 
+}
+fun(Foo f1) //error, compiler need to know the size.
+\end{lstlisting}
+	
+	\item About cyclic include, you need to know below:
+	\begin{enumerate}
+		\item You can't write the code below, because the compiler will not know the size of A and B. 
+\begin{lstlisting}[frame=single, language=c++]
+class A{
+	B b;
+}
+
+class B{
+	A a;
+}
+\end{lstlisting}
+		\item Use pointer or reference to tackle size cyclic dependent problem. But it still has include cyclic dependent problem. 
+\begin{lstlisting}[frame=single, language=c++]
+#include "b.h"
+class A{
+	B* b;
+}
+		
+#include "a.h"
+class B{
+	A a;
+}
+\end{lstlisting}
+		\item In the end, you can use forward declaration to remove \#include statement. 
+\begin{lstlisting}[frame=single, language=c++]
+//#include "b.h"
+class B;
+class A{
+	B* b;
+}
+\end{lstlisting}
+	\end{enumerate}
+	
+	\item About pimpl, you need to know below:
+	\begin{enumerate}
+		\item In you .h file, when you use Foo* p or Foo\& rp; You don't need include Foo.h file. you can use forward declaration.
+\begin{lstlisting}[frame=single, language=c++]
+class Foo; //forward declaration
+......
+Foo* p; //use it, but only define a pointer.
+\end{lstlisting}
+		
+		\item Base on previous forward declaration, you can use "Pimpl" idiom.
+\begin{lstlisting}[frame=single, language=c++]
+// widget.h file
+class Widget { // still in header "widget.h"
+	private:
+	struct Impl; // declare implementation struct
+	std::unique_ptr<Impl> pImpl;
+};
+		
+//widget.cpp file
+#include "Foo.h"  // just include Foo.h in .cpp file.
+struct Widget::Impl {
+	Foo f1;
+	Gadget g1;
+};
+\end{lstlisting}
+		
+		\item Pimpl Idiom is one of std::unique\_ptrs most common use cases. But just like using raw pointer,  you can't avoid definine destructor even you have used unique\_ptr. 
+		
+		\item The Explanation can be seen in "effective modern C++ item 22". 
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+// widget.h file
+class Widget { // still in header "widget.h"
+	$\Hilight{12}$Widget::~Widget()
+	//If you don't decare here, compiler will produce by itself,
+	//In the end, it will call delete struct* pIm
+	//but at here, struct* pIm is a uncomplete type(definition is still unvisible)
+
+private:
+	struct Impl; // declare implementation struct
+	std::unique_ptr<Impl> pImpl;
+};
+		
+//widget.cpp file
+#include "Foo.h"  // just include Foo.h in .cpp file.
+$\HilightLine{18}$struct Wideget::Impl{
+	Foo fo; 
+}
+
+//here, Widget's destuctor can see the whole Impl definition,
+//so delete struct* pIm is legal now.
+Widget::~Widget() = default; // as before
+	
+\end{lstlisting}
+	\end{enumerate}
+\end{itemize}
 
 \subsection{Linkage}
 \begin{itemize}
@@ -589,24 +598,26 @@ int b = static_cast<int>(f);  //in C++
 	\end{enumerate}
 	
 	\item When internal linkage, it means that 1) you can put two same static variable name in two different .cpp file, no linkage error. 2) you can't put extern before static, in another word, you can't access static variable in another .cpp file. 
+	
 \end{itemize}
+
 \subsubsection{ODR}
 \begin{itemize}
 	
 	\item For C language, there is tentative definition rule. You can define the same variable in two different .c file. The result will be undefined. But in the C++, this is not allowed any more. 
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	a.c
-	int g_i = 100;
-	////////////////////////////////
-	b.c
-	int g_i;
-	fun(){
+\begin{lstlisting}[frame=single, language=c++]
+a.c
+int g_i = 100;
+////////////////////////////////
+b.c
+int g_i;
+fun(){
 	printf("%d",g_i) //will print 100
 	//gcc a.c b.c report no error.
 	//g++ report error
 	//in b.c, if you g_i= 2; gcc report error.
-	\end{lstlisting}
+\end{lstlisting}
 	
 	\item For C++ language ,tentative definition of variable is not allowed. At the same time, multi-definition of function is not allowed either. but there are another implicit risk as below. 
 	
@@ -616,7 +627,7 @@ int b = static_cast<int>(f);  //in C++
 	
 	\item  If an inline function appears in foo.cpp (either because it was written in it, or because it \#includes a header in which it was written, in which case the preprocessor basically makes it so). Now you compile foo.cpp, and possibly also some other bar.cpp which also contains an inline function with the same signature (possibly the exact same one; probably due to both \#includeing the same header). When the linker links the two object files, it will not be considered a violation of the ODR, as the inline directive made each copy of the file local to its translation unit (the object file created by compiling it, effectively). This is not a suggestion, it is binding.
 	
-	It is not coincidental that these two things go together. The most common case is for an inline function to appear in a header \#included by several source files, probably because the programmer wanted to request fast inline expansion. This requires the translation-unit locality rule, though, so that linker errors shouldn't arise.
+	\item It is not coincidental that these two things go together. The most common case is for an inline function to appear in a header \#included by several source files, probably because the programmer wanted to request fast inline expansion. This requires the translation-unit locality rule, though, so that linker errors shouldn't arise.
 	
 	\item In one word \textbf{Put inline function into the header file.}
 \end{itemize}
