@@ -5968,7 +5968,7 @@ $\Hilight{19}$//with const, It's not univerisal reference any more.
 \end{itemize}
 
 
-\section{function interface design}
+\section{function interface-parameter}
 
 \subsection{Generic function parameter design}
 \begin{itemize}
@@ -6184,17 +6184,17 @@ reduceAndCopy(T&& frac) // universal reference param
 
 \end{itemize}
 
-
-
-\subsection{RVO and copy elision}
-\subsubsection{Basic idea}
+\section{funciton interface-return}
 \begin{itemize}
-	
-	\item \textbf{For no RVO, know there are two steps when we return value, for RVO, know we implicit pass the result by reference. These are two most important knowledge to understand all the detail below.}
-	
-	\item \textbf{Three basic knowledges about function return:}
+	\item \textbf{These are two most important knowledge to understand all the detail below.}
 	\begin{enumerate}
-		\item It's very important understand there are two phrases when you return from function. The first step  is from inside fun fauto to ouside of function ftemp(unname tempory), then fauto disappear.  Then in second step, \textbf{Move} from ftemp to flast. because ftemp is rvalue.
+		\item For no RVO, there are two steps when we return value.
+		\item For RVO, we implicit pass the result by reference.
+	\end{enumerate}
+	
+	\item \textbf{Three basic knowledges about function return when no RVO:}
+	\begin{enumerate}
+		\item It's very important understand there are two phrases when you return from function. The first step  is from inside fun fauto to ouside of function ftemp(unname tempory), then fauto disappear(call destructor for value).  Then in second step, \textbf{Move} from ftemp to flast. because ftemp is rvalue.
 		\begin{lstlisting}[frame=single, language=c++]
 		Foo fun(){
 		return fauto;
@@ -6202,125 +6202,269 @@ reduceAndCopy(T&& frac) // universal reference param
 		
 		Foo flast = ($\Hilight{9}$ftemp created here)fun();
 		\end{lstlisting}
-		\item ftemp is not on the stack, so you can use const ref or rref to prolong its life. 
+		\item ftemp is not on the stack, so you can use const ref or rref to prolong its life.
+		
 		\item ftemp is same with fauto, but maybe not same with flast
 		\begin{lstlisting}[frame=single, language=c++]
 		Foo fun(){
-		return fauto;
+			return fauto;
 		}
 		
+		$\Hilight{39}$fun return Value, if run return reference, it's dangerous.
 		const Foo& flast = ($\Hilight{9}$ftemp created here)fun();
 		Foo&& flast = fun();
 		\end{lstlisting}
 	\end{enumerate}
 	
-	\item given below code
-\begin{lstlisting}[frame=single, language=c++]
-class Snitch {   // Note: All methods have side effects
-	Snitch() { cout << "c'tor" << endl; }
-	~Snitch() { cout << "d'tor" << endl; }
-	
-	Snitch(const Snitch&) { cout << "copy c'tor" << endl; }
-	Snitch(Snitch&&) { cout << "move c'tor" << endl; }
-	
-	Snitch& operator=(const Snitch&) {
-	cout << "copy assignment" << endl;
-	return *this;
+	\item The basic RVO is implemented by this way:
+	\begin{lstlisting}[frame=single, language=c++]
+	X bar(){
+		X xx;
+		return xx;
 	}
 	
-	Snitch& operator=(Snitch&&) {
-	cout << "move assignment" << endl;
-	return *this;
+	void bar(x &__result){
+	__result.X::X() // default ctor call
+	....
+	return
 	}
-};
-
-Snitch CreateSnitch() {
-	return Snitch();
-}
-\end{lstlisting}
-
-	\item test 1 and output 
-\begin{lstlisting}[frame=single, language=c++]
-int main() {
-Snitch s = CreateSnitch();
-}
-
-with -fno-elide-constructors
-c'tor    //Snitch()
-move c'tor  //Snitch() to return value
-d'tor       //Snitch() destory
-move c'tor //return value to s
-d'tor     //return value destory
-d'tor     //s destory
-
-without -fno-elide-constructors
-c'tor   //s
-d'tor   //s destory
-\end{lstlisting}
-
-	\item test 2 and output
-\begin{lstlisting}[frame=single, language=c++]
-int main() {
-	Snitch s;
-	s = CreateSnitch();
-}
-with -fno-elide-constructors
-c'tor    //Snitch s
-c'tor    //Snitch() in side CreateSnitch
-move c'tor  //Snitch() to return value
-d'tor       //Snitch() destory
-move assignment //return value to s
-d'tor     //return value destory
-d'tor     //s destory
-
-without -fno-elide-constructors
-c'tor   //Snitch s
-c'tor   //Snitch()
-move assignment //s has been implicit passed to CreateSnitch, 
-                //so s = Snitch() happen inside CreateSnitch
-d'tor   //Snitch() destory
-d'tor   //s destory
-\end{lstlisting}
-
-	\item test 3 and output
-\begin{lstlisting}[frame=single, language=c++]
-Snitch CreateSnitch() {
-return Snitch();
-}
-
-Snitch CSnitch(Snitch&& rs) {
-return rs;
-}
-
-
-int main() {
-Snitch s = CSnitch(CreateSnitch());
-}
-
-with -fno-elide-constructors
-c'tor    //
-copy c'tor    //
-d'tor       /
-copy c'tor    //
-copy c'tor    //
-d'tor       /
-d'tor     //r
-d'tor     //
-
-without -fno-elide-constructors
-c'tor   //Snitch s
-copy c'tor //
-d'tor   //Snitch() destory
-d'tor   //s destory
-\end{lstlisting}
+	 \end{lstlisting}
+	
 \end{itemize}
 
-\subsubsection{RVO and Name RVO}
+\subsection{return plain reference} 
+
 \begin{itemize}
-	\item \item RVO is a kind of copy elision. \textbf{it happens when you return value from a function.} Three common cases are:
+	\item Now talk about return reference: Never return local variable, it will cause dangling problem, So return plain reference only heppen 1) You input a reference first, such as overload <<. 2) member function return some member data, such as copy ctor and overload \verb=[]= inside a class.
 	
+	\item  When the client programmer does something like this and uses a reference beyond its lifetime, the bug will typically be intermittent and very difficult to diagnose. Indeed, one of the most common mistakes programmers make with the standard library is to use iterators after they are no longer valid, which is pretty much the same thing as using a reference beyond its lifetime
+	
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	string& a = FindAddr( emps, "John Doe" );
+	emps.clear(); // This statement will invalid a.
+	cout << a; // may or may not work, It's difficult to debug.
+	\end{lstlisting}
+	
+	\item If you want to return reference,  there is a defensible option that allows returning a reference and thus avoiding a temporary. But it's your last resort.
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	const string&
+	FindAddr( /* pass emps and name by reference */ ){
+	for( /* ... */ ){
+	if( i->name == name ){
+	return i->addr;
+	}
+	}
+	$\Hilight{20}$static const string empty;
+	return empty;
+	}
+	\end{lstlisting}
+	
+	\item Why don't we usualy return plain reference?
 	\begin{enumerate}
-		\item Name RVO, t has a name
+		\item You want to return a reference to avoid copy of auto obj inside of function,  but in the end you will get a dangling reference. It's very a dangerous action. \textbf{Don't return reference just for efficient return, It's unnecessary and dangerous}.
+		
+		\item You don't need return rvalue reference\&\& either.  return value ftemp outside of fun is always rvalue. ftemp->flast is move.  So you don't need to declare Foo\&\& fun
+		
+		\item If you return non-auto obj, You have to 1) new a obj, in this way, you can return pointer directly. 2) input a reference for read, in this way, you can input const reference, You don't need to return it at all. 3) input a reference for write, in this way, you don't need return it either, modification will act on inputted reference directly. So when do we use return plain reference?
+	\end{enumerate}
+	
+	\item About return reference, by now, I only know three functions which return reference. = and << are for support cascading syntactic usage: such as cout<<a<<b, a=b=c.  [] is for support assignment obj[3]= 12.  That is all.
+	\begin{lstlisting}[frame=single, language=c++]
+	operator =
+	operator []
+	operator << and >>
+	\end{lstlisting}
+	
+	\item \textbf{Don't return reference or pointer to private member variables through you public member functions. It will break encapsulation. }
+	
+\end{itemize}
+\subsection{return rvalue reference}
+\begin{itemize}
+	\item return rvalue reference 1:   If you want to return plain reference, or rvalue reference from a function, you have to input a plain reference or rvalue reference first, because you can't return any reference bound to local auto obj.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	A&& rrfun1(A&& arg){
+	return std::move(arg);
+	//You have to use move here,
+	//because arg is lvalue.
+	}
+	
+	A&& rrfun2(A& arg){
+	return std::move(arg);
+	}
+	
+	A a;
+	A b= rrfun1(std::move(a) );
+	A b = rrfun2(a);
+	\end{lstlisting}
+	
+	
+	\item return rvalue reference 2:   below code will call move ctor once.  1) move ctor from arg to ftemp, 2) rvalue reference b bound to ftemp(rvalue). Only reasonable in syntax, No any practical meaning, and \textbf{It's dangerous}.
+	\begin{lstlisting}[frame=single, language=c++]
+	A rrfun(A& arg){
+	return std::move(arg);
+	}
+	
+	A a;
+	A&& b = rrfun(a);
+	//after this a is invalid, and b refer a ftemp
+	\end{lstlisting}
+	
+	\item return rvalue reference 3:   1)ftemp type is A 2)below code will call move ctor once(arg move to b) 2)turn off RVO, then arg move ftemp, then ftemp move to b.3)move ctor once, arg move to ftemp. b prolong ftemp life.(Why do you want to do that?)
+	\begin{lstlisting}[frame=single, language=c++]
+	A rrfun(A& arg){
+	return std::move(arg);
+	}
+	
+	A a;
+	A b = rrfun(a); // move ctor once
+	A b = rrfun(a); //move ctor twice with -fno-elide-constructors
+	A&& b = rrfun(a); // move ctor once.
+	\end{lstlisting}
+	
+	\item return rvalue reference 4:   below code will call move ctor once from ftemp to b.  
+	\begin{lstlisting}[frame=single, language=c++]
+	A&& rrfun(A& arg){
+	return std::move(arg);
+	}
+	
+	A a;
+	A b = rrfun(a);
+	\end{lstlisting}
+	
+	\item return rvalue reference 5:   below code will not call move ctor at all. So you mean that I want to keep watch for a while, and obj a is still intact right now.
+	\begin{lstlisting}[frame=single, language=c++]
+	A&& rrfun(A& arg){
+	return std::move(arg);
+	}
+	
+	A a;
+	A&& b = rrfun(a);
+	\end{lstlisting}
+	
+	\item return rvalue reference 6:   below code will call copy ctor once. \textbf{name rvalue reference is lvalue, you should use std::move to force move it}
+	\begin{lstlisting}[frame=single, language=c++]
+	A rrfun(A& arg){
+	return move(arg); //call move ctor 
+	return (arg); // call copy ctor
+	}
+	
+	A a;
+	A b = rrfun(a);
+	\end{lstlisting}
+	
+	\item return rvalue reference 7: Why we use move in below example? lhs inside is lvalue, not auto variable,  so we need to copy it to outside ftemp. But you can see lhs type is rvalue refence, so you can use std::move to force move it.
+	\begin{lstlisting}[frame=single, language=c++]
+	Matrix operator+(Matrix&& lhs, const Matrix& rhs) {
+	lhs += rhs;
+	return std::move(lhs); // move lhs into outside function.
+	}
+	\end{lstlisting}
+	
+	\item return rvalue reference 8: All the previous example, rrfun argument should be A\&\& arg,  I just focus on return part, so I simplify the argument to a plain reference. But you should know, std::move(plain reference) is not good design. You only can do it if you STRONG sure that you don't want use obj after you std::move(obj).
+	
+	\item You can understan all these examples by three function knowledge int he begining. And all these exmaples are just have academic meaning, no any practial sense at all. Why?
+	
+	\item \textbf{rref is ref first, so if we have reason don't return ref from function, all these reason is also valid for rref.}
+	
+	\item If a function return rref, 1)it must receive rref first,  2) inside function, he modify rref, 3) return this rref to another rref. These requirment is so werid. Why not modify the first rref directly. Just like we seldome receive a plain ref and return plain ref again. Because all your modification has affect input plain ref.  if return plain ref is unnessary, return another rref is dangerous, because it will cause dangling problem, because rref refer a temporary varaible, it can disappaer or move at any time.
+	
+	\item Why return value is better than return rvalue reference? 1) more clear semantic 2) when use with auto, it's support RVO. 
+	\begin{lstlisting}[frame=single, language=c++]
+	DataType data() && { return std::move(values); } // why DataType?
+	auto values = makeWidget().data();
+	//with ROV, just move once. 
+	
+	DataType && data() && { return std::move(values); }
+	auto&& values = makeWidget().data();
+	//values will be dangling
+	\end{lstlisting}
+	
+	\item Another implicit dangling case. 
+	\begin{lstlisting}[frame=single, language=c++]
+	int&& fun(int&& a){
+	return std::move(a);
+	}
+	int main(){
+	int&& a = 1+2;
+	int&& b = fun(move(a));
+	int&& c = fun(1+2);
+	cout<<b<<" "<<c<<endl;
+	printf("Hello World");
+	
+	return 0;
+	}
+	\end{lstlisting}
+	
+	
+	
+	\item \textbf{In Summary 1, Three operator overload return plain reference, one std::move return rref. It doesn't involve value semantic, just a type change. All the others return value, That's all!}
+	
+	\item \textbf{In summary 2, If function return value, For only copy lvalue, return value; for movable lvalue, move;  For universal refence, forward. }
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	Matrix operator+(Matrix& lhs, const Matrix& rhs) {
+	return lhs
+	}
+	
+	Matrix operator+(Matrix&& lhs, const Matrix& rhs) {
+	return move(lhs)
+	}
+	
+	template<type T>
+	T operator+(T&& lhs) {
+	return forward<T>(lhs)
+	}
+	\end{lstlisting}
+	
+	\item By now, I only know std::move return rvalue reference.  Function return rref is rare. ab is neither a local automatic nor a temporary rvalue. Now, the ref-qualifier \&\& says that the second function is invoked on rvalue temporaries, making the following move, instead of copy
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	struct Beta {
+	Beta_ab ab;
+	Beta_ab const& getAB() const& { return ab; }
+	Beta_ab && getAB() && { return move(ab); }
+	$/Hilight{30}$// return && is not Good interface design.
+	
+	Beta_ab ab = Beta().getAB();
+	// It will call move version.
+	//Beta_ab && ab = Beta().getAB(); ab is dangling rref
+	
+	2) Beta_ab getAB() && { return move(ab); }
+	$/Hilight{30}$//Good interface design.
+	};
+	\end{lstlisting}
+	
+	\item A few article you need to read later;
+	1) Efficiency of C++11 push\_back() with std::move versus emplace\_back() for already constructed objects
+	
+	2) view the default functions generated by a compiler?
+	
+	3) What are copy elision and return value optimization?
+	
+	4) One variable init form to rule them all, via mandatory elision.
+	
+	5) Episode Eleven: To Kill a Move Constructor
+	
+\end{itemize}
+
+
+
+\subsection{return value-RVO}
+
+\subsubsection{common RVO case}
+\begin{itemize}
+	\item \item RVO is a kind of copy elision. 
+	\begin{enumerate}
+		\item \textbf{it happens when you return value from a function.}
+		\item The type of the \textbf{local} object is the same as that returned by the function.
+		\item the local object is what's being returned.
+		\item parameter is not eligible for RVO. 
+	\end{enumerate}
+	
+	\item Three common cases are:
+	\begin{enumerate}
+		\item Name RVO, t has a name. It's called NRVO.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 Thing f() {
 	Thing t;
@@ -6329,7 +6473,7 @@ Thing f() {
 Thing t2 = f();
 \end{lstlisting}
 
-		\item RVO, No name
+		\item RVO, No name, just return temporary.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 Thing f() {
 return Thing();
@@ -6362,7 +6506,6 @@ int main() {
 
 	\end{enumerate}
 
-	
 \end{itemize}
 
 \subsubsection{RVO limitations}
@@ -6416,41 +6559,151 @@ Snitch s = foo();
 \end{lstlisting}
 
 \end{itemize}
+\subsubsection{Some practical demos ans analysis}
+\begin{itemize}
+	
+	\item given below code
+	\begin{lstlisting}[frame=single, language=c++]
+	class Snitch {   // Note: All methods have side effects
+	Snitch() { cout << "c'tor" << endl; }
+	~Snitch() { cout << "d'tor" << endl; }
+	
+	Snitch(const Snitch&) { cout << "copy c'tor" << endl; }
+	Snitch(Snitch&&) { cout << "move c'tor" << endl; }
+	
+	Snitch& operator=(const Snitch&) {
+	cout << "copy assignment" << endl;
+	return *this;
+	}
+	
+	Snitch& operator=(Snitch&&) {
+	cout << "move assignment" << endl;
+	return *this;
+	}
+	};
+	
+	Snitch CreateSnitch() {
+	return Snitch();
+	}
+	\end{lstlisting}
+	
+	\item test 1 and output 
+	\begin{lstlisting}[frame=single, language=c++]
+	int main() {
+	Snitch s = CreateSnitch();
+	}
+	
+	with -fno-elide-constructors
+	c'tor    //Snitch()
+	move c'tor  //Snitch() to return value
+	d'tor       //Snitch() destory
+	move c'tor //return value to s
+	d'tor     //return value destory
+	d'tor     //s destory
+	
+	without -fno-elide-constructors
+	c'tor   //s
+	d'tor   //s destory
+	\end{lstlisting}
+	
+	\item test 2 and output
+	\begin{lstlisting}[frame=single, language=c++]
+	int main() {
+	Snitch s;
+	s = CreateSnitch();
+	}
+	with -fno-elide-constructors
+	c'tor    //Snitch s
+	c'tor    //Snitch() in side CreateSnitch
+	move c'tor  //Snitch() to return value
+	d'tor       //Snitch() destory
+	move assignment //return value to s
+	d'tor     //return value destory
+	d'tor     //s destory
+	
+	without -fno-elide-constructors
+	c'tor   //Snitch s
+	c'tor   //Snitch()
+	move assignment //s has been implicit passed to CreateSnitch, 
+	//so s = Snitch() happen inside CreateSnitch
+	d'tor   //Snitch() destory
+	d'tor   //s destory
+	\end{lstlisting}
+	
+	\item test 3 and output
+	\begin{lstlisting}[frame=single, language=c++]
+	Snitch CreateSnitch() {
+	return Snitch();
+	}
+	
+	Snitch CSnitch(Snitch&& rs) {
+	return rs;
+	}
+	
+	int main() {
+	Snitch s = CSnitch(CreateSnitch());
+	}
+	
+	with -fno-elide-constructors
+	c'tor    //
+	copy c'tor    //
+	d'tor       /
+	copy c'tor    //
+	copy c'tor    //
+	d'tor       /
+	d'tor     //r
+	d'tor     //
+	
+	without -fno-elide-constructors
+	c'tor   //Snitch s
+	copy c'tor //
+	d'tor   //Snitch() destory
+	d'tor   //s destory
+	\end{lstlisting}
+\end{itemize}
 
 
 \subsubsection{RVO and move}
 \begin{itemize}
-\item RVO is only effective for 1)local variable. 2)the type of the local object is the same as that returned by the function.
-
-\begin{lstlisting}[frame=single, language=c++]reret
-Matrix operator+{Matrix&& lhs, const Matrix& rhs){
-...
-return lhs; //here, no RVO.
-return move(lhs); //A better solution.
-}
-\end{lstlisting}
-
-\item For other condition, don't use move at all. 1) for local varaible  2) for function paramter 3) multi return points, compiler will use move implicitly. 
-\begin{lstlisting}[frame=single, language=c++]
-Widget makeWidget(){
-Widget w;
-
-return std::move(w); //Bad, no RVO here
-return w; //Good. 
-} // 
-\end{lstlisting}
-
-\begin{lstlisting}[frame=single, language=c++]
-Widget makeWidget( Widget w;){
-
-return std::move(w); //Bad, rudundant, 
-return w; //Good, compiler will use move here implicitly. 
-} // 
-\end{lstlisting}
+	
+	\item For local variable, don't use move. compiler will use RVO , so It has already had high efficiency.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	Foo fun(){
+		Foo foo;
+		return foo;
+	$\Hilight{12}$//Don't use move here.
+	}
+	\end{lstlisting}
+	
+	\item A common error is when there is no RVO, use std::move to avoid copy: but Although parameter is not eligbile for RVO, or different path is not eligible, but you don't need to explicit use std::move, the compiler will use them implicitly.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	Widget makeW(Widget w){
+	.....
+	return w
+	return std::move(w) //don't write it, compiler will do it for you.
+	} 
+	\end{lstlisting}
+	
+	\item If a function is value return, and you want to return a rvalue reference parameter, you have to use move in the return.
+	\begin{enumerate}
+		\item \textbf{lhs is not local object, but reference, so No RVO}
+		\item you may say: but lhs is rvalue reference, but lhs is name rvalue reference. It's lvalue.
+		\item Just like you pass a lvalue reference, you can't move it unless you want to do it explicitly. That is why we need std::move here.
+	\end{enumerate}
+	\begin{lstlisting}[frame=single, language=c++]
+	Matrix // by-value return , by rvalue parameter
+	operator+(Matrix&& lhs, const Matrix& rhs){
+	lhs += rhs;
+	return std::move(lhs); // move lhs into return value
+	return lhs // will copy lhs into return value 
+	} 
+	\end{lstlisting}
 
 \subsubsection{RVO summary}
 
-\item When you function return a value. That is summary
+\item First use RVO, then compiler implicit use std::move, the last one is use std::move explicitly.
 
 \begin{enumerate}
 \item Apply std::move to rvalue references and std::forward to universal references
@@ -6460,324 +6713,12 @@ the last time each is used.
 be eligible for the return value optimization.
 \end{enumerate}
 
-\item Foo f1 = fun(); When function finish, ctor is called first time, from auto-->temp. Then, ctor is called  second time,  temp-->f1. With RVO, It can be build on f1 directly, no ctor is called at all.
-\begin{lstlisting}[frame=single, language=c++]
-// operator+ and fun has same idea, both return obj value.
-Foo operator+(const Foo& other){
-  Foo temp;
-  ......
-  return temp;
-}
-
-Foo fun(){
-  Foo temp();
-  return temp;
-}
-
-//experiment 1: g++ -fno-elide-constructor, turn off RVO
-fun(); // call ctor once;
-Foo foo1 = fun(); //call ctor twice
-Foo& foo2 = fun(); // compile error
-const Foo& foo3 = fun(); //call ctor once
-
-//experiment 2: define move ctor
-fun(); // call move ctor once;
-Foo foo1 = fun(); //call move ctor twice
-const Foo& foo3 = fun()
-//call move ctor once auto->temp
-
-//experiment 3:
-Foo&& foo4 = fun() //OK,  foo4's recourse can be stolen.
-
-//experiment 4: g++ turn on RVO
-fun(); // call nothing;
-Foo foo1 = fun(); //call nothing
-\end{lstlisting}
-
-
-\item In theory, with RVO, you don't need write move ctor any more. but there are still some usage, such as:
-\begin{enumerate}
-\item For multi return, no RVO, such as fun() below.
-\begin{lstlisting}[frame=single, language=c++]
-Foo fun(){
-   if(condition)
-     return Foo(1);
-   else
-     return Foo(2);
-\end{lstlisting}
-
-\item swap fun
-\begin{lstlisting}[frame=single, language=c++]
-swap( Foo & f1 , Foo& f2){
-   temp = move(f1);
-   f1 = move(f2);
-   f2 = move(temp)
-\end{lstlisting}
-
-
-\item vector container include rvalue version and value version.
-\begin{lstlisting}[frame=single, language=c++]
-vector.push_back(Foo(1)); //better
-
-Foo f1 = Foo(1);
-vector.push_back(f1);
-//Don't need f1, you can use
-vector.push_back(std::move(f1));
-\end{lstlisting}
-\end{enumerate}
-\end{itemize}
-
-
-
-\subsection{function return design}
-\subsubsection{return value}
-\begin{itemize}
-	
-	
-	\item If a function is value return, rvalue reference parameter, you can use move in the return .
-	\begin{lstlisting}[frame=single, language=c++]
-	Matrix // by-value return , by rvalue parameter
-	operator+(Matrix&& lhs, const Matrix& rhs){
-	lhs += rhs;
-	return std::move(lhs); // move lhs into return value
-	return lhs // will copy lhs into return value 
-	} 
-	\end{lstlisting}
-	
-	
-
-
-\item For local variable or value parameter, don't use move. compiler will use RVO or default think return value is rvalue.  Return local value can use RVO and move, so It has already had high efficiency.
-
-\begin{lstlisting}[frame=single, language=c++]
-Foo fun(){
-Foo foo;
-return foo;
-$\Hilight{12}$//Don't use move here.
-}
-
-Foo fun(Foo foo){
-return foo;
-//Don't use move here.
-}
-\end{lstlisting}
-\end{itemize}
-\subsubsection{return plain reference} 
-
-\begin{itemize}
-\item Now talk about return reference: Never return local variable, it will cause dangling problem, So return plain reference only heppen 1) You input a reference first, such as overload <<. 2) member function return some member data, such as copy ctor and overload \verb=[]= inside a class.
-
-\item  When the client programmer does something like this and uses a reference beyond its lifetime, the bug will typically be intermittent and very difficult to diagnose. Indeed, one of the most common mistakes programmers make with the standard library is to use iterators after they are no longer valid, which is pretty much the same thing as using a reference beyond its lifetime
-
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-string& a = FindAddr( emps, "John Doe" );
-emps.clear(); // This statement will invalid a.
-cout << a; // may or may not work, It's difficult to debug.
-\end{lstlisting}
-
-\item If you want to return reference,  there is a defensible option that allows returning a reference and thus avoiding a temporary. But it's your last resort.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-const string&
-FindAddr( /* pass emps and name by reference */ ){
-for( /* ... */ ){
-if( i->name == name ){
-   return i->addr;
-}
-}
-$\Hilight{20}$static const string empty;
-return empty;
-}
-\end{lstlisting}
-
-\item Why don't we usualy return plain reference?
-\begin{enumerate}
-\item You want to return a reference to avoid copy of auto obj inside of function,  but in the end you will get a dangling reference. It's very a dangerous action. \textbf{Don't return reference just for efficient return, It's unnecessary and dangerous}.
-
-\item You don't need return rvalue reference\&\& either.  return value ftemp outside of fun is always rvalue. ftemp->flast is move.  So you don't need to declare Foo\&\& fun
-
-\item If you return non-auto obj, You have to 1) new a obj, in this way, you can return pointer directly. 2) input a reference for read, in this way, you can input const reference, You don't need to return it at all. 3) input a reference for write, in this way, you don't need return it either, modification will act on inputted reference directly. So when do we use return plain reference?
-\end{enumerate}
-
-\item About return reference, by now, I only know three functions which return reference. = and << are for support cascading syntactic usage: such as cout<<a<<b, a=b=c.  [] is for support assignment obj[3]= 12.  That is all.
-\begin{lstlisting}[frame=single, language=c++]
-operator =
-operator []
-operator << and >>
-\end{lstlisting}
-
-\item \textbf{Don't return reference or pointer to private member variables through you public member functions. It will break encapsulation. }
 
 \end{itemize}
 
-\subsubsection{return rvalue reference}
-\begin{itemize}
-\item return rvalue reference 1:   If you want to return plain reference, or rvalue reference from a function, you have to input a plain reference or rvalue reference first, because you can't return any reference bound to local auto obj.
-
-\begin{lstlisting}[frame=single, language=c++]
-A&& rrfun1(A&& arg){
-return std::move(arg);
-//You have to use move here,
-//because arg is lvalue.
-}
-
-A&& rrfun2(A& arg){
-return std::move(arg);
-}
-
-   A a;
-   A b= rrfun1(std::move(a) );
-   A b = rrfun2(a);
-\end{lstlisting}
-
-
-\item return rvalue reference 2:   below code will call move ctor once.  1) move ctor from arg to ftemp, 2) rvalue reference b bound to ftemp(rvalue). Only reasonable in syntax, No any practical meaning, and \textbf{It's dangerous}.
-\begin{lstlisting}[frame=single, language=c++]
-A rrfun(A& arg){
-return std::move(arg);
-}
-
- A a;
- A&& b = rrfun(a);
- //after this a is invalid, and b refer a ftemp
-\end{lstlisting}
-
-\item return rvalue reference 3:   1)ftemp type is A 2)below code will call move ctor once(arg move to b) 2)turn off RVO, then arg move ftemp, then ftemp move to b.3)move ctor once, arg move to ftemp. b prolong ftemp life.(Why do you want to do that?)
-\begin{lstlisting}[frame=single, language=c++]
-A rrfun(A& arg){
-return std::move(arg);
-}
-
- A a;
- A b = rrfun(a); // move ctor once
- A b = rrfun(a); //move ctor twice with -fno-elide-constructors
- A&& b = rrfun(a); // move ctor once.
-\end{lstlisting}
-
-\item return rvalue reference 4:   below code will call move ctor once from ftemp to b.  
-\begin{lstlisting}[frame=single, language=c++]
-A&& rrfun(A& arg){
-return std::move(arg);
-}
-
- A a;
- A b = rrfun(a);
-\end{lstlisting}
-
-\item return rvalue reference 5:   below code will not call move ctor at all. So you mean that I want to keep watch for a while, and obj a is still intact right now.
-\begin{lstlisting}[frame=single, language=c++]
-A&& rrfun(A& arg){
-return std::move(arg);
-}
-
- A a;
- A&& b = rrfun(a);
-\end{lstlisting}
-
-\item return rvalue reference 6:   below code will call copy ctor once. \textbf{name rvalue reference is lvalue, you should use std::move to force move it}
-\begin{lstlisting}[frame=single, language=c++]
-A rrfun(A& arg){
-return move(arg); //call move ctor 
-return (arg); // call copy ctor
-}
-
-A a;
- A b = rrfun(a);
-\end{lstlisting}
-
-\item return rvalue reference 7: Why we use move in below example? lhs inside is lvalue, not auto variable,  so we need to copy it to outside ftemp. But you can see lhs type is rvalue refence, so you can use std::move to force move it.
-\begin{lstlisting}[frame=single, language=c++]
-Matrix operator+(Matrix&& lhs, const Matrix& rhs) {
-    lhs += rhs;
-    return std::move(lhs); // move lhs into outside function.
-}
-\end{lstlisting}
-
-\item return rvalue reference 8: All the previous example, rrfun argument should be A\&\& arg,  I just focus on return part, so I simplify the argument to a plain reference. But you should know, std::move(plain reference) is not good design. You only can do it if you STRONG sure that you don't want use obj after you std::move(obj).
-
-\item You can understan all these examples by three function knowledge int he begining. And all these exmaples are just have academic meaning, no any practial sense at all. Why?
-
-\item \textbf{rref is ref first, so if we have reason don't return ref from function, all these reason is also valid for rref.}
-
-\item If a function return rref, 1)it must receive rref first,  2) inside function, he modify rref, 3) return this rref to another rref. These requirment is so werid. Why not modify the first rref directly. Just like we seldome receive a plain ref and return plain ref again. Because all your modification has affect input plain ref.  if return plain ref is unnessary, return another rref is dangerous, because it will cause dangling problem, because rref refer a temporary varaible, it can disappaer or move at any time.
-
-\item Why return value is better than return rvalue reference? 1) more clear semantic 2) when use with auto, it's support RVO. 
-\begin{lstlisting}[frame=single, language=c++]
-DataType data() && { return std::move(values); } // why DataType?
-auto values = makeWidget().data();
-//with ROV, just move once. 
-
-DataType && data() && { return std::move(values); }
-auto&& values = makeWidget().data();
-//values will be dangling
-\end{lstlisting}
-
-\item Another implicit dangling case. 
-\begin{lstlisting}[frame=single, language=c++]
-int&& fun(int&& a){
-    return std::move(a);
-}
-int main(){
-   int&& a = 1+2;
-   int&& b = fun(move(a));
-   int&& c = fun(1+2);
-    cout<<b<<" "<<c<<endl;
-    printf("Hello World");
-
-    return 0;
-}
-\end{lstlisting}
 
 
 
-\item \textbf{In Summary 1, Three operator overload return plain reference, one std::move return rref. It doesn't involve value semantic, just a type change. All the others return value, That's all!}
-
-\item \textbf{In summary 2, If function return value, For only copy lvalue, return value; for movable lvalue, move;  For universal refence, forward. }
-
-\begin{lstlisting}[frame=single, language=c++]
-Matrix operator+(Matrix& lhs, const Matrix& rhs) {
-    return lhs
-}
-
-Matrix operator+(Matrix&& lhs, const Matrix& rhs) {
-    return move(lhs)
-}
-
-template<type T>
-T operator+(T&& lhs) {
-    return forward<T>(lhs)
-}
-\end{lstlisting}
-
-\item By now, I only know std::move return rvalue reference.  Function return rref is rare. ab is neither a local automatic nor a temporary rvalue. Now, the ref-qualifier \&\& says that the second function is invoked on rvalue temporaries, making the following move, instead of copy
-
-\begin{lstlisting}[frame=single, language=c++]
-struct Beta {
-  Beta_ab ab;
-  Beta_ab const& getAB() const& { return ab; }
-  Beta_ab && getAB() && { return move(ab); }
-   $/Hilight{30}$// return && is not Good interface design.
-
-   Beta_ab ab = Beta().getAB();
-   // It will call move version.
-   //Beta_ab && ab = Beta().getAB(); ab is dangling rref
-
-  2) Beta_ab getAB() && { return move(ab); }
-  $/Hilight{30}$//Good interface design.
-};
-\end{lstlisting}
-
-\item A few article you need to read later;
-1) Efficiency of C++11 push\_back() with std::move versus emplace\_back() for already constructed objects
-
-2) view the default functions generated by a compiler?
-
-3) What are copy elision and return value optimization?
-
-4) One variable init form to rule them all, via mandatory elision.
-
-5) Episode Eleven: To Kill a Move Constructor
-
-\end{itemize}
 
 
 \chapter{OOP}
