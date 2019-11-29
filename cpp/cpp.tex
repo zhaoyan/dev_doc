@@ -857,98 +857,114 @@ $\Hilight{20}$ .name is member function of type_info.
 
 
 \subsection{cv-qualifier}
-\subsubsection{const and mutable}
+\subsubsection{const in function}
 \begin{itemize}
-\item \textbf{Just like assert, Use \texttt{const} aggressively.}
+	\item \textbf{Just like assert, Use \texttt{const} aggressively.}
+	
+	\item \texttt{const} must be initialized when you declare it. \texttt{static} will be initialzied to default value(usually zero value) if you don't set value manually. 
+	
+	\item Top-level \texttt{const} to indicate that the pointer itself is a const. When a pointer can point to a const object, we refer to that \texttt{const} as a low level const.
+	
+	\item \textbf{For reference type, you always can't change it, so top-level const is default, you only can set low-level const.}
+	\begin{lstlisting}[frame=single, language=c++]
+	int i = 0;
+	int * const p1 = &i; // const is top-level
+	const int *p2 = &ci; // const is low-level
+	
+	const int *const p3 = p2;
+	// right most const is top-level, left-most is low-level
+	const int &r = ci;
+	// const in reference type is always low-level
+	\end{lstlisting}
+	
+	
+	\item \texttt{const} mainly used in three places inside of function:
+	\begin{enumerate}
+		\item functions parameter.
+		\item function return. ( just used for \texttt{const} reference, not for return value)
+		\item member function.
+	\end{enumerate}
+	
+	\item In fact, for value type parameter, the function signature is the same whether you include this const in front of a value parameter or not. It will cause redefine error. For example:
+	\begin{lstlisting}[frame=single, language=c++]
+	int f( int );
+	int f( const int ); // redeclares f(int)
+	// no overloading, there's only one function.
+	\end{lstlisting}
+	
+	\item  Consider not writing \texttt{const} on pass-by-value function parameters when only forward-declaring a function. You can always add it on the definition to express a read-only parameter.
+	\begin{lstlisting}[frame=single, language=c++]
+	// value parameter: top-level const is not part of function signature
+	int f( int );
+	int f( const int );    // redeclares f(int): this is the same function
+	
+	// non-value parameter: top-level const is part of function signature
+	int g( int& );
+	int g( const int& );   // overloads g(int&): these are two functions
+	\end{lstlisting}
+	
+	\item For \texttt{const} value type parameter in the example below, the \texttt{const} qualifier prevents code inside the function from modifying the parameter itself. Such an assurance helps you to quickly read and understand a function. Under some circumstances, this might even help the compiler generate better code. 
+	\begin{lstlisting}[frame=single, language=c++]
+	double cube (const double side){
+	return side * side * side;
+	}
+	\end{lstlisting}
+	
+	\item \textbf{In C++, When you use pointer or reference as function parameter, You should always put \texttt{const} in front of it. Because 90\% you don't need to modify it. } Once you compiler bark, then you can delete \texttt{const}, It will help you to use const aggressively.
+	
+	\item \textbf{When function return build-in value, don't use const at return value at all. }
+	\begin{lstlisting}[frame=single, language=c++]
+	const int foo() {
+	return 3;
+	}
+	int x = foo();  // copies happily
+	foo() = 4;  // not valid anyway for built-in types
+	\end{lstlisting}
+	
+	\item \textbf{When function return user-defined type value, don't use const at all. It will not allow you to use rvalue and move. }
+	\begin{lstlisting}[frame=single, language=c++]
+	const time operator+(const time &t){
+	time temp;
+	return temp.bla = bla+t.bla;
+	}
+	
+	//because + return const, so below just copy
+	//not use time move ctor, low efficient.
+	time t3(t1+t2);
+	\end{lstlisting}
+	
+	\item \textbf{When function return reference or pointer, you can use const to restrict modify it.}
+	\begin{lstlisting}[frame=single, language=c++]
+	class String{
+	const char& operator[](int position);
+	}
+	\end{lstlisting}
+	
+	\item Most of time, only index operator \verb=[]=, assignment operator and \texttt{<<}, \texttt{>>} support return reference. For assignment operator, we only need to return \texttt{\&}.  For istream and ostream overload, you don't need return const at all. 
+	\begin{lstlisting}[frame=single, language=c++]
+	Array &Array::operator=(const Array &right) {
+	....
+	return *this; //enables x=y= 
+	}
+	\end{lstlisting} 
+	
+	\item Common function interface: \textbf{you can see \texttt{const} only used in pointer or reference type. You should use more \texttt{const} in your projects. }
+	
+	\begin{tabular}{|c|c|c|}
+		\hline
+		\textbf{type} & \textbf{read} & \textbf{write} \\
+		\hline
+		primitive (char, int, float) & pass value & pointer or reference \\
+		\hline
+		class, array, structure  & const pointer or reference &  pointer or reference  \\
+		\hline
+	\end{tabular}
+	
+\end{itemize}
+\subsubsection{const in class}
+\begin{itemize}
 
-\item \texttt{const} must be initialized when you declare it. \texttt{static} will be initialzied to default value(usually zero value) if you don't set value manually. 
-
-\item Top-level \texttt{const} to indicate that the pointer itself is a const. When a pointer can point to a const object, we refer to that \texttt{const} as a low level const.
-
-\item \textbf{For reference type, you always can't change it, so only low-level const.}
-\begin{lstlisting}[frame=single, language=c++]
-int i = 0;
-int * const p1 = &i; // const is top-level
-const int *p2 = &ci; // const is low-level
-
-const int *const p3 = p2;
-// right most const is top-level, left-most is low-level
-const int &r = ci;
-// const in reference type is always low-level
-\end{lstlisting}
-
-
-\item \texttt{const} mainly used in three places inside of function:
-\begin{enumerate}
-\item functions parameter.
-\item function return. ( just used for \texttt{const} reference)
-\item member function.
-\end{enumerate}
-
-\item  Consider not writing \texttt{const} on pass-by-value function parameters when only forward-declaring a function. You can always add it on the definition to express a read-only parameter.
-\begin{lstlisting}[frame=single, language=c++]
-// value parameter: top-level const is not part of function signature
-int f( int );
-int f( const int );    // redeclares f(int): this is the same function
-
-// non-value parameter: top-level const is part of function signature
-int g( int& );
-int g( const int& );   // overloads g(int&): these are two functions
-\end{lstlisting}
-
-\item For \texttt{const} value type parameter in the example below, the \texttt{const} qualifier prevents code inside the function from modifying the parameter itself. Such an assurance helps you to quickly read and understand a function. Under some circumstances, this might even help the compiler generate better code. 
-\begin{lstlisting}[frame=single, language=c++]
-double cube (const double side){
-    return side * side * side;
-}
-\end{lstlisting}
-
-\item In fact, for value type parameter, the function signature is the same whether you include this const in front of a value parameter or not. It will cause redefine error. For example:
-\begin{lstlisting}[frame=single, language=c++]
-int f( int );
-int f( const int ); // redeclares f(int)
-// no overloading, there's only one function.
-\end{lstlisting}
-
-\item \textbf{In C++, When you use pointer or reference as function parameter, You should always put \texttt{const} in front of it. Because 90\% you don't need to modify it. } Once you compiler bark, then you can delete \texttt{const}, It will help you to use const aggressively.
-
-\item \textbf{When function return build-in value, don't use const at all. }
-\begin{lstlisting}[frame=single, language=c++]
-const int foo() {
-   return 3;
-}
-int x = foo();  // copies happily
-foo() = 4;  // not valid anyway for built-in types
-\end{lstlisting}
-
-\item \textbf{When function return user-defined type value, don't use const at all. It will not allow you to use rvalue and move. }
-\begin{lstlisting}[frame=single, language=c++]
-const time operator+(const time &t){
-   time temp;
-   return temp.bla = bla+t.bla;
-}
-
-//because + return const, so below just copy
-//not use time move ctor, low efficient.
-time t3(t1+t2);
-\end{lstlisting}
-
-\item \textbf{When function return reference or pointer, you can use const to restrict modify it.}
-\begin{lstlisting}[frame=single, language=c++]
-class String{
-const char& operator[](int position);
-}
-\end{lstlisting}
-
-\item Most of time, only index operator \verb=[]=, assignment operator and \texttt{<<}, \texttt{>>} support return reference. For assignment operator, we only need to return \texttt{\&}.  For istream and ostream overload, you don't need return const at all. 
-\begin{lstlisting}[frame=single, language=c++]
-Array &Array::operator=(const Array &right) {
-   ....
-   return *this; //enables x=y= 
-}
-\end{lstlisting}
-
-\item When \textbf{const} used in member function. There are four points.
+\item When \textbf{const} used in class. There are four points.
 \begin{enumerate}
 \item In \textbf{const} member function, you can't change member variable,(If you change it, it will report a compile error).
 \begin{lstlisting}[frame=single, language=c++]
@@ -996,7 +1012,7 @@ void myCode(const Person& p){
 }
 \end{lstlisting}
 
-\item The most common use of const overloading is with the subscript operator. You should generally try to use one of the standard container templates, such as std::vector, but if you need to create your own class that has a subscript operator, here's the rule of thumb:\textbf{ subscript operators often come in pairs.}
+\item The most common use of \texttt{const} overloading is with the subscript operator. You should generally try to use one of the standard container templates, such as std::vector, but if you need to create your own class that has a subscript operator, here's the rule of thumb:\textbf{ subscript operators often come in pairs.}
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 class Fred { /*...*/ };
 class MyFredList {
@@ -1011,9 +1027,10 @@ public:
 
 
 \end{enumerate}
+
 \item \textbf{If your member functions doesn't change member varaible, put const after the function, it will make const obj can invoke this function.}
 
-\item Do not use "volatile" except in low-level(embedded c) code that deals directly with hardware. \textbf{1) don't optimized code, 2) each time you read volatile, load from RAM instead of using old value.}
+\item Do not use "volatile" except in low-level(embedded c) code that deals directly with hardware. \textbf{1) don't optimized code, 2) each time you read volatile, load from memory instead of using old value.}
 \begin{lstlisting}[frame=single, language=c++]
 void waitForSemaphore(){
    volatile uint16_t* semPtr = WELL_KNOWN_SEM_ADDR;
@@ -1022,9 +1039,7 @@ void waitForSemaphore(){
 }
 \end{lstlisting}
 
-\item "mutable" allows you to modify a member variable in a class by a const method.
-
-\item Behind "mutable", It's bitwise const and logical const. Logical const is when an object doesn't change in a way that is visible through the public interface. An example would be a class that computes a value the first time if required, then caches the result.
+\item "mutable" allows you to modify a member variable in a class by a const method.Why do we need this conception? Behind "mutable", It's bitwise const and logical const. Logical const is when an object doesn't change in a way that is visible through the public interface. An example would be a class that computes a value the first time if required, then caches the result.
 \begin{lstlisting}[frame=single, language=c++]
 class TextBook  {
 private:
@@ -1040,38 +1055,43 @@ public:
 };
 \end{lstlisting}
 
-\item when you declare mutable, you'd better use mutex to synchronize it. It's called M\&M rule in "GotW \#6b Solution"
 
 \item In above example, getLength() is member-wise const function, It just read a length value, not set it from outside. But inside this function, you need to change some private member value, At this time, you need to use mutable keyword, so const getLength() function can modify and cache a length\_ value.
 
-\item const function just put restraint inside of function, it not ask caller to be a const object at all. Why I declare getLength() as const, because if you don't do it. const obj can't call getLength() function at all. 
+\item const function just put restraint inside of function, it not ask caller to be a const object at all. Why I declare getLength() as const?
+\begin{enumerate}
+	\item because if you don't do it. const obj can't call getLength() function at all. 
+	\item "logically", we just read, not change something.
+\end{enumerate}
+
+
 
 \item \textbf{A const obj only can call const member function, and const member function just return const reference or pointer.} A example can be seen in vector example.  
 
 \begin{lstlisting}[frame=single, language=c++]
-   iterator begin() noexcept;
+iterator begin() noexcept;
 const_iterator begin() const noexcept;
 
 const vector<int> cvi;
 vector<int>::iterator vi = cvi.begin(); //Compile error
 //cvi will call the second overload function anyway.
 //but second just return const_iterator. 
-//and const_iterator can be converted to iterator implicitly.
+$\Hilight{35}$//and const_iterator can NOT be converted to iterator implicitly.
 \end{lstlisting}
 
-\item Continue with previous item.\textbf{ If you define a const obj or you have const member function, all the member variable of const obj or inside const member function is const}. Because getArea is const funciton, when it is called by a const obj, points will become a const member variable, so error will happen just like previous example. 
+\item Continue with previous item.\textbf{ If you define a const obj or you have const member function, all the member variable of const obj or inside const member function is const}. For example, because getArea is const funciton, when it is called by a const obj, points will become a const member variable, so error will happen just like previous example. 
 
 \begin{lstlisting}[frame=single, language=c++]
 class A{
-getArea() const{
-   vector<int>::iterator vi = points.begin();
-   // This can't be compiled
-}
+	getArea() const{
+	   vector<int>::iterator vi = points.begin();
+	   // This can't be compiled
+	}
 
-calArea(){
-   vector<int>::iterator vi = points.begin();
-    // This can't be compiled
-}
+	calArea(){
+	   vector<int>::iterator vi = points.begin();
+	    // This can't be compiled
+	}
 
 vector<int> points
 };
@@ -1084,10 +1104,13 @@ a.calArea(); // ok.
 a.getArea(); // only const obj can access const member fun.
 \end{lstlisting}
 
+\item \textbf{\texttt(const) expand outside, and restraint inside}
 
-\item If you declare getArea() const function, it will make both const obj and non-const obj can call this member function. This is good. if you don't define it as const member function, only non-const obj can invoke this function. \textbf{For outside, const increase interface applicable scope.}
-
-\item But inside const member function, You can't change member variable anymore, (if you really want, use mutable keyword.) Inside const member function, it will think all member variable const, so vector will be const implicitly, return non-const iterator will be error. 
+\begin{enumerate}
+	\item If you declare getArea() const function, it will make both const obj and non-const obj can call this member function. This is good. if you don't define it as const member function, only non-const obj can invoke this function. \textbf{For outside, const increase interface applicable scope.}
+	
+	\item But inside const member function, You can't change member variable anymore, (if you really want, use mutable keyword.) Inside const member function, it will think all member variable const, so vector will be const implicitly, return non-const iterator will be error.
+\end{enumerate}
 
 \item In order to resolve this problem, you have two options: one is use const\_iterator. 
 \begin{lstlisting}[frame=single, language=c++]
@@ -1108,33 +1131,25 @@ class A{
 	.....
 \end{lstlisting}
 \item A good reference article about const is GotW 6. 
-
-\item In C++11/14, we add cbegin for STL container and interface of container has changed from non-const iterator to const iterator, so we should use const iterator more. 
-\begin{lstlisting}[frame=single, language=c++]
-iterator insert (iterator position, const value_type& val); //c++98
-
-iterator insert (const_iterator position, const value_type& val); //c++11
-
-vector<int> values:
-auto it = std::find(values.cbegin(),values.cend(), 1983); // and cend
-values.insert(it, 1998);
-\end{lstlisting}
+\item when you declare mutable, you'd better use mutex to synchronize it. It's called M\&M rule in "GotW \#6b Solution"
+\end{itemize}
 
 
-\item Common function interface: \textbf{you can see \texttt{const} only used in pointer or reference type. You should use more \texttt{const} in your projects. }
-
-\begin{tabular}{|c|c|c|}
-	\hline
-	\textbf{type} & \textbf{read} & \textbf{write} \\
-	\hline
-	primitive (char, int, float) & pass value & pointer or reference \\
-	\hline
-	class, array, structure  & const pointer or reference &  pointer or reference  \\
-	\hline
-\end{tabular}
-
-
-\item Another good article is "effective modern C++" item 13. 
+\subsubsection{const\_interator}
+\begin{itemize}
+	\item \item In C++11/14, we add cbegin for STL container and interface of container has changed from non-const iterator to const iterator, so we should use const iterator more. 
+	\begin{lstlisting}[frame=single, language=c++]
+	iterator insert (iterator position, const value_type& val); //c++98
+	
+	iterator insert (const_iterator position, const value_type& val); //c++11
+	
+	vector<int> values:
+	auto it = std::find(values.cbegin(),values.cend(), 1983); // and cend
+	values.insert(it, 1998);
+	\end{lstlisting}
+	
+	
+	\item Another good article is "effective modern C++" item 13. 
 \end{itemize}
 
 \subsubsection{constexpr}
