@@ -369,9 +369,9 @@ int b = static_cast<int>(f);  //in C++
 \end{itemize}
 
 
-\section{Separate Compilation and link}
+\section{Compilation and link}
 
-\subsection{declaration and header file}
+\subsection{Separate compilation and header file}
 \begin{itemize}
 	\item Having only one source file is unrealistic, so we break the code up into its logical structure. In this way, only changed parts need to be recompiled, and reduce the compile time.
 	
@@ -579,14 +579,16 @@ Widget::~Widget() = default; // as before
 
 \subsection{Linkage}
 \begin{itemize}
+	\item Scope is a property handled by compiler, whereas linkage is a property handled by linker. There are two Linkages: internal and external
+	
 	\item Internal linkage refers to everything only in scope of a translation unit.
+	
+	\item Another property of internal linkage is that it is only implemented when the variable has global scope. static global variable has internal linkage. non-const global variable has external linkage. All constants are by default internally linked. So you can put \texttt{const int g\_num = 10;} into a global header file, but you can't put a static variable into the global header file.
 	
 	\item External linkage refers to things that exist beyond a particular translation unit. In other words, accessible through the whole program, which is the combination of all translation units (or object files).
 	
-	\item scope is a property handled by compiler, whereas linkage is a property handled by linker.
-	
-	\item Another property of internal linkage is that it is only implemented when the variable has global scope. static has internal linkage. non-const global variable has external linkage. All constants are by default internally linked. So you can put \texttt{const int g\_num = 10;} into a global header file, but you can't put a static variable into the global header file.
-	
+
+
 	\item \textbf{const variables internally link by default} unless otherwise declared as \texttt{extern}. It means that:
 	
 	\begin{enumerate}
@@ -598,6 +600,12 @@ Widget::~Widget() = default; // as before
 	\end{enumerate}
 	
 	\item When internal linkage, it means that 1) you can put two same static variable name in two different .cpp file, no linkage error. 2) you can't put extern before static, in another word, you can't access static variable in another .cpp file. 
+	
+	item  If an inline function appears in foo.cpp (either because it was written in it, or because it \#includes a header in which it was written, in which case the preprocessor basically makes it so). Now you compile foo.cpp, and possibly also some other bar.cpp which also contains an inline function with the same signature (possibly the exact same one; probably due to both \#includeing the same header). When the linker links the two object files, it will not be considered a violation of the ODR, as the inline directive made each copy of the file local to its translation unit (the object file created by compiling it, effectively). This is not a suggestion, it is binding.
+	
+	\item It is not coincidental that these two things go together. The most common case is for an inline function to appear in a header \#included by several source files, probably because the programmer wanted to request fast inline expansion. This requires the translation-unit locality rule, though, so that linker errors shouldn't arise.
+	
+	\item In one word \textbf{You can put inline function into the header file.}
 	
 \end{itemize}
 
@@ -617,6 +625,7 @@ fun(){
 	//gcc a.c b.c report no error.
 	//g++ report error
 	//in b.c, if you g_i= 2; gcc report error.
+}
 \end{lstlisting}
 	
 	\item For C++ language ,tentative definition of variable is not allowed. At the same time, multi-definition of function is not allowed either. but there are another implicit risk as below. 
@@ -625,11 +634,6 @@ fun(){
 	
 	\item \textbf{Either a name is for everyone (and declared in a header file) or is translation-unit-local in an anonymous namespace.} Detail can be found in "The One-Definition Rule  Andrzej's C++ blog".
 	
-	\item  If an inline function appears in foo.cpp (either because it was written in it, or because it \#includes a header in which it was written, in which case the preprocessor basically makes it so). Now you compile foo.cpp, and possibly also some other bar.cpp which also contains an inline function with the same signature (possibly the exact same one; probably due to both \#includeing the same header). When the linker links the two object files, it will not be considered a violation of the ODR, as the inline directive made each copy of the file local to its translation unit (the object file created by compiling it, effectively). This is not a suggestion, it is binding.
-	
-	\item It is not coincidental that these two things go together. The most common case is for an inline function to appear in a header \#included by several source files, probably because the programmer wanted to request fast inline expansion. This requires the translation-unit locality rule, though, so that linker errors shouldn't arise.
-	
-	\item In one word \textbf{Put inline function into the header file.}
 \end{itemize}
 
 
@@ -640,9 +644,13 @@ fun(){
 
 \subsubsection{Implicit conversion in C++}
 \begin{itemize}
-\item Compiler will first match function name and number of arguments, then look for template deducted function, then use implicit conversion to try match. So implicit conversion happens after template.
 
-\item When will class implicit convert. 1) single ctor, 2) operator Type.
+\item Class implicit conversion can be happen when it has:
+\begin{enumerate}
+	\item Single ctor, it means that a class can be produced from something.
+	\item operator Type, it mans that a class can be converted to somethong.
+\end{enumerate}
+
 \begin{lstlisting}[frame=single, language=c++]
 class A {
 A(int i); // bad
@@ -653,23 +661,6 @@ A a1, a2;
 a2 = a1*2;  //implicit conversion 2 to temp A obj
 a2 = 2  the same, then call operator =;
 \end{lstlisting}
-
-\item \textbf{You should always avoid implicit conversion}
-\begin{enumerate}
-\item use explicit before single parameter ctor.
-\item use name convert function instead of  "operator Type".so string has function c\_str() instead operator char*() const. 
-\end{enumerate}
-
-\item In an example below, with explicit keyword before ctor,  you have to use A(2) or (A)2 to explicitly build a A temperory obj in a1*A(2) expression.
-\begin{lstlisting}[frame=single, language=c++]
-class A {
-explicit A(int i); // good
-const char* getInternalPoint() ;
-//good, use a name function.
-};
-\end{lstlisting}
-
-\item  convert class to basic type, you need operator basicTypeName, no argument, no return value and member function.
 
 \item Implicit conversion can be called by compiler implicit, (means that you don't know at all). It sometimes will lead to potential ambiguity problem.
 \begin{lstlisting}[frame=single, language=c++]
@@ -688,6 +679,24 @@ g(b)
 //compiler will stop, it meet ambiguity.
 \end{lstlisting}
 more detail can be seen effective c++ item 26.
+
+\item \textbf{You should always avoid implicit conversion}
+\begin{enumerate}
+\item use explicit before single parameter ctor.
+\item use name convert function instead of  "operator Type".so string has function c\_str() instead operator char*() const. 
+\end{enumerate}
+
+\item In an example below, with explicit keyword before ctor,  you have to use A(2) or (A)2 to explicitly build a A temperory obj in a1*A(2) expression. It's a good habit and you should stick to it. 
+\begin{lstlisting}[frame=single, language=c++]
+class A {
+explicit A(int i); // good
+const char* getInternalPoint() ;
+//good, use a name function.
+};
+\end{lstlisting}
+
+\item  convert class to basic type, you need operator basicTypeName, no argument, no return value and member function.
+
 
 \item For class, assignment operator() can support two different type assignment. But I don't think that it is a conversion. I didn't see any practical usage by now. 
 \begin{lstlisting}[frame=single, language=c++]
@@ -708,7 +717,7 @@ public:
 
 \subsubsection{type cast operator}
 \begin{itemize}
-\item There are three operators, \texttt{dynamic\_cast}, \texttt{const\_cast} and \texttt{static\_cast}. You should use them more in C++.
+\item There are three operators, \texttt{dynamic\_cast}, \texttt{const\_cast} and \texttt{static\_cast}. \textbf{You should always use them in C++.}
 
 \item Unrestricted explicit type-casting allows to convert any pointer into any other pointer type, independently of the types they point to.  (syntax and compiling is right, but cause run-time error). In order to overcome this problem,  in C++ langauge, we introduce c++ cast operator, see below section.
 \begin{lstlisting}[frame=single, language=c++]
@@ -719,16 +728,16 @@ int *p = (int*)&c; // compile ok
 int *p = static_cast<int*>(&c) comple error;
 \end{lstlisting}
 
-\item You don't need any cast operator when you change any type pointer to void*, But when you want to use dereference void pointer , you'd better use static\_cast to change it back to a certain type pointer.
+\item You don't need any cast operator when you change any type pointer to void*, But when you want to use dereference void pointer , you'd better use \texttt{static\_cast }to change it back to a certain type pointer.
 \begin{lstlisting}[frame=single, language=c++]
 //In C++, you have to use cast operator.
 int* p = static_cast<int*>(malloc(sizeof(*p)));
 //A better way is to use new instead.
 \end{lstlisting}
 
-\item    static\_cast<type-name> expression will be valid only if type-name can be converted implicitly to the same type that expression has.  It will stop you from change a bird class to an apple class which  are two totally unrelated classes.  Even change int to double, encourage you to use static\_cast<double>(i).  it also can help you to find cast easily in you source code by search "static\_cast".
+\item    \texttt{static\_cast<type-name>} expression will be valid only if type-name can be converted implicitly to the same type that expression has.  It will stop you from change a bird class to an apple class which  are two totally unrelated classes.  Even change int to double, encourage you to use \texttt{static\_cast<double>(i)}.  it also can help you to find cast easily in you source code by search "static\_cast".
 
-\item Changing the value of an const object through const\_cast pointers leads to  "undefined behavior". Most often you can. But for const static data -- the compiler may put such variables in a read-only region, the program will crash if you try to modify it.
+\item Changing the value of an const object through \texttt{const\_cast} pointers leads to  "undefined behavior". Most often you can. But for const static data -- the compiler may put such variables in a read-only region, the program will crash if you try to modify it.
 
 \begin{lstlisting}[frame=single, language=c++]
 #include <stdio.h>
@@ -750,13 +759,15 @@ const char* cp = "hello";
 strlen(const_cast<char*>(cp));
 \end{lstlisting}
 
-\item \texttt{dynamic\_cast} should only be used down-cast public inherited relationship. Not for private or protected inherited relationship
+\item \texttt{dynamic\_cast} should only be used down-cast public inherited relationship. You can't use \texttt{dynamic\_cast} when
+\begin{enumerate}
+	\item \textbf{Not for private or protected inherited relationship.}
+	\item If a class doesn't have virtual function, you can't use dynamic\_cast on this object.
+\end{enumerate}
 
 \item A child pointer can always be assigned to base pointer directly. (That is how polymorphic implement.) \texttt{dynamic\_cast} use to \textbf{down-cast} a base pointer to child pointer. \texttt{dynamic\_cast} assure that down cast is valid. 
 
-\item If you frequently use \texttt{dynamic\_cast}, It can be a sign that your base class offer too little functionality.
-
-\item If a class doesn't have virtual function, you can't use dynamic\_cast on this object.
+\item If you frequently use \texttt{dynamic\_cast}, It can be a sign that your base class offer too little functionality, you'd better to re-desing you base class API(adding more member function to base class.)
 
 \item \texttt{dynamic\_cast} can also used in reference type. When cast fail, it will not return nullptr, (because it's reference), just throw a \texttt{bad\_cast} exception.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
@@ -782,11 +793,16 @@ struct D : A, B {};
     D d; // the most derived object
     A& a = d; // upcast, dynamic_cast may be used, but unnecessary
     B& new_b = dynamic_cast<B&>(a); // sidecast
-
+    //$\Hilight{35}$ Change a to d first(from parent to child, maybe fail), 
+    //$\Hilight{35}$ then d to new_b, (from child to parent, always succeed)
 \end{lstlisting}
 
 
-\item \texttt{dynamic\_cast} different with \texttt{static\_cast} 1) \texttt{static\_cast} check on compile time. 2) \texttt{static\_cast} no run time information, so sometimes it makes mistake.
+\item \texttt{dynamic\_cast} different with \texttt{static\_cast}:
+\begin{enumerate}
+	\item \texttt{static\_cast} check on compile time.
+	\item \texttt{static\_cast} no run time information, so sometimes it makes mistake.
+\end{enumerate}
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 struct V {
     virtual void f() {};
@@ -805,25 +821,42 @@ B& b = dynamic_cast<B&>(v); //not ok
 \item About \texttt{dynamic\_cast}, "exceptional C++" item 44 give a good question and answer.
 
 \item \texttt{reinterpret\_cast} converts any pointer type to any other pointer type, even of unrelated classes. The operation result is a simple binary copy of the value from one pointer to the other. All pointer conversions are allowed: neither the content pointed nor the pointer type itself is checked. It can also cast pointers to or from integer types. \textbf{DON'T USE IT UNLESS YOU ARE IN THE CORNER.}
-
 \end{itemize}
-
 
 \subsubsection{RTTI}
 \begin{itemize}
 \item It's a relatively new conception in C++, you should avoid using it on old C++ compiler. It inclueds two methods: \texttt{typeid}, \texttt{dynamic\_cast}.
 \item \textbf{It only work with class hierarchy that has virtual functions. }
 
+\item There are two kinds of types (for the purposes of RTTI): polymorphic types and non-polymorphic types. A polymorphic type is a type that has a virtual function, in itself or inherited from a base class. A non-polymorphic type is everything else; this includes POD types, but it includes many other types too.
+
 \item \texttt{typeid} operator will return a \texttt{type\_info} class.  You need to include typeinfo.h head file. Typeid operator receive pointer or class name.
 
+\begin{lstlisting}
+nt myint = 50;
+std::string mystr = "string";
+double *mydoubleptr = nullptr;
+
+cout << "myint has type: " << typeid(myint).name();
+cout<< "mystr has type: " << typeid(mystr).name();
+cout<< "mydoubleptr has type: " << typeid(mydoubleptr).name();
+$\Hilight{30}$ typeid is operator, it return type_info class
+$\Hilight{20}$ .name is member function of type_info.
+\end{lstlisting}
+
 \item If you just want to assure up casting and you don't want to know more about the class, you should prefer to use dynamic\_cast . just know typeid when you have a more complicated demand, you can come back to take a look deeply.
+
+\item RTTI has legitimate uses but is prone to abuse, so you must be careful when using it. You may use it freely in unittests, but avoid it when possible in other code. consider one of the following alternatives to querying the type:
+\begin{enumerate}
+	\item Virtual methods are the preferred way of executing different code paths depending on a specific subclass type. This puts the work within the object itself.
+	\item If the work belongs outside the object and instead in some processing code, consider a double-dispatch solution, such as the Visitor design pattern. This allows a facility outside the object itself to determine the type of class using the built-in type system.
+\end{enumerate}
 
 \item Just like exception, It has some loss in performance, you can use flag "-fno-rtti" to turn off it.
 \end{itemize}
 
 
 \subsection{cv-qualifier}
-
 \subsubsection{const and mutable}
 \begin{itemize}
 \item \textbf{Just like assert, Use \texttt{const} aggressively.}
@@ -851,9 +884,6 @@ const int &r = ci;
 \item function return. ( just used for \texttt{const} reference)
 \item member function.
 \end{enumerate}
-
-
-
 
 \item  Consider not writing \texttt{const} on pass-by-value function parameters when only forward-declaring a function. You can always add it on the definition to express a read-only parameter.
 \begin{lstlisting}[frame=single, language=c++]
@@ -1198,7 +1228,7 @@ values.insert(it, 1998);
 
 \end{itemize}
 
-\subsubsection{static}
+\subsection{static}
 \begin{itemize}
 
 \item In C++, \textbf{global and static variables initialized to default values.}  But auto variable is random value, because of efficiency consideration.
@@ -1742,6 +1772,8 @@ template <class T> void copy(T* source, T* destination, int n, trivial_true_type
 
 \subsubsection{Name hiding}
 \begin{itemize}
+
+\item Compiler will first match function name and number of arguments, then look for template deducted function, then use implicit conversion to try match. So implicit conversion happens after template.
 
 \item There are three examples about immediate scope.
 \begin{enumerate}
