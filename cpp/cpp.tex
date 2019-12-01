@@ -1212,15 +1212,14 @@ int a[fun(2,3)];
 \begin{itemize}
 	\item \textbf{All constexpr objects are const, but not all const object are constexpr}
 	\begin{enumerate}
-		\item is implicitly const.Just like const, constexpr can't be change, 
+		\item constexpr variable is implicitly const. Just like const, constexpr can't be changed. 
 		
-		\item must be initilized when you declare. the full-expression of its initialization, including all implicit conversions, constructors calls, etc, must be a constant expression.(You know the exact value in compiling time.)
+		\item must be initilized when you declare it. the full-expression of its initialization, including all implicit conversions, constructors calls, etc, must be a constant expression.(You know the exact value in compiling time.)
 		
 		\item Value of constexpr \textbf{must be known at compile time}.If you want to get value from a function, you have to use constexpr function to assign value to it. 
 		
 \begin{lstlisting}
-constexpr int sum(int i, int j)
-{
+constexpr int sum(int i, int j){
 	return i+j;
 }
 
@@ -1246,142 +1245,186 @@ constexpr int const *pb = &bar;  //  &bar must be constexpr
 \item For constexpr object, it must has corresponding  constexpr constructor 
 \begin{enumerate}
 	\item can only be invoked with constant expressions.
-	can not use exception handling.
-	has to be declared as default or delete or the function body must be empty (C++11).
-	The constexpr user-defined type
+	\item can not use exception handling.
+	\item has to be declared as default or delete or the function body must be empty (C++11).
+	\item The constexpr user-defined type
 \end{enumerate}
 
 \item For class itself, it also need satisfy below:
 \begin{enumerate}
 	\item can not have virtual base classes.
-	requires that each base object and each non-static member has to be initialized in the initialization list of the constructor or directly in the class body. Consequently, it holds that each used constructor (e.g of a base class) has to be constexpr constructor and that the applied initializers have to be constant expressions.
+	\item requires that each base object and each non-static member has to be initialized in the initialization list of the constructor or directly in the class body. 
+	\item Consequently, it holds that each used constructor (e.g of a base class) has to be constexpr constructor and that the applied initializers have to be constant expressions.
 \end{enumerate}
 \begin{lstlisting}[frame=single, language=c++]
 class MyInt{
 public:
-constexpr MyInt()= default;
-constexpr MyInt(int fir, int sec): myVal1(fir), myVal2(sec){}
-MyInt(int i){
-myVal1= i-2;
-myVal2= i+3;
-}
-
-constexpr MyInt(const MyInt& oth)= default;
-constexpr MyInt(MyInt&& oth)= delete;
-
-constexpr int getSum(){ return myVal1+myVal2; }
-
-friend std::ostream& operator<< (std::ostream &out, const MyInt& myInt){
-out << "(" << myInt.myVal1 << "," << myInt.myVal2 << ")";  
-return out;
-}
+	constexpr MyInt()= default;
+	constexpr MyInt(int fir, int sec): myVal1(fir), myVal2(sec){}
+	MyInt(int i){ myVal1= i-2; myVal2= i+3; }
+	
+	constexpr MyInt(const MyInt& oth)= default;
+	constexpr MyInt(MyInt&& oth)= delete;
+	constexpr int getSum(){ return myVal1+myVal2; }
 
 private:
-int myVal1= 1998;
-int myVal2= 2003;
-
+	int myVal1= 1998;
+	int myVal2= 2003;
 };
-
-int main(){
-
-std::cout << std::endl;
 
 constexpr MyInt myIntConst1;
 MyInt myInt2;
 
 constexpr int sec= 2014;
 constexpr MyInt myIntConst3(2011,sec);
-std::cout << "myIntConst3.getSum(): " << myIntConst3.getSum() << std::endl;
+std::cout << myIntConst3.getSum();
 
-std::cout << std::endl;
-
-int a= 1998;
-int b= 2003;
+int a= 1998, b= 2003;
 MyInt myInt4(a,b);
-std::cout << "myInt4.getSum(): " << myInt4.getSum() << std::endl;
+std::cout << "myInt4.getSum(): " << myInt4.getSum();
 std::cout << myInt4 << std::endl;
-
-std::cout << std::endl;
 
 // constexpr MyInt myIntConst5(2000);  ERROR
 MyInt myInt6(2000);
-std::cout << "myInt6.getSum(): " << myInt4.getSum() << std::endl;
-std::cout << myInt6 << std::endl;
+std::cout << "myInt6.getSum(): " << myInt4.getSum();
 
 // constexpr MyInt myInt7(myInt4); ERROR
 constexpr MyInt myInt8(myIntConst3);
 
-std::cout << std::endl;
-
 int arr[myIntConst3.getSum()];
-static_assert( myIntConst3.getSum() == 4025, "2011 + 2014 should be 4025" );
-
-}
+static_assert( myIntConst3.getSum() == 4025, "2011+014 = 4025" );
 \end{lstlisting}
-
 
 \item A few good articles are \verb|https://www.modernescpp.com/index.php/constexpr-variables-and-objects|
 
 \end{itemize}
 
-\subsubsection{const function}
+\subsubsection{constexpr function}
 \begin{itemize}
-	\item 	\item constexpr can be used on functions.
+	\item The primary usage of constexpr for a funciton is to declare intent. The intent is that you are sure that the function is almost a pure function. The pure function has no state, and when you run it, it has no side effect.
+	\item The pure function has some advantages compared with ordinary funciton Return always the same result when given the same arguments, So the function call can be replaced by the result, and the order of function call is not important.(That is why you can run it at compiling time.) But the problem is compiler itself can't judge if a function is pure function, That's why programmer come to rescure. The programmar indicate this function is a "pure" function, so compiler can \textbf{For outside} use it in another constant expression context, \textbf{For inside} calculate it in comipling time. 
 	
-	\begin{enumerate}
-		\item Both constexpr and inline are for performance improvements, inline functions are request to compiler to expand at compile time and save time of function call overheads. In inline functions, expressions are always evaluated at run time. constexpr is different, here expressions are evaluated at compile time.
-		
-		\item const can only be used for non-static member functions, not functions in general. It gives a guarantee that the member function does not modify any of the non-static data members.
-		
-		
-		\item constexpr can be used with both member and non-member functions, as well as constructors. It declares the function fit for use in constant expressions. \textbf{constexpr functions must be able to return compile-time results when called with compile-time values.} The compiler will only accept it if the function meets certain criteria (7.1.5/3,4), most importantly: 
-		\begin{enumerate}
-			\item The function body must be non-virtual and extremely simple: Apart from typedefs and static asserts, only a single return statement is allowed. In the case of a constructor, only an initialization list, typedefs and static assert are allowed. (= default and = delete are allowed, too, though.)
-			
-			\item As of C++14 the rules are more relaxed, what is allowed since then inside a constexpr function: asm declaration, a goto statement, a statement with a label other than case and default, try-block, definition of a variable of non-literal type, definition of a variable of static or thread storage duration, definition of a variable for which no initialization is performed.
-			
-			\item The arguments and the return type must be \textbf{literal types} (i.e., generally speaking, very simple types, typically scalars or aggregates)
-			
-			\item constexpr function can call only other constexpr function not simple function.
-			
-			\item in C++11, constexpr member function is implicit const; C++14 lift it up.
-		\end{enumerate}
-	\end{enumerate}
-		\item when do you need to use constexpr function
+	\item On the first sight, you should declare constexpr function everywhere, but it's not good idea either. That makes a constexpr qualifier an irrevocable design decision. You cannot remove this qualifier without an incompatible change to your API. It also limits how you can implement that function, e.g. you would not be able to do any logging within this function. Not every trivial function will stay trivial in eternity. That means you should preferably use constexpr for functions that are inherently pure functions, and that would be actually useful at compile time (e.g. for template metaprogramming). It would not be good to make functions constexpr just because the current implementation happens to be constexpr-able.
 	
+	\item Where compile-time evaluation is not necessary, using inline functions or functions with internal linkage would seem more appropriate that constexpr. Both constexpr and inline are for performance improvements, inline functions are request to compiler to expand at compile time and save time of function call overheads. In inline functions, expressions are always evaluated at run time. constexpr is different, here expressions are evaluated at compile time.
+	
+	\item constexpr can be used with both member and non-member functions, as well as constructors. It declares the function fit for use in constant expressions. 
+	
+	\item A few examples of constexpr functions. 
 	\begin{enumerate}
-		\item That makes a constexpr qualifier an irrevocable design decision. You cannot remove this qualifier without an incompatible change to your API. It also limits how you can implement that function, e.g. you would not be able to do any logging within this function. Not every trivial function will stay trivial in eternity.
-		
-		\item That means you should preferably use constexpr for functions that are inherently pure functions, and that would be actually useful at compile time (e.g. for template metaprogramming). It would not be good to make functions constexpr just because the current implementation happens to be constexpr-able.
-		
-		\item Where compile-time evaluation is not necessary, using inline functions or functions with internal linkage would seem more appropriate that constexpr. All of these variants have in common that the function body is “public” and is available in the same compilation unit as the call location.
-		
-		\item a few example;you have something that can be evaluated down to a constant while maintaining good readability and allowing slightly more complex processing than just setting a constant to a number.
-		\begin{lstlisting}[frame=single, language=c++]
-		constexpr int MeaningOfLife ( int a, int b ) { return a * b; }
-		const int meaningOfLife = MeaningOfLife( 6, 7 );
-		\end{lstlisting}
+		\item you have something that can be evaluated down to a constant while maintaining good readability and allowing slightly more complex processing than just setting a constant to a number.
+\begin{lstlisting}[frame=single, language=c++]
+constexpr int MeaningOfLife ( int a, int b ) { return a * b; }
+const int meaningOfLife = MeaningOfLife( 6, 7 );
+\end{lstlisting}
 		
 		\item It basically provides a good aid to maintainability as it becomes more obvious what you are doing. Take max( a, b ) for example: Its a pretty simple choice there but it does mean that if you call max with constant values it is explicitly calculated at compile time and not at runtime.
-		\begin{lstlisting}[frame=single, language=c++]
-		template< typename Type > constexpr Type max( Type a, Type b ) { return a < b ? b : a; }
-		\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+template< typename Type > constexpr Type max( Type a, Type b ) { return a < b ? b : a; }
+\end{lstlisting}
 		
-		\item Another good example would be a DegreesToRadians function. Everyone finds degrees easier to read than radians. While you may know that 180 degrees is in radians it is much clearer written as follows:
-		\begin{lstlisting}[frame=single, language=c++]
-		const float oneeighty = DegreesToRadians( 180.0f );
-		\end{lstlisting}
+\item Another good example would be a DegreesToRadians function. Everyone finds degrees easier to read than radians. While you may know that 180 degrees is in radians it is much clearer written as follows:
+\begin{lstlisting}[frame=single, language=c++]
+const float oneeighty = DegreesToRadians( 180.0f );
+\end{lstlisting}
+
+\end{enumerate}
+	
+	
+	\item Compared with ordinary function, constexpr functions:
+	\begin{enumerate}
+		\item \textbf{For outside}. is able to be used in the another constant expression(such as constexpr int sum = cfun(2,3); ) But it doesn't mean that it must be used in constant expression(such as int sum = cfun(i,j);)
+		
+		\item \textbf{For inside}. constexpr function is able to be calculated in compiling time. (such as int sum = cfun(2,3); ) But it doesn't mean that it must be calcuated in compling time(such as int sum = cfun(i,j);)
+	\end{enumerate}
+
+	
+\begin{lstlisting}[frame=single, language=c++]	
+constexpr int cfun(int i, int j){
+	return i+j;
+}
+
+int fun(int i, int j){
+	return i+j;
+}
+
+int i, j;
+cin>>i>>j;
+constexpr int sum = fun(2,3);  //Error
+constexpr int sum = fun(i,j);  //Error
+constexpr int sum = cfun(2,3); //OK
+constexpr int sum = cfun(i,j); //Error
+//For constexpr context, only cfun with constant expression is OK
+
+int sum = fun(2,3);  //OK
+int sum = fun(i,j);  //OK
+int sum = cfun(2,3); //OK
+int sum = cfun(i,j); //OK
+//For Non-constexpr context, all fun is OK
+\end{lstlisting}		
+	
+	\item There are two contexts in which a constexpr function \textbf{MUST} to run at compile time. That's why\textbf{constexpr functions must be able to return compile-time results when called with compile-time values.}
+	\begin{enumerate}
+		\item The constexpr function is executed in a context which is evaluated at compile time. This can be a static\_assert expression such as with the type-traits library or the initialisation of a C-array.
+		\item The value of a constexpr function is requested during compile time with constexpr: constexpr auto res = func(5);
+	\end{enumerate}
+
+	\item In C++11.For constexpr functions there are a few restrictions:
+	\begin{enumerate}
+		\item has to be non-virtual.
+		\item has to have arguments and a return value of a literal type. Literal types are the types of constexpr variables.
+	\end{enumerate}
+
+
+	\item The restriction goes on with the function body. The key points are that
+	\begin{enumerate}
+		\item it has to be defined with the keyword default or delete or
+		\item can only have one return statement.
+		
+		\item The function body must be non-virtual and extremely simple: Apart from typedefs and static asserts, only a single return statement is allowed. In the case of a constructor, only an initialization list, typedefs and static assert are allowed. (= default and = delete are allowed, too, though.)
 		
 	\end{enumerate}
-	
+\begin{lstlisting}[frame=single, language=c++]
+constexpr int gcd(int a, int b){
+	return (b== 0) ? a : gcd(b, a % b);
+	//can only have one return statement.
+	$\Hilight{35}$//but thank for ternary operator and recursion.
+}
+\end{lstlisting}
+
+	\item In C++14. constexpr function can include: 
+		\begin{enumerate}
+		\item conditional jump instructions or loop instructions.
+		\item more than one instruction.
+		\item fundamental data types that have to be initialized with a constant expression.
+		\item \textbf{You can't define below:} asm declaration, a goto statement, a statement with a label other than case and default, try-block, definition of a variable of non-literal type, definition of a variable of static or thread storage duration, definition of a variable for which no initialization is performed.
+		
+		\item The arguments and the return type must be \textbf{literal types} (i.e., generally speaking, very simple types, typically scalars or aggregates)
+		
+		\item constexpr function can call only other constexpr function not simple function.
+		
+		\item in C++11, constexpr member function is implicit const; C++14 lift it up.
+	\end{enumerate}
+\begin{lstlisting}[frame=single, language=c++]
+constexpr auto gcd(int a, int b){
+	while (b != 0){
+		auto t= b;
+		b= a % b;
+		a= t;
+	}
+	return a;
+}
+\end{lstlisting}
+
+
 \end{itemize}
+
 
 \subsection{static}
 \begin{itemize}
+	\item In C++, \textbf{global and static variables initialized to default values.}  But auto variable is random value, unless you use value initialization, because of efficiency consideration. 
 
-\item In C++, \textbf{global and static variables initialized to default values.}  But auto variable is random value, because of efficiency consideration.
-
-\item You can't initialize a static member variable inside the class declaration, you need to put it in a .cpp file.   But you can if the static data member is \texttt{const} of integer or enumeration.
+	\item You can't initialize a static member variable inside the class declaration, you need to put it in a .cpp file.   But you can if the static data member is \texttt{const} of integer or enumeration. If you have a const member inside a class, better to use const static, because it can't be changed, so all the object can share the one static value.
 \begin{lstlisting}[frame=single, language=c++]
 class{  //in .h file
   static int obj_num;  // you can't initialize
@@ -1393,13 +1436,13 @@ Int class::obj_num = 0; // no static keyword anymore.
 // obj_num will be default value(0) even you don't init it.
 \end{lstlisting}
 
-\item static member function has two usages:
+	\item static member function has two usages:
 \begin{enumerate}
-\item It can be invoked just by class name, not object instance, so you can define math class and define a lot static math function inside it.  Just like name space.
-\item It can't access class data member, only can access class static member data.
+	\item It can be invoked just by class name, not object instance, so you can define math class and define a lot static math function inside it.  Just like name space.
+	\item It can't access class data member, only can access class static member data. Because for static function, we don't pass \texttt(this) pointer
 \end{enumerate}
 
-\item static can be used restrain the scope.
+	\item static can be used restrain the scope.
 \begin{lstlisting}[frame=single, language=c++]
 int global = 0;  //All files
 static int s_i = 50; //just in this file
@@ -1411,15 +1454,13 @@ main(){
 }
 \end{lstlisting}
 
-\item Summary: static uses in three ways:
+	\item Summary: static uses in three ways:
 \begin{enumerate}
-\item use it inside a function. unvisible outside of function, valid untill program end.
-\item use it inside a class. only copy for all instances, and access by static member function.
-\item use it inside a file. internal link, avoid name conflict, 
+	\item use it inside a function. unvisible outside of function, valid untill program end.
+	\item use it inside a class. only copy for all instances, and access by static member function.
+	\item use it inside a file. internal link, avoid name conflict.But by now, we prefer to use unname space in moder C++.
 \end{enumerate}
-
 \end{itemize}
-
 
 \subsection{size\_t and ptrdiff\_t}
 
@@ -2124,6 +2165,769 @@ class A & operator=(const class A& rhs)
 
 \end{itemize}
 
+
+\section{Style}
+\subsubsection{Basic Principles}
+\begin{itemize}
+	\item \textbf{Keep consistent with your style!} Don't change it very often.
+	
+	\item \textbf{Don't sweat on the small stuff.} Such as how many spaces to indent? space or tab? Or must have comment etc. In any interview, style is not an important question.
+	
+	\item \textbf{Use descriptive function and variable name. Even it's a little longer.} Most code is read a lot more than typed. With good function and variable name, comment is unnecessary.
+	
+	\item \textbf{Don't use abbreviation name unless it's very common, such as CPU and TCP/IP.}
+	
+	\item \textbf{Don't need to use type indicator for all variable.} Hungarian notation offer no benefit for object-oriented language, especially it's impossible to use in generic programming. But for some generic concept, such as reference, pointer and STL container, you can use it such as: "ptr\_map\_dic". Modern IDE(such as Visual Studio and Understand) support pop up message when you hover your mouse over a variable.
+\end{itemize}
+
+
+\subsubsection{Naming}
+\begin{itemize}
+	
+	\item For global scope, use g\_ prefix;
+	
+	\item For member variable in class, use tailing underscore. Why? 
+	\begin{enumerate}
+		\item Prefix underscore uses for reserved word mostly.
+		\item When you use trailing underscore, you can use auto completion better. For example for variable name \texttt{test\_}, When you type t, the name will appear, but for \texttt{\_test}, you have to type \_t two characters, and options are much more than \texttt{test\_}.
+	\end{enumerate}
+	
+	\item For member variable in struct, just like an ordinary variable name. 
+	
+	\item For constant name, use k\_ prefix and upperCamelCase;
+	
+	\item Using upper-case and underscores for pre-processor Macro;
+	
+	\item \textbf{Using upperCamelCase for Classes, Structures, Enumerations, Typedef and  Constants;}
+	
+	\item \textbf{Using lowerCamelCase and verb for function. Such as \texttt{getSth} and \texttt{doSth}}
+	
+	\item \textbf{Using lowercase and underscore  and noun for variable and parameter name. Because for long variable name, It's easier to read. Such as \texttt{sth\_for\_dinner}}
+	
+	\item Using \texttt{other} or \texttt{rhs} as name for copy ctor and assignment operator.
+	
+	\item The prefix \texttt{is} should be used for boolean variables and methods which return bool.
+	
+\end{itemize}
+
+\begin{lstlisting}[frame=single, language=c++]
+#define ARRAY_NUM 10
+bool isVisible;
+
+struct Student{
+name;
+};
+enum BackgroundColor{
+Red,  //constant
+Green
+};
+class Teacher{
+name_;  // not m_strName;  
+};
+
+typedef struct Student StuStruct ;
+StuStruct g_global_varaible;
+const int k_DaysInWeek = 7;
+main(){
+string teacher_name;  //meaning variable name
+}
+
+printTeacherName(const string& name){...} //function name
+\end{lstlisting}
+
+\subsubsection{Comment and Document}
+
+\begin{itemize}
+	\item There are five levels of comment:
+	\begin{tabular}{|c|c|c|}
+		\hline 
+		type & tool & user \\ 
+		\hline 
+		good name convention & no & developer  \\ 
+		\hline 
+		source code comment & with source code &  developer \\ 
+		\hline 
+		API & source code+ doxgen  & developer + user  \\ 
+		\hline 
+		developer document & latex &  developer \\ 
+		\hline 
+		End user & Word, power point & end users  \\ 
+		\hline 
+	\end{tabular} 
+	
+	\item Only use comment when it's very necessary. If you give function and variable good name, don't need to comment them at all. 
+	
+	\item source code comment are most inside of a function. API comments are most before function, class. You can use doxygen to produce a html from it. 
+	
+	\item Use C++ and doxygen style comment more, use C style comment less.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	/// \brief fooFun does ...
+	///
+	///if \p flag is true, when happen
+	///\param [out] result will be filled
+	///\return 0 on success.
+	bool fooFun(bool flag, int& result);
+	\end{lstlisting}
+	
+	\item When you want to comment a large block of code out, use \texttt{\#if 0} ...  \texttt{\#endif}, It's better than using /* ... */. 
+	
+	\item Don't duplicate the function or class name in comment. Maybe you will change name later, this inconsistency will confuse comment readers in the future.
+	
+	\item Install Doxygen in linux, then run \linuxcommand{doxygen -g} in the terminal to produce configure file, the name is Doxyfile.  In Doxyfile, modify two items:
+	\begin{verbatim}
+	GENERATE_LATEX = NO
+	INPUT = ./src
+	\end{verbatim}
+	then run \linuxcommand{doxygen Doxyfile}, A html directory will be built.
+	
+	\item Install doxygen on Windows, you can run doxywizard application, or you can use GUI to set Doxyfile configuration file.
+	
+	\item Usually you have a standard tree structure of project, that is to say every .cpp has .h file.  Under this circumstance, you should put comment command in .h file. Because .h file is an interface to customer.
+	
+	\item If a .cpp file include a .h file,  doxygen will not parse the .cpp file automatically, It only parse all .h file in certain directory and extract all types, such as class and struct information. \textbf{No function and global variable information is extracted.} 
+	
+	\item For class and struct which are declared inside a .h file, Doxygen will show them under Classes tab in the index.html. Even you don't have any comment on it.
+	
+	\item If you want global functions, variables, enums, typedefs, and defines to be documented, you should document the file in which these contents are located using a comment block containing a $\backslash$file (or @file) command. Even this global function is inside of .h file. With $\backslash$file in .h file, You'd better to use HIDE\_UNDOC\_MEMBERS to ignore all the other global function members without comment inside this .h file. It will make last result looks clean. 
+	
+	\item In order to make Doxygen to parse a .cpp file , you need to put Doxygen command\textbf{$\backslash$file} in a separate line in the .cpp file, then Doxygen will parse this .cpp file and produce the corresponding html page.
+	
+	\item Given a C++ source code section, Doxygen will produce below html page.  \textbf{References} and \textbf{Referenced} can be turn on in the configure files.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	/// \brief Return the function this instruction belongs to.
+	///
+	/// Note: it is undefined behavior to call this on an
+	/// instruction not currently inserted into a function.
+	const Function *getFunction() const;
+	\end{lstlisting}
+	
+	\includegraphics[scale=0.45]{pics/dox1.png} \newline
+	
+	\includegraphics[scale=0.45]{pics/dox2.png} 
+	
+\end{itemize}
+
+
+\subsubsection{Code Convention}
+\begin{itemize}
+	
+	\item Pointer and reference symbol is near to data type, not near to a variable name.
+	
+	
+	
+	\item For forward function, 1) prefer to use reference 2) don't inline f function. Detail can be found in GotW27. When do we need to use forward function.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	bool f( X& x ){
+	return g( x );
+	}
+	\end{lstlisting}
+	
+	\item Use \texttt{const} as many as possible. Detail can be found in \texttt{const} section below. 
+	
+	\item Declare variables as locally as possible and minimize usage of global variables.
+	
+	\item Avoid macro, use inline function;  Avoid magic numbers, instead of using \texttt{const} and \texttt{enum}
+	
+	\item Format lambdas like blocks of code.
+	\begin{lstlisting}[frame=single, language=c++]
+	int cutoff = 7;
+	std::find(foo.begin(),foo.end(),[&](const Foo &a ) ->bool{
+	return a.blah<cutoff  //use reference to get local var
+	});
+	\end{lstlisting}
+	
+	
+	\item Use \_FILE\_ and \_LINE\_ to capture the current file name and line number.  \texttt{assert} just uses this kind of macro inside.
+	
+	\item Use \texttt{const} replace \texttt{\#define} to define global constants. \texttt{static const} can be used to define constant class member. (\texttt{const} means that it will not change, so I don't need keep multi copy in multi objs, so I use static.)
+	
+	\item Use more \texttt{typedef} or \texttt{alias} to simplify Complicated Type Expressions, It's helpful especially in STL. 
+	\begin{lstlisting}[frame=single, language=c++]
+	typedef std::map< int, int > IntMap;
+	typedef IntMap::const_iterator IntMapConstIter;
+	for( IntMapConstIter it = layout.begin();
+	it != layout.end(); ++it ) {
+	
+	typedef int(*CB)(int, const char*); //C++11 use function<>
+	CB callBack;  //decare a functions pointer.
+	
+	int sort(int, const char*){..}
+	callBack = sort; // & operator is optional here!
+	\end{lstlisting}
+	
+	\item Using alias(C++11) is better than typedef. 
+	\begin{enumerate}
+		\item First word is \texttt{using}, \textbf{There are no sharp symbol before \texttt{using} .} 
+		\item Second is TypeName. 
+		\item Third is assignment \texttt{=}.  
+	\end{enumerate}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	using UPtrMapSS =
+	std::unique_ptr<std::unordered_map<std::string, int>>;
+	
+	using CB = int(*)(int, const char*);
+	\end{lstlisting}
+	
+	\item Create a zero-valued enumerator to indicate an invalid or default state and make it the first item.
+	
+	\item \textbf{Declare all member variables private, then use getter and setter functions to access them.}
+	\begin{enumerate}
+		\item Declare all member variables private firstly.
+		
+		\item If Outside need to access it's member variables, just build a public interface function. There are two advantages: 1) Inside set-function, You can test valid range. 2) Inside get-function, even type of member variable change, you just need to change get-function, and get all customer code unmodified. In this way, It's de-coupling.
+		
+		\item If child want to access its parent member, declare it as protected.
+		
+		\item Why overload operator << is friend? 1) It can't be member because it need to be written as cout<< a; not a<<cout. 2) It's need to friend so it can access private member variable. Don't use getter function unless this member variable should be a part of interface. It will break encapsulation 
+	\end{enumerate}
+	
+	\item Don't use multi-thread unless you really need it. Simultaneously respond to many events. Just remember, synchronization has some overhead. Below are some typical scenarios.
+	\begin{enumerate}
+		\item A web server.
+		\item Interface and working thread.
+		\item Take advantage of with multiple processor.
+	\end{enumerate}
+	
+	\item \textbf{Uses early exits to simplify code.}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	if(IsValid){   //bad style
+	do something;
+	} else{
+	return;
+	}
+	
+	if(!IsValid)  // A better style is
+	return;
+	..do something here.
+	\end{lstlisting}
+	
+	\item Turn Predicate Loop into Predicate Function. It makes you code clean and easy to understand.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	for(v.begin....){   /bad style
+	if(it->IsSth){
+	flag = true; break;
+	}
+	}
+	if(flag){...}
+	
+	// A better style is define isHasSth() return bool.
+	if(isHasSth()){...}
+	\end{lstlisting}
+	
+	\item Use \texttt{static\_assert} to test some compile-time boolean conditions. It supports a message parameter. It doesn't need to build execution application. It will stop when you are compiling your code. 
+	\begin{lstlisting}[frame=single, language=c++]
+	static_assert(sizeof(int) > 4, "int is too small");
+	\end{lstlisting}
+	
+	\item Use assert more in your project. You don't need to include file name and line number in the string. assert will output these hint messages.
+	\begin{lstlisting}[frame=single, language=c++]
+	#include<cassert>
+	assert(index>=0 && " index is negative");
+	//Assertion failed: expression, file name, line num
+	\end{lstlisting}
+	
+	\item \textbf{If you don't modify container inside loop}, don't need to evaluate end() every time through for loop. Please remember below code block. \textbf{Just remember auto i,e ++i}
+	\begin{lstlisting}[frame=single, language=c++]
+	//g++ -std=c++11
+	vector<int> con={1,2,3}; //list initializer
+	for(auto i = con.begin, e = con.end();i!=e; ++i){
+	...........
+	}
+	\end{lstlisting}
+	
+	\item The C++11 standard (23.2.1) mandates that end has O(1) complexity, so previous item has no efficiency meaning in C++11.
+	
+	
+	\item \textbf{Prefer Preincrement (++i), especially in a for loop.}  When you use ++i or i++ inside expression, there are differences. Otherwise, there is no differences.
+	\begin{lstlisting}[frame=single, language=c++]
+	for(int i = 0;i<10; ++i)
+	j=++i; // j = i+1;
+	j=i++; //j = i;  i=i+1;
+	++*p;  //++(*p) ;
+	*++p; //*(++p);
+	\end{lstlisting}
+	
+	\item How to understand \texttt{*p++} ?
+	
+	\begin{enumerate}
+		\item Precedence of prefix ++ and * is same. Associativity of both is right to left.
+		\item Precedence of postfix ++ is higher than both * and prefix ++. Associativity of postfix ++ is left to right.
+		\item Prefix and postfix are both syntax sugar, in order to reduce typing.   But prefix represents \textbf{one statement}, postfix means \textbf{two statements};
+	\end{enumerate}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	++i;  //just like i = i+1 or  i+=1;
+	//when i++ used in expression, treated as two statements;
+	*p++; // *(p++);  *p ; p=p+1;
+	
+	while(*p != '\0'){
+	p= p+1;
+	}
+	//can be written to
+	while(*p++ != '\0')
+	\end{lstlisting}
+	
+	\item Always turn on all warning options in your compiler with -Wall. Once you get warning, Eliminate warning before you go further.
+	
+	\item Sometimes, this warning is what you have to, or if warning comes from a header file you can't change. You can use \#pragma warning compile directive to temporary disable it, then restore it later.
+	\begin{lstlisting}[frame=single, language=c++]
+	#pragma warning(push)
+	#pragma warning(disable:4512);
+	#include<not_change.h>
+	#pragma warning(pop) //restore original warning level
+	\end{lstlisting}
+	
+\end{itemize}
+
+\chapter{IO}
+\section{I/O}
+\subsubsection{I/O basic knowledge}
+\begin{itemize}
+	\item Neither C++ nor C has built input and output in the language. They use functions(C) or other I/O objects(C++) in language library.
+	\item C++ I/O class and head file \\
+	\includegraphics[scale=0.45]{pics/io.png}
+	\begin{enumerate}
+		
+		
+		\item \textbf{iofs} stand for three head files <iostream> <fstream> and <sstream>. <iostream> includes <ios> automatically. They are three main header file you should includes in your C++ application.
+		
+		\item three classes: iostream(streambuf), fstream(filebuf), stringstream(stringbuf)
+		
+		\item clog is just like cerr, but it buffer it output.
+		
+		\item C++ normally flushes the input buffer when you press enter. For output to the display, C++ program normally flushes the output buffer when you transmit a newline character, or reaches an input statement.
+		
+		\item \verb=>>= and \verb=<<= don't need to format string,  C++ will automatically,  convert it, it's better than printf and scanf in C language.
+		
+		\item through inheritance, fstream and cin(cout) share the same usage. \textbf{All the knowledge can be used directly in fstream.} I like it the most.
+		
+	\end{enumerate}
+	
+\end{itemize}
+
+
+\subsubsection{Input basic knowledge}
+
+\begin{itemize}
+	\item For Input, you need to master \textbf{One basic idea, Two languages, Three data type.}
+	\item One basic idea: In order to make continuously input, you need to use while(inputMethod), When two things happens:
+	\begin{enumerate}
+		\item user want to end input(ctrl+D) or read the end of File;
+		\item read fail (for example,  cin\verb=>>= int, but input letter 'a'),
+	\end{enumerate}
+	
+	InputMethod will return false.  Then you need use some flag or status to tell the difference between EOF or error inside of while loop.
+	
+	\item Two languages is c and c++, they use the different inputMethod. three data types are: number and word(no space in middle), character(white), and string(include space in middle)
+	
+	\item two languages common used input method \\
+	\begin{tabular}{|p{0.08\textwidth}|p{0.27\textwidth}|p{0.3\textwidth}|p{0.3\textwidth}|}
+		\hline
+		& Number and non-white  character word & Character (including white-character) & string(line)\\
+		\hline
+		C &scanf("\%d \%f \%c \%s",\&i, \&f,\&c);  & int a = getchar(); & fgets(stdin, char*p, n ) \\
+		\hline
+		C++ & cin>>i>>f>>c>>w; & cin.get(char \& c); \newline  Ch = cin.get(); & cin.get( char *p, n); \newline cin.getline(char *p, n); \newline getline(cin, string);
+		\\
+		\hline
+	\end{tabular}
+	
+	
+	\item In scanf, You need to specify exact data type when you read.
+	\begin{enumerate}
+		\item h:  short int or short unsigned. Example: \%hd or \%hu.
+		
+		\item l:  a long int or long unsigned, or double (for \%f conversions.) Example: \%ld, \%lu, or \%lf.
+		
+		\item L: The value to be parsed is a long long for integer types or long double for float types. Example: \%Ld, \%Lu, or \%Lf.
+		
+		\item *: Tells scanf() do to the conversion specified, but not store it anywhere. This is what you use if you want scanf() to eat some data but you don't want to store it anywhere; you don't give scanf() an argument for this conversion. Example: \%*d.
+	\end{enumerate}
+	
+	
+	\item scanf("\%c" \&c) will read any character, including whitespace character. If you want to scanf skip any whitespace, you can use space before \%c.
+	
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	while(true){
+	scanf("%c",&c);
+	//scanf("$\Hilight{1}$ %c",&c);
+	printf("you input: %d" c);
+	}
+	// When you input a(enter)
+	//output will be like
+	you input: 97(a value)
+	you input: 10(enter value)
+	\end{lstlisting}
+	
+	
+	\item cin\verb=>>=c will not read white character(tab, space , newline), If you want to read them from input buffer, You should use getchar() or cin.get(); If you want the user to input his or her name
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	while(true){
+	cin>>c;
+	cout<<"you input:"<<c<<endl;
+	}
+	// When you input  "    a(enter)"
+	//output will be like
+	you input:  a
+	then cursor wait for here.
+	\end{lstlisting}
+	
+	\item Using cin\verb=>>= or scanf will terminate the string after it reads the first space. The best way to handle this situation is to use the function to read a line;
+	
+	\item Read word and line:
+	\begin{lstlisting}[frame=single, language=c++]
+	//read a word until reach white character.
+	Scanf(%s,char_array) //c
+	Cin>>char_array or ; //c++
+	Cin>> str;
+	
+	//line	
+	gets(char_array)  //c
+	fgets(char_array, n , FILE *) //recommend to use this for safety.
+	
+	cin.getline(char * ,int n) //c++ read and discard newline
+	cin.get(char * ,int n) //not read newline
+	std::getline(istream&  is, string& str)
+	\end{lstlisting}
+	
+	\item cin.read function has the same interface with cin.get, but it doesn't append a null character to input, It's not intend for keyboard input, but for binary format of file
+	
+	\item \textbf{For C++, three get, two getline, other use >>};
+	
+	\item Difference between cin.get(char) and int = cin.get()
+	\begin{lstlisting}[frame=single, language=c++]
+	while(cin.get(c))
+	// use cin.get(char) in reading loop
+	
+	cin.get() != '\n'
+	//use cin.get() return character to test sth.
+	
+	cin.get()!= EOF
+	//When used in EOF, you have to use int
+	//because EOF may not be expressed by char tyep
+	\end{lstlisting}
+	
+	\item Three confused functions: cin.get and cin.getline are almost the same thing.
+	\begin{lstlisting}[frame=single, language=c++]
+	cin.get ( char* s, streamsize n, char delim );
+	cin.getline (char* s, streamsize n, char delim );
+	istream& getline (istream&  is, string& str);
+	\end{lstlisting}
+	
+	\begin{enumerate}
+		
+		\item For each line, if you don't know the max length, juse use getline(cin, string). You don't need to input any length.(you can reserve lengh of string if you want to avoid allocation of memory)
+		
+		\item cin.get() doesn't discard delim from input stream. However, cin.getline() will read and discard newline.  (It's easy for you to remember, because, \textbf{line} is defined by newline character)
+		
+		\item In cin.getline(char* s, int n)The failbit flag is set if the function extracts no characters(newline is a character), Or if the delimiting character is not found once (n-1) characters have already been written to s. Note that if the character that follows those (n-1) characters in the input sequence is precisely the delimiting character, it is also extracted and the failbit flag is not set.
+		
+		\item In cin.get(char* s ,  int n). The failbit flag is set only if the function extracts no characters.
+		
+		\item If you are talking about the newline character from a console input,it makes perfectly sense to discard it, So use cin.getline(). Or you don't want to customized flexible reading method, just read a line from a file. please use cin.getline().
+		
+		\item cin.get(char* s, n) is more flexible than cin.getline. Because when it read to the array is full, It doesn't set failbit. At this time you can use gcount() or peek() to see if next character is new line. It's more customized than  cin.getline();
+	\end{enumerate}
+	
+\end{itemize}
+
+\subsubsection{custom stream}
+\begin{enumerate}
+	\item \textbf{peek} return the next character from input without extracting from the input stream. For example, you want to read input up to the first newline or period.
+	\begin{lstlisting}[frame=single, language=c++]
+	char input[80];
+	int i = 0;
+	while( (ch=cin.peek()) != '.' && ch != '\n')
+	cin.get(input[i++];)
+	input[i] = '\0';
+	\end{lstlisting}
+	
+	\item \textbf{gcount()} method returns the number of characters read by the last unfromatted extraction method. That means character read by the a get(), getline(), ignore(), or read(), but not extraction operator.
+	
+	\item \textbf{putback()} function inserts a character back in the input buffer.
+\end{enumerate}
+
+
+\subsubsection{Input error}
+
+\begin{itemize}
+	\item \textbf{For the error of input: Just remember C language return EOF and NULL, and C++ return all false. }
+	
+	\begin{tabular}{|c|c|c|c|}
+		\hline
+		& Number, non-white & character, white  & string \\
+		\hline
+		C & scanf return EOF & getchar return EOF & fgets return NULL \\
+		\hline
+		c++ & cin return false & cin return false & cin.getline return false \\
+		\hline
+	\end{tabular}
+	
+	\item When you can't continue input, you need to know if it's end of file or fail. In C language, you can use feof and ferror function, in C++, you can use cin.eof(), cin.fail() or cin.bad() three functions. cin.bad() means serious system error happens, and input buffer can't be consistent and can't be recoveried anymore.
+	
+	\item When failbit or badbit are set. fail() return false, So you need to judge it by bad() again if this information is important for you.  Usually, bad() is not use very often.
+	
+	\item eofbit is interesting topic. when you reach(not read) the "logical end-of-file", it will not be set, \textbf{It's set by a read function, not by position}   Instead,  You can use std::ifstream::peek() to check for the "logical end-of-file".
+	
+	\item \textbf{eof is set by last read EOF position} When you read EOF position, failbit is set and eof is set too. So If EOF is set, failbit must set too.  If only failbit is set, it means that input error happen.  Under these two conditions, istream will return false by operator bool.
+	
+	\item In http://en.cppreference.com/w/cpp/io/basic\_ios/operator\_bool . You can see eofbit are true and failbit are false, operator bool return true. I don't' know when it will happen. \textbf{ eof() function returns "true" after the program attempts to read past the end of the file.}  But when read action set eofbit, it will set failbit at the sametime, so bool operator will return false because failbit are set.
+	
+	\item How do you know if you read an incorrect input word, or if you are at the end of the file? This is when you use cin.eof() or feof() in C language.
+	
+	
+	\item you can use clear() and setstate() to set the states, Why? It's just depends on what the program is trying to accomplish.  It provides a means for you to change the state. setstate() is different with clear(), clear() clear all the status bit. but setstate just set specific bit.
+	
+	\item You can use exceptions() method to control if exceptions will throw, when the eofbit, failbit and badbit is set.
+	
+	\item setstate() is to provide a means for input and output functions to change the state. For end user, we don't use it very often. We just use clear() more.
+	
+	\item for rdstate() it will return all the bit value, then you can use \& to certain bit( such as failbit) to check if the bit has been set. But here, you can use fail() directly, so we don't use this function very often.
+	\begin{lstlisting}[frame=single, language=c++]
+	std::ifstream is;
+	is.open ("test.txt");
+	if ( (is.rdstate() & std::ifstream::failbit ) != 0 )
+	std::cerr << "Error opening 'test.txt'\n";
+	\end{lstlisting}
+	
+	
+	\item \textbf{clear() function is very important, when cin.fail() return true, you have to use clear(), otherwise all he below cin operation will not work.} See below example.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	char ch, str[20];
+	cin.getline(str, 5);
+	cout<<"flag1:"<<cin.good()<<endl;    // check good bit
+	cin.clear();   //without, cin>>ch below will not work at all
+	cout<<"flag1:"<<cin.good()<<endl;    // check good bit again
+	cin>>ch;
+	cout<<"str:"<<str<< " ch:" <<ch<<endl;
+	
+	input:
+	12345[Enter]
+	output:
+	flag1:0 // good()return false
+	flag2:1 // good()return true after clear().
+	str:1234 ch:5
+	\end{lstlisting}
+	
+	
+	
+	
+\end{itemize}
+
+\subsubsection{Input Pattern}
+
+\begin{itemize}
+	\item It is bad idea to test the stream on the outside and then read/write to it inside the body of the conditional/loop statement. This is because the act of reading may make the stream bad. It is usually better to do the read as part of the test.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	while(!cin.fail()){  // that is bad programming style
+	cin>>i;  //here may make stream fail().
+	.....      //then i is not valid value
+	}
+	\end{lstlisting}
+	
+	\item If you just want to input, You don't want to know eof or deal with failbit. You can use below: \\
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	while(scanf("%d",&i) != 1)
+	while((int c = getchar())!=EOF)
+	while( fgets(line, sizeof(line), fp) != NULL )
+	//in c language, use these to exit loop!
+	
+	while(cin>>input)
+	while(cin.get(p, 20) )
+	while(getline(ifstream, string)) {
+	//in C++ language, use bool operator to exit loop.
+	//do some useful things.  //input is right.
+	}
+	\end{lstlisting}
+	
+	\item If you want to know eof or deal with error. You can use below:
+	\begin{lstlisting}[frame=single, language=c++]
+	While(true)  // use break to exit loop;
+	{
+	cin>>i // or getline(ifstream, string);
+	If(cin.eof()){   //If it's EOF
+	cout<<"EOF encountered"<<endl
+	break;
+	}
+	If(cin.fail())          //Invalide input
+	{
+	cin.clear();    //Important. clear state and buffer
+	while(cin.get()!='\n')  //get rid rest of line,
+	continue ;
+	cout<<"please input a number"<<endl;
+	continue;
+	}
+	...  //do some useful things.  //input is right.
+	}
+	\end{lstlisting}
+	
+	
+	
+	
+	\item In the previous example, Why do we need to distinguish eof and fail? When fail happen, maybe there are invalid character in buffer. After clean the buffer, I can continue to read input from input buffer. Three methods to clean invalid character in the buffer
+	\begin{lstlisting}[frame=single, language=c++]
+	cin.clear();    //Important. clear state and buffer
+	while(cin.get()!='\n')
+	continue ;      // method 1
+	
+	while(!issapce(cin.get()))
+	continue;  //method 2
+	
+	basic_istream& ignore(streamsize _Count = 1, \
+	int_type _Delim = traits_type::eof());  //method 3
+	cin.ignore(5, 'a');
+	cin.ignore(numeric_limits<streamsize>::max(), '\n');
+	\end{lstlisting}
+	
+	\item You can use istream\_iterator, It can save you some trouble to judge EOF.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	#include <iostream>
+	#include <vector>
+	#include <algorithm>
+	#include <iterator>
+	using namespace std;
+	class A{
+	private:
+	int x;
+	int y;
+	friend istream& operator>>(istream& in, A&);
+	friend ostream& operator<<(ostream& in, const A&);
+	};
+	
+	istream& operator>>(istream& in, A& a){
+	in>>a.x>>a.y;
+	return in;
+	}
+	
+	
+	ostream& operator<<(ostream& out, const A& a){
+	out<<a.x<< " " <<a.y;
+	return out;
+	}
+	
+	int main(){
+	vector<A> v;
+	copy(istream_iterator<A>(cin), istream_iterator<A>(),
+	back_inserter(v));
+	copy(v.begin(), v.end(),ostream_iterator<A>(cout, "\n"));
+	}
+	
+	\end{lstlisting}
+	
+	
+	\item \textbf{In summary, It's better just use judgment to exit end loop.  If you need to different specific action to take to deal with EOF or error. Use while(true), then use eof() of feof() fail() or clear() functions in c++ and c to deal with and break the loop; }
+	
+\end{itemize}
+
+
+\subsubsection{Output}
+\begin{itemize}
+	\item For cout, It can recognize type automatically, and It is extensible, You can redefine \verb=<<= operator so that cout can recognize you data type.
+	\begin{lstlisting}[frame=single, language=c++]
+	class Foo{
+	friend ostream & operator<<(ostream& s, const Foo &r);
+	}
+	
+	ostream & operator<<(ostream& s, const Foo &r){
+	s<<Foo.a<<Foo.b<<endl;
+	}
+	\end{lstlisting}
+	
+	\item  How to print pointer address?
+	\begin{lstlisting}[frame=single, language=c++]
+	char* amount = "dozen";
+	cout<< amount  ; //print "dozen" string
+	
+	cout<<(void*) amount;   //prints the address of pointer
+	printf("%p", (void*) p);
+	\end{lstlisting}
+	
+	
+	\item Format is key point for Output. you need to know the common manipulator to control the output format.
+	\item Number base manipulators:  hex, oct  and dec; Field widths: Width,  fill, precision Setf()
+	\item You don't need to know the details, just name of them. When you want to use them go to reference website to look.A detail format manipulators can be seen on C++ primer P1090. You need to include <iomanip>
+	
+	\item \verb=<<= is a bitwise left-shift operator in C language, but in C++, we overloaded it in ostream class, cout is a object of ostream,
+	
+	\item You can use \verb=cout<<flush= to force flushing the output buffer
+	\item cout.write can be used to output a string, It will output certain length string, even reach the end of string.
+	
+	
+\end{itemize}
+
+\subsubsection{file}
+\begin{itemize}
+	\item 	When you studied cin and cout very well, you will find that file operation is so easy. just change cin or cout to your ifstream , ofstream or fstream object.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	std::fstream fs;
+	fs.open ("test.txt", ios_base::in| ios_base::binary);
+	if(!ifs.is_open())
+	exit(1);
+	char c = ifs.get();
+	// use all previous input methods
+	ifs.close();
+	\end{lstlisting}
+	
+	
+	\item Only read ifsteam;  Only write ofsteam; write and read fstream.
+	
+	\item For ios\_base::binary mode, use write() and read() funciton.
+	
+	\item For writing, pay attention to the difference between ios\_base::trunc and ios\_base::app
+	
+	\item Random access is used mostly on binary file. Because the position can be pinpointed exactly. For seekg() for input, and seekp() for output.(p is put, g is get) It move the pointer. tellp() and tellg() function.  It tell the position of pointer.
+	
+\end{itemize}
+
+\subsubsection{buffer and string buffer}
+
+\begin{itemize}
+	
+	
+	\item stringstream is a convenient way to manipulate strings like an independent I/O device .
+	Sometimes it is very convenient to use stringstream to convert bettween strings and other numerical types. The usage of stringstream are much the same with iostream, so it is not a burden to learn.  
+	
+	\item \textbf{You need to build a stringstream from a string, or convert a stringstream back to a string.}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	stringstream outstr;
+	//change number to a text
+	outstr<<"salary value"<<123333.00<<endl;
+	String str = outstr.str() //change to string
+	
+	//change text to number
+	Istringstream Instr(str);
+	While(instr>>number)
+	cout<<number<<endl
+	////////below is C language/////////
+	char sentence []="Yan is 41 years old";
+	char str [20];
+	int i;
+	sscanf (sentence,"%s %*s %d", str, &i);
+	//* means input will be ignored. So str = Yan, i = 41.
+	sprintf(.....);
+	\end{lstlisting}
+	
+\end{itemize}
+
+\subsection{efficiency}
+\begin{itemize}
+	\item  lazy evaluation includes 1) reference counting (to avoid extra copy) 2) distinguish read from write 3) lazy fetching. 4) lazy expression evaluation. Detail see in "More Effective C++". Usually, implementation will be  more complex with lazy evaluation.
+	
+\end{itemize}
+
+\chapter{memory}
 \section{memory}
 
 \subsection{malloc and remalloc}
@@ -2525,765 +3329,6 @@ class A & operator=(const class A& rhs)
 \end{itemize}
 
 
-\section{I/O}
-\subsubsection{I/O basic knowledge}
-\begin{itemize}
-\item Neither C++ nor C has built input and output in the language. They use functions(C) or other I/O objects(C++) in language library.
-\item C++ I/O class and head file \\
-\includegraphics[scale=0.45]{pics/io.png}
-\begin{enumerate}
-
-
-\item \textbf{iofs} stand for three head files <iostream> <fstream> and <sstream>. <iostream> includes <ios> automatically. They are three main header file you should includes in your C++ application.
-
-\item three classes: iostream(streambuf), fstream(filebuf), stringstream(stringbuf)
-
-\item clog is just like cerr, but it buffer it output.
-
-\item C++ normally flushes the input buffer when you press enter. For output to the display, C++ program normally flushes the output buffer when you transmit a newline character, or reaches an input statement.
-
-\item \verb=>>= and \verb=<<= don't need to format string,  C++ will automatically,  convert it, it's better than printf and scanf in C language.
-
-\item through inheritance, fstream and cin(cout) share the same usage. \textbf{All the knowledge can be used directly in fstream.} I like it the most.
-
-\end{enumerate}
-
-\end{itemize}
-
-
-\subsubsection{Input basic knowledge}
-
-\begin{itemize}
-\item For Input, you need to master \textbf{One basic idea, Two languages, Three data type.}
-\item One basic idea: In order to make continuously input, you need to use while(inputMethod), When two things happens:
-\begin{enumerate}
-\item user want to end input(ctrl+D) or read the end of File;
-\item read fail (for example,  cin\verb=>>= int, but input letter 'a'),
-\end{enumerate}
-
-InputMethod will return false.  Then you need use some flag or status to tell the difference between EOF or error inside of while loop.
-
-\item Two languages is c and c++, they use the different inputMethod. three data types are: number and word(no space in middle), character(white), and string(include space in middle)
-
-\item two languages common used input method \\
-\begin{tabular}{|p{0.08\textwidth}|p{0.27\textwidth}|p{0.3\textwidth}|p{0.3\textwidth}|}
-\hline
-& Number and non-white  character word & Character (including white-character) & string(line)\\
-\hline
-C &scanf("\%d \%f \%c \%s",\&i, \&f,\&c);  & int a = getchar(); & fgets(stdin, char*p, n ) \\
-\hline
-C++ & cin>>i>>f>>c>>w; & cin.get(char \& c); \newline  Ch = cin.get(); & cin.get( char *p, n); \newline cin.getline(char *p, n); \newline getline(cin, string);
- \\
-\hline
-\end{tabular}
-
-
-\item In scanf, You need to specify exact data type when you read.
-\begin{enumerate}
-\item h:  short int or short unsigned. Example: \%hd or \%hu.
-
-\item l:  a long int or long unsigned, or double (for \%f conversions.) Example: \%ld, \%lu, or \%lf.
-
-\item L: The value to be parsed is a long long for integer types or long double for float types. Example: \%Ld, \%Lu, or \%Lf.
-
-\item *: Tells scanf() do to the conversion specified, but not store it anywhere. This is what you use if you want scanf() to eat some data but you don't want to store it anywhere; you don't give scanf() an argument for this conversion. Example: \%*d.
-\end{enumerate}
-
-
-\item scanf("\%c" \&c) will read any character, including whitespace character. If you want to scanf skip any whitespace, you can use space before \%c.
-
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-while(true){
-  scanf("%c",&c);
-  //scanf("$\Hilight{1}$ %c",&c);
-  printf("you input: %d" c);
-}
-// When you input a(enter)
-//output will be like
-you input: 97(a value)
-you input: 10(enter value)
-\end{lstlisting}
-
-
-\item cin\verb=>>=c will not read white character(tab, space , newline), If you want to read them from input buffer, You should use getchar() or cin.get(); If you want the user to input his or her name
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-while(true){
-  cin>>c;
-  cout<<"you input:"<<c<<endl;
-}
-// When you input  "    a(enter)"
-//output will be like
-you input:  a
-then cursor wait for here.
-\end{lstlisting}
-
-\item Using cin\verb=>>= or scanf will terminate the string after it reads the first space. The best way to handle this situation is to use the function to read a line;
-
-\item Read word and line:
-\begin{lstlisting}[frame=single, language=c++]
-//read a word until reach white character.
-Scanf(%s,char_array) //c
-Cin>>char_array or ; //c++
-Cin>> str;
-
-//line	
-gets(char_array)  //c
-fgets(char_array, n , FILE *) //recommend to use this for safety.
-
-cin.getline(char * ,int n) //c++ read and discard newline
-cin.get(char * ,int n) //not read newline
-std::getline(istream&  is, string& str)
-\end{lstlisting}
-
-\item cin.read function has the same interface with cin.get, but it doesn't append a null character to input, It's not intend for keyboard input, but for binary format of file
-
-\item \textbf{For C++, three get, two getline, other use >>};
-
-\item Difference between cin.get(char) and int = cin.get()
-\begin{lstlisting}[frame=single, language=c++]
-while(cin.get(c))
-// use cin.get(char) in reading loop
-
-cin.get() != '\n'
-//use cin.get() return character to test sth.
-
-cin.get()!= EOF
-//When used in EOF, you have to use int
-//because EOF may not be expressed by char tyep
-\end{lstlisting}
-
-\item Three confused functions: cin.get and cin.getline are almost the same thing.
-\begin{lstlisting}[frame=single, language=c++]
-cin.get ( char* s, streamsize n, char delim );
-cin.getline (char* s, streamsize n, char delim );
-istream& getline (istream&  is, string& str);
-\end{lstlisting}
-
-\begin{enumerate}
-
-\item For each line, if you don't know the max length, juse use getline(cin, string). You don't need to input any length.(you can reserve lengh of string if you want to avoid allocation of memory)
-
-\item cin.get() doesn't discard delim from input stream. However, cin.getline() will read and discard newline.  (It's easy for you to remember, because, \textbf{line} is defined by newline character)
-
-\item In cin.getline(char* s, int n)The failbit flag is set if the function extracts no characters(newline is a character), Or if the delimiting character is not found once (n-1) characters have already been written to s. Note that if the character that follows those (n-1) characters in the input sequence is precisely the delimiting character, it is also extracted and the failbit flag is not set.
-
-\item In cin.get(char* s ,  int n). The failbit flag is set only if the function extracts no characters.
-
-\item If you are talking about the newline character from a console input,it makes perfectly sense to discard it, So use cin.getline(). Or you don't want to customized flexible reading method, just read a line from a file. please use cin.getline().
-
-\item cin.get(char* s, n) is more flexible than cin.getline. Because when it read to the array is full, It doesn't set failbit. At this time you can use gcount() or peek() to see if next character is new line. It's more customized than  cin.getline();
-\end{enumerate}
-
-\end{itemize}
-
-\subsubsection{custom stream}
-\begin{enumerate}
-\item \textbf{peek} return the next character from input without extracting from the input stream. For example, you want to read input up to the first newline or period.
-\begin{lstlisting}[frame=single, language=c++]
-char input[80];
-int i = 0;
-while( (ch=cin.peek()) != '.' && ch != '\n')
-   cin.get(input[i++];)
-input[i] = '\0';
-\end{lstlisting}
-
-\item \textbf{gcount()} method returns the number of characters read by the last unfromatted extraction method. That means character read by the a get(), getline(), ignore(), or read(), but not extraction operator.
-
-\item \textbf{putback()} function inserts a character back in the input buffer.
-\end{enumerate}
-
-
-\subsubsection{Input error}
-
-\begin{itemize}
-\item \textbf{For the error of input: Just remember C language return EOF and NULL, and C++ return all false. }
-
- \begin{tabular}{|c|c|c|c|}
- \hline
-  & Number, non-white & character, white  & string \\
- \hline
- C & scanf return EOF & getchar return EOF & fgets return NULL \\
- \hline
- c++ & cin return false & cin return false & cin.getline return false \\
- \hline
- \end{tabular}
-
- \item When you can't continue input, you need to know if it's end of file or fail. In C language, you can use feof and ferror function, in C++, you can use cin.eof(), cin.fail() or cin.bad() three functions. cin.bad() means serious system error happens, and input buffer can't be consistent and can't be recoveried anymore.
-
- \item When failbit or badbit are set. fail() return false, So you need to judge it by bad() again if this information is important for you.  Usually, bad() is not use very often.
-
-\item eofbit is interesting topic. when you reach(not read) the "logical end-of-file", it will not be set, \textbf{It's set by a read function, not by position}   Instead,  You can use std::ifstream::peek() to check for the "logical end-of-file".
-
- \item \textbf{eof is set by last read EOF position} When you read EOF position, failbit is set and eof is set too. So If EOF is set, failbit must set too.  If only failbit is set, it means that input error happen.  Under these two conditions, istream will return false by operator bool.
-
-\item In http://en.cppreference.com/w/cpp/io/basic\_ios/operator\_bool . You can see eofbit are true and failbit are false, operator bool return true. I don't' know when it will happen. \textbf{ eof() function returns "true" after the program attempts to read past the end of the file.}  But when read action set eofbit, it will set failbit at the sametime, so bool operator will return false because failbit are set.
-
-\item How do you know if you read an incorrect input word, or if you are at the end of the file? This is when you use cin.eof() or feof() in C language.
-
-
-\item you can use clear() and setstate() to set the states, Why? It's just depends on what the program is trying to accomplish.  It provides a means for you to change the state. setstate() is different with clear(), clear() clear all the status bit. but setstate just set specific bit.
-
-\item You can use exceptions() method to control if exceptions will throw, when the eofbit, failbit and badbit is set.
-
-\item setstate() is to provide a means for input and output functions to change the state. For end user, we don't use it very often. We just use clear() more.
-
- \item for rdstate() it will return all the bit value, then you can use \& to certain bit( such as failbit) to check if the bit has been set. But here, you can use fail() directly, so we don't use this function very often.
- \begin{lstlisting}[frame=single, language=c++]
-std::ifstream is;
- is.open ("test.txt");
- if ( (is.rdstate() & std::ifstream::failbit ) != 0 )
-    std::cerr << "Error opening 'test.txt'\n";
-\end{lstlisting}
-
-
-\item \textbf{clear() function is very important, when cin.fail() return true, you have to use clear(), otherwise all he below cin operation will not work.} See below example.
-
- \begin{lstlisting}[frame=single, language=c++]
-char ch, str[20];
-cin.getline(str, 5);
-cout<<"flag1:"<<cin.good()<<endl;    // check good bit
-cin.clear();   //without, cin>>ch below will not work at all
-cout<<"flag1:"<<cin.good()<<endl;    // check good bit again
-cin>>ch;
-cout<<"str:"<<str<< " ch:" <<ch<<endl;
-
-input:
-12345[Enter]
-output:
-flag1:0 // good()return false
-flag2:1 // good()return true after clear().
-str:1234 ch:5
- \end{lstlisting}
-
-
-
-
-\end{itemize}
-
-\subsubsection{Input Pattern}
-
-\begin{itemize}
-\item It is bad idea to test the stream on the outside and then read/write to it inside the body of the conditional/loop statement. This is because the act of reading may make the stream bad. It is usually better to do the read as part of the test.
-
- \begin{lstlisting}[frame=single, language=c++]
-while(!cin.fail()){  // that is bad programming style
-    cin>>i;  //here may make stream fail().
-    .....      //then i is not valid value
-}
- \end{lstlisting}
-
-\item If you just want to input, You don't want to know eof or deal with failbit. You can use below: \\
-
- \begin{lstlisting}[frame=single, language=c++]
-while(scanf("%d",&i) != 1)
-while((int c = getchar())!=EOF)
-while( fgets(line, sizeof(line), fp) != NULL )
-//in c language, use these to exit loop!
-
-while(cin>>input)
-while(cin.get(p, 20) )
-while(getline(ifstream, string)) {
-//in C++ language, use bool operator to exit loop.
-  //do some useful things.  //input is right.
-}
-\end{lstlisting}
-
-\item If you want to know eof or deal with error. You can use below:
-\begin{lstlisting}[frame=single, language=c++]
-While(true)  // use break to exit loop;
-{
-  cin>>i // or getline(ifstream, string);
-  If(cin.eof()){   //If it's EOF
-     cout<<"EOF encountered"<<endl
-     break;
-  }
-  If(cin.fail())          //Invalide input
-  {
-     cin.clear();    //Important. clear state and buffer
-     while(cin.get()!='\n')  //get rid rest of line,
-               continue ;
-       cout<<"please input a number"<<endl;
-       continue;
-  }
-  ...  //do some useful things.  //input is right.
-}
-\end{lstlisting}
-
-
-
-
-\item In the previous example, Why do we need to distinguish eof and fail? When fail happen, maybe there are invalid character in buffer. After clean the buffer, I can continue to read input from input buffer. Three methods to clean invalid character in the buffer
-\begin{lstlisting}[frame=single, language=c++]
-cin.clear();    //Important. clear state and buffer
-while(cin.get()!='\n')
-      continue ;      // method 1
-
-while(!issapce(cin.get()))
-            continue;  //method 2
-
-basic_istream& ignore(streamsize _Count = 1, \
-int_type _Delim = traits_type::eof());  //method 3
-cin.ignore(5, 'a');
-cin.ignore(numeric_limits<streamsize>::max(), '\n');
-\end{lstlisting}
-
-\item You can use istream\_iterator, It can save you some trouble to judge EOF.
-
-\begin{lstlisting}[frame=single, language=c++]
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <iterator>
-using namespace std;
-class A{
-private:
-int x;
-int y;
-friend istream& operator>>(istream& in, A&);
-friend ostream& operator<<(ostream& in, const A&);
-};
-
-istream& operator>>(istream& in, A& a){
-in>>a.x>>a.y;
-return in;
-}
-
-
-ostream& operator<<(ostream& out, const A& a){
-out<<a.x<< " " <<a.y;
-return out;
-}
-
-int main(){
-vector<A> v;
-copy(istream_iterator<A>(cin), istream_iterator<A>(),
-                                             back_inserter(v));
-copy(v.begin(), v.end(),ostream_iterator<A>(cout, "\n"));
-}
-
-\end{lstlisting}
-
-
-\item \textbf{In summary, It's better just use judgment to exit end loop.  If you need to different specific action to take to deal with EOF or error. Use while(true), then use eof() of feof() fail() or clear() functions in c++ and c to deal with and break the loop; }
-
-\end{itemize}
-
-
-\subsubsection{Output}
-\begin{itemize}
-\item For cout, It can recognize type automatically, and It is extensible, You can redefine \verb=<<= operator so that cout can recognize you data type.
-\begin{lstlisting}[frame=single, language=c++]
-class Foo{
-friend ostream & operator<<(ostream& s, const Foo &r);
-}
-
-ostream & operator<<(ostream& s, const Foo &r){
-s<<Foo.a<<Foo.b<<endl;
-}
-\end{lstlisting}
-
-\item  How to print pointer address?
-\begin{lstlisting}[frame=single, language=c++]
-char* amount = "dozen";
-cout<< amount  ; //print "dozen" string
-
-cout<<(void*) amount;   //prints the address of pointer
-printf("%p", (void*) p);
-\end{lstlisting}
-
-
-\item Format is key point for Output. you need to know the common manipulator to control the output format.
-\item Number base manipulators:  hex, oct  and dec; Field widths: Width,  fill, precision Setf()
-\item You don't need to know the details, just name of them. When you want to use them go to reference website to look.A detail format manipulators can be seen on C++ primer P1090. You need to include <iomanip>
-
-\item \verb=<<= is a bitwise left-shift operator in C language, but in C++, we overloaded it in ostream class, cout is a object of ostream,
-
-\item You can use \verb=cout<<flush= to force flushing the output buffer
-\item cout.write can be used to output a string, It will output certain length string, even reach the end of string.
-
-
-\end{itemize}
-
-\subsubsection{file}
-\begin{itemize}
-\item 	When you studied cin and cout very well, you will find that file operation is so easy. just change cin or cout to your ifstream , ofstream or fstream object.
-
-\begin{lstlisting}[frame=single, language=c++]
-std::fstream fs;
-fs.open ("test.txt", ios_base::in| ios_base::binary);
-if(!ifs.is_open())
-     exit(1);
-char c = ifs.get();
-// use all previous input methods
-ifs.close();
-\end{lstlisting}
-
-
-\item Only read ifsteam;  Only write ofsteam; write and read fstream.
-
-\item For ios\_base::binary mode, use write() and read() funciton.
-
-\item For writing, pay attention to the difference between ios\_base::trunc and ios\_base::app
-
-\item Random access is used mostly on binary file. Because the position can be pinpointed exactly. For seekg() for input, and seekp() for output.(p is put, g is get) It move the pointer. tellp() and tellg() function.  It tell the position of pointer.
-
-\end{itemize}
-
-\subsubsection{buffer and string buffer}
-
-\begin{itemize}
-
-
-\item stringstream is a convenient way to manipulate strings like an independent I/O device .
-Sometimes it is very convenient to use stringstream to convert bettween strings and other numerical types. The usage of stringstream are much the same with iostream, so it is not a burden to learn.  
-
-\item \textbf{You need to build a stringstream from a string, or convert a stringstream back to a string.}
-
-\begin{lstlisting}[frame=single, language=c++]
-stringstream outstr;
-//change number to a text
-outstr<<"salary value"<<123333.00<<endl;
-String str = outstr.str() //change to string
-
-//change text to number
-Istringstream Instr(str);
-While(instr>>number)
-cout<<number<<endl
-////////below is C language/////////
-char sentence []="Yan is 41 years old";
-char str [20];
-int i;
-sscanf (sentence,"%s %*s %d", str, &i);
-//* means input will be ignored. So str = Yan, i = 41.
-sprintf(.....);
-\end{lstlisting}
-
-\end{itemize}
-
-\subsection{efficiency}
-\begin{itemize}
-\item  lazy evaluation includes 1) reference counting (to avoid extra copy) 2) distinguish read from write 3) lazy fetching. 4) lazy expression evaluation. Detail see in "More Effective C++". Usually, implementation will be  more complex with lazy evaluation.
-
-\end{itemize}
-
-\section{Style}
-\subsubsection{Basic Principles}
-\begin{itemize}
-	\item \textbf{Keep consistent with your style!} Don't change it very often.
-	
-	\item \textbf{Don't sweat on the small stuff.} Such as how many spaces to indent? space or tab? Or must have comment etc. In any interview, style is not an important question.
-	
-	\item \textbf{Use descriptive function and variable name. Even it's a little longer.} Most code is read a lot more than typed. With good function and variable name, comment is unnecessary.
-	
-	\item \textbf{Don't use abbreviation name unless it's very common, such as CPU and TCP/IP.}
-	
-	\item \textbf{Don't need to use type indicator for all variable.} Hungarian notation offer no benefit for object-oriented language, especially it's impossible to use in generic programming. But for some generic concept, such as reference, pointer and STL container, you can use it such as: "ptr\_map\_dic". Modern IDE(such as Visual Studio and Understand) support pop up message when you hover your mouse over a variable.
-\end{itemize}
-
-
-\subsubsection{Naming}
-\begin{itemize}
-	
-	\item For global scope, use g\_ prefix;
-	
-	\item For member variable in class, use tailing underscore. Why? 
-	\begin{enumerate}
-		\item Prefix underscore uses for reserved word mostly.
-		\item When you use trailing underscore, you can use auto completion better. For example for variable name \texttt{test\_}, When you type t, the name will appear, but for \texttt{\_test}, you have to type \_t two characters, and options are much more than \texttt{test\_}.
-	\end{enumerate}
-	
-	\item For member variable in struct, just like an ordinary variable name. 
-	
-	\item For constant name, use k\_ prefix and upperCamelCase;
-	
-	\item Using upper-case and underscores for pre-processor Macro;
-	
-	\item \textbf{Using upperCamelCase for Classes, Structures, Enumerations, Typedef and  Constants;}
-	
-	\item \textbf{Using lowerCamelCase and verb for function. Such as \texttt{getSth} and \texttt{doSth}}
-	
-	\item \textbf{Using lowercase and underscore  and noun for variable and parameter name. Because for long variable name, It's easier to read. Such as \texttt{sth\_for\_dinner}}
-	
-	\item Using \texttt{other} or \texttt{rhs} as name for copy ctor and assignment operator.
-	
-	\item The prefix \texttt{is} should be used for boolean variables and methods which return bool.
-	
-\end{itemize}
-
-\begin{lstlisting}[frame=single, language=c++]
-#define ARRAY_NUM 10
-bool isVisible;
-
-struct Student{
-name;
-};
-enum BackgroundColor{
-Red,  //constant
-Green
-};
-class Teacher{
-name_;  // not m_strName;  
-};
-
-typedef struct Student StuStruct ;
-StuStruct g_global_varaible;
-const int k_DaysInWeek = 7;
-main(){
-string teacher_name;  //meaning variable name
-}
-
-printTeacherName(const string& name){...} //function name
-\end{lstlisting}
-
-\subsubsection{Comment and Document}
-
-\begin{itemize}
-	\item There are five levels of comment:
-	\begin{tabular}{|c|c|c|}
-		\hline 
-		type & tool & user \\ 
-		\hline 
-		good name convention & no & developer  \\ 
-		\hline 
-		source code comment & with source code &  developer \\ 
-		\hline 
-		API & source code+ doxgen  & developer + user  \\ 
-		\hline 
-		developer document & latex &  developer \\ 
-		\hline 
-		End user & Word, power point & end users  \\ 
-		\hline 
-	\end{tabular} 
-	
-	\item Only use comment when it's very necessary. If you give function and variable good name, don't need to comment them at all. 
-	
-	\item source code comment are most inside of a function. API comments are most before function, class. You can use doxygen to produce a html from it. 
-	
-	\item Use C++ and doxygen style comment more, use C style comment less.
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	/// \brief fooFun does ...
-	///
-	///if \p flag is true, when happen
-	///\param [out] result will be filled
-	///\return 0 on success.
-	bool fooFun(bool flag, int& result);
-	\end{lstlisting}
-	
-	\item When you want to comment a large block of code out, use \texttt{\#if 0} ...  \texttt{\#endif}, It's better than using /* ... */. 
-	
-	\item Don't duplicate the function or class name in comment. Maybe you will change name later, this inconsistency will confuse comment readers in the future.
-	
-	\item Install Doxygen in linux, then run \linuxcommand{doxygen -g} in the terminal to produce configure file, the name is Doxyfile.  In Doxyfile, modify two items:
-	\begin{verbatim}
-	GENERATE_LATEX = NO
-	INPUT = ./src
-	\end{verbatim}
-	then run \linuxcommand{doxygen Doxyfile}, A html directory will be built.
-	
-	\item Install doxygen on Windows, you can run doxywizard application, or you can use GUI to set Doxyfile configuration file.
-	
-	\item Usually you have a standard tree structure of project, that is to say every .cpp has .h file.  Under this circumstance, you should put comment command in .h file. Because .h file is an interface to customer.
-	
-	\item If a .cpp file include a .h file,  doxygen will not parse the .cpp file automatically, It only parse all .h file in certain directory and extract all types, such as class and struct information. \textbf{No function and global variable information is extracted.} 
-	
-	\item For class and struct which are declared inside a .h file, Doxygen will show them under Classes tab in the index.html. Even you don't have any comment on it.
-	
-	\item If you want global functions, variables, enums, typedefs, and defines to be documented, you should document the file in which these contents are located using a comment block containing a $\backslash$file (or @file) command. Even this global function is inside of .h file. With $\backslash$file in .h file, You'd better to use HIDE\_UNDOC\_MEMBERS to ignore all the other global function members without comment inside this .h file. It will make last result looks clean. 
-	
-	\item In order to make Doxygen to parse a .cpp file , you need to put Doxygen command\textbf{$\backslash$file} in a separate line in the .cpp file, then Doxygen will parse this .cpp file and produce the corresponding html page.
-	
-	\item Given a C++ source code section, Doxygen will produce below html page.  \textbf{References} and \textbf{Referenced} can be turn on in the configure files.
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	/// \brief Return the function this instruction belongs to.
-	///
-	/// Note: it is undefined behavior to call this on an
-	/// instruction not currently inserted into a function.
-	const Function *getFunction() const;
-	\end{lstlisting}
-	
-	\includegraphics[scale=0.45]{pics/dox1.png} \newline
-	
-	\includegraphics[scale=0.45]{pics/dox2.png} 
-	
-\end{itemize}
-
-
-\subsubsection{Code Convention}
-\begin{itemize}
-	
-	\item Pointer and reference symbol is near to data type, not near to a variable name.
-	
-	
-	
-	\item For forward function, 1) prefer to use reference 2) don't inline f function. Detail can be found in GotW27. When do we need to use forward function.
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	bool f( X& x ){
-	return g( x );
-	}
-	\end{lstlisting}
-	
-	\item Use \texttt{const} as many as possible. Detail can be found in \texttt{const} section below. 
-	
-	\item Declare variables as locally as possible and minimize usage of global variables.
-	
-	\item Avoid macro, use inline function;  Avoid magic numbers, instead of using \texttt{const} and \texttt{enum}
-	
-	\item Format lambdas like blocks of code.
-	\begin{lstlisting}[frame=single, language=c++]
-	int cutoff = 7;
-	std::find(foo.begin(),foo.end(),[&](const Foo &a ) ->bool{
-	return a.blah<cutoff  //use reference to get local var
-	});
-	\end{lstlisting}
-	
-	
-	\item Use \_FILE\_ and \_LINE\_ to capture the current file name and line number.  \texttt{assert} just uses this kind of macro inside.
-	
-	\item Use \texttt{const} replace \texttt{\#define} to define global constants. \texttt{static const} can be used to define constant class member. (\texttt{const} means that it will not change, so I don't need keep multi copy in multi objs, so I use static.)
-	
-	\item Use more \texttt{typedef} or \texttt{alias} to simplify Complicated Type Expressions, It's helpful especially in STL. 
-	\begin{lstlisting}[frame=single, language=c++]
-	typedef std::map< int, int > IntMap;
-	typedef IntMap::const_iterator IntMapConstIter;
-	for( IntMapConstIter it = layout.begin();
-	it != layout.end(); ++it ) {
-	
-	typedef int(*CB)(int, const char*); //C++11 use function<>
-	CB callBack;  //decare a functions pointer.
-	
-	int sort(int, const char*){..}
-	callBack = sort; // & operator is optional here!
-	\end{lstlisting}
-	
-	\item Using alias(C++11) is better than typedef. 
-	\begin{enumerate}
-		\item First word is \texttt{using}, \textbf{There are no sharp symbol before \texttt{using} .} 
-		\item Second is TypeName. 
-		\item Third is assignment \texttt{=}.  
-	\end{enumerate}
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	using UPtrMapSS =
-	std::unique_ptr<std::unordered_map<std::string, int>>;
-	
-	using CB = int(*)(int, const char*);
-	\end{lstlisting}
-	
-	\item Create a zero-valued enumerator to indicate an invalid or default state and make it the first item.
-	
-	\item \textbf{Declare all member variables private, then use getter and setter functions to access them.}
-	\begin{enumerate}
-		\item Declare all member variables private firstly.
-		
-		\item If Outside need to access it's member variables, just build a public interface function. There are two advantages: 1) Inside set-function, You can test valid range. 2) Inside get-function, even type of member variable change, you just need to change get-function, and get all customer code unmodified. In this way, It's de-coupling.
-		
-		\item If child want to access its parent member, declare it as protected.
-		
-		\item Why overload operator << is friend? 1) It can't be member because it need to be written as cout<< a; not a<<cout. 2) It's need to friend so it can access private member variable. Don't use getter function unless this member variable should be a part of interface. It will break encapsulation 
-	\end{enumerate}
-	
-	\item Don't use multi-thread unless you really need it. Simultaneously respond to many events. Just remember, synchronization has some overhead. Below are some typical scenarios.
-	\begin{enumerate}
-		\item A web server.
-		\item Interface and working thread.
-		\item Take advantage of with multiple processor.
-	\end{enumerate}
-	
-	\item \textbf{Uses early exits to simplify code.}
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	if(IsValid){   //bad style
-	do something;
-	} else{
-	return;
-	}
-	
-	if(!IsValid)  // A better style is
-	return;
-	..do something here.
-	\end{lstlisting}
-	
-	\item Turn Predicate Loop into Predicate Function. It makes you code clean and easy to understand.
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	for(v.begin....){   /bad style
-	if(it->IsSth){
-	flag = true; break;
-	}
-	}
-	if(flag){...}
-	
-	// A better style is define isHasSth() return bool.
-	if(isHasSth()){...}
-	\end{lstlisting}
-	
-	\item Use \texttt{static\_assert} to test some compile-time boolean conditions. It supports a message parameter. It doesn't need to build execution application. It will stop when you are compiling your code. 
-	\begin{lstlisting}[frame=single, language=c++]
-	static_assert(sizeof(int) > 4, "int is too small");
-	\end{lstlisting}
-	
-	\item Use assert more in your project. You don't need to include file name and line number in the string. assert will output these hint messages.
-	\begin{lstlisting}[frame=single, language=c++]
-	#include<cassert>
-	assert(index>=0 && " index is negative");
-	//Assertion failed: expression, file name, line num
-	\end{lstlisting}
-	
-	\item \textbf{If you don't modify container inside loop}, don't need to evaluate end() every time through for loop. Please remember below code block. \textbf{Just remember auto i,e ++i}
-	\begin{lstlisting}[frame=single, language=c++]
-	//g++ -std=c++11
-	vector<int> con={1,2,3}; //list initializer
-	for(auto i = con.begin, e = con.end();i!=e; ++i){
-	...........
-	}
-	\end{lstlisting}
-	
-	\item The C++11 standard (23.2.1) mandates that end has O(1) complexity, so previous item has no efficiency meaning in C++11.
-	
-	
-	\item \textbf{Prefer Preincrement (++i), especially in a for loop.}  When you use ++i or i++ inside expression, there are differences. Otherwise, there is no differences.
-	\begin{lstlisting}[frame=single, language=c++]
-	for(int i = 0;i<10; ++i)
-	j=++i; // j = i+1;
-	j=i++; //j = i;  i=i+1;
-	++*p;  //++(*p) ;
-	*++p; //*(++p);
-	\end{lstlisting}
-	
-	\item How to understand \texttt{*p++} ?
-	
-	\begin{enumerate}
-		\item Precedence of prefix ++ and * is same. Associativity of both is right to left.
-		\item Precedence of postfix ++ is higher than both * and prefix ++. Associativity of postfix ++ is left to right.
-		\item Prefix and postfix are both syntax sugar, in order to reduce typing.   But prefix represents \textbf{one statement}, postfix means \textbf{two statements};
-	\end{enumerate}
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	++i;  //just like i = i+1 or  i+=1;
-	//when i++ used in expression, treated as two statements;
-	*p++; // *(p++);  *p ; p=p+1;
-	
-	while(*p != '\0'){
-	p= p+1;
-	}
-	//can be written to
-	while(*p++ != '\0')
-	\end{lstlisting}
-	
-	\item Always turn on all warning options in your compiler with -Wall. Once you get warning, Eliminate warning before you go further.
-	
-	\item Sometimes, this warning is what you have to, or if warning comes from a header file you can't change. You can use \#pragma warning compile directive to temporary disable it, then restore it later.
-	\begin{lstlisting}[frame=single, language=c++]
-	#pragma warning(push)
-	#pragma warning(disable:4512);
-	#include<not_change.h>
-	#pragma warning(pop) //restore original warning level
-	\end{lstlisting}
-	
-\end{itemize}
 
 
 \chapter{initialization}
