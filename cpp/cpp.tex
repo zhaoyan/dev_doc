@@ -1468,25 +1468,25 @@ main(){
 \begin{itemize}
 	\item unsigned int + signed int just wrapped on the clock. not overflow,just turn around on the clock. 
 	
-	\begin{lstlisting}[frame=single, language=c++]
-    unsigned int ui = 0xfffffffe  // -2 or UNIT_MAX-1
-    int i = 1;
-    //ui+i will be expreseed 0xffffffff in memeory. 
-    printf("%d", ui+i); //print -1
-    printf("%u", ui+i); //print UINT_MAX;
+\begin{lstlisting}[frame=single, language=c++]
+unsigned int ui = 0xfffffffe  // -2 or UNIT_MAX-1
+int i = 1;
+//ui+i will be expreseed 0xffffffff in memeory. 
+printf("%d", ui+i); //print -1
+printf("%u", ui+i); //print UINT_MAX;
 	\end{lstlisting}
 	
 	\item When you 1) compare with other, 2) expand 3) multiply or sub, it will interpret according to its signed semantic. 
-		\begin{lstlisting}[frame=single, language=c++]
-	unsigned int ui = -2 // or UNIT_MAX-1
-	int i = 1;
-	ui+i< 6  // greater than 6
-	(ui+i)/4  //a bit positive number
-	int* p;
-	p+(ui+i);  //on 32 bits, this ok, 
-	           //but on 64 bits, ui+i will be promote to 64 bits first.
-	           // at this time, it will promote according to unsigned int.
-	\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+unsigned int ui = -2 // or UNIT_MAX-1
+int i = 1;
+ui+i< 6  // greater than 6
+(ui+i)/4  //a bit positive number
+int* p;
+p+(ui+i);  //on 32 bits, this ok, 
+           //but on 64 bits, ui+i will be promote to 64 bits first.
+           // at this time, it will promote according to unsigned int.
+\end{lstlisting}
 	
 	\item You can see llvm, in this reference. 1) only i32, no ui32 2) only add.  3) but has umultiply and uge and zext or sext. That is to say, these three operations need interpret signed semantic differently. 
 	
@@ -1495,35 +1495,38 @@ main(){
 
 \subsubsection{size\_t}
 \begin{itemize}
-	\item Type size\_t is a stypedef that's an alias for some unsigned integer type, typically unsigned int or unsigned long, but possibly even unsigned long long. Each Standard C implementation is supposed to choose the unsigned integer that's big enough--but no bigger than needed--to represent the size of the largest possible object on the target platform.
+	\item \textbf{Why we need size\_t?, Semanticlly, it should be pointer type, but phsically, it's a kind of integer, so when we use int or short or long to represent. it will cause cross-plat-form problem}
+		
+	\item Type \texttt{size\_t} is a typedef that's an alias for some unsigned integer type, typically unsigned int or unsigned long, but possibly even unsigned long long. Each Standard C implementation is supposed to choose the unsigned integer that's big enough--but no bigger than needed--to represent the size of the largest possible object on the target platform.
 	
-	\item Using size\_t appropriately makes your source code a little more self-documenting. When you see an object declared as a size\_t, you immediately know it represents a size in bytes or an index, rather than an error code or a general arithmetic value.
+	\item Using \texttt{size\_t} appropriately makes your source code a little more self-documenting. When you see an object declared as a \texttt{size\_t}, you immediately know it represents a size in bytes or an index, rather than an error code or a general arithmetic value.
 	
-	\item The main reason of size\_t is: size of something is dependent on pointer, but on different system, size of pointer is not same as size of int.  But size of pointer is always same as size\_t.
+	\item The main reason of \texttt{size\_t} is: size of something is dependent on pointer, but on different system, size of pointer is not same as size of int.  textbf{But size of pointer is always same as size\_t}.
 	
 	\item The size of size\_t and ptrdiff\_t always coincide with the pointer's size. Because of this, it is these types which should be used as indexes for large arrays, for storage of pointers and, pointer arithmetic.
 	
 	\item size\_t type is usually used for loop counters, array indexing, and address arithmetic.
 	
 	\item ptrdiff\_t type is a base signed integer type of C/C++ language. The type's size is chosen so that it can store the maximum size of a theoretically possible array of any type. On a 32-bit system ptrdiff\_t will take 32 bits, on a 64-bit one 64 bits.
-	\begin{lstlisting}[frame=single, language=c++]
-	int A = -2;   // should use ptrdiff_t here
-	unsigned B = 1; // should use ptrdiff_t here.
-	int array[5] = { 1, 2, 3, 4, 5 };
-	int *ptr = array + 3;
-	ptr = ptr + (A + B); //Error
-	printf("%i\n", *ptr);
-	\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+int A = -2;   // should use ptrdiff_t here
+unsigned B = 1; // should use ptrdiff_t here.
+int array[5] = { 1, 2, 3, 4, 5 };
+int *ptr = array + 3;
+ptr = ptr + (A + B); //Error
+printf("%i\n", *ptr);
+\end{lstlisting}
 	
 	\item \textbf{In one word, int is not always same as bits of OS. but size\_t and ptrdiff\_t are always same.}
 	
 	\item A good article is "Why size\_t matters", another one is "About size\_t and ptrdiff\_t". just google them!   
-	
-	
 \end{itemize}
 
-\subsection{POD}
+\subsection{Aggregate and POD}
+\subsubsection{Aggregate}
 \begin{itemize}
+\item \textbf{The basic idea of Aggregate type is that you can use aggregate list initialization}. All the detail definition of an aggregate can be traced back to this main idea. 
+
 \item An aggregate is an array or a class (clause 9) with no user-declared constructors (12.1), no private or protected non-static data members (clause 11), no base classes (clause 10), and no virtual functions (10.3).
 
 \item  An aggregate can have a not Aggregate1 data member.
@@ -1569,6 +1572,7 @@ private:
 }; 
 
 Y y = {'a', {10, 20}, {20, 30}};
+$\Hilight{30}$//Even we don't assign value to f, f will use value init. 
 \end{lstlisting}
 
 \item In C++11, Previously, an aggregate could have no user-declared constructors, but now it can't have user-provided constructors. Is there a difference? Yes, there is, because now you can declare constructors and default them:
@@ -1588,6 +1592,11 @@ struct NotAggregate {
 
 
 \item Now that we know what's special about aggregates, let's try to understand the restrictions on classes; that is, why they are there. We should understand that memberwise initialization with braces implies that the class is nothing more than the sum of its members. If a user-defined constructor is present, it means that the user needs to do some extra work to initialize the members therefore brace initialization would be incorrect. If virtual functions are present, it means that the objects of this class have (on most implementations) a pointer to the so-called vtable of the class, which is set in the constructor, so brace-initialization would be insufficient. You could figure out the rest of the restrictions in a similar manner as an exercise :).
+
+\end{itemize}
+
+\subsubsection{POD}
+\begin{itemize}
 
 \item An aggregate class is called a POD if it has no user-defined copy-assignment operator and destructor and none of its nonstatic members is a non-POD class, array of non-POD, or a reference.
 
@@ -1617,8 +1626,31 @@ struct AggregateButNotPOD2{
 \item For objects of POD types it is guaranteed by the standard that when you memcpy the contents of your object into an array of char or unsigned char, and then memcpy the contents back into your object, the object will hold its original value. Do note that there is no such guarantee for objects of non-POD types. Also, you can safely copy POD objects with memcpy. The following example assumes T is a POD-type:
 
 
-\item In C++ 11, The idea of a POD is to capture basically two distinct properties:1) It supports static initialization, 2) and
-Compiling a POD in C++ gives you the same memory layout as a struct compiled in C.Because of this, the definition has been split into two distinct concepts: trivial classes and standard-layout classes, because these are more useful than POD. The standard now rarely uses the term POD, preferring the more specific trivial and standard-layout concepts.
+\item In C++ 11, The idea of a POD is to capture basically two distinct properties:
+\begin{enumerate}
+	\item It supports static initialization,
+	\item Compiling a POD in C++ gives you the same memory layout as a struct compiled in C.
+\end{enumerate}
+
+\item Because of this, the definition has been split into two distinct concepts: trivial classes and standard-layout classes, because these are more useful than POD. The standard now rarely uses the term POD, preferring the more specific trivial and standard-layout concepts.
+
+\end{itemize}
+
+\subsubsection{trivial class}
+\begin{itemize}
+\item \textbf{if this is a trivial class, then it has trivial ctor/dtor/copy/assignment, When we build copy or destruct these type, we don't call these trivail ctor/copy... but just call malloc() or memcpy()to improve efficiency}
+
+\item For example, std::copy use \texttt{std::is\_trivially\_copyable} as a flag to decide whether to call memcpy or call object copy ctor.
+
+\item Static initialization is initialization of some variable with a compile-time value such that the value ends up being "baked into" the executable image (no code needs to be actually run):
+\begin{lstlisting}
+struct Foo {
+	int x;
+	int y;
+};
+
+Foo foo = {0,1};
+\end{lstlisting}
 
 \item Trivial is the first property mentioned above: trivial classes support static initialization. If a class is trivially copyable (a superset of trivial classes), it is ok to copy its representation over the place with things like memcpy and expect the result to be the same. The detail is not easy to explain, you can refer a good article in the end of section. 
 \begin{lstlisting}[frame=single, language=c++]
@@ -1659,13 +1691,13 @@ struct Trivial7 {
 };
 
 struct Trivial8 {
-     int x;
-     static NonTrivial1 y; // no restrictions on static members
+    int x;
+    static NonTrivial1 y; // no restrictions on static members
 };
 
 struct Trivial9 {
      Trivial9() = default; // not user-provided
-      // a regular constructor is okay because we still have default ctor
+     // a regular constructor is okay because we still have default ctor
      Trivial9(int x) : x(x) {};
      int x;
 };
@@ -1690,47 +1722,44 @@ struct NonTrivial5 {
 };
 \end{lstlisting}
 
-\item \textbf{In C++ 11, POD is not based on aggregate any more, it divid as two different conceptions: 1) trivial class and 2) standard memory layout. }
-
 \item a class is trivially copyable (a superset of trivial classes), A trivial class is a class that has a trivial default constructor (12.1) and is trivially copyable.
 
-\item std has some type trait class definition. 
-\begin{lstlisting}[frame=single, language=c++]
- cout<<  typeid (  T ).name()<<  " "  
- cout<<std:: is_pod  < T  >::value<<  " " 
- cout<<std::  is_trivial <  T >::value<<  " "  
- cout <<std:: is_standard_layout  < T  >::value<<std::endl;
- \end{lstlisting}
- 
-\item if this is a trivial class, then it has trivial ctor/dtor/copy/assignment, When we build copy or destruct these type, we don't call these trivail ctor/copy... but just call malloc() or memcpy()to improve efficiency 
+
 
 \begin{lstlisting}[frame=single, language=c++]
 template <class T> void copy(T* source, T* destination, int n, trivial_false_type){
-for (; n > 0; n--,source++,destination++){
-//call ctor
-}
+	for (; n > 0; n--,source++,destination++){
+		//call ctor
+	}
 }
 
 template <class T> void copy(T* source, T* destination, int n, trivial_true_type){
- memmove(source, destination, n); //much faster here!
+	memmove(source, destination, n); //much faster here!
 }
 \end{lstlisting}
 
-\item A good article about this topic is "What are Aggregates and PODs and how/why are they special?" in StackOverflow. 
 
+\item std has some type trait class definition. 
+\begin{lstlisting}[frame=single, language=c++]
+cout<<  typeid (  T ).name()<<  " "  
+cout<<std:: is_pod  < T  >::value<<  " " 
+cout<<std::  is_trivial <  T >::value<<  " "  
+cout <<std:: is_standard_layout  < T  >::value<<std::endl;
+\end{lstlisting}
+
+\item A good article about this topic is "What are Aggregates and PODs and how/why are they special?" in StackOverflow. 
 \end{itemize}
 
 
-\section{name}
+\section{Name}
 \subsection{Namespace}
 \subsubsection{namespace basic knowledge}
 \begin{itemize}
-	
 	\item Basic namespace style:
 	\begin{enumerate}
-		\item If you develop a library of functions or classes, put them in a namespace, just like std:: namespace in STL.
+		\item If you develop a library of functions or classes, put them in a namespace, just like std namespace in STL.
 		
-		\item Don't put a lot of stuff in global-scope, learn to using namespace instead of global-scope.
+		\item Don't put a lot of stuff in global-scope, learn to using namespace to manage and split your global-scope. 
 		
 		\item Don't put your own class into namespace std;
 		
@@ -1740,70 +1769,70 @@ template <class T> void copy(T* source, T* destination, int n, trivial_true_type
 	
 	\item Use :: before function will means that global namespace, For example, ::max will hide std::max, in this way, you can define your own max function and use ::max call your own max function. 
 	
-	\item \textbf{Namespaces can be located at the global level or inside other namespaces. They can't be placed in a block.} So it has external linkage by default, that is to say it can be accessed by multi translation unit(files).
+	\item \textbf{ Namespaces can be located at the global level or inside other namespaces. They can't be placed in a block.} So it has external linkage by default, that is to say it can be accessed by multi translation unit(files).
 	
 	
 	\item There are three kinds of namespace usages.
-	\begin{lstlisting}[frame=single, language=c++]
-	using sp::name;   //1) using declaration
-	using namespace sp;   //2) using directive
-	sp::name   //3) specific refer it
-	
-	namespace ns{
+\begin{lstlisting}[frame=single, language=c++]
+using sp::name;   //1) using declaration
+using namespace sp;   //2) using directive
+sp::name   //3) specific refer it
+
+namespace ns{
 	int zy;
-	}
-	using namespace ns;
-	
-	int main(){
+}
+using namespace ns;
+
+int main(){
 	int zy = 0; //it will hide ns::zy
 	cin>>zy; //read into local zy
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 	\item Using-declaration introduces a member of another namespace into current namespace or block scope.
 	
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	#include <iostream>
-	#include <string>
-	$\Hilight{15}$using std::string;
-	int main(){
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+#include <iostream>
+#include <string>
+$\Hilight{15}$using std::string;
+int main(){
 	string str = "Example";
 	$\Hilight{15}$using std::cout;
 	cout << str;
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 	
 	\item For implement code, there are four methods to put it into namespace. Prefer method 3 and method 4.
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	//a.h
-	namespace Yan{
+\begin{lstlisting}[frame=single, language=c++]
+//a.h
+namespace Yan{
 	Class Foo{
-	void mem_fun();
+		void mem_fun();
 	};
-	}
+}
 	
-	//a.cpp
-	//mehtod 1. then use name, using declaration
-	using Yan::Foo;
-	void Foo::mem_fun(){.......}
+//a.cpp
+//mehtod 1. then use name, using declaration
+using Yan::Foo;
+void Foo::mem_fun(){.......}
 	
-	//method 2.  using directive
-	//It's BAD
-	using namespace Yan;
-	void Foo::mem_fun(){.........}
+//method 2.  using directive
+//It's BAD
+using namespace Yan;
+void Foo::mem_fun(){.........}
 	
-	// method 3.
-	//Good style
-	void Yan::Foo::mem_fun(){.........}
+// method 3.
+//Good style
+void Yan::Foo::mem_fun(){.........}
 	
-	//method 4.
-	//Also good, when you have a lot of function need to be define,
-	//compared with method3, save your typing.
-	namespace Yan{
+//method 4.
+//Also good, when you have a lot of function need to be define,
+//compared with method3, save your typing.
+namespace Yan{
 	void Foo::mem_fun(){......}
-	}
+}
 	\end{lstlisting}
 	
 	\item About "using" directive usage
@@ -1813,37 +1842,162 @@ template <class T> void copy(T* source, T* destination, int n, trivial_true_type
 		\item  Less use using directive in any .cpp file, you should using scope-resolution or using declaring more. It will avoid polluting namespace.
 		
 		\item \textbf{You should remember below code. It's good C++ style!} 
-		\begin{lstlisting}[frame=single, language=c++]
-		#include <iostream>
-		using std::cout;
-		using std::endl;
+\begin{lstlisting}[frame=single, language=c++]
+#include <iostream>
+using std::cout;
+using std::endl;
 		
-		Int main(){
-		cout<<"Hello world"<<endl;
-		}
-		\end{lstlisting}
+Int main(){
+	cout<<"Hello world"<<endl;
+	}
+\end{lstlisting}
 		
 		\item If you \textbf{have to} use using directory in your .cpp file, put it after all the include files.
 	\end{enumerate}
 	
 	\item unnamed namespace just like static to specify it to local file scope. At the same time, make anonymous namespace as small as possible.  see C++ primer p492
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	// a.cpp file
-	static int count;
+\begin{lstlisting}[frame=single, language=c++]
+// a.cpp file
+static int count;
 	
-	// A better method to use namespace.
-	namespace{
+// A better method to use namespace.
+namespace{
 	int count;
-	}
+}
 	\end{lstlisting}
 	
 \end{itemize}
 
-\subsubsection{Name lookup}
+\subsection{Name lookup}
 \begin{itemize}
+
+\item \textbf{Phases of the function call process.}
+\begin{enumerate}
+\item Name lookup 
+\item Overload resolution 
+\item Access control
+\end{enumerate}
+
+\item Function name resolution:
+\begin{enumerate}
+	\item First, compiler looks in the \textbf{immediate scope},  and makes a list of all functions that has right named  (regardless of whether they're accessible or even take the right number of parameters). Pay attentions here, \textbf{If found function time, even the parameter doesn't match, compiler will not continue outward search. It will stop here and bark}. It's a safe measure, compiler think the immediate scope is "priority zone". Maybe you omit parameter, compiler should not search outward implicitly. 
 	
-	\item Koenig(ADL) lookup: If you supply a function argument of class type (here x, of type A::X), then to look up the correct function name the compiler considers matching names in the namespace (here A) containing the argument's type.
+	\item Only if compiler doesn't find any same function name at all, then compiler continue "outward" into the next enclosing scope and repeat.
+	
+	\item If in the searching scope there are more than one candidate functions, the compiler then stops searching and works with the candidates that it's found, performing overload resolution and then applying access rules.
+	
+	\item \textbf{In one word, overload resolution will not go across scopes!}
+\end{enumerate}
+
+\item Name lookup include name invisibility or name hidden(introduced in the below subsection).
+
+\item Overload resolution has a good introduction: "C++ Primer plus" chapter 8 "Which Function version the compiler pick". The main idea is: \textbf{exact match non-template > template > argument conversion(promotion or implicit conversion)}
+
+\end{itemize}
+
+\subsubsection{Name hiding}
+\begin{itemize}
+
+\item Compiler will first match function name and number of arguments, then look for template deducted function, then use implicit conversion to try match. So implicit conversion happens after template.
+
+\item There are four examples about immediate scope.
+\begin{enumerate}
+\item class scope:
+\begin{lstlisting}[frame=single, language=c++]
+void f1(int i ){...};
+
+class Foo{
+	void f1(string & str){};
+	void f2(void){
+		int i = 3;
+		f1(i); //compiler bark here!
+	}
+};
+\end{lstlisting}
+
+\item Child class scope: In child class scope, if it found name g, then it will stop looking for another name in outward scope. just use g, then found argument number is not match, then compiler bark.
+\begin{lstlisting}[frame=single, language=c++]
+struct B{
+  int f( int );
+  int f( double );
+  int g( int );
+};
+
+struct D : public B{
+private:
+  int g( std::string, bool );
+};
+
+D d;
+int i;
+d.f(i); // ok, means B::f(int)
+d.g(i); // error: g takes 2 args
+\end{lstlisting}
+
+\item Nested namespace scope. (global includes namespace N)
+\begin{lstlisting}[frame=single, language=c++]
+void f1(int i ){...};
+
+namespace N{
+	void f1(string & str){};
+	void f2(void){
+		int i = 3;
+		f1(i); //compiler will bark
+		// you can use ::f1(i) to specify global f1
+	}
+};
+\end{lstlisting}
+\item Nested scope.A class name or enumeration name can be hidden by an explicit declaration of that same name -- as an object, function, or enumerator -- in a nested declarative region or derived class.
+\begin{lstlisting}
+int x =2;{
+	int x = 3;
+}
+\end{lstlisting}
+
+\end{enumerate}
+
+\item overwrite is not standard conception in C++, most time, you can call it name hiding. There are two things: The first one is If you redefine the same name non-virtual function in both base and child classes, you can't use dynamic binding, just static binding.  Detail can be seen in namespace section.
+\begin{lstlisting}[frame=single, language=c++]
+class A{
+    f(int) {}
+};
+class B:public class A{
+    f(int)  {} // overwrite A::f(int)
+};
+
+A* pa = new B();
+pa->f(3) // will call base f.
+//because pa is A* even it points to B
+\end{lstlisting}
+
+
+\item How to resolve it.  There are two methods:
+\begin{enumerate}
+\item using declaration.
+
+\item You can use :: to specify global variable name or function if you have same name in you local scope.  Or use Base:: to specify Base scope name if you have same name in derived class.
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+// method 1;
+D d;
+int i;
+d.f(i); // ok, means B::f(int)
+$\Hilight{2}$d.B::g(i); // ok, asks for B::g(int)
+
+// method 2:
+struct D : public B{
+$\Hilight{5}$using B::g;
+private:
+int g( std::string, bool );
+};
+\end{lstlisting}
+
+\end{enumerate}
+\end{itemize}
+
+\subsubsection{ADL}
+\begin{itemize}
+	\item 	\item Koenig(ADL) lookup: If you supply a function argument of class type (here x, of type A::X), then to look up the correct function name the compiler considers matching names in the namespace (here A) containing the argument's type.
 	
 	\begin{lstlisting}[frame=single, language=c++]
 	namespace NS{
@@ -1929,145 +2083,7 @@ template <class T> void copy(T* source, T* destination, int n, trivial_true_type
 	int* operator+( T , unsigned ) {/* do something */}
 	}
 	\end{lstlisting}
-	
 \end{itemize}
-
-\subsection{Name lookup and overload}
-\begin{itemize}
-
-\item Phases of the function call process:
-\begin{enumerate}
-\item Name lookup 
-\item Overload resolution 
-\item Access control
-\end{enumerate}
-
-\item Name lookup include name invisibility or name hidden(introduced in the below subsection).
-
-\item Function name resolution:
-\begin{enumerate}
-	\item First, compiler looks in the \textbf{immediate scope},  and makes a list of all functions that has right named  (regardless of whether they're accessible or even take the right number of parameters). Pay attentions here, \textbf{If found function time, even the parameter doesn't match, compiler will not continue outward search. It will stop here and bark}. It's a safe measure, compiler think the immediate scope is "priority zone". Maybe you omit parameter, I can't outward search implicitly. 
-	
-	\item Only if compiler doesn't find any same function name at all, then compiler continue "outward" into the next enclosing scope and repeat.
-	
-	\item If in the searching scope there are more than one candidate functions, the compiler then stops searching and works with the candidates that it's found, performing overload resolution and then applying access rules.
-	
-	\item \textbf{In one word, overload resolution will not go across scopes!}
-\end{enumerate}
-
-\item Overload resolution has a good introduction: "C++ Primer plus" chapter 8 "Which Function version the compiler pick". The main idea is exact match non-template > template > argument conversion(promotion or implicit conversion)
-
-\end{itemize}
-
-\subsubsection{Name hiding}
-\begin{itemize}
-
-\item Compiler will first match function name and number of arguments, then look for template deducted function, then use implicit conversion to try match. So implicit conversion happens after template.
-
-\item There are three examples about immediate scope.
-\begin{enumerate}
-\item class scope:
-\begin{lstlisting}[frame=single, language=c++]
-void f1(int i ){...};
-
-class Foo{
-void f1(string & str){};
-void f2(void){
-int i = 3;
-f1(i); //compiler bark here!
-}
-};
-\end{lstlisting}
-
-\item Child class scope: In child class scope, if it found name g, then it will stop looking for another name in outward scope. just use g, then found argument number is not match, then compiler bark.
-\begin{lstlisting}[frame=single, language=c++]
-struct B{
-  int f( int );
-  int f( double );
-  int g( int );
-};
-
-struct D : public B{
-private:
-  int g( std::string, bool );
-};
-
-D d;
-int i;
-d.f(i); // ok, means B::f(int)
-d.g(i); // error: g takes 2 args
-\end{lstlisting}
-
-\item Nested namespace scope. (global includes namespace N)
-\begin{lstlisting}[frame=single, language=c++]
-void f1(int i ){...};
-
-namespace N{
-void f1(string & str){};
-void f2(void){
-int i = 3;
-f1(i); //compiler will bark
-// you can use ::f1(i) to specify global f1
-}
-};
-\end{lstlisting}
-\end{enumerate}
-
-
-\item overwrite is not standard conception in C++, most time, you can call it name hiding. There are two things: The first one is If you redefine the same name non-virtual function in both base and child classes, you can't use dynamic binding, just static binding.  Detail can be seen in namespace section.
-\begin{lstlisting}[frame=single, language=c++]
-class A{
-    f(int) {}
-};
-class B:public class A{
-    f(int)  {} // overwrite A::f(int)
-};
-
-A* pa = new B();
-pa->f(3) // will call base f.
-//because pa is A* even it points to B
-\end{lstlisting}
-
-\item A class name or enumeration name can be hidden by an explicit declaration of that same name -- as an object, function, or enumerator -- in a nested declarative region or derived class.
-
-\begin{lstlisting}[frame=single, language=c++]
-//example 1
-int x =2;{
-  int x = 3;
-}
-
-//example 2;
-void foo(int);
-namespace X{
-    void foo();
-    foo(42); // will not find `::foo`
-        // because `X::foo` hides it
-}
-\end{lstlisting}
-
-\item How to resolve it.  There are two methods:
-\begin{enumerate}
-\item using declaration.
-\item You can use :: to specify global variable name or function if you have same name in you local scope.  Or use Base:: to specify Base scope name if you have same name in derived class.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-// method 1;
-D d;
-int i;
-d.f(i); // ok, means B::f(int)
-$\Hilight{2}$d.B::g(i); // ok, asks for B::g(int)
-
-// method 2:
-struct D : public B{
-$\Hilight{5}$using B::g;
-private:
-int g( std::string, bool );
-};
-\end{lstlisting}
-
-\end{enumerate}
-
-\end{itemize}
-
 
 \subsubsection{overload}
 \begin{itemize}
@@ -2927,7 +2943,7 @@ printTeacherName(const string& name){...} //function name
 	
 \end{itemize}
 
-\chapter{memory}
+\chapter{Memory}
 \section{memory}
 
 \subsection{malloc and remalloc}
@@ -3466,7 +3482,7 @@ In this section,I will introduce a few conceptions togther. They are related. Th
 	return {arg, ...};                 // Initializes temporary for return value
 	\end{lstlisting}
 	
-	\item Aggregate init Aggregate initialization is a special case of list initialization. It is used when initializing arrays or simple structs (all-members-public, no user-provided c'tors
+	\item Aggregate initialization is a special case of list initialization. It is used when initializing arrays or simple structs (all-members-public, no user-provided c'tors）
 	\begin{lstlisting}[frame=single, language=c++]
 	T object = {arg1, arg2, ...};   // If T is an array or a simple struct
 	T object{arg1, arg2, ...};      // If T is an array or a simple struct
