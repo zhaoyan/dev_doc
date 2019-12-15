@@ -5686,11 +5686,12 @@ shared_ptr<Server> serverForClass2  = serverForClass1;
 \section{reference basic}
 
 \begin{itemize}
-\item \textbf{Reference has two characteristics, no null, no change}.In other words, top level of const of reference is default. You can't change it. That is why you have to initiliaze it. Imaging reference is a kind of top level const pointer.
+\item \textbf{Reference has two characteristics, no null, no change}.In other words, top level of const of reference is default. You can't change it. That is why you have to initiliaze it.
 \begin{lstlisting}[frame=single, language=c++]
 int x = 12;
 int* const p = &x; // you have to init it.
 p  = &y ; //you can't point to different object.
+//reference is a kind of top level const pointer.
 \end{lstlisting}
 
 \begin{enumerate}
@@ -5700,21 +5701,21 @@ string &rs = s1;
 rs = s2; // s1's value is modified, rs still refer to s1.
 \end{lstlisting}
 
-\item Reference has not wild pointer problem. So a reference doesn't need to be test if it's null reference. different with pointer. 
+\item Reference is different with pointer. Reference has not wild pointer problem. So a reference doesn't need to be test if it's null reference.
 \begin{lstlisting}[frame=single, language=c++]
 if(pointer) // don't need to do it for a reference.
 cout<< *pointer<<endl;
 \end{lstlisting}
 
-\item If you have reference to a local variable inside a function, when the function finishes, it still have dangling reference problem. 
+\item If you have a reference to a local variable inside a function, when the function finishes, it still have dangling reference problem. 
 \end{enumerate}
 
-\item you can have reference to pointer, but pointer to reference is illegal. In grammar level, reference to reference has different means, it's called rvalue reference. 
+\item you can have reference to pointer, but pointer to reference is illegal. In grammar level, reference to reference has different means, it's called rvalue reference. This doesn't exist. As stated earlier, a reference is merely an alias to another object. You can't "point" to a reference, because it isn't an object in itself but merely another name for a real object. Of course, you can have a pointer to the object that a reference is referring to. But now we are back in vanilla pointer territory.
 \begin{lstlisting}[frame=single, language=c++]
 int *p;
-int **p;
-int *& rp = p
-int &* pr //not illegal in c++
+int *& rp = p; // reference to pointer is OK
+int &* pr //not legal in c++
+$\Hilight{25}$//error: cannot declare pointer to 'int&'
 int && rv //rvalue reference.
 \end{lstlisting}
 
@@ -5728,13 +5729,12 @@ int& j = i;
 \begin{lstlisting}[frame=single, language=c++]
 //method 1
 const int &fun(const int& i){
-  return i;
-}//Why we need this?
-//Just a syntactic demo, no any semantic meaning
+	return i;
+}//Why we need this? Just a syntactic demo, no semantic meaning
 
 //method 2
 int &fun(const int& i){
-  return const_cast<int&>(i);
+	return const_cast<int&>(i);
 }
 \end{lstlisting}
 
@@ -5742,7 +5742,7 @@ int &fun(const int& i){
 \begin{lstlisting}[frame=single, language=c++]
 //case 1:
 Foo f(){
-return obj;
+	return obj;
 }
 const Foo & rf = f();
 
@@ -5750,19 +5750,19 @@ const Foo & rf = f();
 class Foo(int i); // ctor
 f(const Foo & crf); //function declaration
 //here, must const & in f argument.
-//if you skip const, compiler will report error:
 f(1); //1 -->"temp obj build by ctor" -->crf
+//if you skip const, compiler will report error:
 \end{lstlisting}
 
 \item \texttt{const} reference bound to rvalue used in copy ctor widely. See example below: But in C++11, For a class with a lot allocated resource, please use move copy ctor which explained in the next section:
 
 \begin{lstlisting}[frame=single, language=c++]
 class Foo{
-Foo(const Foo & foo);
+	Foo(const Foo & foo);
 }
 
 Foo f3 = f1+f2;
-// because a temp Foo is produce first from f1+f2
+// because a temp Foo is produced first from f1+f2
 // without const in copy ctor, compiler will bark
 \end{lstlisting}
 \end{itemize}
@@ -5779,7 +5779,7 @@ Foo f3 = f1+f2;
 	
 \end{itemize}
 
-\subsubsection{definition}
+\subsubsection{Definition}
 
 \begin{itemize}
 	\item Each C++ expression (an operator with its operands, a literal, a variable name, etc.) is characterized by two independent properties: \textbf{a type and a value category}. Each expression is certain kind of type,such as int type, reference type or rvalue reference type. Each expression belongs to exactly one of the three primary value categories: \textbf{lvalue, prvalue, and xvalue;} 
@@ -5793,13 +5793,21 @@ Foo f3 = f1+f2;
 	
 	\item On the contrary, prvalue has no \textbf{identity}, and will not \textbf{persist} beyond expression and can be move(stolen)
 	
-	\item Why pvalue doesn't persist. it because that how do rvalues in C++ stored in memory. The main reasoning behind this is as always freedom for the compiler to improve performances of your code. A more concrete way to understand this is to remember that a value can be stored in a register of your CPU and never actually be in your memory which more or less means that the value has no address. I won't bet everything i have on it but this is probably one of the main reasons why "we cannot get an address of an rvalue".
+	\item Why pvalue doesn't persist? because rvalues in C++ stored differently. It's freedom for the compiler to improve performances of your code. A more concrete way to understand this is to remember that a value can be stored in a register of your CPU and never actually be in your memory which more or less means that the value has no address. I won't bet everything i have on it but this is probably one of the main reasons why "we cannot get an address of an rvalue".
 	
 	\item In a more general way since an rvalue is semantically temporary it is more likely to be put in temporary places or optimised in a way where it cannot easily be mapped to an address and even if it can that would be counter productive in terms of performance.
 	
 	\item First, we can use \textbf{persist and identity} to classify value into lvalue and rvalue, then c++11 introduce \textbf{rvalue reference}. rref can persist and move at the same time.  So we divide lvalue into lvalue and xvalue.  and give them new name.  lvalue+xvalue = glvalue(persist)  and xvalue + prvalue = rvalue(move).
 	
 	\item \textbf{Any value must be one of three, lvalue, xvalue, or prvalue.} These three categories are complementary.  \textbf{lvalue pay attention to  identity and persist, rvalue=(xvalue + prvalue) shout "I can be moved" loudly.  So we call \&\& rvalue reference, don't call it xvalue reference. }
+	
+	\begin{figure}
+		\centering
+		\includegraphics[width=0.7\linewidth]{pics/xvalue1.png}
+		\caption{}
+		\label{fig:xvalue1}
+	\end{figure}
+	
 	
 	\item To know this conception can help you to understand decltype. 
 	
@@ -5829,16 +5837,16 @@ string a = xvalue_fun(); // call move ctor, can move
 \begin{lstlisting}[frame=single, language=c++]
 template <typename T>
 constexpr bool is_lvalue(T&&) {
-return std::is_lvalue_reference<T>{};
+	return std::is_lvalue_reference<T>{};
 }
 \end{lstlisting}
 
 \item \textbf{How to determine programmatically if an expression is rvalue or lvalue}
 \begin{lstlisting}[frame=single, language=c++]
 if (std::is_lvalue_reference<decltype(var)>::value) {
-// var was initialised with an lvalue expression
+	// var was initialised with an lvalue expression
 } else if (std::is_rvalue_reference<decltype(var)>::value) {
-// var was initialised with an rvalue expression
+	// var was initialised with an rvalue expression
 }
 \end{lstlisting}
 
