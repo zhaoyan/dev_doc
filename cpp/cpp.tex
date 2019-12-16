@@ -5827,27 +5827,37 @@ Foo f3 = f1+f2;
 \item An example shows that xvalue has identity and persist, and will persist beyond expression and can be move(stolen). it usually near the end of its lifetime (so that its resources may be moved).
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 string&& xvalue_fun();
+
 xvalue_fun(); // after you call this fun, value still exist.
 xvalue_fun() = "hello" // you can modify because it persist
 &xvalue_fun(); // you can get address because it has identity.
 string a = xvalue_fun(); // call move ctor, can move
 \end{lstlisting}
 
-\item A method to say if a var is lvalue.
+\item A method to judge if a var is lvalue.
 \begin{lstlisting}[frame=single, language=c++]
 template <typename T>
 constexpr bool is_lvalue(T&&) {
 	return std::is_lvalue_reference<T>{};
 }
+
+std::string a("Hello");
+is_lvalue(std::string()); // false
+is_lvalue(a); // true  
+//in the case you pass a std::string lvalue then T will deduce to std::string& or const std::string&, for rvalues it will deduce to std::string
 \end{lstlisting}
 
-\item \textbf{How to determine programmatically if an expression is rvalue or lvalue}
+\item \textbf{How to determine programmatic if an expression is rvalue or lvalue}
 \begin{lstlisting}[frame=single, language=c++]
 if (std::is_lvalue_reference<decltype(var)>::value) {
 	// var was initialised with an lvalue expression
 } else if (std::is_rvalue_reference<decltype(var)>::value) {
 	// var was initialised with an rvalue expression
 }
+
+string&& xvalue_fun();
+std::is_lvalue_reference<decltype(xvalue_fun())>::value
+//return true
 \end{lstlisting}
 
 \end{itemize}
@@ -5857,19 +5867,19 @@ if (std::is_lvalue_reference<decltype(var)>::value) {
 \begin{itemize}
 	\item Remember that any expression that evaluates to an lvalue reference (e.g., a function call, an overloaded assignment operator, etc.) is \textbf{an lvalue}. Any expression that \textbf{returns an object by value is an rvalue}.
 	
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	string& lvalue_fun();
-	lvalue_fun(); // after you call this fun, lvalue still exist.
-	lvalue_fun() = "hello" // you can modify because it persist
-	&lvalue_fun(); // you can get address because it has identity.
-	string a = lvalue_fun //call copy ctor, can't move
-	
-	string pvalue_fun();
-	pvalue_fun(); // after call this fun, value disappear.
-	pvalue_fun() = "hello" //NOT modify because it doesn't persist
-	&pvalue_fun(); // NOT get address because it no identity.
-	string a = pvalue_fun() //call move ctor, can move
-	\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+string& lvalue_fun();
+lvalue_fun(); // after you call this fun, lvalue still exist.
+lvalue_fun() = "hello" // you can modify because it persist
+&lvalue_fun(); // you can get address because it has identity.
+string a = lvalue_fun //call copy ctor, can't move
+
+string pvalue_fun();
+pvalue_fun(); // after call this fun, value disappear.
+pvalue_fun() = "hello" $\Hilight{20}$//NOT modify because it doesn't persist
+&pvalue_fun(); $\Hilight{20}$// NOT get address because it no identity.
+string a = pvalue_fun() //call move ctor, can move
+\end{lstlisting}
 	
 	\item An xvalue is the result of certain kinds of expressions involving rvalue references. \textbf{The result of calling a function whose return type is an rvalue reference is an xvalue.}
 	
@@ -5878,18 +5888,18 @@ if (std::is_lvalue_reference<decltype(var)>::value) {
 	\item In definition,  xvalue is just value with Identity and can be movable. \textbf{In real life, it's  return value of std::move() or static\_cast<A\&\&>}. A better introduction can be seen: " C++11 Tutorial: Explaining the Ever-Elusive Lvalues and Rvalues"
 	
 	\item More xvalue examples.
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	struct A {
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+struct A {
 	int m;
-	};
+};
 	
-	A&& operator+(A, A); // a+a is xvalue
-	A&& f();  //f() is xvalue
-	f().m // f().m is also xvluae
-	A a;
-	A&& ar = static_cast<A&&>(a);
-	//static_cast<A&&>(a) is xvalue, but ar is lvalue
-	\end{lstlisting}
+A&& operator+(A, A); // a+a is xvalue
+A&& f();  //f() is xvalue
+f().m // f().m is also xvluae
+A a;
+A&& ar = static_cast<A&&>(a);
+//static_cast<A&&>(a) is xvalue, but ar is lvalue
+\end{lstlisting}
 	
 	\item After C++11, we added two new xvalues.\\
 	1) a[n], the built-in subscript expression, where one operand is an array rvalue;\\
@@ -5903,55 +5913,53 @@ if (std::is_lvalue_reference<decltype(var)>::value) {
 	
 	\item \textbf{A named rvalue reference is lvalue, and unnamed rvalue reference is xvalue};
 	
-	\begin{lstlisting}[frame=single, language=c++,mathescape=true]
-	void foo(int&& t) {
+\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+void foo(int&& t) {
 	// t is initialized with an rvalue expression
 	// but is actually an lvalue expression itself
-	}
+}
 	
-	std::string a;   //a, b, c are all lvalue.
-	std::string& b;
-	std::string&& c;
+std::string a;   //a, b, c are all lvalue.
+std::string& b;
+std::string&& c;
 	\end{lstlisting}
 	
 	
-	\item goo is declared as an rvalue reference and does not have a name, and is therefore an rvalue.
-	\begin{lstlisting}[frame=single, language=c++,mathescape=true]
-	X&& goo();
-	X x = goo();
-	// calls X(X&& rhs) because the thing on
-	// the right hand side has no name
+\item goo is declared as an rvalue reference and does not have a name, and is therefore an value.
+\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+X&& goo();
+X x = goo();
+// calls X(X&& rhs) because the thing on
+// the right hand side has no name
 	
-	std::move(x)  // get rid of x name,
-	//then return rvalue reference
-	\end{lstlisting}
+std::move(x)  // get rid of x name,
+//then return rvalue reference
+\end{lstlisting}
 	
 	\item Why is there such confusion? Here are the circumstances under which it is safe to move something:\\
 	1) When it's a temporary or sub-object thereof. (prvalue) \\
 	2) When the user has explicitly said to move it.
-	\begin{lstlisting}[frame=single, language=c++]
-	SomeType &&Func() { ... }
+\begin{lstlisting}[frame=single, language=c++]
+SomeType &&Func() { ... }
 	
-	SomeType &&val = Func();
-	SomeType otherVal{val}; // Do you really want to move 
+SomeType &&val = Func();
+SomeType otherVal{val}; // Do you really want to move 
 	....
-	cout<<val; //what happen if you have forget you have move.
-	//so here, we think val is lvalue. because it's a named rvalue reference.
-	\end{lstlisting}
+cout<<val; //what happen if you have forget you have move.
+//so here, we think val is lvalue. because it's a named rvalue reference.
+\end{lstlisting}
 	
-	\item Another deep trap happen when you implement move ctor in derived class
-	\begin{lstlisting}[frame=single, language=c++]
-	Derived(Derived&& rhs) 
-	: Base(rhs) // wrong: rhs is an lvalue
-	{
+\item Another deep trap happen when you implement move ctor in derived class
+\begin{lstlisting}[frame=single, language=c++]
+Derived(Derived&& rhs) : Base(rhs) // wrong: rhs is an lvalue
+{
 	// Derived-specific stuff
-	}
+}
 	
-	Derived(Derived&& rhs) 
-	: Base(std::move(rhs)) // good, calls Base(Base&& rhs)
-	{
+Derived(Derived&& rhs) : Base(std::move(rhs)) // good, calls Base(Base&& rhs)
+{
 	// Derived-specific stuff
-	}
+}
 	\end{lstlisting}
 	
 \end{itemize}
@@ -5960,26 +5968,26 @@ if (std::is_lvalue_reference<decltype(var)>::value) {
 \subsubsection{Why need xvalue}
 \begin{itemize}
 	\item given a type T, you can have lvalues of type T as well as rvalues of typeT. It's especially important to remember this when dealing with a parameter of rvalue reference type, because the parameter itself is an lvalue.
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	int && i = 2;  //i expression is rvalue referene type lvalue
-	int && fun()
-	fun() //fun() expression is vralue reference type rvalue. 
-	\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+int && i = 2;  //i expression is rvalue referene type lvalue
+int && fun()
+fun() //fun() expression is vralue reference type rvalue. 
+\end{lstlisting}
 	
 	\item before C++11, we have used value category to overload function. plain lvalue reference can only bind to lvalue, can't bind to rvalue. So we use \textbf{const lvalue reference}.  Const lvalue reference can bind to both lvalue and rvalue, but you can't change it. We have used this technology in copy ctor very common before C++11. Because const reference can bind both lvalue and rvalue, so we can't distinguish when to move, when to copy, that is the problem of efficiency.
 	
 	\item After C++11, in order to improve efficiency when deal with rvalue, we introduced rvalue reference.  rvalue referencecan only bind to rvalue, (rvalue is composed of prvalue+ xvalue). \textbf{That is how funciton overload kick in?}
-	
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	int a = 7;  // a is lvalue, It has Identity
-	int && r1 = 13,  $\Hilight{16}$//r1, r2 and r3 are lvalue
-	int && r2= x+y; //x+y is prvalue
-	int && r3 = sqrt(2.0);  //sqrt(2.0) is prvalue
-	int && r4 = a //error, rvalue reference can't refer to lvalue.
-	
-	cont int & lv = x+y; //lv is lvalue
-	int & r = x+y; //error,lvalue reference can not bind with an rvalue.
-	\end{lstlisting}
+
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+int a = 7;  // a is lvalue, It has Identity
+int && r1 = 13,  $\Hilight{16}$//r1, r2 and r3 are lvalue
+int && r2= x+y; //x+y is prvalue
+int && r3 = sqrt(2.0);  //sqrt(2.0) is prvalue
+int && r4 = a //error, rvalue reference can't refer to lvalue.
+
+cont int & lv = x+y; //lv is lvalue
+int & r = x+y; //error,lvalue reference can not bind with an rvalue.
+\end{lstlisting}
 	
 	\begin{tabular}{|c|c|}
 		\hline 
@@ -5995,50 +6003,52 @@ if (std::is_lvalue_reference<decltype(var)>::value) {
 	
 	\item C++11 allows you to use move semantics not just on rvalues, but, at your discretion, on lvalues as well. An good example is swap function, here if you can move lvalue, the efficiency will be better. 
 	
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	template<class T> 
-	void swap(T& a, T& b) { 
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+template<class T> 
+void swap(T& a, T& b) { 
 	T tmp(std::move(a));
 	a = std::move(b); 
 	b = std::move(tmp);
-	} 
+} 
 	\end{lstlisting}
 	
 	\item So for std::move() function, return value can be value(rvalue), but it can't support dynamic binding in C++.  return value can be reference(lvalue), but it can't be used move context. So we have to use rvalue reference as return type. 
 	
 	\item for this kind of rvalue reference, we can put it on the left side of assignment, so it's not prvalue. At the same time, you can move it, so it's not lvalue.  \textbf{In this way, we have to introduced a new value type--xvalue.}    
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	string str = "hello"
-	std::move(str)[0] = 'z';
-	cout<<str<<endl // print zello here.
-	// so std::move() return a xvalue, it can persist and move.
-	\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+string str = "hello"
+std::move(str)[0] = 'z';
+cout<<str<<endl // print zello here.
+// so std::move() return a xvalue, it can persist and move.
+\end{lstlisting}
 	
-	\item In one word: \\
-	1) We have rvalue reference to bind temporary value to move it.\\
-	2) We want to move a lvalue, such as swap, so we have std::move() function \\
-	3) std::move() return neither lvalue nor prvalue, so we have to define a new type of value--xvalue. 
+	\item Summary:
+	\begin{enumerate}
+		\item We have rvalue reference to bind temporary value to move it.
+		\item We want to move a lvalue, such as swap, so we have std::move() function.
+		\item std::move() return neither lvalue nor prvalue, so we have to define a new type of value--xvalue.
+	\end{enumerate}
+
 	
 	\begin{figure}
 		\centering
-		\includegraphics[width=0.9\linewidth]{pics/xvalue}
+		\includegraphics[width=0.5\linewidth]{pics/xvalue.png}
 		\caption{}
 		\label{fig:xvalue}
-	\end{figure}
-	
+	\end{figure}	
 \end{itemize}
 
 \section{rvalue reference and move scenario}
 \subsubsection{basic of rvalue reference}
 \begin{itemize}
 
-\item rvalues denote temporaries or objects that want to look like a temporary. What is so particular about temporaries, is the fact that they will be used in a very limited way: their value will be read once, and they will be destroyed. This is a very useful observation in implementing "move semantics." 
+	\item rvalues denote temporaries or objects that want to look like a temporary. What is so particular about temporaries, is the fact that they will be used in a very limited way: their value will be read once, and they will be destroyed. This is a very useful observation in implementing "move semantics." 
 
-\item How to understand move semantics? Move is not really move a big chunk of data, It just move index of data. just like you move file in the hard disk. 
+	\item How to understand move semantics? Move is not really move a big chunk of data, It just move index of data. just like you move file in the hard disk. 
 
-\item rvalue references will implicitly bind to rvalues and to temporaries that are the result of an implicit conversion. i.e. float f = 0f; int\&\& i = f; is well formed because float is implicitly convertible to int; the reference would be to a temporary that is the result of the conversion.
+	\item rvalue references will implicitly bind to rvalues and to temporaries that are the result of an implicit conversion. i.e. float f = 0f; int\&\& i = f; is well formed because float is implicitly convertible to int; the reference would be to a temporary that is the result of the conversion.
 
-\item Rvalue references can be used to extend the lifetimes of temporary objects (note, lvalue references to const can extend the lifetimes of temporary objects too, but they are not modifiable through them):
+	\item Rvalue references can be used to extend the lifetimes of temporary objects (note, lvalue references to const can extend the lifetimes of temporary objects too, but they are not modifiable through them):
 
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 std::string s1 = "Test";
@@ -6074,56 +6084,56 @@ r3 += "Test";
 		\item \textbf{In move ctor, always set rhs.ptr = nullptr;}
 		
 		\item No const qualifier in move ctor and move assignment
-		\begin{lstlisting}[frame=single, language=c++]
-		Foo::Foo(const Foo & foo){
-		while(ptr++;)
-		ptr[i] = foo.ptr[i]  //expensive copy
-		}
+\begin{lstlisting}[frame=single, language=c++]
+Foo::Foo(const Foo & foo){
+	while(ptr++;)
+	ptr[i] = foo.ptr[i]  //expensive copy
+	}
 		
-		Foo::Foo(Foo && rhs){ //no const here
-		ptr = other.ptr;  //efficient move(steal)
-		rhs.ptr = nullptr;
-		}
+Foo::Foo(Foo && rhs){ //no const here
+	ptr = other.ptr;  //efficient move(steal)
+	rhs.ptr = nullptr;
+	}
 		
-		Foo& Foo::operator=(Foo&& rhs){
-		delete[] ptr;
-		ptr = other.ptr;  //efficient move(steal)
-		rhs.ptr = nullptr;
-		return *this;
-		}
-		\end{lstlisting}
+Foo& Foo::operator=(Foo&& rhs){
+	delete[] ptr;
+	ptr = other.ptr;  //efficient move(steal)
+	rhs.ptr = nullptr;
+	return *this;
+	}
+\end{lstlisting}
 		
 	\end{enumerate}
 	
-	\item When the move ctor will be called? Below are some examples.
-	\begin{lstlisting}[frame=single, language=c++]
-	class obj = 2 //same as class obj(2)
-	// call single argument ctor
+\item When the move ctor will be called? Below are some examples.
+\begin{lstlisting}[frame=single, language=c++]
+class obj = 2 //same as class obj(2)
+// call single argument ctor
 	
-	obj =2         //call assignment operator
+obj =2         //call assignment operator
 	
-	class obj1 = obj2 // call  copy ctor
-	// not call assignment operator
+class obj1 = obj2 // call  copy ctor
+// not call assignment operator
 	
-	obj1 = obj2         //call assignment operator
+obj1 = obj2         //call assignment operator
 	
-	class obj1 = obj2+obj3   //call move ctor
-	//if you dont' have move ctor, It will call copy ctor
+class obj1 = obj2+obj3   //call move ctor
+//if you dont' have move ctor, It will call copy ctor
 	
-	obj1 = obj2+obj3 //call move assignment operator  if you define.
-	\end{lstlisting}
+obj1 = obj2+obj3 //call move assignment operator  if you define.
+\end{lstlisting}
 	
 	\item In below examples, Foo obj1=obj2+obj3. if you don't have move ctor, In operator + function, a temp obj is produced,  and when operator+ function return, another temp obj temp2 is produced .  Then in the end, objtemp2 is passed to ctor,  So, ctor is called three times. and copy content is also called three times.
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	Foo Foo::operator+( const Foo & f) const {
+\begin{lstlisting}[frame=single, language=c++]
+Foo Foo::operator+( const Foo & f) const {
 	Foo temp = Foo(n+f.n);
 	//copy happen here.
 	return temp;
-	}
+}
 	
-	Foo obj1=obj2+obj3  // three ctor called with move ctor
-	\end{lstlisting}
+Foo obj1=obj2+obj3  // three ctor called with move ctor
+\end{lstlisting}
 	
 	\item If you have move ctor. In operator + function, a temp objtemp1 is produced,  When return objtemp1, It will not produce objtemp2. (becasue objtemp1 is rvalue.) then objtemp1 is passed to move ctor. In side move ctor, the resource address has been move to new obj1.  Just one temp objtemp1 and one actual copy happen. ( just new pointer = old pointer; and old pointer = NULL).
 \end{itemize}
@@ -6250,7 +6260,7 @@ std::cout << global_vec[0] << std::endl;
 
 \subsubsection{pros}
 \begin{itemize}
-\item It can provide the unify interface, with variadic template parameter, it support variadic number. That is make\_unique and make\_shared and emplace-kind function possible.
+\item It can provide the unify interface, and it supports variadic number. That is make\_unique and make\_shared and emplace-kind function possible.
 
 \item If you have a template class or template fun, universal reference is your only choice. An example can be seen in the last chapter, "decltype deduction" section.
 
@@ -6353,14 +6363,50 @@ $\Hilight{19}$//with const, It's not univerisal reference any more.
 \end{itemize}
 \subsubsection{std::move and std::forward implementation}
 \begin{itemize}
-	\item 
+	\item Basic implementation of move
+\begin{lstlisting}
+template<typename T> // in namespace std
+typename remove_reference<T>::type&&
+move(T&& param){
+	using ReturnType = typename remove_reference<T>::type&&; // see Item 9
+	return static_cast<ReturnType>(param);
+}
+\end{lstlisting}
+	
+	\item Basic implementation of forward
+\begin{lstlisting}
+template<typename T>
+T&& forward(typename remove_reference<T>::type& param){
+	return static_cast<T&&>(param);
+}
+\end{lstlisting}
+
+	\item basic usage of forward is like this:
+\begin{lstlisting}
+template<class T>
+void wrapper(T&& arg) {
+// arg is always lvalue
+foo(std::forward<T>(arg)); // Forward as lvalue or as rvalue, depending on T
+}
+\end{lstlisting}
 	\begin{figure}
 		\centering
-		\includegraphics[width=0.7\linewidth]{pics/rvalue_ref}
+		\includegraphics[width=0.7\linewidth]{pics/rvalue_ref.png}
 		\caption{}
 		\label{fig:rvalueref}
 	\end{figure}
-	
+
+	\item In forward function, why parameter is std::remove\_reference\_t<T>\& t?
+\begin{lstlisting}
+void fun(int&& r){
+	//int& r1 = r;  //OK
+	int&& r1 = r;  //error: cannot bind ‘int’ lvalue to ‘int&&’
+	cout<<r1<<endl;
+}
+//----------------------------------------
+int r = 2;
+fun(std::move(r));
+\end{lstlisting}
 \end{itemize}
 
 
@@ -6369,7 +6415,7 @@ $\Hilight{19}$//with const, It's not univerisal reference any more.
 \subsection{Generic function parameter design}
 \begin{itemize}
 \item Main content in this section illustrated below: \\
-\includegraphics[scale=0.7, angle=270]{pics/move.png}
+\includegraphics[scale=0.4]{pics/move.png}
 
 \item  By now, you imagine you have a function with parameter, then you have three main operations inside to operate on the parameter: \textbf{1) only read 2) copy from the parameter 3) write to parameter.}
 
@@ -6445,8 +6491,8 @@ fun(f_return_foo()); // call move ctor.
 \begin{lstlisting}[frame=single, language=c++]
 std::vector<std::string> 
 sorted(std::vector<std::string> names){
-std::sort(names);
-return names;
+	std::sort(names);
+	return names;
 }
 
 // names is an lvalue; a copy is required so we don't modify names
@@ -6459,9 +6505,9 @@ std::vector<std::string> sorted_names2 = sorted( get_names() );
 \begin{lstlisting}[frame=single, language=c++]
 std::vector<std::string> 
 sorted2(std::vector<std::string> const& names) {
-std::vector<std::string> r(names);   // and explicitly copied
-std::sort(r);
-return r;
+	std::vector<std::string> r(names);   // and explicitly copied
+	std::sort(r);
+	return r;
 }
 \end{lstlisting}
 
@@ -6490,22 +6536,20 @@ return r;
 \end{enumerate}
 
 
-\item The same idea can be seen in the "more effective C++ item ?" 
+\item The same idea can be seen in the "more effective C++ item 41" 
 
 \item You can apply this guideline immediately is in assignment operators. The canonical, easy-to-write, always-correct, strong-guarantee, copy-and-swap assignment operator is often seen written this way:
 \begin{lstlisting}[frame=single, language=c++]
-T& T::operator=(T const& x) // x is a reference to the source
-{ 
-T tmp(x);          // copy construction of tmp does the hard work
-swap(*this, tmp);  // trade our resources for tmp's
-return *this;      // our (old) resources get destroyed with tmp 
+T& T::operator=(T const& x){ // x is a reference to the source
+	T tmp(x);          // copy construction of tmp does the hard work
+	swap(*this, tmp);  // trade our resources for tmp's
+	return *this;      // our (old) resources get destroyed with tmp 
 }
 
 // A better one is below
-T& operator=(T x)    // x is a copy of the source; hard work already done
-{
-swap(*this, x);  // trade our resources for x's
-return *this;    // our (old) resources get destroyed with x
+T& operator=(T x){    // x is a copy of the source; hard work already done
+	swap(*this, x);  // trade our resources for x's
+	return *this;    // our (old) resources get destroyed with x
 }
 \end{lstlisting}
 
@@ -6591,40 +6635,40 @@ reduceAndCopy(T&& frac) // universal reference param
 	\item \textbf{Three basic knowledges about function return when no RVO:}
 	\begin{enumerate}
 		\item It's very important understand there are two phrases when you return from function. The first step  is from inside fun fauto to ouside of function ftemp(unname tempory), then fauto disappear(call destructor for value).  Then in second step, \textbf{Move} from ftemp to flast. because ftemp is rvalue.
-		\begin{lstlisting}[frame=single, language=c++]
-		Foo fun(){
-		return fauto;
-		}
+\begin{lstlisting}[frame=single, language=c++]
+Foo fun(){
+	return fauto;
+}
 		
-		Foo flast = ($\Hilight{9}$ftemp created here)fun();
-		\end{lstlisting}
+Foo flast = ($\Hilight{12}$ftemp created here)fun();
+\end{lstlisting}
 		\item ftemp is not on the stack, so you can use const ref or rref to prolong its life.
 		
 		\item ftemp is same with fauto, but maybe not same with flast
-		\begin{lstlisting}[frame=single, language=c++]
-		Foo fun(){
-			return fauto;
-		}
+\begin{lstlisting}[frame=single, language=c++]
+Foo fun(){
+	return fauto;
+}
 		
-		$\Hilight{39}$fun return Value, if run return reference, it's dangerous.
-		const Foo& flast = ($\Hilight{9}$ftemp created here)fun();
-		Foo&& flast = fun();
-		\end{lstlisting}
+$\Hilight{39}$\\fun return Value, if run return reference, it's dangerous.
+const Foo& flast = ($\Hilight{9}$ftemp created here)fun();
+Foo&& flast = fun();
+\end{lstlisting}
 	\end{enumerate}
 	
 	\item The basic RVO is implemented by this way:
-	\begin{lstlisting}[frame=single, language=c++]
-	X bar(){
-		X xx;
-		return xx;
-	}
+\begin{lstlisting}[frame=single, language=c++]
+X bar(){
+	X xx;
+	return xx;
+}
 	
-	void bar(x &__result){
+void bar(x &__result){
 	__result.X::X() // default ctor call
 	....
 	return
-	}
-	 \end{lstlisting}
+}
+\end{lstlisting}
 	
 \end{itemize}
 
@@ -6723,45 +6767,40 @@ A&& b = rrfun(a);
 \end{lstlisting}
 	
 	
-	\item You can understand all these examples by three function knowledge int he begining. And all these exmaples are just have academic meaning, no any practial sense at all. Why?
+	\item You can understand all these examples by three function knowledge when no RVO in the begining of this section. And all these exmaples are just have academic meaning, no any practial sense at all. Why?
 
 	
-	\item Why return value is better than return rvalue reference? 1) more clear semantic 2) when use with auto, it's support RVO. 
-\begin{lstlisting}[frame=single, language=c++]
-	DataType data() && { return std::move(values); } // why DataType?
-	auto values = makeWidget().data();
-	//with ROV, just move once. 
-	
-	DataType && data() && { return std::move(values); }
-	auto&& values = makeWidget().data();
-	//values will be dangling
-	//because makeWidget() return value disappear.
-\end{lstlisting}
-	
+	\item Why return value is better than return rvalue reference?
+	\begin{enumerate}
+		\item more clear semantic 
+		\item when use with auto, it's support RVO.
+	\end{enumerate}
+
+
 	
 	\item \textbf{In Summary 1, Three operator overload return plain reference, one std::move return rref. It doesn't involve value semantic, just a type change. All the others return value, That's all!}
 	
 	\item \textbf{In summary 2, If function return value, For only copy lvalue, return value; for rvalue reference, move;  For universal refence, forward. }
 	
-	\begin{lstlisting}[frame=single, language=c++,mathescape=true]
-	Matrix operator+$/Hilight{5}$Matrix& lhs, const Matrix& rhs) {
+\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+Matrix operator+$/Hilight{5}$Matrix& lhs, const Matrix& rhs) {
 	return lhs
-	}
+}
 	
-	Matrix operator+($/Hilight{5}$Matrix&& lhs, const Matrix& rhs) {
+Matrix operator+($/Hilight{5}$Matrix&& lhs, const Matrix& rhs) {
 	return move(lhs)
-	}
+}
 	
-	template<type T>
-	T operator+($/Hilight{5}$T&& lhs) {
+template<type T>
+T operator+($/Hilight{5}$T&& lhs) {
 	return forward<T>(lhs)
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 	\item The ref-qualifier \&\& says that the second function is invoked on rvalue temporaries, making the following move, instead of copy
 	
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
-	struct Beta {
+struct Beta {
 	Beta_ab ab;
 	Beta_ab const& getAB() const& { return ab; }
 	Beta_ab && getAB() && { return move(ab); }
@@ -6773,27 +6812,37 @@ A&& b = rrfun(a);
 	
 	2) Beta_ab getAB() && { return move(ab); }
 	$/Hilight{30}$//Good interface design.
-	};
+};
 \end{lstlisting}
+
+\item the same idea just like previous example, but this time I use auto.
+\begin{lstlisting}[frame=single, language=c++]
+DataType data() && { return std::move(values); } // why DataType?
+auto values = makeWidget().data();
+//with ROV, just move once. 
+
+DataType && data() && { return std::move(values); }
+auto&& values = makeWidget().data();
+//values will be dangling because makeWidget() return value disappear.
+\end{lstlisting}
+
+	\item about rvalue reference qualifier, please google "C++ Gems: ref-qualifiers"
 	
-	\item A few article you need to read later;
-	1) Efficiency of C++11 push\_back() with std::move versus emplace\_back() for already constructed objects
+	\item A few article you need to read later; \\
+	1) Efficiency of C++11 push\_back() with std::move versus emplace\_back() for already constructed objects \\
 	
-	2) view the default functions generated by a compiler?
+	2) view the default functions generated by a compiler?\\
 	
-	3) One variable init form to rule them all, via mandatory elision.
+	3) One variable init form to rule them all, via mandatory elision.\\
 	
-	4) Episode Eleven: To Kill a Move Constructor
-	
+	4) Episode Eleven: To Kill a Move Constructor\\
 \end{itemize}
-
-
 
 \subsection{return value-RVO}
 
 \subsubsection{common RVO case}
 \begin{itemize}
-	\item \item RVO is a kind of copy elision. 
+	\item RVO is a kind of copy elision. 
 	\begin{enumerate}
 		\item \textbf{it happens when you return value from a function.}
 		\item The type of the \textbf{local} object is the same as that returned by the function.
@@ -6803,7 +6852,7 @@ A&& b = rrfun(a);
 	
 	\item Three common cases are:
 	\begin{enumerate}
-		\item Name RVO, t has a name. It's called NRVO.
+		\item Name RVO, \texttt{t} has a name. It's called NRVO.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 Thing f() {
 	Thing t;
@@ -6815,7 +6864,7 @@ Thing t2 = f();
 		\item RVO, No name, just return temporary.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 Thing f() {
-return Thing();
+	return Thing();
 }
 Thing t2 = f();
 \end{lstlisting}
@@ -6866,11 +6915,11 @@ RVO MyMethod (int i)
 Snitch global_snitch;
 
 Snitch ReturnParameter(Snitch snitch) {
-return snitch;
+	return snitch; //no RVO here
 }
 
 Snitch ReturnGlobal() {
-return global_snitch;
+	return global_snitch; //no RVO here either
 }
 \end{lstlisting}
 
@@ -6885,15 +6934,15 @@ Snitch CreateSnitch() {
 \item In some cases even an unnamed variable can't RVO:
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 struct Wrapper {
-Snitch snitch;
+	Snitch snitch;
 };
 
 Snitch foo() {
-return Wrapper().snitch;
+	return Wrapper().snitch;
 }
 
 int main() {
-Snitch s = foo();
+	Snitch s = foo();
 }
 \end{lstlisting}
 
@@ -6901,9 +6950,9 @@ Snitch s = foo();
 \subsubsection{Some practical demos ans analysis}
 \begin{itemize}
 	
-	\item given below code
-	\begin{lstlisting}[frame=single, language=c++]
-	class Snitch {   // Note: All methods have side effects
+	\item given below code as experiment code:
+\begin{lstlisting}[frame=single, language=c++]
+class Snitch {   // Note: All methods have side effects
 	Snitch() { cout << "c'tor" << endl; }
 	~Snitch() { cout << "d'tor" << endl; }
 	
@@ -6911,118 +6960,118 @@ Snitch s = foo();
 	Snitch(Snitch&&) { cout << "move c'tor" << endl; }
 	
 	Snitch& operator=(const Snitch&) {
-	cout << "copy assignment" << endl;
-	return *this;
+		cout << "copy assignment" << endl;
+		return *this;
 	}
 	
 	Snitch& operator=(Snitch&&) {
-	cout << "move assignment" << endl;
-	return *this;
+		cout << "move assignment" << endl;
+		return *this;
 	}
-	};
+};
 	
-	Snitch CreateSnitch() {
+Snitch CreateSnitch() {
 	return Snitch();
-	}
+}
 	\end{lstlisting}
 	
 	\item test 1 and output 
-	\begin{lstlisting}[frame=single, language=c++]
-	int main() {
+\begin{lstlisting}[frame=single, language=c++]
+int main() {
 	Snitch s = CreateSnitch();
-	}
+}
 	
-	with -fno-elide-constructors
-	c'tor    //Snitch()
-	move c'tor  //Snitch() to return value
-	d'tor       //Snitch() destory
-	move c'tor //return value to s
-	d'tor     //return value destory
-	d'tor     //s destory
-	
-	without -fno-elide-constructors
-	c'tor   //s
-	d'tor   //s destory
+//	with -fno-elide-constructors
+//	c'tor    //Snitch()
+//	move c'tor  //Snitch() to return value
+//	d'tor       //Snitch() destory
+//	move c'tor //return value to s
+//	d'tor     //return value destory
+//	d'tor     //s destory
+//------------------------------
+//	without -fno-elide-constructors
+//	c'tor   //s
+//	d'tor   //s destory
 	\end{lstlisting}
 	
 	\item test 2 and output
 	\begin{lstlisting}[frame=single, language=c++]
-	int main() {
+int main() {
 	Snitch s;
 	s = CreateSnitch();
-	}
-	with -fno-elide-constructors
-	c'tor    //Snitch s
-	c'tor    //Snitch() in side CreateSnitch
-	move c'tor  //Snitch() to return value
-	d'tor       //Snitch() destory
-	move assignment //return value to s
-	d'tor     //return value destory
-	d'tor     //s destory
-	
-	without -fno-elide-constructors
-	c'tor   //Snitch s
-	c'tor   //Snitch()
-	move assignment //s has been implicit passed to CreateSnitch, 
-	//so s = Snitch() happen inside CreateSnitch
-	d'tor   //Snitch() destory
-	d'tor   //s destory
+}
+
+//	with -fno-elide-constructors
+//	c'tor    //Snitch s
+//	c'tor    //Snitch() in side CreateSnitch
+//	move c'tor  //Snitch() to return value
+//	d'tor       //Snitch() destory
+//	move assignment //return value to s
+//	d'tor     //return value destory
+//	d'tor     //s destory
+//----------------------	
+//	without -fno-elide-constructors
+//	c'tor   //Snitch s
+//	c'tor   //Snitch()
+//	move assignment //s has been implicit passed to CreateSnitch, 
+//	//so s = Snitch() happen inside CreateSnitch
+//	d'tor   //Snitch() destory
+//	d'tor   //s destory
 	\end{lstlisting}
 	
 	\item test 3 and output
-	\begin{lstlisting}[frame=single, language=c++]
-	Snitch CreateSnitch() {
+\begin{lstlisting}[frame=single, language=c++]
+Snitch CreateSnitch() {
 	return Snitch();
-	}
+}
 	
-	Snitch CSnitch(Snitch&& rs) {
+Snitch CSnitch(Snitch&& rs) {
 	return rs;
-	}
+}
 	
-	int main() {
+int main() {
 	Snitch s = CSnitch(CreateSnitch());
-	}
+}
 	
-	with -fno-elide-constructors
-	c'tor    //
-	copy c'tor    //
-	d'tor       /
-	copy c'tor    //
-	copy c'tor    //
-	d'tor       /
-	d'tor     //r
-	d'tor     //
-	
-	without -fno-elide-constructors
-	c'tor   //Snitch s
-	copy c'tor //
-	d'tor   //Snitch() destory
-	d'tor   //s destory
-	\end{lstlisting}
+//	with -fno-elide-constructors
+//	c'tor    //
+//	copy c'tor    //
+//	d'tor       /
+//	copy c'tor    //
+//	copy c'tor    //
+//	d'tor       /
+//	d'tor     //r
+//	d'tor     //
+//-------------------------
+//	without -fno-elide-constructors
+//	c'tor   //Snitch s
+//	copy c'tor //
+//	d'tor   //Snitch() destory
+//	d'tor   //s destory
+\end{lstlisting}
 \end{itemize}
 
 
 \subsubsection{RVO and move}
 \begin{itemize}
-	
 	\item For local variable, don't use move. compiler will use RVO , so It has already had high efficiency.
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	Foo fun(){
-		Foo foo;
-		return foo;
+\begin{lstlisting}[frame=single, language=c++]
+Foo fun(){
+	Foo foo;
+	return foo;
 	$\Hilight{12}$//Don't use move here.
-	}
+}
 	\end{lstlisting}
 	
 	\item A common error is when there is no RVO, use std::move to avoid copy: but Although parameter is not eligbile for RVO, or different path is not eligible, but you don't need to explicit use std::move, the compiler will use them implicitly.
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	Widget makeW(Widget w){
+\begin{lstlisting}[frame=single, language=c++]
+Widget makeW(Widget w){
 	.....
 	return w
-	return std::move(w) //don't write it, compiler will do it for you.
-	} 
+	//return std::move(w) //don't write it, compiler will do it for you.
+} 
 	\end{lstlisting}
 	
 	\item If a function is value return, and you want to return a rvalue reference parameter, you have to use move in the return.
@@ -7031,18 +7080,18 @@ Snitch s = foo();
 		\item you may say: but lhs is rvalue reference, but lhs is name rvalue reference. It's lvalue.
 		\item Just like you pass a lvalue reference, you can't move it unless you want to do it explicitly. That is why we need std::move here.
 	\end{enumerate}
-	\begin{lstlisting}[frame=single, language=c++]
-	Matrix // by-value return , by rvalue parameter
-	operator+(Matrix&& lhs, const Matrix& rhs){
+\begin{lstlisting}[frame=single, language=c++]
+Matrix // by-value return , by rvalue parameter
+operator+(Matrix&& lhs, const Matrix& rhs){
 	lhs += rhs;
 	return std::move(lhs); // move lhs into return value
-	return lhs // will copy lhs into return value 
-	} 
+	//return lhs // will copy lhs into return value 
+} 
 	\end{lstlisting}
 
 \subsubsection{RVO summary}
 
-\item First use RVO, then compiler implicit use std::move, the last one is use std::move explicitly.
+\item \textbf{First use RVO, then compiler implicit use std::move, the last one is use std::move explicitly.}
 
 \begin{enumerate}
 \item Apply std::move to rvalue references and std::forward to universal references
