@@ -2978,6 +2978,8 @@ f(nullptr) //will call f(int *p)
 \end{lstlisting}
 	
 	\item calloc() zero-initializes the buffer, while malloc() leaves the memory uninitialized. Zeroing out the memory may take a little time, so you probably want to use malloc() if that performance is an issue. If initializing the memory is more important, use calloc(). For example, calloc() might save you a call to memset().
+	
+	\item With \texttt{memcpy}, the destination cannot overlap the source at all. With memmove it can. This means that \texttt{memmove} might be very slightly slower than memcpy, as it cannot make the same assumptions. For example, memcpy might always copy addresses from low to high. If the destination overlaps after the source, this means some addresses will be overwritten before copied. memmove would detect this and copy in the other direction - from high to low - in this case. However, checking this and switching to another (possibly less efficient) algorithm takes time.
 \end{itemize}
 
 \subsubsection{realloc}
@@ -7135,30 +7137,30 @@ be eligible for the return value optimization.
 	\end{enumerate}
 	
 	\item Policies are classes (or class templates) to \textbf{inject behavior} into a parent class, typically through inheritance. Through decomposing a parent interface into orthogonal (independent) dimensions, policy classes form the building blocks of more complex interfaces. An often seen pattern is to supply policies as user-definable template (or template-template) parameters with a library-supplied default. An example from the Standard Library are the Allocators, which are policy template parameters of all STL containers
-	\begin{lstlisting}[frame=single, language=c++]
-	template<class T, class Allocator =
+\begin{lstlisting}[frame=single, language=c++]
+template<class T, class Allocator =
 	std::allocator<T> > class vector;
-	\end{lstlisting}
+\end{lstlisting}
 	
 	\item Traits are class templates to \textbf{extract properties} from a generic type. There are two kind of traits: single-valued traits and multiple-valued traits. Examples of single-valued traits are the ones from the header <type\_traits>. Single-valued traits are often used in template-metaprogramming and SFINAE tricks to overload a function template based on a type condition.
 	\begin{lstlisting}[frame=single, language=c++]
-	template< class T >
-	struct is_integral{
+template< class T >
+struct is_integral{
 	static const bool value
 	/* = true if T is integral, false otherwise */;
 	typedef std::integral_constant<bool, value> type;
-	};
+};
 	
-	template <class T>
-	T f(T i){
+template <class T>
+T f(T i){
 	static_assert(std::is_integral<T>::value, "Integer required.");
 	return i;
-	}
-	
-	int main() {
+}
+
+int main() {
 	std::cout << f(123) << '\n'; //output 123
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 \end{itemize}
 \subsection{Interface}
 
@@ -7174,58 +7176,58 @@ be eligible for the return value optimization.
 	
 	\item In C++ primer p653, you can see a good example class interface. You should remember it as a basic pattern.  If you use new allocate memory inside of your class, you should define: copy ctor, assignment operator and destructor, move copy ctor, and move assignment.
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	//below is string.h file
-	#pragma once
-	namespace Yan{
+\begin{lstlisting}[frame=single, language=c++]
+//below is string.h file
+#pragma once
+namespace Yan{
 	class String{
 	public:
-	String();  //default constructor
-	String(const char *a ); // specify constructor
-	
-	String (const String &);  //copy ctor
-	String (String && other); //move copy ctor
-	
-	String& operator=(const String &); //assignment
-	String& operator=(String&& other); //move assignment
-	String& operator=(const char*a); // option.
-	
-	~String();  //usually, you should have these Seven member
-	//functions if you use new inside your class.
-	
-	friend ostream& operator<<(ostream & os, const String & st);
-	friend istream& operator>>(istream & is, String &st);
-	
+		String();  //default constructor
+		String(const char *a ); // specify constructor
+		
+		String (const String &);  //copy ctor
+		String (String && other); //move copy ctor
+		
+		String& operator=(const String &); //assignment
+		String& operator=(String&& other); //move assignment
+		String& operator=(const char*a); // option.
+		
+		~String();  //usually, you should have these Seven member
+		//functions if you use new inside your class.
+		
+		friend ostream& operator<<(ostream & os, const String & st);
+		friend istream& operator>>(istream & is, String &st);
+		
 	private:
-	const static int NUM= 1000; // const used inside of this class.
-	char* m_str;
-	
+		const static int NUM= 1000; // const used inside of this class.
+		char* m_str;
+		
 	};
 	ostream& operator<<(ostream & os, const String & st);
 	istream& operator>>(istream & is, String &st);
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 	\begin{enumerate}
 		\item Put class definition into a namespace.
 		\item Use \#pragma once
 		\item You need to declare operator \verb=<<= inside of namespace outside of class
-		\item If you don't use smart pointer and allocate use new. you should follow five rules.( including move ctor and move assignment) if you class includes a resource.
+		\item If you don't use smart pointer and allocate use \texttt{new operator}. you should follow five rules.( including move ctor and move assignment) if you class includes a resource.
 		\item Member function can access all the instance private data, such as other.m\_str, and no semicolon after each function.
 	\end{enumerate}
 	
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	//user.cpp
-	String s;
-	s = "aaa"  //two actions
-	String s("aaa");   //one actions
-	String s{"aaa"};  // new feature in c++11
-	String s={"aaa"}; // same as previous one
+\begin{lstlisting}[frame=single, language=c++]
+//user.cpp
+String s;
+s = "aaa"  //two actions
+String s("aaa");   //one actions
+String s{"aaa"};  // new feature in c++11
+String s={"aaa"}; // same as previous one
 	
-	String str; char temp[40];
-	str= temp // make it more efficient
-	\end{lstlisting}
+String str; char temp[40];
+str= temp // make it more efficient
+\end{lstlisting}
 	
 	\item String\& operator=(const char*a); is an option, why it make str=temp more efficient, see C++ Primer P652
 	
@@ -7233,18 +7235,18 @@ be eligible for the return value optimization.
 	\begin{enumerate}
 		\item Friend Class: just as TV and RemoteControl, you can declare RemoteControl a friend class inside TV.
 		\item Friend Member functions: You can select some member functions to be friend of another class, In this way, you need forward declaration.  When you write class TV;  It doesn't define a TV class, it just tell compile, TV is a class, definition can be done later.
-		\item Common Friend method, a good example is overload operator "<<"
+		\item Common Friend method, a good example is overload \verb=operator <<=
 	\end{enumerate}
 	
 	\item Prefer minimal classes to monolithic classes: big class is difficult to reach error-safe because it tackle multiple responsibilities. It's also difficult maintain, understand and deploy.
-	\begin{lstlisting}[frame=single, language=c++]
-	Class Matrix{
+\begin{lstlisting}[frame=single, language=c++]
+Class Matrix{
 	//100 member function.
-	} ; //bad design.
+} ; //bad design.
 	
-	//Good design with small class with
+//Good design with small class with
 	nonmember function.
-	namespace MAT{
+namespace MAT{
 	Class Matrix{
 	//core data and member function
 	}
@@ -7252,17 +7254,21 @@ be eligible for the return value optimization.
 	Cal1(Matrix &);
 	Cal2(Matrix m1, Matrix m2)
 	......
-	}
+}
 	\end{lstlisting}
-	
-	\item Interface Principle: For a class X, all functions, including free functions, that both
-	1) "Mention" X 2) Are "supplied with" X  are logically part of X, because they form part of the interface of X.  In this definition, 1) Cal1 Mention X,  and 2) Cal1 in the namespace MAT, so caller can use ADL(argument depend lookup) loop Cal1 in namespace MAT, so \textbf{Cal1 is an interface of class Matrix, even it's not a member function of it.} Detail can be see in "exceptional C++ item31to item34.
+
+	\item Interface Principle: For a class X, all functions, including free functions, that both:
+	\begin{enumerate}
+		\item "Mention" X.
+		\item Are "supplied with" X
+	\end{enumerate}
+	are logically part of X, because they form part of the interface of X.  In this definition, 1) Cal1 Mention X,  and 2) Cal1 in the namespace MAT, so caller can use ADL(argument depend lookup) loop Cal1 in namespace MAT, so \textbf{Cal1 is an interface of class Matrix, even it's not a member function of it.} Detail can be see in "exceptional C++ item31 to item34.
 	
 	\item Prefer writing nonmember nonfriend functions
 	\begin{enumerate}
 		\item operator =, ->, [], () must be members
 		\item needs a different type as its left-hand arguent, such as operator <<, use nonmember
-		\item leftmost argument needs type conversion, use nonmember
+		\item leftmost argument needs type conversion, use non-member
 		\item can be implement using the class public interface alone, use nonmember.
 	\end{enumerate}
 	
@@ -7272,14 +7278,13 @@ be eligible for the return value optimization.
 
 \section{member function}
 
-\subsection{Special member functions}
-
+\subsection{Special member functions relationship}
 
 \subsubsection{Basic}
 
 \begin{itemize}
 
-\item When you write a empty class, compiler will produce at least six member functions.  New compiler will produce move ctor and move assignment too.
+\item When you write an empty class, compiler will produce at least six member functions.  New compiler will produce move ctor and move assignment too.
 \begin{lstlisting}[frame=single, language=c++]
 class Empty{};
 
@@ -7311,50 +7316,54 @@ const Empty* operator&() const ;
 \includegraphics[scale=0.6]{pics/sm2.png} \newline
 
 
-\item Default can mean "deleted"
+\item Default can mean "deleted", See an example below:
 
 \begin{lstlisting}[frame=single, language=c++]
-
 class A{
-A() = delete;
+	A() = delete;
 };
-
 
 class B{
-
-A a;
+	A a;
 };
 
-int main()
-{
-B b;
-
+int main(){
+	B b;
 }
-
-main.cpp:16:7: note: ‘B::B()’ is implicitly deleted because the default definition would be ill-formed:
+//main.cpp:16:7: note: 'B::B()' is implicitly deleted because the 
+//default definition would be ill-formed:
 \end{lstlisting}
 
 \item Why defaulted move member sometimes "deleted"? Detail can be found in "CWG 1402 is (imho) the most important bug fix to C++11". Another good article is google "Why is the move constructor neither declared nor deleted with clang? " In clang, it support C++11 standard better. 
 
-\item \textbf{There are two differences: 1) user define empty and declared default 2) not declare and declare delete}
-\includegraphics[scale=0.6]{pics/ctor.png} \newline
+\item \textbf{There are two differences:}
+\begin{enumerate}
+	\item user define empty and declared default
+	\item not declare and declare delete
+\end{enumerate}
+
+
+\includegraphics[scale=0.8]{pics/ctor.png} \newline
 
 
 
-\item Next question is what differences are between =default and user define empty ctor? problems of below code snippet are:
+\item Next question is what differences are between \verb|=default| and user define empty ctor? problems of below code snippet are:
 \begin{lstlisting}[frame=single, language=c++]
 struct noncopyable  {
-  noncopyable() {};
+	noncopyable() {};
 private:
-  noncopyable(const noncopyable&);
-  noncopyable& operator=(const noncopyable&);
+	noncopyable(const noncopyable&);
+	noncopyable& operator=(const noncopyable&);
 };
 \end{lstlisting}
 \begin{enumerate}
-\item The copy constructor has to be declared privately to hide it, but because it's declared at all, automatic generation of the default constructor is prevented. You have to explicitly define the default constructor if you want one, even if it does nothing.
-\item Even if the explicitly-defined default constructor does nothing, it's considered non-trivial by the compiler. \textbf{It's less efficient than an automatically generated default constructor and prevents noncopyable from being a true POD type.}
-\item Even though the copy constructor and copy-assignment operator are hidden from outside code, the member functions and friends of noncopyable can still see and call them. If they are declared but not defined, calling them causes a linker error.
-\item Although this is a commonly accepted idiom, the intent is not clear unless you understand all of the rules for automatic generation of the special member functions.
+	\item The copy constructor has to be declared privately to hide it, but because it's declared at all, automatic generation of the default constructor is prevented. You have to explicitly define the default constructor if you want one, even if it does nothing.
+
+	\item Even if the explicitly-defined default constructor does nothing, it's considered non-trivial by the compiler. \textbf{It's less efficient than an automatically generated default constructor and prevents noncopyable from being a true POD type.}
+
+	\item Even though the copy constructor and copy-assignment operator are hidden from outside code, the member functions and friends of noncopyable can still see and call them. If they are declared but not defined, calling them causes a linker error.
+
+	\item Although this is a commonly accepted idiom, the intent is not clear unless you understand all of the rules for automatic generation of the special member functions.
 \end{enumerate}
 
 
@@ -7366,33 +7375,42 @@ struct noncopyable  {
   noncopyable& operator=(const noncopyable&) =delete;
 };
 \end{lstlisting}
+
 \begin{enumerate}
-\item Generation of the default constructor is still prevented by declaring the copy constructor, but you can bring it back by explicitly defaulting it.
-\item Explicitly defaulted special member functions are still considered trivial, so there is no performance penalty, and noncopyable is not prevented from being a true POD type.
-\item The copy constructor and copy-assignment operator are public but deleted. It is a compile-time error to define or call a deleted function.
-\item The intent is clear to anyone who understands =default and =delete. You don't have to understand the rules for automatic generation of special member functions.
+	\item Generation of the default constructor is still prevented by declaring the copy constructor, but you can bring it back by explicitly defaulting it.
+
+	\item Explicitly defaulted special member functions are still considered trivial, so there is no performance penalty, and noncopyable is not prevented from being a true POD type.
+
+	\item The copy constructor and copy-assignment operator are public but deleted. It is a compile-time error to define or call a deleted function.
+
+	\item The intent is clear to anyone who understands =default and =delete. You don't have to understand the rules for automatic generation of special member functions.
 \end{enumerate}
 
-
-\item Another question is what differences are between =delete and "not declare" \\
+	\item Another question is what differences are between =delete and "not declare"
+\\
 \includegraphics[scale=0.6]{pics/sm5.png} \newline
 
 \end{itemize}
+
 \subsubsection{Rules of implicitly declare }
 \begin{itemize}
-\item The Default ctor, will not be implicitly generated if:
+	\item The Default ctor, will not be implicitly generated if:
+	
 \begin{enumerate}
-\item you have explicitly declared any constructor.  Compiler doesn't create a default constructor if we write any constructor even if it is copy constructor.
-\item There is a member in your class that is not default-constructible (such as a reference, a const object, or a class with no or inaccessible default constructor)
-\item (C++11) you have explicitly told the compiler to not generate one using A() = delete;
-\end{enumerate}
+	\item you have explicitly declared any constructor.  Compiler doesn't create a default constructor if we write any constructor even if it is copy constructor.
 
+	\item There is a member in your class that is not default-constructible (such as a reference, a const object, or a class with no or inaccessible default constructor)
+
+	\item (C++11) you have explicitly told the compiler to not generate one using A() = delete;
+\end{enumerate}
 
 \item The copy ctor, will not be implicitly generated if:
 \begin{enumerate}
-\item you have explicitly declared a copy constructor (for class X a constructor taking X, X\& or const X\&)
-\item there is a member in your class that is not copy-constructible (such as a class with no or inaccessible copy constructor)
-\item (C++11) you have explicitly told the compiler to not generate one using A(const A\&) = delete;
+	\item you have explicitly declared a copy constructor (for class X a constructor taking X, X\& or const X\&)
+	
+	\item there is a member in your class that is not copy-constructible (such as a class with no or inaccessible copy constructor)
+	
+	\item (C++11) you have explicitly told the compiler to not generate one using A(const A\&) = delete;
 \end{enumerate}
 
 
@@ -7426,7 +7444,7 @@ struct noncopyable  {
 \item you have explicitly told the compiler to not generate one using A\& operator=(A\&\&) = delete;
 \end{enumerate}
 
-\item  The justification is that declaring a copy operation (con‐struction or assignment) indicates that the normal approach to copying an object(memberwise copy) isn't appropriate for the class, and compilers figure that if memberwise copy isn't appropriate for the copy operations, memberwise move probably isn't appropriate for the move operations.
+\item  The justification is that declaring a copy operation (construction or assignment) indicates that the normal approach to copying an object(memberwise copy) isn't appropriate for the class, and compilers figure that if memberwise copy isn't appropriate for the copy operations, memberwise move probably isn't appropriate for the move operations either.
 
 \item The same idea as the previous item, declaring a move operation (construction or assignment) in a class causes compilers to disable the copy operations.
 
@@ -7454,7 +7472,7 @@ easy, because C++11's "= default" lets you say that explicitly:
 \begin{itemize}
 \item \textbf{Always use initializer list instead of assignment inside ctor.}
 
-\item When to use member initalize list, you can see in this link:
+\item When to use member initalize list?
 \begin{enumerate}
 \item to non-static const data members.
 \item reference member
@@ -7493,8 +7511,8 @@ class(string &a, string &b): m_a(a),m_b(b){}
 
 //method 2:
 class(string &a, string &b){   // two action.
-m_a = a;  //call default constructor to build m_a
-m_b = b; // then call assignment operator.
+	m_a = a;  //call default constructor to build m_a
+	m_b = b; // then call assignment operator.
 }
 \end{lstlisting}
 
@@ -7503,18 +7521,14 @@ m_b = b; // then call assignment operator.
 \item Member variables are always initialized in the order they are declared in the class definition. The order in which you write them in the ctor initialization list is ignored.  \textbf{So you'd better not have one member's initialization depend on other members}.
 \begin{lstlisting}[frame=single, language=c++]
 class Student{
-string m_email;  //m_email will be init first, ingore order
-string m_first_name;  // in the ctor initialization list.
-Student(first_name) :m_first_name(first_name),
+	string m_email;  //m_email will be init first, ingore order
+	string m_first_name;  // in the ctor initialization list.
+	Student(first_name) :m_first_name(first_name),
                 m_email(m_first_anme+"@gmail"){}
 \end{lstlisting}
 
 
-\item If GetType() is a static member function, or a member function that does not use its this
-pointer (that is, uses no member data) and does not rely on any side effects of construction (for
-example, static usage counts), then this is merely poor style, but it will run correctly.
-
-Otherwise (mainly, if GetType() is a normal nonstatic member function), we have a problem.
+\item If GetType() is a static member function, or a member function that does not use its this pointer (that is, uses no member data) and does not rely on any side effects of construction (for example, static usage counts), then this is merely poor style, but it will run correctly. Otherwise (mainly, if GetType() is a normal nonstatic member function), we have a problem.
 \textbf{Nonvirtual base classes are initialized in left-to-right order as they are declared}, so ArrayBase
 is initialized before Container. Unfortunately, that means we're trying to use a member of the
 not-yet-initialized Container base subobject.
@@ -7525,58 +7539,52 @@ class Array : $\Hilight{23}$private ArrayBase, public Container
 
 typedef Array AIType;
 public:
-Array( size_t startingSize = 10 )
-: Container( startingSize ),
-ArrayBase( Container::GetType() ),
+	Array( size_t startingSize = 10 ): Container( startingSize ), 
+	          ArrayBase( Container::GetType() ),
 \end{lstlisting}
 
 \end{itemize}
 
-\subsubsection{Basic routines}
+\subsection{Basic pattern}
+\subsubsection{constructor and destructor}
 \begin{itemize}
-	\item \textbf{Big five rule:} If you need customized copy ctor, assignment, and destructor, Then you also need move ctor and move assignment. Because it include memory allocation inside your class, you need you own copy ctor to perform deep copy and use move ctor to "move resource".
-	
+
 	\item \textbf{Normally, ctor , destructor and assignment should be public. In inheritance context, all the base class desctructor should be virtual. }
 	
+	\item A constructor shall not be virtual or static. If you need something like this, you can look up the virtual constructor idiom.
+	
+	You can get the effect of a virtual constructor by a virtual clone() member function (for copy constructing), or a virtual create() member function (for the default constructor).
+	
+\begin{lstlisting}
+class Shape {
+public:
+virtual ~Shape() { }                 // A virtual destructor
+virtual void draw() = 0;             // A pure virtual function
+virtual void move() = 0;
+// ...
+virtual Shape* clone()  const = 0;   // Uses the copy constructor
+virtual Shape* create() const = 0;   // Uses the default constructor
+};
+class Circle : public Shape {
+public:
+Circle* clone()  const;   // Covariant Return Types; see below
+Circle* create() const;   // Covariant Return Types; see below
+// ...
+};
+Circle* Circle::clone()  const { return new Circle(*this); }
+Circle* Circle::create() const { return new Circle();      }
+
+void userCode(Shape& s)
+{
+Shape* s2 = s.clone();
+Shape* s3 = s.create();
+// ...
+delete s2;    // You need a virtual destructor here
+delete s3;
+}
+\end{lstlisting}
+	
 	\item Avoid calling virtual functions in ctor and dtor. "C++ Coding Standards" item 49.
-	
-	\item What does a typical user defined move constructor do?
-	\begin{lstlisting}[frame=single, language=c++]
-	class x : public Base{
-	Member m_;
-	X(X&& x): Base(std::move(x)), m_(std::move(x.m_)){
-	x.set_to_resourceless_state();
-	}
-	}
-	\end{lstlisting}
-	
-	\item What does a defaulted move assignment do?
-	\begin{lstlisting}[frame=single, language=c++]
-	class x : public Base{
-	Member m_;
-	X& operator=(X&& x) {
-	Base::operator=(static_cast<Base&&>(x));
-	m_ = static_cast<Member&&>(x.m_);
-	return *this;
-	}
-	}
-	\end{lstlisting}
-	
-	%\includegraphics[scale=0.6]{pics/sm6} \newline
-	%\includegraphics[scale=0.6]{pics/sm7} \newline
-	
-	
-	\item Assuming the only non-static data in the class is a std::string, here's the conventional way (i.e., using std::move) to implement the move constructor:
-	\begin{lstlisting}[frame=single, language=c++]
-	class Widget {
-	Widget(Widget&& rhs)
-	: s(std::move(rhs.s))
-	{ ++moveCtorCalls; }
-	private:
-	static std::size_t moveCtorCalls;
-	std::string s;
-	};
-	\end{lstlisting}
 	
 	\item \textbf{If you define a specify ctor, you also need to define default ctor.} Because system will not produce any default ctor for you. So below statement will produce error when compiling.
 	\begin{lstlisting}[frame=single, language=c++]
@@ -7615,9 +7623,7 @@ ArrayBase( Container::GetType() ),
 	\end{lstlisting}
 	
 	
-	\item From previous example, you can see that default ctor is very important. but when class MUST need another information when create, such as  worker class, You must provide SSN when you create a worker.
-	At this time, if you create default ctor, It's not good idea. A NULL SSN will cause a lot of trouble in the future.  So you have to use Worker pointer, and vector<Worker>.  You also need to use delete to disable default ctor.
-	That is C++ spirit, \textbf{You never have the best answer, only have context answer. }
+	\item From previous example, you can see that default ctor is very important. but when class MUST need another information when create, such as  worker class, You must provide SSN when you create a worker.At this time, if you create default ctor, It's not good idea. A NULL SSN will cause a lot of trouble in the future.  So you have to use Worker pointer, and vector<Worker>.  You also need to use delete to disable default ctor. That is C++ spirit, \textbf{You never have the best answer, only have context answer. }
 	\begin{lstlisting}[frame=single, language=c++]
 	class Worker{
 	char* SSN;
@@ -7629,9 +7635,13 @@ ArrayBase( Container::GetType() ),
 	\item Normally you will have to explicitly declare your own destructor if:
 	\begin{enumerate}
 		\item You are declaring a class which is supposed to serve as a base for inheritance involving polymorphism, if you do you'll need a virtual destructor to make sure that the destructor of a Derived class is called upon destroying it through a pointer/reference to Base.
-		\item You need to release resourced aquired by the class during its leftime
-		Example 1: The class has a handle to a file, this needs to be closed when the object destructs; the destructor is the perfect location.
-		Exempel 2: The class owns an object with dynamic-storage duration, since the lifetime of the object can potentially live on long after the class instance has been destroyed you'll need to explicitly destroy it in the destructor.
+		
+		\item You need to release resourced required by the class during its lifetime:
+		\begin{enumerate}
+			\item Example 1: The class has a handle of a file, this needs to be closed when the object destructs; the destructor is the perfect location.
+			
+			\item Exempel 2: The class owns an object with dynamic-storage duration, since the lifetime of the object can potentially live on long after the class instance has been destroyed you'll need to explicitly destroy it in the destructor.
+		\end{enumerate}
 	\end{enumerate}
 	
 	
@@ -7678,7 +7688,138 @@ ArrayBase( Container::GetType() ),
 	\end{lstlisting}
 	
 	\item For reference, once assigned, a reference cannot be re-assigned. So if a class has a reference member, It can be initialized by initializer list in ctor and copy ctor. \textbf{But you can't overload assignment operator any more, If you really need assignment operator, change reference to pointer}
+\end{itemize}
+
+
+\subsubsection{copy and swap idiom}
+\begin{itemize}
+	\item Any class that manages a resource (a wrapper, like a smart pointer) needs to implement The Big Three. While the goals and implementation of the copy-constructor and destructor are straightforward, the copy-assignment operator is arguably the most nuanced and difficult. How should it be done? What pitfalls need to be avoided?
 	
+	\item Conceptually, it works by using the copy-constructor's functionality to create a local copy of the data, then takes the copied data with a swap function, swapping the old data with the new data. The temporary copy then destructs, taking the old data with it. We are left with a copy of the new data.
+	
+	\item The copy-and-swap idiom is the solution, and elegantly assists the assignment operator in achieving two things: avoiding code duplication, and providing a strong exception guarantee.
+	
+	\item In order to use the copy-and-swap idiom, we need three things: a working copy-constructor, a working destructor (both are the basis of any wrapper, so should be complete anyway), and a swap function.
+	
+	\item We first notice an important choice: the parameter argument is taken by-value. While one could just as easily do the following (and indeed, many naive implementations of the idiom do): Not only that, but this choice is critical in C++11, which is discussed later. On a general note, a remarkably useful guideline is as follows: if you're going to make a copy of something in a function, let the compiler do it in the parameter list.
+	
+\begin{lstlisting}
+dumb_array& operator=(const dumb_array& other){
+	dumb_array temp(other);  //low effeicient, only copy here.
+	swap(*this, temp);
+	return *this;
+}
+\end{lstlisting}
+
+\item A simple example code:
+\begin{lstlisting}
+class dumb_array{
+	//$\Hilight{15}$copy ctor
+	dumb_array(const dumb_array& other)
+		: mSize(other.mSize),
+			mArray(mSize ? new int[mSize] : nullptr){
+	std::copy(other.mArray, other.mArray + mSize, mArray);
+}
+	//$\Hilight{15}$copy assignment operator
+	dumb_array& operator=(dumb_array other){
+		swap(*this, other); // (2)
+		return *this;
+	}
+
+private:
+	std::size_t mSize;
+	int* mArray;
+};
+
+friend void swap(dumb_array& first, dumb_array& second) {
+	// enable ADL (not necessary in our case, but good practice)
+	using std::swap;
+	
+	// by swapping the members of two objects, the two objects are effectively swapped
+	swap(first.mSize, second.mSize);
+	swap(first.mArray, second.mArray);
+}
+
+\end{lstlisting}
+\end{itemize}
+	
+\subsubsection{Big zero, three and five}
+\begin{itemize}
+	\item The Rule of the Big Three states that if you have implemented either
+	\begin{enumerate}
+		\item A destructor
+		\item An assignment operator
+		\item A copy constructor
+	\end{enumerate}
+	You should also implement the other two. To implement the Copy-Swap idiom your resource management class must also implement a swap() function to perform a member-by-member swap.\textbf{That is called Rule of big three and half.}
+	
+	\item Big Five is just like big three, but add move copy ctor and move assignment operator.
+	
+	\item The Rule of The Big Four (and a half) states that if you implement one of
+	\begin{enumerate}
+		\item 	The copy constructor
+		\item The assignment operator.\textbf{Don't need move assignment, because it pass value.} 
+		\item The move constructor
+		\item The destructor
+		\item The swap function(that is half)
+	\end{enumerate}
+	then you must have a policy about the others.
+\begin{lstlisting}[frame=single, language=c++]
+S(S&& s) : S{} { swap(*this, s); }
+
+S& operator=(S s) { swap(*this, s); }
+\end{lstlisting}
+
+	\item "The Rule of The Big Four (and a half)" says if you've written one of the above functions then you must have a policy about the others. It doesn’t say you have to write them. In fact, you have to have a resource management policy for every class you create. Your policy can be one of the following:
+	\begin{enumerate}
+		\item Use the compiler-provided versions of these functions. In other words, you’re not doing any resource management in the class.
+		
+		\item Write your own copy functions to perform deep copy, but don’t provide move semantics.(low efficiency)
+		
+		\item Write your own move functions, but don’t support copying.(std::unique\_ptr)
+		
+		\item Disable copying and move semantics for the class, because it doesn’t make sense to allow it.
+	\end{enumerate}
+
+	\item Value-like types, such as int or vector<widget>. These represent values, and should naturally be copyable. In C++11, generally you should think of move as an optimization of copy, and so all copyable types should naturally be moveable... moving is just an efficient way of doing a copy in the often-common case that you don't need the original object any more and are just going to destroy it anyway.
+	
+	\item Reference-like types that exist in inheritance hierarchies, such as base classes and classes with virtual or protected member functions. These are normally held by pointer or reference, often a base* or base\&, and so do not provide copy construction to avoid slicing; if you do want to get another object just like an existing one, you usually call a virtual function like clone. These do not need move construction or assignment for two reasons: They're not copyable, and they already have an even more efficient natural "move" operation -- you just copy/move the pointer to the object and the object itself doesn't have to move to a new memory location at all.
+	
+	\item Most types fall into one of those two categories, but there are other kinds of types too that are also useful, just rarer. In particular here, types that express unique ownership of a resource, such as std::unique\_ptr, are naturally move-only types, because they are not value-like (it doesn't make sense to copy them) but you do use them directly (not always by pointer or reference) and so want to move objects of this type around from one place to another.
+	
+	\item What does a typical user defined move constructor do?
+\begin{lstlisting}[frame=single, language=c++]
+class x : public Base{
+	Member m_;
+	X(X&& x): Base(std::move(x)), m_(std::move(x.m_)){
+		x.set_to_resourceless_state();
+	}
+}
+	\end{lstlisting}
+	
+	\item What does a defaulted move assignment do?
+	\begin{lstlisting}[frame=single, language=c++]
+class x : public Base{
+	Member m_;
+	X& operator=(X&& x) {
+		Base::operator=(static_cast<Base&&>(x));
+		m_ = static_cast<Member&&>(x.m_);
+		return *this;
+	}
+}
+	\end{lstlisting}
+	
+	
+	\item Assuming the only non-static data in the class is a std::string, here's the conventional way (i.e., using std::move) to implement the move constructor:
+\begin{lstlisting}[frame=single, language=c++]
+class Widget {
+	Widget(Widget&& rhs)
+	: s(std::move(rhs.s)){ ++moveCtorCalls; }
+private:
+	static std::size_t moveCtorCalls;
+	std::string s;
+};
+\end{lstlisting}
 \end{itemize}
 
 
@@ -7780,320 +7921,10 @@ ArrayBase( Container::GetType() ),
 	}
 	\end{lstlisting}
 	
-
-
-
-
 \end{itemize}
 
 
 
-\subsection{special member functions in inheritance}
-
-subsubsection{ctor}
-\begin{itemize}
-
-\item  \textbf{Subclass ctor will always call base class ctor.}
-
-\begin{enumerate}
-\item Constructor should NOT be virtual
-\item If subclass doesn't define any ctor, compiler will implicitly define a default ctor, and this ctor will call base class default ctor.
-\item If subclass has a ctor, but it doesn't explicitly call base specify ctor, ctor of subclass will call base default ctor.(without any parameter.) If base ctor only has specify ctor, no default ctor, produce compiler error.
-\item If you want explicitly call base specify ctor, use initialization list syntax.
-
-\end{enumerate}
-
-\begin{lstlisting}[frame=single, language=c++]
-class base{
-public:
-  base();  //default ctor
-  base(int b); //specify ctor
-private:
-  int b;
-};
-
-class subclass: public base{
-subclass();  //default ctor
-subclass(int s, int b); // specify ctor1
-subclass(int s);     //specify ctor2
-int s;
-};
-
-subclass::subclass(int s, int b): base(b){
-  m_s = s;
-}
-//////////////////////////////////////////
-subclass sc1(2,3);
-//call specify ctor1, then
-// explicit call base specify ctor
-
-subclass sc2(2);  // implicit call base default ctor
-subclass sc3;   // implicit call base default ctor
-// if base has not default ctor,
-//sc2 and sc3 will produce error.
-}
-\end{lstlisting}
-\item If you don't use  explicitly initialization list syntax to call base specify ctor, You will get uninitialized value or you can't initialize base member, Neither are good.
-\begin{lstlisting}[frame=single, language=c++]
-//method 2:
-DeriveClass::DeriveClass(int base_a, b){
-  //it will call base_class default constructor.
-   // in this case, base_a is not assigned at all
-   Derive_b = b
-}	
-/////////////////////
-//method 3:
-DeriveClass::DeriveClass(int base_a, b) {
-base_a = a    //It can be thought as a bad design.
-//You can't  access private base member data.
-//base_a need to be public member data,
-Derive_b = b
-}
-\end{lstlisting}
-
-\item Idea behind rules: Do best to make sure a obj can be built.
-
-\end{itemize}
-
-
-
-\subsubsection{destructor}
-\begin{itemize}
-\item For destructor:
-\begin{enumerate}
-\item If a base class has a destuctor, but sub class doesn't have,  compiler will produce an implicit default destructor, and this implicit default destructor will call base class destuctor.
-\item If you define a subclass destructor, It will call base destructor automaticlly, you don't need to call it explicitly.
-\item The question is, How can you make sure you sub class destructor will be called if you use a base class pointer or reference, answer is below:
-\end{enumerate}
-
-\item Don't call base desctructor explicitly, It will called automatically in the reverse order of construction.  And you should give a base desctructor a definition, Or linker will report error it even you don't call it in your source code.
-
-\item Make base class destructor public and virtual (polymorphic deletion by base class pointer or reference), or proteced and nonvirtual, base classes need not always allow polymorphic deletion. For example, consider class templates such as std::unary\_function. This time, you should make destructor protected and nonvirtual.
- \begin{lstlisting}[frame=single, language=c++]
-template <class Arg, class Result>
-struct unary_function{
-  typedef Arg    argument_type;
-  typedef Result result_type;
-};
-
-Illegal code that you can assume will never exist.
-void f( std::unary_function* f ){
-  delete f; // error, illegal
-}
-\end{lstlisting}
-
-\item If base class still need to build itself, You can change it back public virtual,  Even without polymorphic deletion by now, you still need to declare it as virtual for the future safety(Even with a little dynamic-binding efficiency penalty. ) At same time, If a base class is not abstract class, usually, it's BAD design.
-
-\item Never throw exception from dtor, if exception A is thrown, then stack-unwindling, when a obj is destructed, then dtor is called, when another exception B is thrown by the dtor, application will call terminat function immediately.  If you have exception, catch it inside of the dtor.
-
-\end{itemize}
-
-\subsubsection{copy ctor}
-
-\begin{itemize}
-
-\item copy ctor(assignment ctor) and slicing. Below four are all SLICING.  number 5 and number 4 is not very obvious. They are call base class ctor.  No matter what you input a reference to a derived class or not.
-\begin{lstlisting}[frame=single, language=c++]
-class Base{};
-class Derived1 : Base{};
-class Derived2 : Base{};
-Derived1 d1;
-Derived1 d2;
-/////////////////////
-Base b = d1; //1)
-
-Fun(Base b);
-Fun(d1);  //2)
-
-Base& Bref = d1;
-Fun(Bref) //3)
-
-Base* bp = new B(Bref); //4)
-
-Base* bp1 = new Derived1();  //5) sibling slicing
-base* bp2 = new Derived2();
-*bp1 = *bp2;  // bp1 just copy Base part in Derived2.
-//so bp1 now is MIXTURE of d1 and d2.
-\end{lstlisting}
-
-\item Think a problem as below.
-\begin{lstlisting}[frame=single, language=c++]
-class Base{};
-class Derived1 : Base{};
-class Derived2 : Base{};
-Derived d1;
-Derived d2;
-
-Base* Copy(Base& Bref){
-//How to avoid slicing and make deep copy.
-}
-
-Base& Bref = d1
-Base* d1p = Copy(Bref)
-
-Base& Bref = d2
-Base* d2p = Copy(Bref)
-\end{lstlisting}
-
-\item Continue- Think this problem: error method
-\begin{lstlisting}[frame=single, language=c++]
-Base* Copy(Base& Bref){
-Base* p = new Base(Bref)
-//Slicing happen. bad
-}
-\end{lstlisting}
-\item Continue- Think this problem: TypeID method.
-\begin{lstlisting}[frame=single, language=c++]
-Base* Copy(Base& Bref){
-//Use tyid and dynamic_cast
-//involve a lot of if and switch about type.
-//anytime if you use dynamic_cast and if,
-//you can think about virtual function
-}
-\end{lstlisting}
-
-\item Continue- Think this problem: Virtual Clone method.
-A function's return type is never considered part of its signature. You can override a member
-function with any return type as long as the return type could be used wherever the base class
-return type could be used.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-class Base{
-  virutal Base* Clone() = 0;
-};
-
-class Derived1 : Base{
-    virutal $\Hilight{4}$Derived1* Clone(){return new Derived1(*this);}
-}
-
-Base* Copy(Base& Bref){
-Base* p = Bref.Clone();
-}
-\end{lstlisting}
-
-
-\item Continue- Think this problem: Change Design. Base is concrete class,  More Effective C++ Item 33 said"Making Non-leaf class abstract. So maybe you can change the inheritance system.
-
-\item copy ctor and copy initilization. Detail can be found "Is there a difference in C++ between copy initialization and direct initialization?"
-\begin{lstlisting}[frame=single, language=c++]
-class A{
-explicit A(const &A);
-}
-A a1;
-A a2(a1) //OK
-A a3 = a1 //doesn't work
-\end{lstlisting}
-
-\item There are three articles, you should read them together.
-\begin{lstlisting}[frame=single, language=c++]
-https://herbsutter.com/2013/05/09/gotw-1-solution/
-
-https://stackoverflow.com/questions/21825933/any-difference-between-copy-list-initialization-and-traditional-copy-initializat
-
-https://stackoverflow.com/questions/1051379/is-there-a-difference-between-copy-initialization-and-direct-initialization
-\end{lstlisting}
-
-\item Basic idea of all kinds of initialization.What's the difference?
-\begin{lstlisting}[frame=single, language=c++]
-widget w{x};  1)
-widget w = x; 2)
-widget w = {x}; 3)
-\end{lstlisting}
-\item For the number 1, behaves like a function call to an overloaded function: The functions, in this case, are the constructors of T (including explicit ones), and the argument is x. Overload resolution will find the best matching constructor, and when needed will do any implicit conversion required.
-
-\item For the number 2, Copy initialization constructs an implicit conversion sequence: It tries to convert x to an object of type T. (It then may copy over that object into the to-initialized object, so a copy constructor is needed too - but this is not important below)
-
-\item for the number 2, If x is of some other type, conceptually the compiler \textbf{first implicitly converts x to a temporary widget object}, then move-constructs w from that temporary rvalue, using copy construction as “the slow way to move” as a backup if no better move constructor is available. Assuming that an implicit conversion is available, (f) means the same as widget w( widget(x) ); 
-
-\item For the number 2, implicitly convert x has two different ways:As said above, copy initialization will construct a conversion sequence when a has not type B or derived from it (which is clearly the case here). So it will look for ways to do the conversion, and will find the following candidates
-
-\begin{lstlisting}[frame=single, language=c++]
-B(A const&)
-operator B(A&);
-\end{lstlisting}
-
-\begin{lstlisting}[frame=single, language=c++]
-#include <iostream>
-struct B;
-struct A { 
-operator B();
-};
-
-struct B { 
-B() { }
-B(A const&) { std::cout << "<direct> "; }
-};
-
-A::operator B() { std::cout << "<copy> "; return B(); }
-
-int main() { 
-A a;
-B b1(a);  // 1)
-B b2 = a; // 2)
-}
-// output: <direct> <copy>
-\end{lstlisting}
-
-\item For the number 2, This is why "S1 s11 = s; // ill-formed" fail in the below code snippet.
-\begin{lstlisting}[frame=single, language=c++]
-struct Intermediate {};
-
-struct S
-{
-operator Intermediate() { return {}; }
-operator int() { return 10; }
-};
-
-struct S1
-{
-S1(Intermediate) {}
-};
-
-S s;
-Intermediate im1 = s; // OK
-Intermediate im2 = {s}; // ill-formed
-S1 s11 = s; // ill-formed
-S1 s12 = {s}; // OK
-
-// note: but brace initialization can use operator of conversion to int
-int i1 = s; // OK
-int i2 = {s}; // OK
-\end{lstlisting}
-
-
-
-\item For the number 3, This is called “copy list initialization.” It means the same as widget w{x}; except that explicit constructors cannot be used. It’s guaranteed that only a single constructor is called. So number 3 is different with number 2
-
-\item 
-
-
-
-\item Assignment operator and copy ctor in inheritance:
-\begin{enumerate}
-\item \textbf{Default Assignment  operator and  copy constructor in derived class which are implicitly produced by compiler will call default base assignment  operator and  copy constructor.}
-
-\item \textbf{If derived class has no new operation. Don't need to define derived class Assignment  operator and  copy constructor, implicit one will call base one automatically}
-
-\item \textbf{If derived class has new operation. You have to define derived class Assignment  operator and  copy constructor, it will not invoke assignment  operator and  copy constructor in base class any more.  Inside, manually invoke base class Assignment operator and copy ctor } Detail can be found in C++ primer p760. Syntax looks like below: see effective C++ Item 16.
-
-\item For copy ctor, just init list syntaxt. For assignment operator, use two different methods depends on if base class declare its own assignment operator(). Source code is below:
-
-\begin{lstlisting}[frame=single, language=c++]
-DerivedClass::DerivedClass(const DerivedClass &dc): \
-BaseClass(dc){...}  //init list syntax here.
-
-DerivedClass & DerivedClass::operator=(const DerivedClass &dc){
-BaseClass::operator=(dc);
-// base class declare explicitly operator
-
-( (BaseClass&) *this ) = dc
-//base class no explicitly operator
-// change *this to BaseClass reference,
-// if you change to BaseClass, It will call copy ctor.
-}
-\end{lstlisting}
-
-\end{enumerate}
-\end{itemize}
 
 \section{inheriantce}
 \begin{itemize}
@@ -8126,6 +7957,396 @@ BaseClass::operator=(dc);
 	}
 \end{lstlisting}
 \end{itemize}
+
+\subsection{special member functions in inheritance}
+
+subsubsection{ctor}
+\begin{itemize}
+	
+	\item  \textbf{Subclass ctor will always call base class ctor.}
+	
+	\begin{enumerate}
+		\item Constructor should NOT be virtual
+		\item If subclass doesn't define any ctor, compiler will implicitly define a default ctor, and this ctor will call base class default ctor.
+		\item If subclass has a ctor, but it doesn't explicitly call base specify ctor, ctor of subclass will call base default ctor.(without any parameter.) If base ctor only has specify ctor, no default ctor, produce compiler error.
+		\item If you want explicitly call base specify ctor, use initialization list syntax.
+		
+	\end{enumerate}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	class base{
+	public:
+	base();  //default ctor
+	base(int b); //specify ctor
+	private:
+	int b;
+	};
+	
+	class subclass: public base{
+	subclass();  //default ctor
+	subclass(int s, int b); // specify ctor1
+	subclass(int s);     //specify ctor2
+	int s;
+	};
+	
+	subclass::subclass(int s, int b): base(b){
+	m_s = s;
+	}
+	//////////////////////////////////////////
+	subclass sc1(2,3);
+	//call specify ctor1, then
+	// explicit call base specify ctor
+	
+	subclass sc2(2);  // implicit call base default ctor
+	subclass sc3;   // implicit call base default ctor
+	// if base has not default ctor,
+	//sc2 and sc3 will produce error.
+	}
+	\end{lstlisting}
+	\item If you don't use  explicitly initialization list syntax to call base specify ctor, You will get uninitialized value or you can't initialize base member, Neither are good.
+	\begin{lstlisting}[frame=single, language=c++]
+	//method 2:
+	DeriveClass::DeriveClass(int base_a, b){
+	//it will call base_class default constructor.
+	// in this case, base_a is not assigned at all
+	Derive_b = b
+	}	
+	/////////////////////
+	//method 3:
+	DeriveClass::DeriveClass(int base_a, b) {
+	base_a = a    //It can be thought as a bad design.
+	//You can't  access private base member data.
+	//base_a need to be public member data,
+	Derive_b = b
+	}
+	\end{lstlisting}
+	
+	\item Idea behind rules: Do best to make sure a obj can be built.
+	
+\end{itemize}
+
+
+
+\subsubsection{destructor}
+\begin{itemize}
+	\item For destructor:
+	\begin{enumerate}
+		\item If a base class has a destuctor, but sub class doesn't have,  compiler will produce an implicit default destructor, and this implicit default destructor will call base class destuctor.
+		\item If you define a subclass destructor, It will call base destructor automaticlly, you don't need to call it explicitly.
+		\item The question is, How can you make sure you sub class destructor will be called if you use a base class pointer or reference, answer is below:
+	\end{enumerate}
+	
+	\item Don't call base desctructor explicitly, It will called automatically in the reverse order of construction.  And you should give a base desctructor a definition, Or linker will report error it even you don't call it in your source code.
+	
+	\item Make base class destructor public and virtual (polymorphic deletion by base class pointer or reference), or proteced and nonvirtual, base classes need not always allow polymorphic deletion. For example, consider class templates such as std::unary\_function. This time, you should make destructor protected and nonvirtual.
+	\begin{lstlisting}[frame=single, language=c++]
+	template <class Arg, class Result>
+	struct unary_function{
+	typedef Arg    argument_type;
+	typedef Result result_type;
+	};
+	
+	Illegal code that you can assume will never exist.
+	void f( std::unary_function* f ){
+	delete f; // error, illegal
+	}
+	\end{lstlisting}
+	
+	\item If base class still need to build itself, You can change it back public virtual,  Even without polymorphic deletion by now, you still need to declare it as virtual for the future safety(Even with a little dynamic-binding efficiency penalty. ) At same time, If a base class is not abstract class, usually, it's BAD design.
+	
+	\item Never throw exception from dtor, if exception A is thrown, then stack-unwindling, when a obj is destructed, then dtor is called, when another exception B is thrown by the dtor, application will call terminat function immediately.  If you have exception, catch it inside of the dtor.
+	
+\end{itemize}
+
+\subsubsection{copy ctor}
+
+\begin{itemize}
+	
+	\item copy ctor(assignment ctor) and slicing. Below four are all SLICING.  number 5 and number 4 is not very obvious. They are call base class ctor.  No matter what you input a reference to a derived class or not.
+	\begin{lstlisting}[frame=single, language=c++]
+	class Base{};
+	class Derived1 : Base{};
+	class Derived2 : Base{};
+	Derived1 d1;
+	Derived1 d2;
+	/////////////////////
+	Base b = d1; //1)
+	
+	Fun(Base b);
+	Fun(d1);  //2)
+	
+	Base& Bref = d1;
+	Fun(Bref) //3)
+	
+	Base* bp = new B(Bref); //4)
+	
+	Base* bp1 = new Derived1();  //5) sibling slicing
+	base* bp2 = new Derived2();
+	*bp1 = *bp2;  // bp1 just copy Base part in Derived2.
+	//so bp1 now is MIXTURE of d1 and d2.
+	\end{lstlisting}
+	
+	\item Think a problem as below.
+	\begin{lstlisting}[frame=single, language=c++]
+	class Base{};
+	class Derived1 : Base{};
+	class Derived2 : Base{};
+	Derived d1;
+	Derived d2;
+	
+	Base* Copy(Base& Bref){
+	//How to avoid slicing and make deep copy.
+	}
+	
+	Base& Bref = d1
+	Base* d1p = Copy(Bref)
+	
+	Base& Bref = d2
+	Base* d2p = Copy(Bref)
+	\end{lstlisting}
+	
+	\item Continue- Think this problem: error method
+	\begin{lstlisting}[frame=single, language=c++]
+	Base* Copy(Base& Bref){
+	Base* p = new Base(Bref)
+	//Slicing happen. bad
+	}
+	\end{lstlisting}
+	\item Continue- Think this problem: TypeID method.
+	\begin{lstlisting}[frame=single, language=c++]
+	Base* Copy(Base& Bref){
+	//Use tyid and dynamic_cast
+	//involve a lot of if and switch about type.
+	//anytime if you use dynamic_cast and if,
+	//you can think about virtual function
+	}
+	\end{lstlisting}
+	
+	\item Continue- Think this problem: Virtual Clone method.
+	A function's return type is never considered part of its signature. You can override a member
+	function with any return type as long as the return type could be used wherever the base class
+	return type could be used.
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	class Base{
+	virutal Base* Clone() = 0;
+	};
+	
+	class Derived1 : Base{
+	virutal $\Hilight{4}$Derived1* Clone(){return new Derived1(*this);}
+	}
+	
+	Base* Copy(Base& Bref){
+	Base* p = Bref.Clone();
+	}
+	\end{lstlisting}
+	
+	
+	\item Continue- Think this problem: Change Design. Base is concrete class,  More Effective C++ Item 33 said"Making Non-leaf class abstract. So maybe you can change the inheritance system.
+	
+	\item copy ctor and copy initilization. Detail can be found "Is there a difference in C++ between copy initialization and direct initialization?"
+	\begin{lstlisting}[frame=single, language=c++]
+	class A{
+	explicit A(const &A);
+	}
+	A a1;
+	A a2(a1) //OK
+	A a3 = a1 //doesn't work
+	\end{lstlisting}
+	
+	\item There are three articles, you should read them together.
+	\begin{lstlisting}[frame=single, language=c++]
+	https://herbsutter.com/2013/05/09/gotw-1-solution/
+	
+	https://stackoverflow.com/questions/21825933/any-difference-between-copy-list-initialization-and-traditional-copy-initializat
+	
+	https://stackoverflow.com/questions/1051379/is-there-a-difference-between-copy-initialization-and-direct-initialization
+	\end{lstlisting}
+	
+	\item Basic idea of all kinds of initialization.What's the difference?
+	\begin{lstlisting}[frame=single, language=c++]
+	widget w{x};  1)
+	widget w = x; 2)
+	widget w = {x}; 3)
+	\end{lstlisting}
+	\item For the number 1, behaves like a function call to an overloaded function: The functions, in this case, are the constructors of T (including explicit ones), and the argument is x. Overload resolution will find the best matching constructor, and when needed will do any implicit conversion required.
+	
+	\item For the number 2, Copy initialization constructs an implicit conversion sequence: It tries to convert x to an object of type T. (It then may copy over that object into the to-initialized object, so a copy constructor is needed too - but this is not important below)
+	
+	\item for the number 2, If x is of some other type, conceptually the compiler \textbf{first implicitly converts x to a temporary widget object}, then move-constructs w from that temporary rvalue, using copy construction as “the slow way to move” as a backup if no better move constructor is available. Assuming that an implicit conversion is available, (f) means the same as widget w( widget(x) ); 
+	
+	\item For the number 2, implicitly convert x has two different ways:As said above, copy initialization will construct a conversion sequence when a has not type B or derived from it (which is clearly the case here). So it will look for ways to do the conversion, and will find the following candidates
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	B(A const&)
+	operator B(A&);
+	\end{lstlisting}
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	#include <iostream>
+	struct B;
+	struct A { 
+	operator B();
+	};
+	
+	struct B { 
+	B() { }
+	B(A const&) { std::cout << "<direct> "; }
+	};
+	
+	A::operator B() { std::cout << "<copy> "; return B(); }
+	
+	int main() { 
+	A a;
+	B b1(a);  // 1)
+	B b2 = a; // 2)
+	}
+	// output: <direct> <copy>
+	\end{lstlisting}
+	
+	\item For the number 2, This is why "S1 s11 = s; // ill-formed" fail in the below code snippet.
+	\begin{lstlisting}[frame=single, language=c++]
+	struct Intermediate {};
+	
+	struct S
+	{
+	operator Intermediate() { return {}; }
+	operator int() { return 10; }
+	};
+	
+	struct S1
+	{
+	S1(Intermediate) {}
+	};
+	
+	S s;
+	Intermediate im1 = s; // OK
+	Intermediate im2 = {s}; // ill-formed
+	S1 s11 = s; // ill-formed
+	S1 s12 = {s}; // OK
+	
+	// note: but brace initialization can use operator of conversion to int
+	int i1 = s; // OK
+	int i2 = {s}; // OK
+	\end{lstlisting}
+	
+	
+	
+	\item For the number 3, This is called “copy list initialization.” It means the same as widget w{x}; except that explicit constructors cannot be used. It’s guaranteed that only a single constructor is called. So number 3 is different with number 2
+	
+	\item 
+	
+	
+	
+	\item Assignment operator and copy ctor in inheritance:
+	\begin{enumerate}
+		\item \textbf{Default Assignment  operator and  copy constructor in derived class which are implicitly produced by compiler will call default base assignment  operator and  copy constructor.}
+		
+		\item \textbf{If derived class has no new operation. Don't need to define derived class Assignment  operator and  copy constructor, implicit one will call base one automatically}
+		
+		\item \textbf{If derived class has new operation. You have to define derived class Assignment  operator and  copy constructor, it will not invoke assignment  operator and  copy constructor in base class any more.  Inside, manually invoke base class Assignment operator and copy ctor } Detail can be found in C++ primer p760. Syntax looks like below: see effective C++ Item 16.
+		
+		\item For copy ctor, just init list syntaxt. For assignment operator, use two different methods depends on if base class declare its own assignment operator(). Source code is below:
+		
+		\begin{lstlisting}[frame=single, language=c++]
+		DerivedClass::DerivedClass(const DerivedClass &dc): \
+		BaseClass(dc){...}  //init list syntax here.
+		
+		DerivedClass & DerivedClass::operator=(const DerivedClass &dc){
+		BaseClass::operator=(dc);
+		// base class declare explicitly operator
+		
+		( (BaseClass&) *this ) = dc
+		//base class no explicitly operator
+		// change *this to BaseClass reference,
+		// if you change to BaseClass, It will call copy ctor.
+		}
+		\end{lstlisting}
+		
+	\end{enumerate}
+\end{itemize}
+
+\subsection{virtual function and override}
+\begin{itemize}
+	
+	\item Only virtual function come into vtbl. Friend can't be virtual function, because it's not a member of class.
+	
+	\item When a method is declared virtual in a base class, it is automatically virtual in the derived class, but it is a good idea to explicitly declare it by using the keyword virtual in the derived class declarations too.
+	
+	\item \textbf{Almost all the base class has virtual function, if a class doesn't contain a virtual function, It is an indication that it is not meant to be used as a base class}
+	
+	\item Don't rewrite non-virtual base member function, see effective c++
+	
+	\item For overriding to occur, several requirements must be met:
+	\begin{enumerate}
+		\item The base class function must be virtual.
+		\item The base and derived function names must be identical (except in the case of
+		destructors).
+		\item The parameter types of the base and derived functions must be identical.
+		\item The constness of the base and derived functions must be identical.
+		\item The return types and exception specifications of the base and derived functions
+		must be compatible.
+		\item To these constraints, which were also part of C++98, C++11 adds one more: The functions' reference qualifiers must be identical.
+	\end{enumerate}
+	\item reference qualifier explain:
+	\begin{lstlisting}[frame=single, language=c++]
+	class Widget {
+	public:
+	void doWork() &; // this version of doWork applies
+	// only when *this is an lvalue
+	void doWork() &&; // this version of doWork applies
+	}; // only when *this is an rvalue
+	
+	Widget makeWidget(); // factory function (returns rvalue)
+	Widget w; // normal object (an lvalue)
+	
+	w.doWork();
+	// calls Widget::doWork for lvalues (i.e., Widget::doWork &)
+	makeWidget().doWork();
+	// calls Widget::doWork for rvalues (i.e., Widget::doWork &&)
+	\end{lstlisting}
+	
+	\item Any small error will not real override base virtual function. but creating a new virtual method with a different signature. such as examples below.
+	\begin{lstlisting}[frame=single, language=c++]
+	class Base {
+	public:
+	virtual void mf1() const;
+	virtual void mf2(int x);
+	virtual void mf3() &;
+	void mf4() const;
+	};
+	class Derived: public Base {
+	public:
+	virtual void mf1();
+	virtual void mf2(unsigned int x);
+	virtual void mf3() &&;
+	void mf4() const;
+	};
+	\end{lstlisting}
+	
+	\item override specifier should be used in derived class member funcition used to check if they are match with member function in base class.
+	\begin{lstlisting}[frame=single, language=c++]
+	struct A{
+	virtual void foo();
+	void bar();
+	};
+	
+	struct B : A{
+	void foo() override; // OK: B::foo overrides A::foo
+	void bar() override; // Error: A::bar is not virtual
+	}
+	\end{lstlisting}
+	
+	\item Use final in Base class, to stop sub class override.
+	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	class Base{
+	virtual void method1() final;
+	}
+	\end{lstlisting}
+	
+	
+	
+\end{itemize}
+
 
 \subsection{RAII}
 \begin{itemize}
@@ -8657,88 +8878,6 @@ shared_ptr<SchoolBus> pBus
 	
 \end{itemize}
 
-
-\subsubsection{virtual function and override}
-\begin{itemize}
-	
-	\item Only virtual function come into vtbl. Friend can't be virtual function, because it's not a member of class.
-	
-	\item When a method is declared virtual in a base class, it is automatically virtual in the derived class, but it is a good idea to explicitly declare it by using the keyword virtual in the derived class declarations too.
-	
-	\item \textbf{Almost all the base class has virtual function, if a class doesn't contain a virtual function, It is an indication that it is not meant to be used as a base class}
-	
-	\item Don't rewrite non-virtual base member function, see effective c++
-	
-	\item For overriding to occur, several requirements must be met:
-	\begin{enumerate}
-		\item The base class function must be virtual.
-		\item The base and derived function names must be identical (except in the case of
-		destructors).
-		\item The parameter types of the base and derived functions must be identical.
-		\item The constness of the base and derived functions must be identical.
-		\item The return types and exception specifications of the base and derived functions
-		must be compatible.
-		\item To these constraints, which were also part of C++98, C++11 adds one more: The functions' reference qualifiers must be identical.
-	\end{enumerate}
-	\item reference qualifier explain:
-	\begin{lstlisting}[frame=single, language=c++]
-	class Widget {
-	public:
-	void doWork() &; // this version of doWork applies
-	// only when *this is an lvalue
-	void doWork() &&; // this version of doWork applies
-	}; // only when *this is an rvalue
-	
-	Widget makeWidget(); // factory function (returns rvalue)
-	Widget w; // normal object (an lvalue)
-	
-	w.doWork();
-	// calls Widget::doWork for lvalues (i.e., Widget::doWork &)
-	makeWidget().doWork();
-	// calls Widget::doWork for rvalues (i.e., Widget::doWork &&)
-	\end{lstlisting}
-	
-	\item Any small error will not real override base virtual function. but creating a new virtual method with a different signature. such as examples below.
-	\begin{lstlisting}[frame=single, language=c++]
-	class Base {
-	public:
-	virtual void mf1() const;
-	virtual void mf2(int x);
-	virtual void mf3() &;
-	void mf4() const;
-	};
-	class Derived: public Base {
-	public:
-	virtual void mf1();
-	virtual void mf2(unsigned int x);
-	virtual void mf3() &&;
-	void mf4() const;
-	};
-	\end{lstlisting}
-	
-	\item override specifier should be used in derived class member funcition used to check if they are match with member function in base class.
-	\begin{lstlisting}[frame=single, language=c++]
-	struct A{
-	virtual void foo();
-	void bar();
-	};
-	
-	struct B : A{
-	void foo() override; // OK: B::foo overrides A::foo
-	void bar() override; // Error: A::bar is not virtual
-	}
-	\end{lstlisting}
-	
-	\item Use final in Base class, to stop sub class override.
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	class Base{
-	virtual void method1() final;
-	}
-	\end{lstlisting}
-	
-	
-	
-\end{itemize}
 
 
 \subsubsection{MI or bridge}
