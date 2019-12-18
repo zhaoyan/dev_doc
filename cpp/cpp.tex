@@ -3558,6 +3558,8 @@ struct C { C() : m() {}; ~C(); int m; }; // non-POD, default-initialising m
 
 \subsubsection{copy init and direct init}
 \begin{itemize}
+	\item A good article is "Is there a difference between copy initialization and direct initialization?"
+	
 	\item \textbf{copy init is difference with copy ctor.} calling copy ctor is  direct init? If it's copy init, so it need two steps, create temp, then copy temp.  if it's direct init, just call one ctor(by overload resolve). Above it's theoretical definition. When optimization kick in, it hide the deep theoretical definition.   
 	
 	\item An example and analysis:
@@ -3714,6 +3716,8 @@ cout <<add(Cents{6}, Cents{8}).getCents();
 \end{lstlisting}
 
 \item a good link is \verb|https://www.cnblogs.com/pluse/p/7088880.html|
+
+
 	
 \end{itemize}
 
@@ -3921,6 +3925,77 @@ forwarder<vector<int>>    ( 1, 2, 3, 4 );          // ok because of {}
 	
 	\item A good reference article is GotW \#1 Solution: Variable Initialization – or Is It?
 	\item Another good one is Overview of C++ Variable Initialization. address is \\ \verb=https://greek0.net/cpp/initialization.html=
+\end{itemize}
+
+\subsubsection{difference between copy-list-initialization and traditional copy-initialization?}
+
+\begin{itemize}
+	\item A good article is "Any difference between copy-list-initialization and traditional copy-initialization?"
+	
+	\item Basic idea of all kinds of initialization.What's the difference?
+	\begin{lstlisting}[frame=single, language=c++]
+	widget w{x};  1)
+	widget w = x; 2)
+	widget w = {x}; 3)
+	\end{lstlisting}
+	\item For the number 1, behaves like a function call to an overloaded function: The functions, in this case, are the constructors of T (including explicit ones), and the argument is x. Overload resolution will find the best matching constructor, and when needed will do any implicit conversion required.
+	
+	\item For the number 2, Copy initialization constructs an implicit conversion sequence: It tries to convert x to an object of type T. (It then may copy over that object into the to-initialized object, so a copy constructor is needed too - but this is not important below)
+	
+	\item for the number 2, If x is of some other type, conceptually the compiler \textbf{first implicitly converts x to a temporary widget object}, then move-constructs w from that temporary rvalue, using copy construction as “the slow way to move” as a backup if no better move constructor is available. Assuming that an implicit conversion is available.
+	
+	\item For the number 2, implicitly convert x has two different ways:As said above, copy initialization will construct a conversion sequence when a has not type B or derived from it (which is clearly the case here). So it will look for ways to do the conversion, and will find the following candidates
+	
+\begin{lstlisting}[frame=single, language=c++]
+	struct B;
+	struct A { 
+	operator B() { std::cout << "<copy> "; return B(); }
+	};
+	
+	struct B { 
+	B() { }
+	B(A const&) { std::cout << "<direct> "; }
+	};
+	
+	int main() { 
+	A a;
+	B b1(a);  // 1)
+	B b2 = a; // 2)
+	}
+	// output: <direct> <copy>
+	\end{lstlisting}
+	
+	
+	\item For the number 3, This is called “copy list initialization.” It means the same as widget w{x}; except that explicit constructors cannot be used. It’s guaranteed that only a single constructor is called. So number 3 is different with number 2
+	
+	\item Old initialization uses notion of user-defined conversion sequences (and, particularly, requires availability of copy constructor, as was mentioned). Brace initialization just performs overload resolution among applicable constructors, i.e. brace initialization can't use operators of conversion to class type.
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	struct Intermediate {};
+	
+	struct S{
+	operator Intermediate() { return {}; }
+	operator int() { return 10; }
+	};
+	
+	struct S1{
+	S1(Intermediate) {}
+	};
+	
+	S s;
+	Intermediate im1 = s; // OK
+	Intermediate im2 = {s}; // ill-formed
+	               // no Intermediate ctor receive S
+	S1 s11 = s; // ill-formed
+	S1 s12 = {s}; // OK
+	             // S1 ctor receive Intermediate, then 
+	             //s implicitly convert to Intermediate
+	
+	// note: but brace initialization can use operator of conversion to int
+	int i1 = s; // OK
+	int i2 = {s}; // OK
+	\end{lstlisting}
+	
 \end{itemize}
 
 \subsubsection{vexing parsing}
@@ -5527,6 +5602,189 @@ f(*derived);
 \end{lstlisting}
 
 
+\end{itemize}
+
+\section{RAII}
+\begin{itemize}
+	\item Whenever you deal with a resource that needs paired acquire/release function call, encapsulate that resource in an object.  Such as: fopen/fclose, lock/unlock, and new/delete.
+	
+	\item When implementing RAII, be conscious of copy construction and assignment. the compiler-generated version probably won't be correct. If it's not copyable, use =delete , if it's copyable, duplicate the resource.  You also can use smart\_pointer in this scenario too.
+	
+	\item The basic idea of RAII  is to represent a resource by a local object, so that the local object’s destructor will release the resource.  That is to say: To prevent resource leaks, use RAII objects that acquire resources in their constructors and release them in their destructors.
+	\begin{lstlisting}[frame=single, language=c++]
+	//C version,
+	File* fp = fopen("/path/to/file");
+	// throw exception here, then resource leaking
+	fclose(fp);
+	
+	//Java version
+	try {
+	File file = new File("/path/to/file");
+	// throw exception here, go to finally.
+	} finally {
+	file.close();
+	}
+	
+	//c++ version
+	fun{
+	fstream if("path/to/file")
+	if.getline
+	// you don't need to if.close().
+	}
+	
+	//c++ smart version.
+	std::unique_ptr<FILE,          // <-- the wrapped raw pointer type: FILE*
+	int(*)(FILE*)> // <-- the custom deleter type: fclose() prototype
+	myFile( fopen("myfile", "rb"), // <-- resource (FILE*) is returned by fopen()
+	fclose );              // <-- the deleter function: fclose()
+	\end{lstlisting}
+	
+	\item Another good example RAII is unique\_ptr. The idea of smart pointer is putting *p into a local pointer-like object, then when it go out scope or unwind-stack when exception is thrown, It will call destructor, then delete p.
+	
+	\item We should consider resource generically, pointer *p pointed to a new object is resource, A handle to a file is a resource to. \textbf{We wrap handle to a file into ifstream, and wrap pointer *p into smart\_pointer}
+	
+	\item Just like return value,  Exception will skip all the statement below the throw, In C++, It doesn't support finally statement sometimes. At this time, we need to use RAII.
+	\begin{lstlisting}[frame=single, language=c++]
+	Int *p = new int;
+	string a   //a is ok, a will be destructed properly
+	//due to the C++ unwind stack.
+	throw exception.
+	delete p; // this will not run.
+	\end{lstlisting}
+	
+	\item For this problem, you should use smart pointer to declare a auto object.  If you use string object, It's ok.  So in previous example,  you can use smart pointer, it will help you to avoid memory leakage problem.
+	\begin{lstlisting}[frame=single, language=c++]
+	unique_ptr<int> aupr (new int(100);
+	string a   //a is ok, a will be destructed properly
+	//due to the C++ unwind stack.
+	throw exception.
+	// both a and aupr will call their own destructor  function.
+	\end{lstlisting}
+	
+	\item In you ctor, If you use new and new failed and throw a exception, the destructor will not be called. You can use auto\_ptr as member data and use init list to initialzie it. see  more effective C++ exception chapter.
+	
+	\item Don't use C FILE* and char [] as string. Use iofile class and string object, because they are exception safe
+	\begin{enumerate}
+		\item Any time when you use new, consider if there are c++ container or object.
+		\item If not, use smart\_pointer.
+	\end{enumerate}
+	
+	\item Another example is when you make program based on Win API.
+	\begin{lstlisting}[frame=single, language=c++]
+	class module {
+	public:
+	explicit module(std::wstring const& name)
+	: handle { ::LoadLibrary(name.c_str()) } {}
+	
+	~module{
+	::FreeLibrary();
+	}
+	private:
+	HMODULE handle;
+	};
+	\end{lstlisting}
+	
+	\item There are three RAII implementation instances in your practical programming:
+	\begin{enumerate}
+		\item Use auto member; You have to keep m\_str and vc are RAII.  In this way, you don't need to build dtor manually.
+		\begin{lstlisting}[frame=single, language=c++]
+		class RAII {
+		private:
+		string m_str;
+		vector<int> vc;
+		};
+		\end{lstlisting}
+		
+		\item Use pointer and handle; In this way, You have to use pointer, Maybe you need some customized action in runtime , \textbf{Use handle is only method to use this resource} or any other reason. And this time, you have to write your own dtor.
+		\begin{lstlisting}[frame=single, language=c++]
+		class RAII {
+		private:
+		string* m_str;
+		vector<int*> vc;
+		};
+		\end{lstlisting}
+		
+		\item Use smart point wrap pointer and handle; When you wrap handle, you can custom this delete behavior. See source code below:
+		\begin{lstlisting}[frame=single, language=c++]
+		class RAII {
+		private:
+		unique_ptr<string>  m_str;
+		vector<unique_ptr<int> > vc;
+		};
+		\end{lstlisting}
+		
+		\begin{lstlisting}[frame=single, language=c++]
+		class module {
+		public:
+		explicit module(std::wstring const& name)
+		: handle { ::LoadLibrary(name.c_str()) } {}
+		private:
+		using module_handle = std::unique_ptr<void, decltype(&::FreeLibrary)>;
+		module_handle handle;
+		};
+		\end{lstlisting}
+	\end{enumerate}
+	
+	\item Another question is ownership of resource:
+	\begin{enumerate}
+		\item For auto member resource: \textbf{1)Same life duration(RAII), 2)exclusive ownship to a single obj, but it's copyable(A a1 = a2).  3)move with efficiency(A a1 = A() ) }. If auto member has it's own copy and move special function, You don't need to write any special function in your class. You follow the "Rule of Zero".
+		
+		\item For raw pointer and handle: \textbf{1) default copy ctor will cause two pointer or handle refer the same resource, It's absolutely BAD SMELL of code 2) So you have to follow "Rule of five" to build your special member function. 3) After you build five special member function, you get RAII and exclusive ownship to a single object, and copyable and efficient move}
+		\begin{lstlisting}[frame=single, language=c++]
+		Class RawPointer{
+		...........
+		RawPointer(const RawPointer& rhs){
+		pRes = new Resource( *(rhs.pRes));
+		}
+		
+		RawPointer(RawPointer&& rhs){
+		pPes = rhs.pRes;
+		rhs.pRes = nullptr;
+		}
+		private:
+		Resource* pRes;
+		}
+		\end{lstlisting}
+		
+		\item For uniqu\_ptr; \textbf{1) Same life(RAII) 2)exclusive ownship but not copyable 3) uniqu\_ptr support move operation. } You still follow "rule of zero"
+		
+		\item Even with uniqu\_ptr member, If you follow "rule of zero", that is to say that you don't provide any customized special member function, then the class is not copyable. But if you build copy ctor by youself, get raw pointer from origin side, and build a new uniqu\_ptr member from origin side's raw pointer, you can implement copyable, and code smell better than raw pointer with "Rule of Five". So in this way, \textbf{It's not recommended to use raw pointer in RAII and ownership context}.
+		
+		\item For shared\_ptr; \textbf{1) Not a RAII 2) shared ownship, 3) copyable and moveable}. When you move a shared\_ptr, origin one is set to nullptr and ref count doesn't increas.  You still follow "rule of zero".
+		
+	\end{enumerate}
+	
+	\item \textbf{ Conclusion, If you consider RAII and ownship at the same time, thing will become complex}  so I would like to give you some examples to illustrate them.
+	
+	\begin{enumerate}
+		\item Prefer to use auto member for most of time! It follow "Rule of Five" and support copyable and movable.
+		
+		\item  For special demand, for example Car class,  people can \textbf{custom} its engine, and buy \textbf{two} at the same time. In this context, you car class should use raw pointer, 1) auto member doesn't support custom 2) uniqu\_ptr doesn't support copyable.  And you have to follow "Rule of Five"
+		\begin{lstlisting}[frame=single, language=c++]
+		class Car{
+		//follow "Rule of Five"
+		Engine *pEn;
+		~Car(){delete pEn} // assure RAII
+		}
+		\end{lstlisting}
+		
+		\item For special context, It doesn't support object copy: for example 1) Person class in semantic;  2) other  perform consideration, Class Big{int [30000];};  3) Other implementation constrain, such as iostream class.   Under such context, you can use uniqu\_ptr to manage the resource and implement uncopyable.
+		\begin{lstlisting}[frame=single, language=c++]
+		class Person{
+		uniqu_ptr<Resource> pRes;
+		}
+		\end{lstlisting}
+		
+		\item For special context, shared resource, you can use shared\_ptr.  You still can follow "Rule of zero" and resource will be deleted when ref count is 0.
+		\begin{lstlisting}[frame=single, language=c++]
+		class Student{
+		shared_ptr<SchoolBus> pBus
+		}
+		\end{lstlisting}
+		
+		\item To know semantic of two smart pointers. Don't use them just replace raw pointer.
+	\end{enumerate}
+	
 \end{itemize}
 
 
@@ -7549,87 +7807,82 @@ public:
 \subsubsection{constructor and destructor}
 \begin{itemize}
 
-	\item \textbf{Normally, ctor , destructor and assignment should be public. In inheritance context, all the base class desctructor should be virtual. }
+	\item Normally, ctor , destructor and assignment should be public. \textbf{In inheritance context, all the base class desctructor should be virtual. }
 	
-	\item A constructor shall not be virtual or static. If you need something like this, you can look up the virtual constructor idiom.
-	
-	You can get the effect of a virtual constructor by a virtual clone() member function (for copy constructing), or a virtual create() member function (for the default constructor).
+	\item A constructor shall not be virtual or static. If you need something like this, you can look up the virtual constructor idiom. This idiom uses virtual clone() member function (for copy constructing), or a virtual create() member function (for the default constructor).
 	
 \begin{lstlisting}
 class Shape {
 public:
-virtual ~Shape() { }                 // A virtual destructor
-virtual void draw() = 0;             // A pure virtual function
-virtual void move() = 0;
-// ...
-virtual Shape* clone()  const = 0;   // Uses the copy constructor
-virtual Shape* create() const = 0;   // Uses the default constructor
+	virtual ~Shape() { }                 // A virtual destructor
+	virtual void draw() = 0;             // A pure virtual function
+	virtual void move() = 0;
+	// ...
+	virtual Shape* clone()  const = 0;   // Uses the copy constructor
+	virtual Shape* create() const = 0;   // Uses the default constructor
 };
+
 class Circle : public Shape {
 public:
-Circle* clone()  const;   // Covariant Return Types; see below
-Circle* create() const;   // Covariant Return Types; see below
-// ...
+	Circle* clone()  const;   // Covariant Return Types; see below
+	Circle* create() const;   // Covariant Return Types; see below
 };
 Circle* Circle::clone()  const { return new Circle(*this); }
 Circle* Circle::create() const { return new Circle();      }
 
-void userCode(Shape& s)
-{
 Shape* s2 = s.clone();
 Shape* s3 = s.create();
 // ...
 delete s2;    // You need a virtual destructor here
 delete s3;
-}
 \end{lstlisting}
 	
-	\item Avoid calling virtual functions in ctor and dtor. "C++ Coding Standards" item 49.
+	\item Avoid calling virtual functions in ctor and dtor. Detail can be found in "C++ Coding Standards" item 49.
 	
-	\item \textbf{If you define a specify ctor, you also need to define default ctor.} Because system will not produce any default ctor for you. So below statement will produce error when compiling.
-	\begin{lstlisting}[frame=single, language=c++]
-	class obj; //error
-	class* obj = new class(); //error
-	class arra[10] //error
-	template<class T>
-	class Array{
+	\item \textbf{If you define a specific ctor, you also need to define default ctor.} Because system will not produce any default ctor for you. So below statement will produce error when compiling.
+\begin{lstlisting}[frame=single, language=c++]
+class obj; //error
+class* obj = new class(); //error
+class arra[10] //error
+template<class T>
+class Array{
 	T t;
-	};
+};
 	
-	Array<class> a; //error
+Array<class> a; //error
 	\end{lstlisting}
 	
 	\item If no special demand, you can declare you own default ctor and use system implicit generated one. you can use keyword default
-	\begin{lstlisting}[frame=single, language=c++]
-	class Empty{
+\begin{lstlisting}[frame=single, language=c++]
+class Empty{
 	Empty() = default;
 	// you don't need to give implementation of default ctor.
 	Empty(int i) ;
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 	
 	\item Make Constructors Protected to prohibit direct Instantiation. Make constructors Private to prohibit Derivation.
 	
 	\item Use default arguments to reduce the number of ctor.
-	\begin{lstlisting}[frame=single, language=c++]
-	class Brush{
+\begin{lstlisting}[frame=single, language=c++]
+class Brush{
 	Brush();
 	Brush(Color c);
 	Brush(Texture t);
 	
 	Brush(Color c= Black, Texture t = Solid); // it will be better.
-	}
+}
 	\end{lstlisting}
 	
 	
 	\item From previous example, you can see that default ctor is very important. but when class MUST need another information when create, such as  worker class, You must provide SSN when you create a worker.At this time, if you create default ctor, It's not good idea. A NULL SSN will cause a lot of trouble in the future.  So you have to use Worker pointer, and vector<Worker>.  You also need to use delete to disable default ctor. That is C++ spirit, \textbf{You never have the best answer, only have context answer. }
-	\begin{lstlisting}[frame=single, language=c++]
-	class Worker{
+\begin{lstlisting}[frame=single, language=c++]
+class Worker{
 	char* SSN;
 	Worker(const char*);
 	Worker(){SSN=nullptr); //bad smell.
-	}
+}
 	\end{lstlisting}
 	
 	\item Normally you will have to explicitly declare your own destructor if:
@@ -7654,38 +7907,38 @@ delete s3;
 		\item When the compiler generates a temporary object.
 	\end{enumerate}
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	1) Person r(p);   or  Person p = q;      // copy constructor
-	p = q;  // but not called in assignment; p has existed before
+\begin{lstlisting}[frame=single, language=c++]
+1) Person r(p);   or  Person p = q;      // copy constructor
+p = q;  // but not called in assignment; p has existed before
 	
-	2) A value parameter is initialized from its argument.
-	fun(Person r)    fun(p);
-	// copy constructor, produce a new object r.
-	//just like Person r = p;
+2) A value parameter is initialized from its argument.
+fun(Person r)    fun(p);
+// copy constructor, produce a new object r.
+//just like Person r = p;
 	
-	3) An object is returned by a function.
-	Person fun();
-	Person r = fun();
-	//here copy ctor is called twice.
-	// use -fno-elide-constructors in g++ produce two copy ctor
-	// or It will use Return value optimization.
+3) An object is returned by a function.
+Person fun();
+Person r = fun();
+//here copy ctor is called twice.
+// use -fno-elide-constructors in g++ produce two copy ctor
+// or It will use Return value optimization.
 	
-	4) class(string &a, string &b): m_a(a),m_b(b){}
-	//Initialization list
-	\end{lstlisting}
+4) class(string &a, string &b): m_a(a),m_b(b){}
+//Initialization list
+\end{lstlisting}
 	
-	\item In previous example, you can see when you pass  value of obj, It will call copy ctor, It's not very efficient. So you should use reference or pointer if it's possible, don't pass object directly.
+	\item In previous example, you can see when you pass value of obj, It will call copy ctor, It's not very efficient. So you should use reference or pointer if it's possible, don't pass object directly.
 	
 	
 	\item An Assignment operator examples: \textbf{1) avoid assignment self 2) return *this reference. }
-	\begin{lstlisting}[frame=single, language=c++]
-	class & class::operator=(class &a){
+\begin{lstlisting}[frame=single, language=c++]
+class & class::operator=(class &a){
 	if(this == &a)
 	return *this;  //avoid assignment
 	.............  // assignment operation here.
 	return *this ; // return *this reference.
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 	\item For reference, once assigned, a reference cannot be re-assigned. So if a class has a reference member, It can be initialized by initializer list in ctor and copy ctor. \textbf{But you can't overload assignment operator any more, If you really need assignment operator, change reference to pointer}
 \end{itemize}
@@ -7757,8 +8010,8 @@ friend void swap(dumb_array& first, dumb_array& second) {
 	
 	\item The Rule of The Big Four (and a half) states that if you implement one of
 	\begin{enumerate}
-		\item 	The copy constructor
-		\item The assignment operator.\textbf{Don't need move assignment, because it pass value.} 
+		\item The copy constructor
+		\item The assignment operator.\textbf{Don't need move assignment, in assignment operator, we pass only one kind of type--value.} 
 		\item The move constructor
 		\item The destructor
 		\item The swap function(that is half)
@@ -7827,71 +8080,9 @@ private:
 \begin{itemize}
 	\item \textbf{Never overload \&\&, || and comma in C++.  Just remember it!}
 	
-	\item \textbf{If you put operator as member function, if it's not member function, if it's a friend function}
+	\item \textbf{You can declare operator as member function. if it's not member function, declare it as a friend function.}
 	
-	\item There are two tips in this section, one is use swap to implement assignment. The other is to use compound assignment operators to implement 
-	
-	\item for Binary Arithmetic Operators + - *, implement Compound Assignment Operators += -= *= first, then use these Compound Assignment operators
-	
-	\item \textbf{Use += implememnt operator +}. It's very good design. It provides two advantages. 1) give another function, 2) avoid code duplication. 
-	
-	\item Compound assignment operators should be overloaded as member functions, as they change the left-hand operand. Like all other operators (except basic assignment), compound assignment operators must be explicitly defined, they will not be automatically.
-	
-	\item A code example. 
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	Vector2D& Vector2D::operator+=(const Vector2D& right)
-	{
-	this->x += right.x;
-	this->y += right.y;
-	return *this;
-	}
-	\end{lstlisting}
-	
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	Foo operator+(const Foo& lhs, const Foo& rhs)
-	{
-	Foo result = lhs;
-	result += rhs;
-	return result;
-	}
-	\end{lstlisting}
-	
-	\item Use swap implement operator =. It's called "copy-and-swap idiom?" That is a sub conception under another important conception of "Rule of four(and half)"
-	
-	
-	\item When you want to implement operator =, first implement friend function swap, then use swap to implement operator =.
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	class dumb_array{
-	..
-	private:
-	std::size_t mSize;
-	int* mArray;
-	};
-	
-	friend void swap(dumb_array& first, dumb_array& second) // nothrow
-	{
-	// enable ADL (not necessary in our case, but good practice)
-	using std::swap;
-	
-	// by swapping the members of two objects,
-	// the two objects are effectively swapped
-	swap(first.mSize, second.mSize);
-	swap(first.mArray, second.mArray);
-	}
-	
-	\end{lstlisting}
-	
-	\item With above swap friend function. canonical, easy-to-write, always-correct, strong-guarantee, copy-and-swap assignment operator is often seen written this way
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	dumb_array& operator=(dumb_array other) {
-	swap(*this, other);
-	return *this;
-	}
-	\end{lstlisting}
-
-	\item Why \verb=<<= need to be friend? You need to consider:  Because you need to write cout\verb=<<= obj. If you declare \verb=<<= as a member operator, you have to write obj\verb=<<=cout; it looks weird.
-	
-	\item If you want to overload + operator, and support time t; 3+t;   You need to define a friend function. In order to improve a t+3 efficiency, you also can define a member function time operator+(int i) member function.
+		\item If you want to overload + operator, and support time t; 3+t;   You need to define a friend function. In order to improve a t+3 efficiency, you also can define a member function time operator+(int i) member function.
 	\begin{lstlisting}[frame=single, language=c++]
 	time operator+(const time &t) const;
 	//member function.
@@ -7907,41 +8098,59 @@ private:
 	//to avoid implicit conversion from 3 to obj.
 	\end{lstlisting}
 	
+	\item \textbf{For Binary Arithmetic Operators + - *, implement Compound Assignment Operators += -= *= first, then use these Compound Assignment operators}
+	
+	\item \textbf{Use += implememnt operator +}. It's very good design. It provides two advantages. 1) give another function, 2) avoid code duplication. 
+	
+	\item Compound assignment operators should be overloaded as member functions, as they change the left-hand operand. Like all other operators (except basic assignment), compound assignment operators must be explicitly defined, they will not be automatically.A code example. 
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+Vector2D& Vector2D::operator+=(const Vector2D& right){
+	this->x += right.x;
+	this->y += right.y;
+	return *this;
+}
+	\end{lstlisting}
+	
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+Foo operator+(const Foo& lhs, const Foo& rhs){
+	Foo result = lhs;
+	result += rhs;
+	return result;
+}
+\end{lstlisting}
+	
+	\item Why \verb=<<= need to be friend? You need to consider:  Because you need to write cout\verb=<<= obj. If you declare \verb=<<= as a member operator, you have to write obj\verb=<<=cout; it looks weird.
+	
 	\item ob = ob1+ob2 will changed to:  ob1.operator+(ob2);  The last const make the ob to invoke this operator doesn't change the value in this class. Don't return const value type, It will make "move" not work.
 	
-	
 	\item assignment operator overload. 1) return a non-const reference, and 2) to avoid assign self. Don't return const reference, somebody said that it can avoid (x=y)=z. But in fact, it's not a normal way to write such code. In STL string, assignment operator just return reference. It give you a clue, \textbf{any time you have questions about interface design, you can see the STL library.}
-	\begin{lstlisting}[frame=single, language=c++]
-	class A & operator=(const class A& rhs)
-	{
+\begin{lstlisting}[frame=single, language=c++]
+class A & operator=(const class A& rhs){
 	if(this ==&rhs) return *this;
 	
 	//Do some things other
 	return *this;
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 \end{itemize}
 
 
-
-
 \section{inheriantce}
 \begin{itemize}
-	\item OO just kick in when you use reference and pointer
+	\item OO just kick in when you use reference and pointer to base class
 \begin{lstlisting}[frame=single, language=c++]
-	class A{
+class A{
 		public:
 		virtual void fun(){ cout<<"A";}
-	};
+};
 	
-	class B: public A{
+class B: public A{
 		public:
 		void fun(){cout<<"B";}
-	};
+};
 	
-	int main()
-	{
+int main(){
 		B b;
 		A a = b;
 		a.fun(); //output A
@@ -7954,75 +8163,75 @@ private:
 		
 		A* pa1 = new B;
 		(*pa1).fun(); //output B
-	}
+}
 \end{lstlisting}
 \end{itemize}
 
 \subsection{special member functions in inheritance}
 
-subsubsection{ctor}
+\subsubsection{ctor}
 \begin{itemize}
 	
 	\item  \textbf{Subclass ctor will always call base class ctor.}
 	
 	\begin{enumerate}
 		\item Constructor should NOT be virtual
-		\item If subclass doesn't define any ctor, compiler will implicitly define a default ctor, and this ctor will call base class default ctor.
-		\item If subclass has a ctor, but it doesn't explicitly call base specify ctor, ctor of subclass will call base default ctor.(without any parameter.) If base ctor only has specify ctor, no default ctor, produce compiler error.
-		\item If you want explicitly call base specify ctor, use initialization list syntax.
 		
+		\item If subclass doesn't define any ctor, compiler will implicitly define a default ctor, and this ctor will call base class default ctor.
+		
+		\item If subclass has a ctor, but it doesn't explicitly call base specify ctor, ctor of subclass will call base default ctor.(without any parameter.) If base ctor only has specify ctor, no default ctor, produce compiler error.
+		
+		\item If you want explicitly call base specify ctor, use initialization list syntax.
 	\end{enumerate}
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	class base{
+\begin{lstlisting}[frame=single, language=c++]
+class base{
 	public:
 	base();  //default ctor
 	base(int b); //specify ctor
 	private:
 	int b;
-	};
+};
 	
-	class subclass: public base{
+class subclass: public base{
 	subclass();  //default ctor
 	subclass(int s, int b); // specify ctor1
 	subclass(int s);     //specify ctor2
 	int s;
-	};
+};
 	
-	subclass::subclass(int s, int b): base(b){
+subclass::subclass(int s, int b): base(b){
 	m_s = s;
-	}
-	//////////////////////////////////////////
-	subclass sc1(2,3);
-	//call specify ctor1, then
-	// explicit call base specify ctor
+}
+//////////////////////////////////////////
+subclass sc1(2,3);
+//call specify ctor1, then
+// explicit call base specify ctor
 	
-	subclass sc2(2);  // implicit call base default ctor
-	subclass sc3;   // implicit call base default ctor
-	// if base has not default ctor,
-	//sc2 and sc3 will produce error.
-	}
-	\end{lstlisting}
+subclass sc2(2);  // implicit call base default ctor
+subclass sc3;   // implicit call base default ctor
+// if base has not default ctor,
+//sc2 and sc3 will produce error.
+}
+\end{lstlisting}
 	\item If you don't use  explicitly initialization list syntax to call base specify ctor, You will get uninitialized value or you can't initialize base member, Neither are good.
-	\begin{lstlisting}[frame=single, language=c++]
-	//method 2:
-	DeriveClass::DeriveClass(int base_a, b){
+\begin{lstlisting}[frame=single, language=c++]
+//method 2:
+DeriveClass::DeriveClass(int base_a, b){
 	//it will call base_class default constructor.
 	// in this case, base_a is not assigned at all
 	Derive_b = b
-	}	
+}	
 	/////////////////////
-	//method 3:
-	DeriveClass::DeriveClass(int base_a, b) {
+//method 3:
+DeriveClass::DeriveClass(int base_a, b) {
 	base_a = a    //It can be thought as a bad design.
 	//You can't  access private base member data.
 	//base_a need to be public member data,
 	Derive_b = b
-	}
-	\end{lstlisting}
-	
-	\item Idea behind rules: Do best to make sure a obj can be built.
-	
+}
+\end{lstlisting}
+	\item Idea behind rules: Do best to make sure a obj can be built.	
 \end{itemize}
 
 
@@ -8032,25 +8241,27 @@ subsubsection{ctor}
 	\item For destructor:
 	\begin{enumerate}
 		\item If a base class has a destuctor, but sub class doesn't have,  compiler will produce an implicit default destructor, and this implicit default destructor will call base class destuctor.
+		
 		\item If you define a subclass destructor, It will call base destructor automaticlly, you don't need to call it explicitly.
+		
 		\item The question is, How can you make sure you sub class destructor will be called if you use a base class pointer or reference, answer is below:
 	\end{enumerate}
 	
 	\item Don't call base desctructor explicitly, It will called automatically in the reverse order of construction.  And you should give a base desctructor a definition, Or linker will report error it even you don't call it in your source code.
 	
 	\item Make base class destructor public and virtual (polymorphic deletion by base class pointer or reference), or proteced and nonvirtual, base classes need not always allow polymorphic deletion. For example, consider class templates such as std::unary\_function. This time, you should make destructor protected and nonvirtual.
-	\begin{lstlisting}[frame=single, language=c++]
-	template <class Arg, class Result>
-	struct unary_function{
+\begin{lstlisting}[frame=single, language=c++]
+template <class Arg, class Result>
+struct unary_function{
 	typedef Arg    argument_type;
 	typedef Result result_type;
-	};
+};
 	
-	Illegal code that you can assume will never exist.
-	void f( std::unary_function* f ){
+Illegal code that you can assume will never exist.
+void f( std::unary_function* f ){
 	delete f; // error, illegal
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 	\item If base class still need to build itself, You can change it back public virtual,  Even without polymorphic deletion by now, you still need to declare it as virtual for the future safety(Even with a little dynamic-binding efficiency penalty. ) At same time, If a base class is not abstract class, usually, it's BAD design.
 	
@@ -8058,186 +8269,91 @@ subsubsection{ctor}
 	
 \end{itemize}
 
-\subsubsection{copy ctor}
+
+
+\subsubsection{copy ctor in inheritance}
 
 \begin{itemize}
 	
-	\item copy ctor(assignment ctor) and slicing. Below four are all SLICING.  number 5 and number 4 is not very obvious. They are call base class ctor.  No matter what you input a reference to a derived class or not.
-	\begin{lstlisting}[frame=single, language=c++]
-	class Base{};
-	class Derived1 : Base{};
-	class Derived2 : Base{};
-	Derived1 d1;
-	Derived1 d2;
-	/////////////////////
-	Base b = d1; //1)
+	\item copy ctor(assignment ctor) in inheritance will cause slicing problem.  and slicing. Below four are all SLICING.  number 5 and number 4 is not very obvious. They are call base class ctor.  No matter what you input a reference to a derived class or not.
+\begin{lstlisting}[frame=single, language=c++]
+class Base{};
+class Derived1 : Base{};
+class Derived2 : Base{};
+Derived1 d1;
+Derived1 d2;
+/////////////////////
+Base b = d1; //1)
 	
-	Fun(Base b);
-	Fun(d1);  //2)
+Fun(Base b);
+Fun(d1);  //2)
 	
-	Base& Bref = d1;
-	Fun(Bref) //3)
+Base& Bref = d1;
+Fun(Bref) //3)
 	
-	Base* bp = new B(Bref); //4)
+Base* bp = new B(Bref); //4)
 	
-	Base* bp1 = new Derived1();  //5) sibling slicing
-	base* bp2 = new Derived2();
-	*bp1 = *bp2;  // bp1 just copy Base part in Derived2.
-	//so bp1 now is MIXTURE of d1 and d2.
-	\end{lstlisting}
+Base* bp1 = new Derived1();  //5) sibling slicing
+base* bp2 = new Derived2();
+*bp1 = *bp2;  // bp1 just copy Base part in Derived2.
+//so bp1 now is MIXTURE of d1 and d2.
+\end{lstlisting}
 	
-	\item Think a problem as below.
-	\begin{lstlisting}[frame=single, language=c++]
-	class Base{};
-	class Derived1 : Base{};
-	class Derived2 : Base{};
-	Derived d1;
-	Derived d2;
+\item Think a problem as below: how to make deep copy and avoid slicing in base class copy ctor?
+\begin{lstlisting}[frame=single, language=c++]
+class Base{};
+class Derived1 : Base{};
+class Derived2 : Base{};
+Derived d1;
+Derived d2;
 	
-	Base* Copy(Base& Bref){
+Base* Copy(Base& Bref){
 	//How to avoid slicing and make deep copy.
-	}
+}
 	
-	Base& Bref = d1
-	Base* d1p = Copy(Bref)
-	
-	Base& Bref = d2
-	Base* d2p = Copy(Bref)
+Base& Bref = d1
+Base* d1p = Copy(Bref)
+
+Base& Bref = d2
+Base* d2p = Copy(Bref)
 	\end{lstlisting}
 	
-	\item Continue- Think this problem: error method
-	\begin{lstlisting}[frame=single, language=c++]
-	Base* Copy(Base& Bref){
+\item Continue- Think this problem: error method
+\begin{lstlisting}[frame=single, language=c++]
+Base* Copy(Base& Bref){
 	Base* p = new Base(Bref)
 	//Slicing happen. bad
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	\item Continue- Think this problem: TypeID method.
-	\begin{lstlisting}[frame=single, language=c++]
-	Base* Copy(Base& Bref){
+\begin{lstlisting}[frame=single, language=c++]
+Base* Copy(Base& Bref){
 	//Use tyid and dynamic_cast
 	//involve a lot of if and switch about type.
 	//anytime if you use dynamic_cast and if,
 	//you can think about virtual function
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
-	\item Continue- Think this problem: Virtual Clone method.
-	A function's return type is never considered part of its signature. You can override a member
-	function with any return type as long as the return type could be used wherever the base class
-	return type could be used.
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	class Base{
+\item Continue- Think this problem: Virtual Clone method.
+	A function's return type is never considered part of its signature. You can override a member function with any return type as long as the return type could be used wherever the base class return type could be used.
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+class Base{
 	virutal Base* Clone() = 0;
-	};
+};
 	
-	class Derived1 : Base{
+class Derived1 : Base{
 	virutal $\Hilight{4}$Derived1* Clone(){return new Derived1(*this);}
-	}
+}
 	
-	Base* Copy(Base& Bref){
-	Base* p = Bref.Clone();
-	}
-	\end{lstlisting}
-	
+Base* Copy(Base& Bref){
+Base* p = Bref.Clone();
+}
+\end{lstlisting}
 	
 	\item Continue- Think this problem: Change Design. Base is concrete class,  More Effective C++ Item 33 said"Making Non-leaf class abstract. So maybe you can change the inheritance system.
 	
-	\item copy ctor and copy initilization. Detail can be found "Is there a difference in C++ between copy initialization and direct initialization?"
-	\begin{lstlisting}[frame=single, language=c++]
-	class A{
-	explicit A(const &A);
-	}
-	A a1;
-	A a2(a1) //OK
-	A a3 = a1 //doesn't work
-	\end{lstlisting}
-	
-	\item There are three articles, you should read them together.
-	\begin{lstlisting}[frame=single, language=c++]
-	https://herbsutter.com/2013/05/09/gotw-1-solution/
-	
-	https://stackoverflow.com/questions/21825933/any-difference-between-copy-list-initialization-and-traditional-copy-initializat
-	
-	https://stackoverflow.com/questions/1051379/is-there-a-difference-between-copy-initialization-and-direct-initialization
-	\end{lstlisting}
-	
-	\item Basic idea of all kinds of initialization.What's the difference?
-	\begin{lstlisting}[frame=single, language=c++]
-	widget w{x};  1)
-	widget w = x; 2)
-	widget w = {x}; 3)
-	\end{lstlisting}
-	\item For the number 1, behaves like a function call to an overloaded function: The functions, in this case, are the constructors of T (including explicit ones), and the argument is x. Overload resolution will find the best matching constructor, and when needed will do any implicit conversion required.
-	
-	\item For the number 2, Copy initialization constructs an implicit conversion sequence: It tries to convert x to an object of type T. (It then may copy over that object into the to-initialized object, so a copy constructor is needed too - but this is not important below)
-	
-	\item for the number 2, If x is of some other type, conceptually the compiler \textbf{first implicitly converts x to a temporary widget object}, then move-constructs w from that temporary rvalue, using copy construction as “the slow way to move” as a backup if no better move constructor is available. Assuming that an implicit conversion is available, (f) means the same as widget w( widget(x) ); 
-	
-	\item For the number 2, implicitly convert x has two different ways:As said above, copy initialization will construct a conversion sequence when a has not type B or derived from it (which is clearly the case here). So it will look for ways to do the conversion, and will find the following candidates
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	B(A const&)
-	operator B(A&);
-	\end{lstlisting}
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	#include <iostream>
-	struct B;
-	struct A { 
-	operator B();
-	};
-	
-	struct B { 
-	B() { }
-	B(A const&) { std::cout << "<direct> "; }
-	};
-	
-	A::operator B() { std::cout << "<copy> "; return B(); }
-	
-	int main() { 
-	A a;
-	B b1(a);  // 1)
-	B b2 = a; // 2)
-	}
-	// output: <direct> <copy>
-	\end{lstlisting}
-	
-	\item For the number 2, This is why "S1 s11 = s; // ill-formed" fail in the below code snippet.
-	\begin{lstlisting}[frame=single, language=c++]
-	struct Intermediate {};
-	
-	struct S
-	{
-	operator Intermediate() { return {}; }
-	operator int() { return 10; }
-	};
-	
-	struct S1
-	{
-	S1(Intermediate) {}
-	};
-	
-	S s;
-	Intermediate im1 = s; // OK
-	Intermediate im2 = {s}; // ill-formed
-	S1 s11 = s; // ill-formed
-	S1 s12 = {s}; // OK
-	
-	// note: but brace initialization can use operator of conversion to int
-	int i1 = s; // OK
-	int i2 = {s}; // OK
-	\end{lstlisting}
-	
-	
-	
-	\item For the number 3, This is called “copy list initialization.” It means the same as widget w{x}; except that explicit constructors cannot be used. It’s guaranteed that only a single constructor is called. So number 3 is different with number 2
-	
-	\item 
-	
-	
-	
-	\item Assignment operator and copy ctor in inheritance:
+	\item \textbf{Assignment operator and copy ctor in inheritance summary:}
 	\begin{enumerate}
 		\item \textbf{Default Assignment  operator and  copy constructor in derived class which are implicitly produced by compiler will call default base assignment  operator and  copy constructor.}
 		
@@ -8247,11 +8363,11 @@ subsubsection{ctor}
 		
 		\item For copy ctor, just init list syntaxt. For assignment operator, use two different methods depends on if base class declare its own assignment operator(). Source code is below:
 		
-		\begin{lstlisting}[frame=single, language=c++]
-		DerivedClass::DerivedClass(const DerivedClass &dc): \
-		BaseClass(dc){...}  //init list syntax here.
+\begin{lstlisting}[frame=single, language=c++]
+DerivedClass::DerivedClass(const DerivedClass &dc): \
+	BaseClass(dc){...}  //init list syntax here.
 		
-		DerivedClass & DerivedClass::operator=(const DerivedClass &dc){
+DerivedClass & DerivedClass::operator=(const DerivedClass &dc){
 		BaseClass::operator=(dc);
 		// base class declare explicitly operator
 		
@@ -8259,10 +8375,19 @@ subsubsection{ctor}
 		//base class no explicitly operator
 		// change *this to BaseClass reference,
 		// if you change to BaseClass, It will call copy ctor.
-		}
-		\end{lstlisting}
+}
+	\end{lstlisting}
 		
 	\end{enumerate}
+
+	\item There are three articles, you should read them together.
+\begin{lstlisting}[frame=single, language=c++]
+https://herbsutter.com/2013/05/09/gotw-1-solution/
+
+https://stackoverflow.com/questions/21825933/any-difference-between-copy-list-initialization-and-traditional-copy-initializat
+
+https://stackoverflow.com/questions/1051379/is-there-a-difference-between-copy-initialization-and-direct-initialization
+\end{lstlisting}
 \end{itemize}
 
 \subsection{virtual function and override}
@@ -8348,188 +8473,6 @@ subsubsection{ctor}
 \end{itemize}
 
 
-\subsection{RAII}
-\begin{itemize}
-\item Whenever you deal with a resource that needs paired acquire/release function call, encapsulate that resource in an object.  Such as: fopen/fclose, lock/unlock, and new/delete.
-
-\item When implementing RAII, be conscious of copy construction and assignment. the compiler-generated version probably won't be correct. If it's not copyable, use =delete , if it's copyable, duplicate the resource.  You also can use smart\_pointer in this scenario too.
-
-\item The basic idea of RAII  is to represent a resource by a local object, so that the local object’s destructor will release the resource.  That is to say: To prevent resource leaks, use RAII objects that acquire resources in their constructors and release them in their destructors.
-\begin{lstlisting}[frame=single, language=c++]
-//C version,
-File* fp = fopen("/path/to/file");
-// throw exception here, then resource leaking
-fclose(fp);
-
-//Java version
-try {
-    File file = new File("/path/to/file");
-    // throw exception here, go to finally.
-} finally {
-    file.close();
-}
-
-//c++ version
-fun{
-fstream if("path/to/file")
-if.getline
-// you don't need to if.close().
-}
-
-//c++ smart version.
-std::unique_ptr<FILE,          // <-- the wrapped raw pointer type: FILE*
-                int(*)(FILE*)> // <-- the custom deleter type: fclose() prototype
-myFile( fopen("myfile", "rb"), // <-- resource (FILE*) is returned by fopen()
-        fclose );              // <-- the deleter function: fclose()
-\end{lstlisting}
-
-\item Another good example RAII is unique\_ptr. The idea of smart pointer is putting *p into a local pointer-like object, then when it go out scope or unwind-stack when exception is thrown, It will call destructor, then delete p.
-
-\item We should consider resource generically, pointer *p pointed to a new object is resource, A handle to a file is a resource to. \textbf{We wrap handle to a file into ifstream, and wrap pointer *p into smart\_pointer}
-
-\item Just like return value,  Exception will skip all the statement below the throw, In C++, It doesn't support finally statement sometimes. At this time, we need to use RAII.
-\begin{lstlisting}[frame=single, language=c++]
-Int *p = new int;
-string a   //a is ok, a will be destructed properly
-              //due to the C++ unwind stack.
-throw exception.
-delete p; // this will not run.
-\end{lstlisting}
-
-\item For this problem, you should use smart pointer to declare a auto object.  If you use string object, It's ok.  So in previous example,  you can use smart pointer, it will help you to avoid memory leakage problem.
-\begin{lstlisting}[frame=single, language=c++]
-unique_ptr<int> aupr (new int(100);
-string a   //a is ok, a will be destructed properly
-              //due to the C++ unwind stack.
-throw exception.
-// both a and aupr will call their own destructor  function.
-\end{lstlisting}
-
-\item In you ctor, If you use new and new failed and throw a exception, the destructor will not be called. You can use auto\_ptr as member data and use init list to initialzie it. see  more effective C++ exception chapter.
-
-\item Don't use C FILE* and char [] as string. Use iofile class and string object, because they are exception safe
-\begin{enumerate}
-\item Any time when you use new, consider if there are c++ container or object.
-\item If not, use smart\_pointer.
-\end{enumerate}
-
-\item Another example is when you make program based on Win API.
-\begin{lstlisting}[frame=single, language=c++]
-class module {
-public:
-    explicit module(std::wstring const& name)
-    : handle { ::LoadLibrary(name.c_str()) } {}
-
-    ~module{
-       ::FreeLibrary();
-    }
-private:
-    HMODULE handle;
-};
-\end{lstlisting}
-
-\item There are three RAII implementation instances in your practical programming:
-\begin{enumerate}
-\item Use auto member; You have to keep m\_str and vc are RAII.  In this way, you don't need to build dtor manually.
-\begin{lstlisting}[frame=single, language=c++]
-class RAII {
-private:
-    string m_str;
-    vector<int> vc;
-};
-\end{lstlisting}
-
-\item Use pointer and handle; In this way, You have to use pointer, Maybe you need some customized action in runtime , \textbf{Use handle is only method to use this resource} or any other reason. And this time, you have to write your own dtor.
-\begin{lstlisting}[frame=single, language=c++]
-class RAII {
-private:
-    string* m_str;
-    vector<int*> vc;
-};
-\end{lstlisting}
-
-\item Use smart point wrap pointer and handle; When you wrap handle, you can custom this delete behavior. See source code below:
-\begin{lstlisting}[frame=single, language=c++]
-class RAII {
-private:
-    unique_ptr<string>  m_str;
-    vector<unique_ptr<int> > vc;
-};
-\end{lstlisting}
-
-\begin{lstlisting}[frame=single, language=c++]
-class module {
-public:
-    explicit module(std::wstring const& name)
-    : handle { ::LoadLibrary(name.c_str()) } {}
-private:
-using module_handle = std::unique_ptr<void, decltype(&::FreeLibrary)>;
-   module_handle handle;
-};
-\end{lstlisting}
-\end{enumerate}
-
-\item Another question is ownership of resource:
-\begin{enumerate}
-\item For auto member resource: \textbf{1)Same life duration(RAII), 2)exclusive ownship to a single obj, but it's copyable(A a1 = a2).  3)move with efficiency(A a1 = A() ) }. If auto member has it's own copy and move special function, You don't need to write any special function in your class. You follow the "Rule of Zero".
-
-\item For raw pointer and handle: \textbf{1) default copy ctor will cause two pointer or handle refer the same resource, It's absolutely BAD SMELL of code 2) So you have to follow "Rule of five" to build your special member function. 3) After you build five special member function, you get RAII and exclusive ownship to a single object, and copyable and efficient move}
-\begin{lstlisting}[frame=single, language=c++]
-Class RawPointer{
-...........
-RawPointer(const RawPointer& rhs){
-pRes = new Resource( *(rhs.pRes));
-}
-
-RawPointer(RawPointer&& rhs){
-pPes = rhs.pRes;
-rhs.pRes = nullptr;
-}
-private:
-Resource* pRes;
-}
-\end{lstlisting}
-
-\item For uniqu\_ptr; \textbf{1) Same life(RAII) 2)exclusive ownship but not copyable 3) uniqu\_ptr support move operation. } You still follow "rule of zero"
-
-\item Even with uniqu\_ptr member, If you follow "rule of zero", that is to say that you don't provide any customized special member function, then the class is not copyable. But if you build copy ctor by youself, get raw pointer from origin side, and build a new uniqu\_ptr member from origin side's raw pointer, you can implement copyable, and code smell better than raw pointer with "Rule of Five". So in this way, \textbf{It's not recommended to use raw pointer in RAII and ownership context}.
-
-\item For shared\_ptr; \textbf{1) Not a RAII 2) shared ownship, 3) copyable and moveable}. When you move a shared\_ptr, origin one is set to nullptr and ref count doesn't increas.  You still follow "rule of zero".
-
-\end{enumerate}
-
-\item \textbf{ Conclusion, If you consider RAII and ownship at the same time, thing will become complex}  so I would like to give you some examples to illustrate them.
-
-\begin{enumerate}
-\item Prefer to use auto member for most of time! It follow "Rule of Five" and support copyable and movable.
-
-\item  For special demand, for example Car class,  people can \textbf{custom} its engine, and buy \textbf{two} at the same time. In this context, you car class should use raw pointer, 1) auto member doesn't support custom 2) uniqu\_ptr doesn't support copyable.  And you have to follow "Rule of Five"
-\begin{lstlisting}[frame=single, language=c++]
-class Car{
-//follow "Rule of Five"
-Engine *pEn;
-~Car(){delete pEn} // assure RAII
-}
-\end{lstlisting}
-
-\item For special context, It doesn't support object copy: for example 1) Person class in semantic;  2) other  perform consideration, Class Big{int [30000];};  3) Other implementation constrain, such as iostream class.   Under such context, you can use uniqu\_ptr to manage the resource and implement uncopyable.
-\begin{lstlisting}[frame=single, language=c++]
-class Person{
-uniqu_ptr<Resource> pRes;
-}
-\end{lstlisting}
-
-\item For special context, shared resource, you can use shared\_ptr.  You still can follow "Rule of zero" and resource will be deleted when ref count is 0.
-\begin{lstlisting}[frame=single, language=c++]
-class Student{
-shared_ptr<SchoolBus> pBus
-}
-\end{lstlisting}
-
-\item To know semantic of two smart pointers. Don't use them just replace raw pointer.
-\end{enumerate}
-
-\end{itemize}
 
 \section{Design}
 
