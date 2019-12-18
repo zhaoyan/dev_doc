@@ -4717,7 +4717,7 @@ Yan.buyNewBrush("Philip");
 
 \end{itemize}
 
-\section{smart pointer}
+\section{basic smart pointer knowledge}
 
 \subsection{Smart pointer Basic knowledge}
 
@@ -5604,62 +5604,63 @@ f(*derived);
 
 \end{itemize}
 
-\section{RAII}
+\section{smart pointer and class}
+\subsection{RAII}
 \begin{itemize}
 	\item Whenever you deal with a resource that needs paired acquire/release function call, encapsulate that resource in an object.  Such as: fopen/fclose, lock/unlock, and new/delete.
 	
 	\item When implementing RAII, be conscious of copy construction and assignment. the compiler-generated version probably won't be correct. If it's not copyable, use =delete , if it's copyable, duplicate the resource.  You also can use smart\_pointer in this scenario too.
 	
 	\item The basic idea of RAII  is to represent a resource by a local object, so that the local object’s destructor will release the resource.  That is to say: To prevent resource leaks, use RAII objects that acquire resources in their constructors and release them in their destructors.
-	\begin{lstlisting}[frame=single, language=c++]
-	//C version,
-	File* fp = fopen("/path/to/file");
-	// throw exception here, then resource leaking
-	fclose(fp);
+\begin{lstlisting}[frame=single, language=c++]
+//C version,
+File* fp = fopen("/path/to/file");
+// throw exception here, then resource leaking
+fclose(fp);
 	
-	//Java version
-	try {
+//Java version
+try {
 	File file = new File("/path/to/file");
 	// throw exception here, go to finally.
-	} finally {
+} finally {
 	file.close();
-	}
+}
 	
-	//c++ version
-	fun{
+//c++ version
+fun{
 	fstream if("path/to/file")
 	if.getline
 	// you don't need to if.close().
-	}
+}
 	
-	//c++ smart version.
+//c++ smart version.
 	std::unique_ptr<FILE,          // <-- the wrapped raw pointer type: FILE*
-	int(*)(FILE*)> // <-- the custom deleter type: fclose() prototype
+	int(*)(FILE*)>       // <-- the custom deleter type: fclose() prototype
 	myFile( fopen("myfile", "rb"), // <-- resource (FILE*) is returned by fopen()
 	fclose );              // <-- the deleter function: fclose()
-	\end{lstlisting}
+\end{lstlisting}
 	
 	\item Another good example RAII is unique\_ptr. The idea of smart pointer is putting *p into a local pointer-like object, then when it go out scope or unwind-stack when exception is thrown, It will call destructor, then delete p.
 	
 	\item We should consider resource generically, pointer *p pointed to a new object is resource, A handle to a file is a resource to. \textbf{We wrap handle to a file into ifstream, and wrap pointer *p into smart\_pointer}
 	
 	\item Just like return value,  Exception will skip all the statement below the throw, In C++, It doesn't support finally statement sometimes. At this time, we need to use RAII.
-	\begin{lstlisting}[frame=single, language=c++]
-	Int *p = new int;
-	string a   //a is ok, a will be destructed properly
-	//due to the C++ unwind stack.
-	throw exception.
-	delete p; // this will not run.
-	\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+Int *p = new int;
+string a   //a is ok, a will be destructed properly
+//due to the C++ unwind stack.
+throw exception.
+delete p; // this will not run.
+\end{lstlisting}
 	
 	\item For this problem, you should use smart pointer to declare a auto object.  If you use string object, It's ok.  So in previous example,  you can use smart pointer, it will help you to avoid memory leakage problem.
-	\begin{lstlisting}[frame=single, language=c++]
-	unique_ptr<int> aupr (new int(100);
-	string a   //a is ok, a will be destructed properly
-	//due to the C++ unwind stack.
-	throw exception.
-	// both a and aupr will call their own destructor  function.
-	\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+unique_ptr<int> aupr (new int(100);
+string a   //a is ok, a will be destructed properly
+//due to the C++ unwind stack.
+throw exception.
+// both a and aupr will call their own destructor  function.
+\end{lstlisting}
 	
 	\item In you ctor, If you use new and new failed and throw a exception, the destructor will not be called. You can use auto\_ptr as member data and use init list to initialzie it. see  more effective C++ exception chapter.
 	
@@ -5669,9 +5670,9 @@ f(*derived);
 		\item If not, use smart\_pointer.
 	\end{enumerate}
 	
-	\item Another example is when you make program based on Win API.
-	\begin{lstlisting}[frame=single, language=c++]
-	class module {
+\item Another example is when you make program based on Win API.
+\begin{lstlisting}[frame=single, language=c++]
+class module {
 	public:
 	explicit module(std::wstring const& name)
 	: handle { ::LoadLibrary(name.c_str()) } {}
@@ -5681,48 +5682,48 @@ f(*derived);
 	}
 	private:
 	HMODULE handle;
-	};
+};
 	\end{lstlisting}
 	
 	\item There are three RAII implementation instances in your practical programming:
 	\begin{enumerate}
 		\item Use auto member; You have to keep m\_str and vc are RAII.  In this way, you don't need to build dtor manually.
-		\begin{lstlisting}[frame=single, language=c++]
-		class RAII {
-		private:
+\begin{lstlisting}[frame=single, language=c++]
+class RAII {
+private:
 		string m_str;
 		vector<int> vc;
-		};
+};
 		\end{lstlisting}
 		
 		\item Use pointer and handle; In this way, You have to use pointer, Maybe you need some customized action in runtime , \textbf{Use handle is only method to use this resource} or any other reason. And this time, you have to write your own dtor.
-		\begin{lstlisting}[frame=single, language=c++]
-		class RAII {
-		private:
+\begin{lstlisting}[frame=single, language=c++]
+class RAII {
+private:
 		string* m_str;
 		vector<int*> vc;
-		};
-		\end{lstlisting}
+};
+\end{lstlisting}
 		
 		\item Use smart point wrap pointer and handle; When you wrap handle, you can custom this delete behavior. See source code below:
-		\begin{lstlisting}[frame=single, language=c++]
-		class RAII {
-		private:
+\begin{lstlisting}[frame=single, language=c++]
+class RAII {
+private:
 		unique_ptr<string>  m_str;
 		vector<unique_ptr<int> > vc;
-		};
+};
 		\end{lstlisting}
 		
-		\begin{lstlisting}[frame=single, language=c++]
-		class module {
-		public:
+\begin{lstlisting}[frame=single, language=c++]
+class module {
+public:
 		explicit module(std::wstring const& name)
 		: handle { ::LoadLibrary(name.c_str()) } {}
-		private:
+private:
 		using module_handle = std::unique_ptr<void, decltype(&::FreeLibrary)>;
 		module_handle handle;
-		};
-		\end{lstlisting}
+};
+\end{lstlisting}
 	\end{enumerate}
 	
 	\item Another question is ownership of resource:
@@ -5730,24 +5731,24 @@ f(*derived);
 		\item For auto member resource: \textbf{1)Same life duration(RAII), 2)exclusive ownship to a single obj, but it's copyable(A a1 = a2).  3)move with efficiency(A a1 = A() ) }. If auto member has it's own copy and move special function, You don't need to write any special function in your class. You follow the "Rule of Zero".
 		
 		\item For raw pointer and handle: \textbf{1) default copy ctor will cause two pointer or handle refer the same resource, It's absolutely BAD SMELL of code 2) So you have to follow "Rule of five" to build your special member function. 3) After you build five special member function, you get RAII and exclusive ownship to a single object, and copyable and efficient move}
-		\begin{lstlisting}[frame=single, language=c++]
-		Class RawPointer{
+\begin{lstlisting}[frame=single, language=c++]
+Class RawPointer{
 		...........
-		RawPointer(const RawPointer& rhs){
+	RawPointer(const RawPointer& rhs){
 		pRes = new Resource( *(rhs.pRes));
-		}
+	}
 		
-		RawPointer(RawPointer&& rhs){
+	RawPointer(RawPointer&& rhs){
 		pPes = rhs.pRes;
 		rhs.pRes = nullptr;
-		}
-		private:
-		Resource* pRes;
-		}
-		\end{lstlisting}
+	}
+private:
+Resource* pRes;
+}
+\end{lstlisting}
 		
 		\item For uniqu\_ptr; \textbf{1) Same life(RAII) 2)exclusive ownship but not copyable 3) uniqu\_ptr support move operation. } You still follow "rule of zero"
-		
+
 		\item Even with uniqu\_ptr member, If you follow "rule of zero", that is to say that you don't provide any customized special member function, then the class is not copyable. But if you build copy ctor by youself, get raw pointer from origin side, and build a new uniqu\_ptr member from origin side's raw pointer, you can implement copyable, and code smell better than raw pointer with "Rule of Five". So in this way, \textbf{It's not recommended to use raw pointer in RAII and ownership context}.
 		
 		\item For shared\_ptr; \textbf{1) Not a RAII 2) shared ownship, 3) copyable and moveable}. When you move a shared\_ptr, origin one is set to nullptr and ref count doesn't increas.  You still follow "rule of zero".
@@ -5757,34 +5758,34 @@ f(*derived);
 	\item \textbf{ Conclusion, If you consider RAII and ownship at the same time, thing will become complex}  so I would like to give you some examples to illustrate them.
 	
 	\begin{enumerate}
-		\item Prefer to use auto member for most of time! It follow "Rule of Five" and support copyable and movable.
+		\item Prefer to use auto member for most of time! It follow "Rule of Five" and support copyable and movable. Such as std::string
 		
 		\item  For special demand, for example Car class,  people can \textbf{custom} its engine, and buy \textbf{two} at the same time. In this context, you car class should use raw pointer, 1) auto member doesn't support custom 2) uniqu\_ptr doesn't support copyable.  And you have to follow "Rule of Five"
-		\begin{lstlisting}[frame=single, language=c++]
-		class Car{
+\begin{lstlisting}[frame=single, language=c++]
+class Car{
 		//follow "Rule of Five"
 		Engine *pEn;
 		~Car(){delete pEn} // assure RAII
-		}
+}
 		\end{lstlisting}
 		
 		\item For special context, It doesn't support object copy: for example 1) Person class in semantic;  2) other  perform consideration, Class Big{int [30000];};  3) Other implementation constrain, such as iostream class.   Under such context, you can use uniqu\_ptr to manage the resource and implement uncopyable.
-		\begin{lstlisting}[frame=single, language=c++]
-		class Person{
+\begin{lstlisting}[frame=single, language=c++]
+class Person{
 		uniqu_ptr<Resource> pRes;
-		}
+}
 		\end{lstlisting}
 		
 		\item For special context, shared resource, you can use shared\_ptr.  You still can follow "Rule of zero" and resource will be deleted when ref count is 0.
-		\begin{lstlisting}[frame=single, language=c++]
-		class Student{
+\begin{lstlisting}[frame=single, language=c++]
+class Student{
 		shared_ptr<SchoolBus> pBus
-		}
-		\end{lstlisting}
+}
+\end{lstlisting}
 		
 		\item To know semantic of two smart pointers. Don't use them just replace raw pointer.
 	\end{enumerate}
-	
+
 \end{itemize}
 
 
@@ -8274,7 +8275,6 @@ void f( std::unary_function* f ){
 \subsubsection{copy ctor in inheritance}
 
 \begin{itemize}
-	
 	\item copy ctor(assignment ctor) in inheritance will cause slicing problem.  and slicing. Below four are all SLICING.  number 5 and number 4 is not very obvious. They are call base class ctor.  No matter what you input a reference to a derived class or not.
 \begin{lstlisting}[frame=single, language=c++]
 class Base{};
@@ -8413,9 +8413,9 @@ https://stackoverflow.com/questions/1051379/is-there-a-difference-between-copy-i
 		\item To these constraints, which were also part of C++98, C++11 adds one more: The functions' reference qualifiers must be identical.
 	\end{enumerate}
 	\item reference qualifier explain:
-	\begin{lstlisting}[frame=single, language=c++]
-	class Widget {
-	public:
+\begin{lstlisting}[frame=single, language=c++]
+class Widget {
+public:
 	void doWork() &; // this version of doWork applies
 	// only when *this is an lvalue
 	void doWork() &&; // this version of doWork applies
@@ -8428,55 +8428,238 @@ https://stackoverflow.com/questions/1051379/is-there-a-difference-between-copy-i
 	// calls Widget::doWork for lvalues (i.e., Widget::doWork &)
 	makeWidget().doWork();
 	// calls Widget::doWork for rvalues (i.e., Widget::doWork &&)
-	\end{lstlisting}
+\end{lstlisting}
 	
-	\item Any small error will not real override base virtual function. but creating a new virtual method with a different signature. such as examples below.
-	\begin{lstlisting}[frame=single, language=c++]
-	class Base {
-	public:
+\item Any small error will not real override base virtual function. but creating a new virtual method with a different signature. such as examples below.
+\begin{lstlisting}[frame=single, language=c++]
+class Base {
+public:
 	virtual void mf1() const;
 	virtual void mf2(int x);
 	virtual void mf3() &;
 	void mf4() const;
-	};
-	class Derived: public Base {
-	public:
+};
+
+class Derived: public Base {
+public:
 	virtual void mf1();
 	virtual void mf2(unsigned int x);
 	virtual void mf3() &&;
 	void mf4() const;
-	};
-	\end{lstlisting}
+};
+\end{lstlisting}
 	
-	\item override specifier should be used in derived class member funcition used to check if they are match with member function in base class.
-	\begin{lstlisting}[frame=single, language=c++]
-	struct A{
+	\item override specifier should be used in derived class member function used to check if they are match with member function in base class.
+\begin{lstlisting}[frame=single, language=c++]
+struct A{
 	virtual void foo();
 	void bar();
-	};
+};
 	
-	struct B : A{
+struct B : A{
 	void foo() override; // OK: B::foo overrides A::foo
 	void bar() override; // Error: A::bar is not virtual
-	}
+}
 	\end{lstlisting}
 	
-	\item Use final in Base class, to stop sub class override.
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	class Base{
+\item Use final in Base class, to stop sub class override.
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+class Base{
 	virtual void method1() final;
-	}
-	\end{lstlisting}
-	
-	
+}
+\end{lstlisting}
 	
 \end{itemize}
 
 
 
-\section{Design}
+\section{common OOP Design}
 
-\subsubsection{relationships between classes}
+\subsection{RAII}
+\begin{itemize}
+	\item Whenever you deal with a resource that needs paired acquire/release function call, encapsulate that resource in an object.  Such as: fopen/fclose, lock/unlock, and new/delete.
+	
+	\item When implementing RAII, be conscious of copy construction and assignment. the compiler-generated version probably won't be correct. If it's not copyable, use =delete , if it's copyable, duplicate the resource.  You also can use smart\_pointer in this scenario too.
+	
+	\item The basic idea of RAII  is to represent a resource by a local object, so that the local object’s destructor will release the resource.  That is to say: To prevent resource leaks, use RAII objects that acquire resources in their constructors and release them in their destructors.
+\begin{lstlisting}[frame=single, language=c++]
+//C version,
+File* fp = fopen("/path/to/file");
+// throw exception here, then resource leaking
+fclose(fp);
+
+//Java version
+try {
+	File file = new File("/path/to/file");
+// throw exception here, go to finally.
+} finally {
+	file.close();
+}
+
+//c++ version
+fun{
+	fstream if("path/to/file")
+	if.getline
+	// you don't need to if.close().
+}
+
+//c++ smart version.
+std::unique_ptr<FILE,          // <-- the wrapped raw pointer type: FILE*
+int(*)(FILE*)>       // <-- the custom deleter type: fclose() prototype
+myFile( fopen("myfile", "rb"), // <-- resource (FILE*) is returned by fopen()
+fclose );              // <-- the deleter function: fclose()
+\end{lstlisting}
+	
+	\item Another good example RAII is unique\_ptr. The idea of smart pointer is putting *p into a local pointer-like object, then when it go out scope or unwind-stack when exception is thrown, It will call destructor, then delete p.
+	
+	\item We should consider resource generically, pointer *p pointed to a new object is resource, A handle to a file is a resource to. \textbf{We wrap handle to a file into ifstream, and wrap pointer *p into smart\_pointer}
+	
+	\item Just like return value,  Exception will skip all the statement below the throw, In C++, It doesn't support finally statement sometimes. At this time, we need to use RAII.
+	\begin{lstlisting}[frame=single, language=c++]
+	Int *p = new int;
+	string a   //a is ok, a will be destructed properly
+	//due to the C++ unwind stack.
+	throw exception.
+	delete p; // this will not run.
+	\end{lstlisting}
+	
+	\item For this problem, you should use smart pointer to declare a auto object.  If you use string object, It's ok.  So in previous example,  you can use smart pointer, it will help you to avoid memory leakage problem.
+	\begin{lstlisting}[frame=single, language=c++]
+	unique_ptr<int> aupr (new int(100);
+	string a   //a is ok, a will be destructed properly
+	//due to the C++ unwind stack.
+	throw exception.
+	// both a and aupr will call their own destructor  function.
+	\end{lstlisting}
+	
+	\item In you ctor, If you use new and new failed and throw a exception, the destructor will not be called. You can use auto\_ptr as member data and use init list to initialzie it. see  more effective C++ exception chapter.
+	
+	\item Don't use C FILE* and char [] as string. Use iofile class and string object, because they are exception safe
+	\begin{enumerate}
+		\item Any time when you use new, consider if there are c++ container or object.
+		\item If not, use smart\_pointer.
+	\end{enumerate}
+	
+	\item Another example is when you make program based on Win API.
+	\begin{lstlisting}[frame=single, language=c++]
+	class module {
+	public:
+	explicit module(std::wstring const& name)
+	: handle { ::LoadLibrary(name.c_str()) } {}
+	
+	~module{
+	::FreeLibrary();
+	}
+	private:
+	HMODULE handle;
+	};
+	\end{lstlisting}
+	
+	\item There are three RAII implementation instances in your practical programming:
+	\begin{enumerate}
+		\item Use auto member; You have to keep m\_str and vc are RAII.  In this way, you don't need to build dtor manually.
+		\begin{lstlisting}[frame=single, language=c++]
+		class RAII {
+		private:
+		string m_str;
+		vector<int> vc;
+		};
+		\end{lstlisting}
+		
+		\item Use pointer and handle; In this way, You have to use pointer, Maybe you need some customized action in runtime , \textbf{Use handle is only method to use this resource} or any other reason. And this time, you have to write your own dtor.
+		\begin{lstlisting}[frame=single, language=c++]
+		class RAII {
+		private:
+		string* m_str;
+		vector<int*> vc;
+		};
+		\end{lstlisting}
+		
+		\item Use smart point wrap pointer and handle; When you wrap handle, you can custom this delete behavior. See source code below:
+		\begin{lstlisting}[frame=single, language=c++]
+		class RAII {
+		private:
+		unique_ptr<string>  m_str;
+		vector<unique_ptr<int> > vc;
+		};
+		\end{lstlisting}
+		
+		\begin{lstlisting}[frame=single, language=c++]
+		class module {
+		public:
+		explicit module(std::wstring const& name)
+		: handle { ::LoadLibrary(name.c_str()) } {}
+		private:
+		using module_handle = std::unique_ptr<void, decltype(&::FreeLibrary)>;
+		module_handle handle;
+		};
+		\end{lstlisting}
+	\end{enumerate}
+	
+	\item Another question is ownership of resource:
+	\begin{enumerate}
+		\item For auto member resource: \textbf{1)Same life duration(RAII), 2)exclusive ownship to a single obj, but it's copyable(A a1 = a2).  3)move with efficiency(A a1 = A() ) }. If auto member has it's own copy and move special function, You don't need to write any special function in your class. You follow the "Rule of Zero".
+		
+		\item For raw pointer and handle: \textbf{1) default copy ctor will cause two pointer or handle refer the same resource, It's absolutely BAD SMELL of code 2) So you have to follow "Rule of five" to build your special member function. 3) After you build five special member function, you get RAII and exclusive ownship to a single object, and copyable and efficient move}
+		\begin{lstlisting}[frame=single, language=c++]
+		Class RawPointer{
+		...........
+		RawPointer(const RawPointer& rhs){
+		pRes = new Resource( *(rhs.pRes));
+		}
+		
+		RawPointer(RawPointer&& rhs){
+		pPes = rhs.pRes;
+		rhs.pRes = nullptr;
+		}
+		private:
+		Resource* pRes;
+		}
+		\end{lstlisting}
+		
+		\item For uniqu\_ptr; \textbf{1) Same life(RAII) 2)exclusive ownship but not copyable 3) uniqu\_ptr support move operation. } You still follow "rule of zero"
+		
+		\item Even with uniqu\_ptr member, If you follow "rule of zero", that is to say that you don't provide any customized special member function, then the class is not copyable. But if you build copy ctor by youself, get raw pointer from origin side, and build a new uniqu\_ptr member from origin side's raw pointer, you can implement copyable, and code smell better than raw pointer with "Rule of Five". So in this way, \textbf{It's not recommended to use raw pointer in RAII and ownership context}.
+		
+		\item For shared\_ptr; \textbf{1) Not a RAII 2) shared ownship, 3) copyable and moveable}. When you move a shared\_ptr, origin one is set to nullptr and ref count doesn't increas.  You still follow "rule of zero".
+		
+	\end{enumerate}
+	
+	\item \textbf{ Conclusion, If you consider RAII and ownship at the same time, thing will become complex}  so I would like to give you some examples to illustrate them.
+	
+	\begin{enumerate}
+		\item Prefer to use auto member for most of time! It follow "Rule of Five" and support copyable and movable. Such as std::string
+		
+		\item  For special demand, for example Car class,  people can \textbf{custom} its engine, and buy \textbf{two} at the same time. In this context, you car class should use raw pointer, 1) auto member doesn't support custom 2) uniqu\_ptr doesn't support copyable.  And you have to follow "Rule of Five"
+		\begin{lstlisting}[frame=single, language=c++]
+		class Car{
+		//follow "Rule of Five"
+		Engine *pEn;
+		~Car(){delete pEn} // assure RAII
+		}
+		\end{lstlisting}
+		
+		\item For special context, It doesn't support object copy: for example 1) Person class in semantic;  2) other  perform consideration, Class Big{int [30000];};  3) Other implementation constrain, such as iostream class.   Under such context, you can use uniqu\_ptr to manage the resource and implement uncopyable.
+		\begin{lstlisting}[frame=single, language=c++]
+		class Person{
+		uniqu_ptr<Resource> pRes;
+		}
+		\end{lstlisting}
+		
+		\item For special context, shared resource, you can use shared\_ptr.  You still can follow "Rule of zero" and resource will be deleted when ref count is 0.
+		\begin{lstlisting}[frame=single, language=c++]
+		class Student{
+		shared_ptr<SchoolBus> pBus
+		}
+		\end{lstlisting}
+		
+		\item To know semantic of two smart pointers. Don't use them just replace raw pointer.
+	\end{enumerate}
+	
+\end{itemize}
+
+
+\subsection{relationships between classes}
 \begin{itemize}
 	\item OOP has four relationships:
 	\begin{enumerate}
@@ -8823,7 +9006,7 @@ https://stackoverflow.com/questions/1051379/is-there-a-difference-between-copy-i
 
 
 
-\subsubsection{MI or bridge}
+\subsection{MI or bridge}
 \begin{itemize}
 	\item Multiple Inheritance will cause one grandson has two copy of grandfathers. A solution is use virtual key word: When you use this method, you need to follow New Constructor Rules, Detail can be seen in C++ primer P815.  Just look back when you really need MI.
 	\begin{lstlisting}[frame=single, language=c++]
