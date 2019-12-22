@@ -8537,7 +8537,8 @@ class Base{
 
 	\end{description}
 	
-	\item Summary:
+	\item Summary: \newline
+	
 	\begin{tabular}{|c|c|c|c|c|}
 		\hline 
 		 & Composition  & Aggregation  & association & Dependency \\ 
@@ -8766,7 +8767,6 @@ class Circle: public Shape{
 	}
 \end{lstlisting}
 
-\end{lstlisting}
 
 \end{itemize}
 
@@ -8904,6 +8904,7 @@ class Man{
 
 \subsection{Common used principle}
 \subsubsection{Three big rules}
+\begin{itemize}
 	\item There are three basic rules.
 \begin{enumerate}
 	\item Liskov Substitution Principle----Clients (Functions and Class) that use pointers or references to base classes must be able to use objects of derived classes without knowing it.  So all overrides of virtual member functions must \textbf{require less and provide more}. So you can make substitution successfully.
@@ -8970,7 +8971,7 @@ public:
 
 \item NVI is making virtual functions nonpublic, and public function nonvirtual. This is similar with Template Method design pattern.  
 
-\Item About NVI, more detail can be found in "C++ coding standards Item 39" and "Virtuality herb sutter"
+\item About NVI, more detail can be found in "C++ coding standards Item 39" and "Virtuality herb sutter"
 
 \item A design comparison:
 \begin{figure}
@@ -8979,7 +8980,6 @@ public:
 	\caption{}
 	\label{fig:nvi}
 \end{figure}
-
 
 \end{itemize}
 
@@ -9212,16 +9212,15 @@ public:
 
 \chapter{Generic programming}
 
-
 \section{Template Basic}
 \begin{itemize}
 \item A simple way to simulate template is \verb=typedef int Item=; But when you change the data type, you need to change header file, and you can't have int and double to template class at the same programme. so C++ introduces a better method: template<typename T>.
 
 \item You should use templates if you need functions or container class(act likes) that apply the same algorithm to a variety of types. Templates are frequently used for container classes because the idea of type parameters matches well with the need to apply a common storage plan to a variety of types.
 
-\item A good style is: Use typename, not class. At the same time. simple names, such as T.
+\item A good style in template is: Use typename, not class. At the same time. simple names, such as T.
 \begin{lstlisting}[frame=single, language=c++]
-template<typename T> 
+template<$\Hilight{10}$typename T> 
 swap(T& a, T&b){
 	.........
 }
@@ -9248,7 +9247,7 @@ swap(T& a, T&b){
 	\end{enumerate}
 \end{enumerate}
 
-\item You can use more than one type parameter, or Default Type Template Parameters
+\item You can use more than one type parameter, or default type template Parameters
 \begin{lstlisting}[frame=single, language=c++]
 template <typename T1,  typename T2>
 class Pair{ }
@@ -9286,16 +9285,16 @@ B< A<int> > obj;
 //just like vector< vector<int> >. That is a good example.
 \end{lstlisting}
 
-\item Another usage is template template parameter. An article is "Correct usage of C++ template template parameters". Another good one is "C++ Common Knowledge: Template Template Parameters". It gives a stack example. Below is bad way to declare stack template.
+\item What is template template parameter? An article is "Correct usage of C++ template template parameters". Another good one is "C++ Common Knowledge: Template Template Parameters". It gives a stack example. Below is bad way to declare stack template.
 \begin{lstlisting}[frame=single, language=c++]
-template <typename T, class Cont>
+template <typename T, typename Cont>
 class Stack {
 public:
-~Stack();
-void push( const T & );
-//...
+	~Stack();
+	void push( const T & );
+	//...
 private:
-Cont s_;
+	Cont s_;
 };
 
 Stack<int, List<int> > aStack1; // OK
@@ -9303,12 +9302,15 @@ Stack<double, List<int> > aStack2; // legal, not OK
 Stack<std::string, Deque<char *> > aStack3; // error!   
 \end{lstlisting}
 \item We use template template parameter. 
+
 \begin{lstlisting}[frame=single, language=c++]
-template <typename T, template <typename ELEM,
+template <typename T, $\Hilight{5}$template <typename ELEM,
 				typename = std::allocator<ELEM>>
 				 class Cont = std::deque>
 class Stack {
 //...
+private:
+	$\Hilight{5}$Cont<T> s_;
 };
 //...
 Stack<int> aStack1; // use default: Cont is Deque
@@ -9316,7 +9318,10 @@ Stack<std::string,std::list> aStack2; // Cont is List
 \end{lstlisting}
 \begin{enumerate}
 	\item Why you need std::allocator here? because std::deque is template calss with two template parameter.
-	\item you can pass type, non-type, or another template as template parameter. 
+	
+	\item You don't need to specify inside template parameter, because \texttt{Cont<T>} will help to deduct it.
+	
+	\item \textbf{There is another template keyword inside of the out template arrow brackets.}
 	
 \end{enumerate}
 
@@ -9324,199 +9329,187 @@ Stack<std::string,std::list> aStack2; // Cont is List
 
 \subsection{template instantiation}
 \begin{itemize}
-\item There are two confusing words in template domain, let's make them clear. What is instantiation and specification?
+\item There are two confusing words in template domain, let's make them clear. What is \textbf{instantiation and specification?}
 \begin{enumerate}
 	\item C++ use implicit or explicit instantiation to generate a specialized class or function definition from template. For implicit, you have to declare an obj, but for explicit, you don't need to declare an obj; \textbf{declare an object or use template keyword}. These two instantiation are all based on existing template implementation.
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	template<typename T, int n>
-	class ArrayTP...
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T, int n>
+class ArrayTP...
 	
-	ArrayTP<int, 100> stuff //implicit instantiation
-	// you have to declare obj stuff.
+ArrayTP<int, 100> stuff //implicit instantiation
+// you have to declare obj stuff.
 	
-	template ArrayTP<string, 100>;
-	//generate a specialized class even you don't declare an obj
+template ArrayTP<string, 100>;
+//generate a specialized class even you don't declare an obj
+\end{lstlisting}
+	\item explicit specification is define a different template implementation for certain type. For example, For bool type, we can use optimize array storage method
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T, int n>
+class ArrayTP{...common implementation}
+	
+template<>
+ArrayTP<bool, 100>{...specific implementation}
+$\Hilight{25}$//There is empty<> after tempalte
+//You should give you won implemenation.
 	\end{lstlisting}
-	\item explicit specification is define a different template impllementation for certain type. For example, For bool type, we can use optimize array storage method
-		\begin{lstlisting}[frame=single, language=c++]
-	template<typename T, int n>
-	class ArrayTP{...common implementation}
 	
-	template<>
-	ArrayTP<bool, 100>{...specific implementation}
-	//There is empty<> after tempalte
-	//You should give you won implemenation.
-	\end{lstlisting}
-	 \item implicit, explicit instantiation and explicit specification are all \textbf{specializations}. Because produce a real function definition that uses specific types, Not a template at all.
+	\item implicit, explicit instantiation and explicit specification are all \textbf{specializations}. Because it produces a real function definition that uses specific types, The last result is not template at all 
+	
+	\item partial specification is different with explicit instantiation. Partial specification make generic template a little narrow, but the result is still template. 
 	 
-	 \item partial specification is different with explicit instantiation. Partial specification make generic template a little narrow, but the result is still template. 
+	\item For class template, Explicit specialization include complete specialization and partial specialization.
+\begin{lstlisting}[frame=single, language=c++]
+template<> class Pair<int,int>{...}; //complete specialization
+template<typename T1> class Pair<T1, int>{...}; //Partial
+\end{lstlisting}
+	
+	\item Non type argument and default type argument only define one template body(only one recipe). But Specialization need to define a generic template body(one recipe), For another type, It need to define a different template body(another recipe), because the code will be different with generic one.
 	 
-	 \item For class template, Explicit specialization include complete specialization and partial specialization.
-	 \begin{lstlisting}[frame=single, language=c++]
-	 template<> class Pair<int,int>{...}; //complete specialization
-	 template<typename T1> class Pair<T1, int>{...}; //Partial
-	 \end{lstlisting}
+	 \textbf{Instantiation is different with specialization.  For instantiation, it will use template function to produce function body, but for specialization, you have to redefine you own function body }
 	 
-	 \item Non type argument and default type argument only define one template body(only one recipe). But Specialization need to define a generic template body(one recipe), For another type, It need to define a different template body(another recipe), because the code will be different with generic one.
-	 
-	 \textbf{Instantiation is different with specialization.  For instantiation, it will use template function to produce function body, but for specializaiton, you have to redefine you own function body }
-	 
-	 \begin{lstlisting}[frame=single, language=c++]
-	 Template<typename T>
-	 void sortedArrary (T) {...};
-	 
-	 template void sortedArray<Person>(Person) // instantiation
-	 template<> void sortedArray<Person>(Person){ // specialization.
-	 .... //give you own definition of fun body.
-	 };
-	 //Pay attention there is empty <> after template in specialization.
-	 \end{lstlisting}
-	 
-	 
-	 \item For function template, there is no partial specialization, So explicit specialization is complate specialization.
+\begin{lstlisting}[frame=single, language=c++]
+Template<typename T>
+void sortedArrary (T) {...};
+
+template void sortedArray<Person>(Person) // instantiation
+
+template<> void sortedArray<Person>(Person){ // specialization.
+.... //give you own definition of fun body.
+};
+//Pay attention there is empty <> after template in specialization.
+\end{lstlisting}
+
+
+	\item For function template, there is no partial specialization, So explicit specialization is complate specialization.
 \end{enumerate}
 
 
-\item instantiation happen in compiling time, not running time. When you declare a variable, It will instantiation. (It will make compiling time longer). So all the template definition must be put in head file. 		
+\item instantiation happen in compiling time, not running time. When you declare a variable, It will instantiation. (It will make compiling time longer). So all the template definition must be put in head file. 
 	
-\item \textbf{compiler will parse the template definition before it instantiation.} Why? It's a compiler, not a macro processor. One problem with that is that errors in the template itself won't be detected as long as it is only instantiated with 'friendly' types that don't trigger the errors: for example, if the template assumes that the type always has such-and-such a method.
+\item \textbf{compiler will parse the template definition before it instantiation.} Why? It's a compiler, not a macro processor. Errors in the template itself won't be detected as long as it is only instantiated with 'friendly' types that don't trigger the errors: for example, if the template assumes that the type always has such-and-such a method.
 
-\item That is very important for you to understand three examples in the article "Dependent name lookup for C++ templates". 
+\item That is very important for you to understand three examples in the article "Dependent name lookup for C++ templates".
 \begin{enumerate}
 	\item Because there is template specialization, so derived template class will not look for name in base template class.
-	\begin{lstlisting}[frame=single, language=c++]
-	template <typename T> struct Base {
+\begin{lstlisting}[frame=single, language=c++]
+template <typename T> struct Base {
 	void f() {
-	std::cerr << "Base<T>::f\n";
+		std::cerr << "Base<T>::f\n";
 	}
-	};
+};
 	
-	template <typename T> struct Derived : Base<T> {
+template <typename T> struct Derived : Base<T> {
 	void g() {
-	std::cerr << "Derived<T>::g\n  ";
-	f(); //Will fail here
-	// this->f() or Base<T>::f() will resolve this problem.
+		f(); //Will fail here
+		$\Hilight{30}$// this->f() or Base<T>::f() will resolve this problem.
 	}
-	};
-	\end{lstlisting}
+};
+\end{lstlisting}
 	\item when a dependent name is encountered, it is assumed to be some sort of identifier (such as a function or variable name).When it is type name or template name, you need to explict specify it.
-	\begin{lstlisting}[frame=single, language=c++]
-	template <typename T> struct Base {
-		typedef int MyType;
-	};
+\begin{lstlisting}[frame=single, language=c++]
+template <typename T> struct Base {
+	typedef int MyType;
+};
 	
-	template <typename T> struct Derived : Base<T> {
-		void g() {
-			// A. error: ‘MyType’ was not declared in this scope
-			// MyType k = 2;
-			
-			// B. error: need ‘typename’ before ‘Base<T>::MyType’ because
-			// ‘Base<T>’ is a dependent scope
-			// Base<T>::MyType k = 2;
-			
-			// C. works!
-			typename Base<T>::MyType k = 2;
-			
-			std::cerr << "Derived<T>::g --> " << k << "\n";
-		}
+template <typename T> struct Derived : Base<T> {
+	void g() {
+		// A. error: 'MyType' was not declared in this scope
+		// MyType k = 2;
+		
+		// B. error: need 'typename' before 'Base<T>::MyType' because
+		// 'Base<T>' is a dependent scope
+		// Base<T>::MyType k = 2;
+		
+		// C. works!
+		typename Base<T>::MyType k = 2;
 	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	\item When compiler see T::foo\_method, \textbf{he will not just specify T as Foo.} Think that your are compiler, you just delete the whole struct Foo, then try to understand it. 
-	\begin{lstlisting}[frame=single, language=c++]
-	struct Foo {
+\begin{lstlisting}[frame=single, language=c++]
+struct Foo {
 	template<typename U>
 	static void foo_method(){
 	}
-	};
+};
 	
-	template<typename T> void func(T* p) {
-	// A. error: expected primary-expression before ‘>’ token
+template<typename T> void func(T* p) {
+	// A. error: expected primary-expression before '>' token
 	// T::foo_method<T>();
 	
 	// B. works!
 	T::template foo_method<T>();
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 \end{enumerate}
 
-
-\item C++ Coding standards 65 states customization of point. In order to understand it. You need to understand two some basic conception: "two phases lookup" and "dependent name".  
+\item C++ Coding standards 65 states customization of point. In order to understand it. You need to understand two basic conceptions: "two phases lookup" and "dependent name".  
 
 \item two phases lookup can see "Dependent name lookup for C++ templates" in the ref and "Two-Phase or Not Two-Phase: The Story of Dependent Names in Templates" in the ref.
-
-
 \end{itemize}
 
 
 \subsection{template specialization}
 \begin{itemize}
-\item Class templates can be partially specialized, and the resulting class is still a template. Partial specialization allows template code to be partially customized for specific types in situations, such as:
+	\item Class templates can be partially specialized, and the resulting class is still a template. Partial specialization allows template code to be partially customized for specific types in situations, such as:
 
-\begin{enumerate}
-\item A template has multiple types and only some of them need to be specialized. The result is a template parameterized on the remaining types.
+	\begin{enumerate}
+		\item A template has multiple types and only some of them need to be specialized. The result is a template parameterized on the remaining types.
 
-\item A template has only one type, but a specialization is needed for pointer, reference, pointer to member, or function pointer types. The specialization itself is still a template on the type pointed to or referenced.
+		\item A template has only one type, but a specialization is needed for pointer, reference, pointer to member, or function pointer types. The specialization itself is still a template on the type pointed to or referenced.
 
-\item pointer sometimes need to be deal with differently, at that time we need partial specialization of template class. A very good article is
-
-https://www.learncpp.com/cpp-tutorial/13-8-partial-template-specialization-for-pointers/. 
-You can see that there is three level, It become narrower and narrower. 1) base template, 2)partial specialization 3) complete spcialization of member.
+		\item pointer sometimes need to be deal with differently, at that time we need partial specialization of template class. A very good article is: https://www.learncpp.com/cpp-tutorial/13-8-partial-template-specialization-for-pointers/. 
+		You can see that there is three level, It become narrower and narrower. 1) base template, 2)partial specialization 3) complete spcialization of member.
 \begin{lstlisting}[frame=single, language=c++]
 template <class T>
 class Storage{
-T m_value;
+	T m_value;
 public:
-Storage(T value){
-m_value = value;
+	Storage(T value){
+	m_value = value;
 }
 
 // Partial-specialization of Storage class for pointers
 template <class T>
-class Storage<T*>
-{
-T* m_value;
+class Storage<T*>{
+	T* m_value;
 public:
-Storage(T* value)
-{
+Storage(T* value){
 	m_value = new T(*value);  //To make deep copy
 }
+
 // Full specialization of constructor for type char*
 template <>
-Storage<char*>::Storage(char* value)
-{
-// Figure out how long the string in value is
-int length = 0;
-while (value[length] != '\0')
-++length;
+Storage<char*>::Storage(char* value){
+	// Figure out how long the string in value is
+	int length = 0;
+	while (value[length] != '\0')
+		++length;
 }
 \end{lstlisting}
 
 \end{enumerate}
 
-\item For function, there is no template partial specifization. Difference between template function overload and partial specializations:
+	\item For function, there is no template partial specifization. Difference between template function overload and partial specializations:
 \begin{enumerate}
-\item partial specializations is just use in template class.
-\item partial specializations need put another <> after class name
-\item If you want to have custom implementation of function with same name, use overload function, if you need  custom implementation of class with same name, use partial specialization.
+	\item partial specializations is just use in template class.
+	\item partial specializations need put another <type> after class name
+	\item If you want to have custom implementation of function with same name, use overload function, if you need  custom implementation of class with same name, use partial specialization.
 \begin{lstlisting}[frame=single, language=c++]
 template <typename T1, typename T2>
 class Pair{}  //general one
 
-tempalte <typename T1>
+template <typename T1>
 class Pair<T1, T1>  // partial specializations
 
-tempalte <typename T1>
+template <typename T1>
 class Pair<T1, int > // partial specializations
 //-------------------------------------------
-
-tempalte <typename T>
+template <typename T>
 class Foo //general one
 
-tempalte <typename T*>
-class Foo //partial specializations.
-
-tempalte <typename T>
+template <typename T>
 class Foo<T*> //partial specializations.
 \end{lstlisting}
 
@@ -9524,10 +9517,9 @@ class Foo<T*> //partial specializations.
 
 \item keep the design of a template in mind and not use it blindly. When you input pointer as typename, you should be on high alert.
 
-
 \item Explicit specification usually need define all the implementation in it. If there is a lot of repetition. There are two helpful options: 
 \begin{enumerate}
-\item Add a special function just suitable for certain type. 
+	\item Add a special function just suitable for certain type. 
 \begin{lstlisting}[frame=single, language=c++]
 template <typename T>
 class A{
@@ -9555,17 +9547,35 @@ int main(){
 
 \item A very good article about specialization is chapter 12 in "C++ template: The complete guide". Remember, you should read each sentence in this chapter.
 \begin{enumerate}
-	\item 1)You can complete(full) specialization of template class. 2)You also can complete(full) specialization of template function. 3)complete(full) specialization of member in template class. 4) Or partial template class.
+	\item You can complete(full) specialization of template class. 
+	\item You also can complete(full) specialization of template function. 
+	\item You can complete(full) specialization of member in template class. 
+\begin{lstlisting}
+template<> int f(int)
+template<> 
+class S<void>
+$\Hilight{20}$// full specialization must have a empty template<>
+\end{lstlisting}
+	\item You can partial specialization template class.
+\begin{lstlisting}
+template<T> $\Hilight{20}$//1)has template<T>
+class S<T*>  $\Hilight{20}$//2)after class name has another <>
+\end{lstlisting}
 	\item Pay attention the specialization of declaration. it should be after the basic template.
-	
+	\item \textbf{For template function, there is overload and full specialization, for template class, there is full and partial specialization. Template function doesn't support partrial specialization, because it can use overload to reach the same result.} 
 \end{enumerate}
-
 \end{itemize}
 
 
 \subsection{template and friend}
 \begin{itemize}
-	\item you can have 1) friend class, 2)friend function or 3)friend template. at the same time, they can be bound or non-bound. If it's bound, you can find hoster class parameter T in the friend declaration. 
+	\item you can have:
+	\begin{enumerate}
+		\item friend class.
+		\item friend function.
+		\item friend template.
+	\end{enumerate}
+	At the same time, they can be bound or non-bound. If it's bound, you can find hoster class parameter T in the friend declaration. 
 	
 	\item  There are three different kinds for a template class: non-template friend,  Bound-template, unbound-template. Below is non-template friend function counts(); The counts is not invoked by an HasFriend obj and has not object parameters.  If counts want to access a HasFriend object, It can access a global one, and use a global pointer to access non-global object.
 \begin{lstlisting}[frame=single, language=c++]
@@ -9577,53 +9587,55 @@ class HasFriend{
 	
 	\item Bound-template friend function. You need to define explicit specialization for the friends you plan to use. \textbf{Here, reports is not template function. }
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	template<typename T>
-	class HasFriend{
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T>
+class HasFriend{
 	friend void reports(HasFriend<T> &);
-	}
+}
 	
-	void reports(HasFriend<int> &hf){
+void reports(HasFriend<int> &hf){
 	cout <<hf.item<<endl;
-	}
-	void reports(HasFriend<short> &hf){..}
-	void reports(HasFriend<char> &hf){..}
-	//explicit specialization for the type you plan to use.
-	\end{lstlisting}
+}
+void reports(HasFriend<short> &hf){..}
+void reports(HasFriend<char> &hf){..}
+//explicit specialization for the type you plan to use.
+\end{lstlisting}
 	
 	\item A better bound-template, reports has <> after it.  and you don't need redefine reports many time like previous codes.\textbf{reports is a template function here. You can think that is a implicit instantiations. }
-	\begin{lstlisting}[frame=single, language=c++]
-	1) template <typename T> void report(T &);
+\begin{lstlisting}[frame=single, language=c++]
+//1) 
+template <typename T> void report(T &);
 	
-	2)template<typename TT>
-	class HasFriend{
+//2)
+template<typename TT>
+class HasFriend{
 	friend void reports<>(HasFriend<TT> &);
 	//it has <> after reports function name.
-	}
+}
 	
-	3)
-	template<typename T>
-	void reports(T &hf){
+//3)
+template<typename T>
+void reports(T &hf){
 	cout <<hf.item<<endl;
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 	\item non-bound friend template.
-	\begin{lstlisting}[frame=single, language=c++]
-	template<typename T>
-	class ManyFriend{
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T>
+class ManyFriend{
 	template<typename C, typename D>
 	friend void show(C& , D&);
-	};
+};
 	
-	template <typename C, typename D> void show2(c& c, D& d){
+template <typename C, typename D> void show2(c& c, D& d){
 	cout<<c.item<<d.item<<endl;
-	}
+}
 	
-	ManyFriend<int> mi;
-	ManyFriend<double>md;
-	show2(mi,md);
-	\end{lstlisting}
+ManyFriend<int> mi;
+ManyFriend<double>md;
+show2(mi,md);
+\end{lstlisting}
 	
 	\item Difference between bound and non-bound:
 	
@@ -9634,13 +9646,13 @@ class HasFriend{
 		
 		\item bound template will produce more function implementation , but non-bound template will only produce ONE function implementation.
 	\end{enumerate}
-
 \end{itemize}
-\section{Type Inference}
 
+\section{Type Inference}
 
 \subsubsection{template type deduction}
 
+Given below source code, We will introduce the basic type deduction rules.
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 void f(ParamType param);
@@ -9649,20 +9661,19 @@ f(expr); // deduce T and ParamType from expr
 \end{lstlisting}
 
 \begin{enumerate}
-	
 	\item ParamType is a Reference or Pointer, but not a Universal Reference. If expr's type is a reference, ignore the reference part. Then pattern-match expr's type against ParamType to determine T.
-	\begin{lstlisting}[frame=single, language=c++]
-	template<typename T>
-	void f(T& param); // param is a reference
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T>
+void f(T& param); // param is a reference
 	
-	int x = 27; // x is an int
-	const int cx = x; // cx is a const int
-	const int& rx = x; // rx is a reference to x as a const int
+int x = 27; // x is an int
+const int cx = x; // cx is a const int
+const int& rx = x; // rx is a reference to x as a const int
 	
-	f(x); // T is int, param's type is int&
-	f(cx); // T is const int, param's type is const int&
-	f(rx); // T is const int, param's type is const int&
-	\end{lstlisting}
+f(x); // T is int, param's type is int&
+f(cx); // T is const int, param's type is const int&
+f(rx); // T is const int, param's type is const int&
+\end{lstlisting}
 	
 	\item ParamType is a Universal Reference
 	
