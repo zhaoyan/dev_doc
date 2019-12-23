@@ -9593,6 +9593,47 @@ show2(mi,md);
 	\end{enumerate}
 \end{itemize}
 
+\subsection{member function templates}
+
+\begin{itemize}
+	\item Use member function templates to accept
+	“all compatible types.” detail can be found in effective c++ item 45
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	template<typename T>
+	class SmartPtr {
+	public:
+	template<typename U> // member template
+	SmartPtr(const SmartPtr<U>& other); //for a generalized copy ctor
+	...
+	}
+	
+	\end{lstlisting}
+	
+	\item When writing a class template that offers functions related to the template that support implicit type conversions on all parameters, define those functions as friends inside the class template. Detail can be found in effective c++ item 46.
+	
+	\item  implicit type conversion functions are never considered
+	during template argument deduction. Never. Such conversions are
+	used during function calls, yes, but before you can call a function, you have to know which functions exist. 
+	
+	\begin{lstlisting}[frame=single, language=c++]
+	template<typename T>
+	class Rational {
+	public:
+	...
+	friend const Rational operator*(const Rational& lhs, 
+	const Rational& rhs){
+	return Rational(lhs.numerator() * rhs.numerator(), 
+	lhs.denominator() * rhs.denominator());  
+	} 
+	};
+	\end{lstlisting}
+	
+	\item TMP has two great strengths. First, it makes some things easy that would otherwise be hard or impossible. Second, because template metaprograms execute during C++ compilation, TMP can be more efficient than a "normal" C++ program, because the traits approach is TMP. \textbf{Remember, traits enable compile-time if...else computations on types by overload}
+\end{itemize}
+
+
+
 \section{Type Inference}
 
 \subsection{template type deduction}
@@ -10653,95 +10694,94 @@ int main(){
 	
 	\item Non-Template class Derived from Template Base class specification
 
-	\begin{lstlisting}[frame=single, language=c++]
-	class u8toU16 : public std::codecvt<wchar_t, char, std::mbstate_t>{
+\begin{lstlisting}[frame=single, language=c++]
+class u8toU16 : public std::codecvt<wchar_t, char, std::mbstate_t>{
+...
 	};
-	
-	\end{lstlisting}
+\end{lstlisting}
 
-	
 	\item Template class Deriving from the non-template class
-	\begin{lstlisting}[frame=single, language=c++]
-	class Base
+\begin{lstlisting}[frame=single, language=c++]
+class Base
 	
-	template<typename T>
-	class Derived: public Base
-	\end{lstlisting}	
+template<typename T>
+class Derived: public Base
+\end{lstlisting}	
 	
-	\item \item template class can be used as base class and used as a component class. So we can inehrite from a template class
+	\item template class can be used as base class and used as a component class. So we can inehrite from a template class
 \begin{enumerate}
 	\item A basic example
-	\begin{lstlisting}[frame=single, language=c++]
-	template< typename Type>
-	class SpecialStack: public Stack<Type>{
+\begin{lstlisting}[frame=single, language=c++]
+template< typename Type>
+class SpecialStack: public Stack<Type>{
 	Array<Type> array;
-	}
-	\end{lstlisting}	
+}
+\end{lstlisting}	
 	
 	\item If an enum is used by several member functions of the std::codecvt template class, and does not relate to the template parameters. Hence it can exist in a separate base class.
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	template<typename T>
-	class codecvt_base{
-	public:
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T>
+class codecvt_base{
+public:
 	enum result {ok, partial, error, noconv};
-	};
-	\end{lstlisting}
+};
+\end{lstlisting}
 	
 	\item You also can extending the derived class
-	\begin{lstlisting}[frame=single, language=c++]
-	template< typename T>
-	class Base
+\begin{lstlisting}[frame=single, language=c++]
+template< typename T>
+class Base
 	
-	template<typename T, typename U>
-	class Derived: public Base<T>
-	\end{lstlisting}
+template<typename T, typename U>
+class Derived: public Base<T>
+\end{lstlisting}
 	
 	
 	\item Factor parameter-independent code out of templates. detail can be found in effective item 44. That is to avoid code bloating.
-	\begin{lstlisting}[frame=single, language=c++]
-	template<typename T> // size-independent base class for
-	class SquareMatrixBase { // square matrices
-	protected:
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T> // size-independent base class for
+class SquareMatrixBase { // square matrices
+protected:
 	...
 	void invert(std::size_t matrixSize); // invert matrix of the given size
 	...
-	};
+};
 	
-	template<typename T, std::size_t n>
-	class SquareMatrix: private SquareMatrixBase<T> {
-	private:
+template<typename T, std::size_t n>
+class SquareMatrix: private SquareMatrixBase<T> {
+private:
 	using SquareMatrixBase<T>::invert; // make base class version of invert
 	// visible in this class; see Items 33
 	// and 43
-	public:
+public:
 	...
 	void invert() { invert(n); } // make inline call to base class
 	}; // version of invert
-	\end{lstlisting}
+\end{lstlisting}
+
 	
+	\item Specializing the base class
+\begin{lstlisting}[frame=single, language=c++]
+template< typename T>
+class Base
 	
-	\item Specialising the base class
-	\begin{lstlisting}[frame=single, language=c++]
-	template< typename T>
-	class Base
-	
-	template<typename T>
-	class Derived: public Base<int>
-	\end{lstlisting}
+template<typename T>
+class Derived: public Base<int>
+\end{lstlisting}
 \end{enumerate}
 
 \item Parameterised inheritance
-	\begin{enumerate}	
+	\begin{enumerate}
 	\item Basic example 
-	\begin{lstlisting}[frame=single, language=c++]
-	template<typename T>
-	class Derived: public T
-	\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T>
+class Derived: public T
+\end{lstlisting}
 	
 	\item \textbf{Two famous idioms are Mixin and Policy, can be found below sections. In this chapter, we only focuse syntaxtic level, not semantic level.}
 
-\end{enumerate}
+	\end{enumerate}
 
 \item It can be used as private inheritance. An example can be found in policy section. 
 
@@ -10752,26 +10792,23 @@ int main(){
 \begin{lstlisting}[frame=single, language=c++]
 template <class T>
 struct OpNewCreator{
-static T* Create(){
-return new T;
-}
+	static T* Create(){
+		return new T;
+	}
 };
 template <class T>
 struct MallocCreator{
-static T* Create(){
-void* buf = std::malloc(sizeof(T));
-if (!buf) return 0;
-return new(buf) T;
-}
+	static T* Create(){
+		void* buf = std::malloc(sizeof(T));
+		if (!buf) return 0;
+		return new(buf) T;
+	}
 }; 
-
 // Library code
 template <class CreationPolicy>
-class WidgetManager : public CreationPolicy
-{
+class WidgetManager : public CreationPolicy{
 ...
 }; 
-
 // Application code
 typedef WidgetManager< OpNewCreator<Widget> > MyWidgetMgr; 
 \end{lstlisting}
@@ -10783,8 +10820,7 @@ typedef WidgetManager< OpNewCreator<Widget> > MyWidgetMgr;
 
 \section{template common usage and idiom}
 \begin{itemize}
-	
-	\item A common used idiom in std
+	\item Some common used idioms in std:
 	\begin{enumerate}
 		\item concept
 		\item traits
@@ -10794,105 +10830,106 @@ typedef WidgetManager< OpNewCreator<Widget> > MyWidgetMgr;
 		\item object generators
 		\item policy classes
 	\end{enumerate}
+
+	
 \end{itemize}
 
 
-\subsubsection{member function templates}
+\subsection{policy}
 \begin{itemize}
-\item \item Use member function templates to accept
-“all compatible types.” detail can be found in effective c++ item 45
-
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T>
-class SmartPtr {
-public:
-template<typename U> // member template
-SmartPtr(const SmartPtr<U>& other); // for a ”generalized
-... // copy constructor”
-};
-
-\end{lstlisting}
-
-\item When writing a class template that offers functions related to the template that support implicit type conversions on all parameters, define those functions as friends inside the class template. Detail can be found in effective c++ item 46.
-
-\item  implicit type conversion functions are never considered
-during template argument deduction. Never. Such conversions are
-used during function calls, yes, but before you can call a function, you have to know which functions exist. 
-
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T>
-class Rational {
-public:
-...
-  friend const Rational operator*(const Rational& lhs, const Rational& rhs){
-  return Rational(lhs.numerator() * rhs.numerator(), 
-  lhs.denominator() * rhs.denominator());  
-  } 
-};
-\end{lstlisting}
-
-\item TMP has two great strengths. First, it makes some things easy that would otherwise be hard or impossible. Second, because template metaprograms execute during C++ compilation, TMP can be more efficient than a “normal” C++ program, because the traits approach is TMP. \textbf{Remember, traits enable compile-time if...else computations on types by overload}
-\end{itemize}
-
-
-\subsubsection{policy}
-\begin{itemize}
-	\item \item All above technologies are part of generic programming. A good and more example about generic programming examples can be found in "Modern C++ desing" a book. The first chapter introduce policy pattern. The second chapter introduce a lot of ways to manage Type information at compile time. 
 	
-	\item The Policy class can be thought a optional way to used as bridge pattern and multi-inheritance. You can move this part to OOP chapter if you have time later.
+	\item The Policy class can be thought a optional way to used as bridge pattern and multi-inheritance. 
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	template <typename OutputPolicy, typename LanguagePolicy>
-	class HelloWorld : private OutputPolicy, private LanguagePolicy{
+\begin{lstlisting}[frame=single, language=c++]
+template <typename OutputPolicy, typename LanguagePolicy>
+class HelloWorld : private OutputPolicy, private LanguagePolicy{
 	using OutputPolicy::print;
 	using LanguagePolicy::message;
 	
-	public:
+public:
 	// Behaviour method
 	void run() const{
-	// Two policy methods
-	print(message());
+		$\Hilight{12}$// Two policy methods
+		print(message());
 	}
-	};
+};
 	
-	class OutputPolicyWriteToCout{
-	protected:
+class OutputPolicyWriteToCout{
+protected:
 	template<typename MessageType>
 	void print(MessageType const &message) const{
-	std::cout << message << std::endl;
+		std::cout << message << std::endl;
 	}
-	};
+};
 	
-	class LanguagePolicyEnglish{
-	protected:
+class LanguagePolicyEnglish{
+protected:
 	std::string message() const{
-	return "Hello, World!";
+		return "Hello, World!";
 	}
-	};
+};
 	
-	class LanguagePolicyGerman{
-	protected:
+class LanguagePolicyGerman{
+protected:
 	std::string message() const{
-	return "Hallo Welt!";
+		return "Hallo Welt!";
 	}
-	};
-	
-	int main(){
+};
+\end{lstlisting}
+\item Client code is below:
+\begin{lstlisting}	
+int main(){
 	/* Example 1 */
-	typedef HelloWorld<OutputPolicyWriteToCout, LanguagePolicyEnglish> HelloWorldEnglish;
+	typedef HelloWorld<OutputPolicyWriteToCout, 
+	                         LanguagePolicyEnglish> HelloWorldEnglish;
 	
 	HelloWorldEnglish hello_world;
 	hello_world.run(); // prints "Hello, World!"
 	
 	/* Example 2 * Does the same, but uses another language policy */
-	typedef HelloWorld<OutputPolicyWriteToCout, LanguagePolicyGerman> HelloWorldGerman;
+	typedef HelloWorld<OutputPolicyWriteToCout, 
+	                            LanguagePolicyGerman> HelloWorldGerman;
 	
 	HelloWorldGerman hello_world2;
 	hello_world2.run(); // prints "Hallo Welt!"
-	}
+}
+\end{lstlisting}
+	
+
+		\item If this polymorphism can be known at compile time, we can use "static polymorphism". Use template parameter inject a class with static method. They can be inline and without any runtime overhead. 
+\begin{lstlisting}[frame=single, language=c++]
+// char_traits::eq
+#include <iostream>   // std::cout
+#include <string>     // std::basic_string, std::char_traits
+#include <cctype>     // std::tolower
+#include <cstddef>    // std::size_t
+	
+// traits with case-insensitive eq:
+struct custom_traits: std::char_traits<char> {
+	static bool eq (char c, char d) { 
+	return std::tolower(c)==std::tolower(d); 
+}
+	
+// some (non-conforming) implementations of basic_string::find call this instead of eq:
+static const char* find (const char* s, std::size_t n, char c)
+	{ while( n-- && (!eq(*s,c)) ) ++s; return s; }
+};
+	
+int main (){
+	std::basic_string<char,custom_traits> str ("Test");
+	std::cout << "T found at position " << str.find('t') << '\n';
+}
 	\end{lstlisting}
 	
-	item Templates Parameterised by a Derived Class (Static polymorphism)
+	\item This kind of examples can be found a lot in the STL, most of time by a kind of functor. Basic idea is the same.
+	
+	\item All above technologies are part of generic programming. A good and more example about generic programming examples can be found in "Modern C++ desing" a book. The first chapter introduce policy pattern. The second chapter introduce a lot of ways to manage Type information at compile time. 
+	
+\end{itemize}
+
+\subsection{CRTP}
+\begin{itemize}
+	item The basic syntax is Templates Parameterised by a Derived Class.
 	
 	\begin{lstlisting}[frame=single, language=c++]
 	template <class T> 
@@ -10918,183 +10955,257 @@ public:
 	
 	\item A easy way of "call back" is function pointer, but it can't be used inline. so There is efficiency problem. 
 	
-	\item Based on function pointer, you can use inheritance, It's runtime polymorphism, and has some runtime overhead. 
+	\item You can use inheritance, It's runtime polymorphism, and has some runtime overhead. 
 	
-	\item If this polymorphism can be known at compile time, we can use "static polymorphism". Use template parameter inject a class with static method. They can be inline and without any runtime overhead. 
-	\begin{lstlisting}[frame=single, language=c++]
-	// char_traits::eq
-	#include <iostream>   // std::cout
-	#include <string>     // std::basic_string, std::char_traits
-	#include <cctype>     // std::tolower
-	#include <cstddef>    // std::size_t
-	
-	// traits with case-insensitive eq:
-	struct custom_traits: std::char_traits<char> {
-	static bool eq (char c, char d) { 
-	return std::tolower(c)==std::tolower(d); 
-	}
-	
-	// some (non-conforming) implementations of basic_string::find call this instead of eq:
-	static const char* find (const char* s, std::size_t n, char c)
-	{ while( n-- && (!eq(*s,c)) ) ++s; return s; }
-	};
-	
-	int main ()
-	{
-	std::basic_string<char,custom_traits> str ("Test");
-	std::cout << "T found at position " << str.find('t') << '\n';
-	return 0;
-	}
-	\end{lstlisting}
-	
-	\item This kind of examples can be found a lot in the STL, most of time by a kind of functor. Basic idea is the same.
-	
+	\item There are two common usage from CRTP:
+	\begin{enumerate}
+		\item Static polymorphism. It avoids runtime polymorphism cost. 
+		\begin{lstlisting}
+template <typename T>
+class Amount{
+		public:
+		double getValue() const {
+			return $\Hilight{18}$static_cast<T const&>(*this).getValue();
+			//static polymorphism
+		}
+};
+
+class Constant42 : public Amount<Constant42>{
+public:
+	double getValue() const {return 42;}
+};
+
+template<typename T>
+void print($\Hilight{10}$Amount<T> const& amount){
+	//use base class reference
+	std::cout << amount.getValue() << '\n';
+}
+
+Constant42 c42;
+print(c42);
+\end{lstlisting}
+\item Adding Functionality
+\begin{lstlisting}
+template <typename T>
+struct counter{
+static int objects_created;
+counter(){ ++objects_created;}
+};
+
+template <typename T> int counter<T>::objects_created( 0 );
+
+class X : counter<X>{
+// ...
+};
+
+X x;
+cout<<X::objects_created<<endl;
+\end{lstlisting}
+	\end{enumerate}
 \end{itemize}
-\subsubsection{tag dispatch}
+
+
+\subsection{tag dispatch}
 \begin{itemize}
 	\item A famous usage of tag dispatch is iterator 
 	\begin{enumerate}
 		\item Pay attention to iterator\_traits. Why do we use it here? It's also a template. With specialization, it also support common pointer type.
+		
 		\item Client side may or may not be template. For advance, it should be template, because it need template parameter Inputiterator.
+		
 		\item There is some tag type which need to be defined. And you should use these tags in the functions which you want to dispatched by overload resolve in compiling time. 
 	\end{enumerate}
-	\begin{lstlisting}[frame=single, language=c++]
-	namespace std {
+\begin{lstlisting}[frame=single, language=c++]
 	struct input_iterator_tag { };
-	struct bidirectional_iterator_tag { };
 	struct random_access_iterator_tag { };
 	
 	namespace detail {
-	template <class InputIterator, class Distance>
-	void advance_dispatch(InputIterator& i, Distance n, input_iterator_tag) {
-	while (n--) ++i;
-	}
-	
-	template <class BidirectionalIterator, class Distance>
-	void advance_dispatch(BidirectionalIterator& i, Distance n, 
-	bidirectional_iterator_tag) {
-	if (n >= 0)
-	while (n--) ++i;
-	else
-	while (n++) --i;
-	}
-	
-	template <class RandomAccessIterator, class Distance>
-	void advance_dispatch(RandomAccessIterator& i, Distance n, 
-	random_access_iterator_tag) {
-	i += n;
-	}
+		template <class InputIterator, class Distance>
+		void advance_dispatch(InputIterator& i, Distance n, input_iterator_tag) {
+			while (n--) ++i;
+		}
+		
+		template <class RandomAccessIterator, class Distance>
+		void advance_dispatch(RandomAccessIterator& i, Distance n, 
+		random_access_iterator_tag) {
+			i += n;
+		}
 	}
 	
 	template <class InputIterator, class Distance>
 	void advance(InputIterator& i, Distance n) {
-	typename iterator_traits<InputIterator>::iterator_category category;
-	detail::advance_dispatch(i, n, category);
+	$\Hilight{36}$typename iterator_traits<InputIterator>::iterator_category category;
+		detail::advance_dispatch(i, n, category);
 	}
-	}
-	\end{lstlisting}
+\end{lstlisting}
 	
 	\item The second implementation of tag dispatch is use integral\_constant
 	\begin{enumerate}
 		\item \textbf{std::true\_type use inegral\_constant(type generator)to define a new type. is\_arithmetic derived form true\_type or false\_type}
-		\begin{lstlisting}[frame=single, language=c++]
-		std::integral_constant<bool, true>
+\begin{lstlisting}[frame=single, language=c++]
+std::integral_constant<bool, true>
 		
-		template< class T >
-		struct is_arithmetic : std::integral_constant<bool,
-		std::is_integral<T>::value ||
-		std::is_floating_point<T>::value> {
-		};
-		\end{lstlisting}
+template< class T >
+struct is_arithmetic : std::integral_constant<bool,
+std::is_integral<T>::value ||
+std::is_floating_point<T>::value> { };
+\end{lstlisting}
 		
 		\item client side is also template
 		\item is\_arithmetic is a kind of trait, When you input T, it return a unnamed type,but it inheriated from ture\_type, Then use overload resolving.
+		\item overload funciton can return different types. foo's return type is `int` if it calls the `std::true\_type` overload and `double` if it calls the `std::false\_type` overload. So here we use auto as function return type.
 	\end{enumerate}
-	\begin{lstlisting}[frame=single, language=c++]
-	template <typename T>
-	int foo_impl(T value, std::true_type) {
+\begin{lstlisting}[frame=single, language=c++]
+template <typename T>
+int foo_impl(T value, std::true_type) {
 	// Implementation for arithmetic values
-	}
+}
 	
-	template <typename T>
-	double foo_impl(T value, std::false_type) {
+template <typename T>
+double foo_impl(T value, std::false_type) {
 	// Implementation for non-arithmetic values
-	}
+}
 	
-	template <typename T>
-	auto foo(T value) {
-	// Calls the correct implementation function, which return different types.
-	// foo's return type is `int` if it calls the `std::true_type` overload
-	// and `double` if it calls the `std::false_type` overload
+template <typename T>
+auto foo(T value) {
+	// Calls the correct implementation function, 
 	return foo_impl(value, std::is_arithmetic<T>{});
-	}
+}
 	\end{lstlisting}
 	
 	\item The third method: build your own trait, it define a value
 	\begin{enumerate}
 		\item build you own trait has\_serialize, it includes a bool memeber ::value
+		
 		\item You can use decltype, declval and constexpr to build this trait. 
 		\item From this trait, it return value, not a type. So you need use enable\_if template in the client code. change the value to a type, then use the type to overload resolving.
-		\item For false, enable\_if is empty define.
-		\begin{lstlisting}[frame=single, language=c++]
-		template <bool, typename T = void>
-		struct enable_if
-		{};
 		
-		template <typename T>
-		struct enable_if<true, T> {
+		\item For false, enable\_if is empty define.
+\begin{lstlisting}[frame=single, language=c++]
+template <bool, typename T = void>
+struct enable_if
+{};
+		
+template <typename T>
+struct enable_if<true, T> {
 		typedef T type;
-		};
-		\end{lstlisting}
-	\end{enumerate}
-	\begin{lstlisting}[frame=single, language=c++]
-	template <class T> struct has_serialize
-	{
-	// We test if the type has serialize using decltype and declval.
-	template <typename C>
-	static constexpr decltype(std::declval<C>().serialize(), bool())
-	test(int /* unused */)
-	{
-	// We can return values, thanks to constexpr instead of playing with sizeof.
-	return true;
-	}
-	template <typename C>
-	static constexpr bool test(...)
-	{
-	return false;
-	}
-	// int is used to give the precedence!
-	static constexpr bool value = test<T>(int());
-	};
-	
-	
-	//client side
-	template <class T>
-	enable_if<has_serialize<T>::value, std::string>::type
-	serialize(const T& obj)
-	{
+};
+\end{lstlisting}
+
+\item an example which use enalbe\_if. has\_serialize trait has been introduced in the type trait section, you can see the detail there. 
+
+\begin{lstlisting}[frame=single, language=c++]
+template <class T>
+enable_if<has_serialize<T>::value, std::string>::type
+serialize(const T& obj){
 	return obj.serialize();
-	}
+}
+
 	// Contra-SFINAE to avoid ambiguity
-	template <class T>
-	enable_if<!has_serialize<T>::value, std::string>::type // Watch out for the “!”
-	serialize(const T& obj)
-	{
+template <class T>
+enable_if<!has_serialize<T>::value, std::string>::type 
+$\Hilight{12}$// Watch out for the "!"
+serialize(const T& obj){
 	return to_string(obj);
-	}
-	
-	
-	\end{lstlisting}
-	
+}
+\end{lstlisting}
+
+	\end{enumerate}
 	\item summary:
 	
-	\includegraphics[scale=0.6]{pics/tag_dispatch.png}
+	\includegraphics[scale=0.9]{pics/tag_dispatch.png}
 	
 \end{itemize}
 
+\subsubsection{enable\_if}
+\begin{itemize}
+	
+	\item Note SFINAE. When we make the call do\_stuff(25), the compiler selects the first overload: since the condition std::is\_integral<int> is true, the specialization of struct enable\_if for true is used, and its internal type is set to int. The second overload is omitted because without the true specialization (std::is\_class<int> is false) the general form of struct enable\_if is selected, and it doesn't have a type, so the type of the argument results in a substitution failure.
+	
+\begin{lstlisting}[frame=single, language=c++]
+template <typename T>
+void do_stuff(typename enable_if<std::is_integral<T>::value, T>::type &t) {
+	// an implementation for integral types (int, char, unsigned, etc.)
+}
+	
+template <typename T>
+void do_stuff(typename enable_if<std::is_class<T>::value, T>::type &t) {
+	// an implementation for class types
+}
+\end{lstlisting}
+	
+	\item This technology has been used widely inside of vector.
+\begin{lstlisting}[frame=single, language=c++]
+template <typename T>
+class vector {
+	vector(size_type n, const T val);
+	
+	template <class InputIterator>
+	vector(InputIterator first, InputIterator last);
+	...
+	}
+	
+	template <class _InputIterator>
+	vector(_InputIterator __first,
+	typename enable_if<__is_input_iterator<_InputIterator>::value &&
+	!__is_forward_iterator<_InputIterator>::value &&
+	... more conditions ...
+	_InputIterator>::type __last);
+\end{lstlisting}
+	
+
+	\item \textbf{use a few ways to implement type trait, then use enable\_if to use type trait to get generic programming(static polymorphism); That is generic programming basic idea.}
 
 
-\subsubsection{mixin}
+\begin{enumerate}
+	\item use true\_type or flase\_type tag.
+\begin{lstlisting}[frame=single, language=c++]
+template <typename T>
+auto get_value(T t, std::true_type) {
+	return *t;
+}
+
+template <typename T>
+auto get_value(T t, std::false_type) {
+return t;
+}
+
+template <typename T>
+auto get_value(T t) {
+return get_value(t, std::is_pointer<T>{}); 
+}
+\end{lstlisting}
+\item use SFINAE 
+
+\begin{lstlisting}[frame=single, language=c++]
+template <typename T, std::enable_if_t<std::is_pointer_v<T>, int> = 0>
+auto get_value(T t) {
+	return *t;
+}
+
+template <typename T, typename std::enable_if_t<!std::is_pointer_v<T>, int> = 0>
+auto get_value(T t) {
+	return t;
+}
+\end{lstlisting}
+\item use constexpr if: 
+
+\begin{lstlisting}[frame=single, language=c++]
+template <typename T>
+auto get_value(T t){
+	if constexpr (std::is_pointer_v<T>) {
+		return *t;
+	} else {
+		return t;
+	}
+}
+\end{lstlisting}
+\end{enumerate}
+
+\item A good article is "SFINAE and enable\_if"
+\end{itemize}
+
+\subsection{mixin}
 \begin{itemize}
 	\item method 1, use Mixin
 	\begin{enumerate}
@@ -11206,7 +11317,8 @@ std::cout << "...This is where the task is executed..." << std::endl;
 	\item That is command pattern.
 	\item For Logging Task, you can see the class \textbf{includes and derived from ITask at the same time}. 
 	\item Base picture.
-	\includegraphics[scale=0.6]{pics/command.png}
+	\newline
+	\includegraphics[scale=0.9]{pics/command.png}
 	
 \end{enumerate}
 \begin{lstlisting}[frame=single, language=c++]
@@ -11458,197 +11570,6 @@ void Execute()
 	
 	\item Complexity Guarantees are maximum limits on how long the execution of one of the valid expressions will take, or how much of various resources its computation will use.
 \end{enumerate}
-\end{itemize}
-
-
-\subsubsection{enable\_if}
-\begin{itemize}
-
-\item Note SFINAE at work here. When we make the call do\_stuff(25), the compiler selects the first overload: since the condition std::is\_integral<int> is true, the specialization of struct enable\_if for true is used, and its internal type is set to int. The second overload is omitted because without the true specialization (std::is\_class<int> is false) the general form of struct enable\_if is selected, and it doesn't have a type, so the type of the argument results in a substitution failure.
-
-\begin{lstlisting}[frame=single, language=c++]
-template <typename T>
-void do_stuff(typename enable_if<std::is_integral<T>::value, T>::type &t) {
-  // an implementation for integral types (int, char, unsigned, etc.)
-}
-
-template <typename T>
-void do_stuff(typename enable_if<std::is_class<T>::value, T>::type &t) {
-  // an implementation for class types
-}
-\end{lstlisting}
-
-\item This technology has been used widely inside of vector.
-\begin{lstlisting}[frame=single, language=c++]
-template <typename T>
-class vector {
-    vector(size_type n, const T val);
-
-    template <class InputIterator>
-    vector(InputIterator first, InputIterator last);
-    ...
-}
-
-template <class _InputIterator>
-vector(_InputIterator __first,
-       typename enable_if<__is_input_iterator<_InputIterator>::value &&
-                          !__is_forward_iterator<_InputIterator>::value &&
-                          ... more conditions ...
-                          _InputIterator>::type __last);
-\end{lstlisting}
-
-\item A good article is "SFINAE and enable\_if"
-
-\item Another example about how to use type information is to use Int2Type. example is in the Modern C++ Design C, second chapter. You can see another example about Type2Type. The same function can be finished by enable\_if. 
-	\begin{lstlisting}[frame=single, language=c++]
-DoSome(T*, Int2Type<true>){
-	...
-	}
-
-DoSome(T*, Int2Type<false>){
-	}
-	
-	Do(T* pObj){
-			DoSome(pObj, Int2Type<IsPolymorphic>());
-			}
-
-\end{lstlisting}	
-
-\item \textbf{use a few ways to implement type trait, then use enable\_if to use type trait to get generic programming(static polymorphism); That is generic programming basic idea.}
-\end{itemize}
-
-
-use tag
-	\begin{lstlisting}[frame=single, language=c++]
-template <typename T>
-auto get_value(T t, std::true_type) {
-    return *t;
-}
-
-template <typename T>
-auto get_value(T t, std::false_type) {
-    return t;
-}
-
-template <typename T>
-auto get_value(T t) {
-    return get_value(t, std::is_pointer<T>{}); 
-}
-\end{lstlisting}
-use SFINAE 
-
-	\begin{lstlisting}[frame=single, language=c++]
-template <typename T, std::enable_if_t<std::is_pointer_v<T>, int> = 0>
-auto get_value(T t) {
-    return *t;
-}
-
-template <typename T, typename std::enable_if_t<!std::is_pointer_v<T>, int> = 0>
-auto get_value(T t) {
-    return t;
-}
-\end{lstlisting}
-use constexpr if: 
-
-	\begin{lstlisting}[frame=single, language=c++]
-template <typename T>
-auto get_value(T t)
-{
-    if constexpr (std::is_pointer_v<T>) {
-        return *t;
-    } else {
-        return t;
-    }
-}
-\end{lstlisting}
-
-
-\section{Template example}
-
-\subsubsection{A basic example}
-
-\begin{itemize}
-
-\item .h file. They can be compiled wit -std=c++11
-\begin{lstlisting}[frame=single, language=c++]
-template<class X, class Y>
-class my2D{
-	X x;   Y y;
-public:
-	my2D(X x, Y y){
-		this->x = x;   this->y = y;
-	}
-	X getX();  Y getY();
-};
-
-//create a new template class my2D_child which inherits from
-//this template with new member function length(),
-template<class X, class Y>
-class my2D_child :my2D<X,Y>
-{
-	public:
-	my2D_child(X x, Y y) : my2D<X,Y>::my2D(x,y){}
-    auto length()->decltype(my2D<X,Y>::x+my2D<X,Y>::y);	
-};
-
-//write a template specilization of my2D_child for string
-template<>
-class my2D_child<std::string, std::string> :
-                       my2D<std::string, std::string>{
-public:
-	my2D_child(std::string x, std::string y) :
-	       my2D<std::string,std::string>::my2D(x,y){}
-    void length(){
-		std::cout<< getX()<<getY() <<std::endl;}
-};
-\end{lstlisting}
-
-\item .cpp file.
-\begin{lstlisting}[frame=single, language=c++]
-//file my2D.cpp
-#include "my2D.h"
-#include <iostream>
-using namespace std;
-
-//impletment the function getX in file my2D.cpp
-template int my2D<int,int>::getX();
-template float my2D<float,float>::getX();
-template<class X, class Y>
-X my2D<X,Y>::getX(){
-	return x;
-};
-
-//implement this length function of my2D_child to return x*x+y*y
-template int my2D_child<int, int>::length();
-
-template<class X, class Y>
-//C++14 has new syntax auto(decltype).
-auto my2D_child<X,Y>::length()->decltype(my2D<X,Y>::x+
-                              my2D<X,Y>::y){	
-	return my2D<X,Y>::getX()*my2D<X,Y>::getX()
-	               +my2D<X,Y>::getY()*my2D<X,Y>::getY();
-};
-
-int main(){
-//to use this my2D template for cases (X=int(3), Y=int(4))
-//                          , (X=float(5.5), Y=float(6.6),
-my2D<int, int> my_int_2d(3,4);
-my2D<float, float> my_float_2d(5.5, 6.6);
-
-cout<<my_int_2d.getX()<<endl;
-
-my2D_child<int, int> my_int_child_2d(3,4);
-cout<<my_int_child_2d.length()<<endl;
-	
-//print an output of my2D_child's length for
-//(X="I need ",Y="Time to finish")
-my2D_child<string, string> ms_2d_child("I need", "time");
-ms_2d_child.length();
-return 0;
-}
-\end{lstlisting}
-
-
 \end{itemize}
 
 
