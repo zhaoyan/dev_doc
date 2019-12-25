@@ -1164,8 +1164,11 @@ values.insert(it, 1998);
 \end{itemize}
 
 \subsection{constexpr}
+
 \subsubsection{constant expression}
 \begin{itemize}
+	\item Unlike templates and preprocessor macros, constexpr allows for loops and recursion at compile-time without extreme boilerplate.
+	
 	\item It can be used in places that require compile-time evaluation, for example, template parameters and array-size specifiers.
 	
 	\item It must and can be calculated at compiling time.
@@ -1301,6 +1304,17 @@ static_assert( myIntConst3.getSum() == 4025, "2011+014 = 4025" );
 
 \subsubsection{constexpr function}
 \begin{itemize}
+	
+	\item constexpr functions can be used as regular functions, although internally they have greater restrictions.
+	
+	\item constexpr functions can easily be converted into regular functions as requirements change.
+	
+	\item constexpr functions compile much quicker than the equivalent template-based solutions, which scale linearly with the depth of the template-recursion.
+	
+	\item The basic idea is "compile time input yields compile time output". How can I know if a function is constexpr or not? 
+	
+	\item std::find is constexpr function now. 
+	
 	\item The primary usage of constexpr for a funciton is to declare intent. The intent is that you are sure that the function is almost a pure function. The pure function has no state, and when you run it, it has no side effect.
 	\item The pure function has some advantages compared with ordinary funciton Return always the same result when given the same arguments, So the function call can be replaced by the result, and the order of function call is not important.(That is why you can run it at compiling time.) But the problem is compiler itself can't judge if a function is pure function, That's why programmer come to rescure. The programmar indicate this function is a "pure" function, so compiler can \textbf{For outside} use it in another constant expression context, \textbf{For inside} calculate it in comipling time. 
 	
@@ -1416,6 +1430,7 @@ constexpr auto gcd(int a, int b){
 }
 \end{lstlisting}
 
+\item A good artical is "Demystifying constexpr". 
 
 \end{itemize}
 
@@ -11516,8 +11531,41 @@ cout<<dispTable['+'](3.5, 4.5) <<dispTable['-'](3.5, 4.5)
 << dispTable['*'](3.5, 4.5) << dispTable['/'](3.5, 4.5);
 \end{lstlisting}
 	
-	\item In this way you can write a type-erased wrapper for any Whatever callbacks, counters, output streams, input generators.
+	\item If you want to check if a variable of type std::function is currently holding a valid function, you can always treat it like a boolean:
+\begin{lstlisting}[frame=single, language=c++]
+std::function<int ()> func;
+	.......
+if ( func ) { // if we did have a function, call it
+	func();
+}
+\end{lstlisting}
 	
+	\item function can be used \textbf{CALL BACK} as a function argument. At this time, you can use reference, but you'd better pay attention reference dangling problem. 
+	
+\begin{lstlisting}[frame=single, language=c++]
+void run_within_for_each(std::function<void (int)> func){
+	vector<int> numbers{ 1, 2, 3, 4, 5, 10, 15, 20, 25 };
+	for_each(numbers.begin(), numbers.end(), func);
+}
+	
+void fun(int x){   //1) function pointer
+	cout<<x<<endl;
+};
+	
+auto lambda1 = [](int y){  //4) lamba
+	cout << y <<endl;
+};
+	
+	run_within_for_each(fun);
+	run_within_for_each(lambda1);
+\end{lstlisting}
+	
+	\item One big advantage of std::function over templates is that if you write a template, you need to put the whole function in the header file, whereas std::function does not. This can really help if you're working on code that will change a lot and is included by many source files.
+	
+	\item A good article: google "Should I use std::function or a function pointer in C++?" another is "How is std::function implemented?"
+	
+	
+	\item In this way you can write a type-erased wrapper for any Whatever callbacks, counters, output streams, input generators.
 	
 \end{itemize}
 
@@ -11531,7 +11579,7 @@ cout<<dispTable['+'](3.5, 4.5) <<dispTable['-'](3.5, 4.5)
 \begin{enumerate}
 	\item Valid Expressions are C++ expressions which must compile successfully for the objects involved in the expression to be considered models of the concept. For example, an \texttt{Iterator x} is expected to support the expressions \texttt{++x} and \texttt{*x}.
 
-	\item Associated Types are types that are related to the modeling type in that they participate in one or more of the valid expressions. Typically associated types can be accessed either through typedefs nested within a class definition for the modeling type, or they are accessed through a traits class. For example, an iterator's value type is associated with the iterator through \texttt{std::iterator_traits}
+	\item Associated Types are types that are related to the modeling type in that they participate in one or more of the valid expressions. Typically associated types can be accessed either through typedefs nested within a class definition for the modeling type, or they are accessed through a traits class. For example, an iterator's value type is associated with the iterator through \texttt{std::iterator\_traits}
 
 	\item Invariants are run-time characteristics of the objects that must always be true, that is, the functions involving the objects must preserve these characteristics. The invariants often take the form of pre-conditions and post-conditions. For example, Forard iterator is copied, the copy and original must comare equal.
 	
@@ -13425,7 +13473,7 @@ std::mem\_fun , std::bind1st, std::bind2nd}
 \begin{itemize}
 	\item std::mem\_fun is deprecated. std::mem\_fn can do everything it does, and it does it more conveniently. The relation between the two is the same as the relation between std::bind1st/std::bind2nd and the C++11 std::bind. 
 	
-	\item For instance, std::mem_fun can only deal with member functions that take one or no argument. std::mem_fn is variadic and can deal with members that take any number of arguments.You also need to pick between std::mem_fun and std::mem_fun_ref depending on whether you want to deal with pointers or references for the class object (respectively). std::mem_fn alone can deal with either, and even provides support for smart pointers.
+	\item std::bind use variadic template parameter.
 	
 \begin{lstlisting}
 struct Foo {
@@ -13448,11 +13496,96 @@ print_num(f, 42);
 auto access_data = std::mem_fn(&Foo::data);
 std::cout << "data: " << access_data(f) << '\n';
 \end{lstlisting}
-	
-	\item std::bind use variadic template parameter.
-	
 
 \end{itemize}
+
+\subsubsection{member function}
+\begin{itemize}
+	If you called for\_each() with \texttt{\&Item::Foo}, the code try to call \texttt{(\&Item::Foo)(x)}, which is ill-formed since for pointers to members you have to write \texttt{(x.*\&Item::Foo)()}. It's that syntactical difference that mem\_fn is meant to solve: mem\_fn deals with the invocation syntax of pointers to members so that you can use all the algorithms with pointers to members as well as functions and function objects. You cannot have \texttt{for\_each(v.begin(), v.end(), \&Item::Foo)} but you can have \texttt{for\_each(v.begin(), v.end(), mem\_fn(\&Item::Foo))}.
+\begin{lstlisting}
+template<class InputIt, class UnaryFunction>
+UnaryFunction for_each(InputIt first, InputIt last, UnaryFunction f){
+	for (; first != last; ++first) {
+		$\Hilight{20}$f(*first); // <== N.B. f(*first)
+	}
+}
+\end{lstlisting}
+	\item In order to resolve this problem.Three ways to use member function:
+	\begin{enumerate}
+		\item use std::function:
+\begin{lstlisting}[frame=single, language=c++]
+struct Foo {
+	Foo(int num) : num_(num) {}
+	void print_add(int i) const { std::cout << num_+i << '\n'; }
+	int num_;
+};
+
+std::function<void(const Foo&, int)> f_add_display = &Foo::print_add;
+const Foo foo(3);
+f_add_display(foo, 1); 
+\end{lstlisting}
+
+	\item use mem\_fn:
+\begin{lstlisting}[frame=single, language=c++]
+struct Foo {
+	void display_number(int i) {
+		std::cout << "number: " << i << '\n';
+	}
+	int data = 7;
+};
+
+Foo f;
+$\Hilight{4}$auto print_num = std::mem_fn(&Foo::display_number);
+print_num(f, 42);
+$\Hilight{4}$auto access_data = std::mem_fn(&Foo::data);
+std::cout << "data: " << access_data(f) << '\n';
+\end{lstlisting}
+
+	\item use lambda:
+\begin{lstlisting}[frame=single, language=c++]
+typedef std::function<void(int)> fp;
+
+void test(fp my_func){
+my_func(5);
+}
+
+Foo foo;
+test([&foo](int i){ foo.print_add(i); });
+\end{lstlisting}
+	
+	\end{enumerate}
+
+	\item \textbf{Prefer mem\_fn than bind because it's verbose, Perfer mem\_fn  than std::function, because it lightweight.}
+	
+	\item You can't really compare std::function with std::mem\_fn. The former is a class template whose type you specify, and the latter is a function template with unspecified return type. There really isn't a situation in which you'd actually consider one versus the other.
+	
+	A better comparison might be between mem\_fn and std::bind. There, for the specific use-case of a pointer-to-member, mem\_fn is going to a lot less verbose if all you want to do is pass-through all the arguments. Given this simple type:
+\begin{lstlisting}[frame=single, language=c++]
+struct A { 
+	int x;
+	int add(int y) { return x+y; }
+};
+	
+A a{2};
+auto add1 = std::mem_fn(&A::add);
+auto add2 = std::bind(&A::add, _1, _2);
+add1(a, 5); // yields 7
+add2(a, 5); // same
+	\end{lstlisting}
+	
+	\item mem\_fn(C++11) and mem\_fun. \textbf{mem\_fn is new, don't use mem\_fun any longer}
+	
+	\begin{enumerate}
+		\item mem\_fn is faster than std::bind.  so prefer mem\_fn first.
+		
+		\item std::mem\_fun can only deal with member functions that take one or no argument. std::mem\_fn is variadic and can deal with members that take any number of arguments.
+		
+		\item You also need to pick between std::mem\_fun and std::mem\_fun\_ref depending on whether you want to deal with pointers or references for the class object (respectively). std::mem\_fn alone can deal with either, and even provides support for smart pointers.
+	\end{enumerate}
+
+	\item \textbf{bind is deprecated in C++11, and will be given up in C++14. perfer to use lambda than bind, detail can be found in effective modern c++ item }
+\end{itemize}
+
 
 \subsection{functor tips}
 
@@ -13499,34 +13632,54 @@ private:
 \item More effective STL item 42. Make sure less<T> means \texttt{operator<} . Don't specialization of std::less. If you need to another compare, just define your own compare function.
 \end{itemize}
 
+\subsubsection{when to use std::function}
+\begin{itemize}
+	\item About std::function and template? In general, if you are facing a design situation that gives you a choice, use templates. I stressed the word design because I think what you need to focus on is the distinction between the use cases of std::function and templates, which are pretty different.
+	
+	\item In general, the choice of templates is just an instance of a wider principle: try to specify as many constraints as possible at compile-time. The rationale is simple: if you can catch an error, or a type mismatch, even before your program is generated, you won't ship a buggy program to your customer.
+	
+	\item Moreover, as you correctly pointed out, calls to template functions are resolved statically (i.e. at compile time), so the compiler has all the necessary information to optimize and possibly inline the code (which would not be possible if the call were performed through a vtable).
+	
+	
+	\item When use std::function? One such use case arises when you need to resolve a call at run-time by invoking a callable object that adheres to a specific signature, but whose concrete type is unknown at compile-time. This is typically the case when you have a collection of callbacks of potentially different types, but which you need to invoke uniformly; the type and number of the registered callbacks is determined at run-time based on the state of your program and the application logic. Some of those callbacks could be functors, some could be plain functions, some could be the result of binding other functions to certain arguments.
+	
+	\includegraphics[scale=0.7]{pics/function.png} \newline
+\end{itemize}
+
+
+
 
 
 \chapter{functional programming}
 
 \chapter{Exception and error}
+
 \section{End application}
 \begin{itemize}
-	\item You can call abort(), exit(), quick\_exit and  \_exit to end you problem anytime. they are both declared in <cstdlib> head file.
+	\item In C language, You can call \texttt{abort()}, \texttt{exit()}, \texttt{quick\_exit} and  \texttt{\_exit} to end you problem anytime. they are both declared in <cstdlib> head file.
 	
 	\item exit( status ) terminates the process normally.
-	a status value of 0 or EXIT\_SUCCESS indicates success, and any other value or the constant EXIT\_FAILURE is used to indicate an error. exit() performs following operations. 1) Flushes unwritten buffered data.
-	2) Closes all open files. 3) Removes temporary files.
+	a status value of 0 or EXIT\_SUCCESS indicates success, and any other value or the constant EXIT\_FAILURE is used to indicate an error. exit() performs following operations:
+	\begin{enumerate}
+		\item Flushes unwritten buffered data.
+		\item Closes all open files.
+		\item Removes temporary files.
+	\end{enumerate}
 	
-	\item atexit() Registers the function pointed to by func to be called on normal program termination (via std::exit() or returning from the main function)
-	\begin{lstlisting}[frame=single, language=c++]
-	void myProgramIsTerminating1(void){
+	\item \texttt{atexit()} Registers the function pointed to by func to be called on normal program termination (via std::exit() or returning from the main function)
+\begin{lstlisting}[frame=single, language=c++]
+void myProgramIsTerminating1(void){
 	cout<<"exit function 1"<<endl;
-	}
+}
 	
-	int main(int argc, char**argv){
+int main(int argc, char**argv){
 	atexit (myProgramIsTerminating1);
-	//abort();
-	//if you uncomment it, myProgramIsTerm will not be called.
+	//abort(); if you uncomment it, myProgramIsTerm will not be called.
 	return 0;
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
-	\item C++11 introduce quick\_exit. It was added to specifically deal with the difficulty of ending a program cleanly when you use threads. std::quick\_exit() is similar to \_exit() but with still the option to execute some code, whatever was registered with \verb=at\_quick\_exit=.
+	\item C++11 introduce \texttt{quick\_exit}. It was added to specifically deal with the difficulty of ending a program cleanly when you use threads. \texttt{std::quick\_exit()} is similar to \texttt{\_exit()} but with still the option to execute some code, whatever was registered with \verb=at\_quick\_exit=.
 	
 	\item \_exit() is called without performing any of the regular cleanup tasks for terminating processes
 	
@@ -13536,181 +13689,189 @@ private:
 	
 	
 	\item assert just call abort. You can use assert in this way.
-	\begin{lstlisting}[frame=single, language=c++]
-	assert(! "You should not reach here");
-	\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+assert(! "You should not reach here");
+\end{lstlisting}
 	
-	\item std::terminate is what is automatically called in a C++ program when there is an unhandled C++ exception. \textbf{This is essentially the C++ equivalent to abort.} This calls a handler that is set by the std::set\_terminate function, which by default simply calls abort.
+	\item \texttt{std::terminate} is what is automatically called in a C++ program when there is an unhandled C++ exception. \textbf{This is essentially the C++ equivalent to abort.} This calls a handler that is set by the std::set\_terminate function, which by default simply calls abort.
 	
 	\item Don't use exit in main, It will not destroy local object in main function. Catch the exceptions you can't handle in main() and simply return from there. This means that you are guaranteed that stack unwinding happens correctly and all destructors are called.
-	\begin{lstlisting}[frame=single, language=c++]
-	int main() {
+\begin{lstlisting}[frame=single, language=c++]
+int main() {
 	try {
-	// your stuff
+		// your stuff
 	}
 	catch( ... ) { // catch all exceptions.
-	return EXIT_FAILURE;
+		return EXIT_FAILURE;
 	}
-	}
+}
 	\end{lstlisting}
 	
-	\item according to previous main, if you want to end applicaiton in the other fun, you need to throw a exception, then leave it un-handle or rethrow it until it reach main, in this way, stack unwinding will make sure all the destrcutor will be called. \textbf{Don't use exit, it's C-style function and will not perform any stack unwinding}
-	\begin{lstlisting}[frame=single, language=c++]
-	try{
+	\item according to previous main, if you want to end applicaiton in the other fun, you need to throw a exception, then leave it un-handle or re-throw it until it reach main, in this way, stack unwinding will make sure all the destrcutor will be called. \textbf{Don't use exit, it's C-style function and will not perform any stack unwinding}
+\begin{lstlisting}[frame=single, language=c++]
+try{
 	fun(){
-	throw end_exception();
+		throw end_exception();
 	}
-	}
-	catch(end_exception& ex){
+}
+catch(end_exception& ex){
 	//do something here
 	throw;
-	}
+}
 	// or just skip the whole catch, end_exception will reach
 	//main function all clean all the local object,
-	//when it return from main,
-	// it will do the same work as exit();
-	\end{lstlisting}
+	//when it return from main, it will do the same work as exit();
+\end{lstlisting}
 	
 \end{itemize}
 
 
 \section{Bug and assert}
-\subsubsection{Use assert to find bugs early}
+\subsection{Use assert}
 \begin{itemize}
-	\item \textbf{bugs should be found as early as possible}. There are two basic methods to find bugs early: assert and unit test.
+	\item \textbf{Bugs should be found as early as possible}. There are two basic methods to find bugs early: assert and unit test.
+	
 	\item Idea of assert is to make "an unnormal" can be spotted immediately, or this "an nunormal" will cause error in other place, then It's a little difficult to trace back source.
-	\begin{lstlisting}[frame=single, language=c++]
-	fun(char* p){
-	assert(p!=nullptr);
+\begin{lstlisting}[frame=single, language=c++]
+fun(char* p){
+	$\Hilight{15}$assert(p!=nullptr);
 	...... // a lot of codes here
 	strcpy(p) //error happen here,
-	// but You don't know the source is the beginning of fun.
-	
+	// but You don't know the source is the beginning of fun.	
 	fun1(p); It will cause error in other place.
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 	\item Although when to use assert depends on context, Use assert to its fullest. \textbf{precondition assertion} to test the validity of the arguments passed to a method. and use \textbf{postcondition assertion} to test the validity of the results produced by the method.  In my whirl2llvm project, I have used them a lot. It really gave me a lot of benefits.
-	\begin{lstlisting}[frame=single, language=c++]
-	#include <cassert>
-	assert(I<5 && "I is more than 5");
-	//string literal is always true;
-	//when I<5 is false, the whole condition will be printed out.
-	\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+#include <cassert>
+assert(I<5 && "I is more than 5");
+//string literal is always true;
+//when I<5 is false, the whole condition will be printed out.
+\end{lstlisting}
 	
 	
-	\item Assert is just if()+abort(): Difference of assert and return error(throw exception)  lies in two sides: 1) It will abort you application, and you can use GDB to trace back source easily. 2)\textbf{Do you think that is a bug or  exceptions(error) ?} Detail can be seen conclusion section.
+	\item Assert is just if()+abort(): Difference of assert and return error(throw exception)  lies in two sides: 
+	\begin{enumerate}
+		\item It will abort you application, and you can use GDB to trace back source easily.
+		\item \textbf{Do you think that is a bug or  exceptions(error) ?} Detail can be seen conclusion section.
+	\end{enumerate}
 	
 	\item A practical example is dead battery in cell phone, It's a exception. But if you have diarrhea, It's a unnormal, It's not exception. For example, opening file failure is exception, You should (throw exception). but age<0 is a indication of a bug.
-	\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[frame=single, language=c++]
 	FILE *f = fopen("hr.dat".....);
-	if(f==nullptr){  // It's an exception, so don't use assert here.
+if(f==nullptr){  // It's an exception, so don't use assert here.
 	return -1;
 	throw runtime_error();
-	}
+}
 	
 	assert(age>=0); //Here use assert.
 	fprintf(f, %d, age);
-	\end{lstlisting}
+\end{lstlisting}
 	
 \end{itemize}
 
-\subsubsection{Trace}
+\subsection{Trace}
 \begin{itemize}
 	\item you can implement trace, such as it in the MFC
-	\begin{lstlisting}[frame=single, language=c++]
-	#if defined NDEBUG
+\begin{lstlisting}[frame=single, language=c++]
+#if defined NDEBUG
 	#define TRACE( format, ... )
-	#else
+#else
 	#define TRACE( format, ... )   printf( "%s::%s(%d)"
 	format, __FILE__, __FUNCTION__,  __LINE__, __VA_ARGS__ )
-	#endif
+#endif
 	\end{lstlisting}
 	
 \end{itemize}
 
 \section{Handling exceptions}
 
-\subsubsection{errno in C}
+\subsection{errno in C}
 \begin{itemize}
 	
 	\item There are three common error methods:
-	\begin{lstlisting}[frame=single, language=c++]
-	//1) global error code, C language method
-	errno() and strerror()
-	//1) status in object , C++ method
-	cin.fail()
+	\begin{enumerate}
+		\item global error code(C) or error state(C++).
+		\item return value.
+		\item Exception.
+	\end{enumerate}
+\begin{lstlisting}[frame=single, language=c++]
+//1) global error code, C language method
+errno() and strerror()
+//1) status in object , C++ method
+cin.fail()
 	
-	//2) return value by parameter or return value
-	//3) Exception.
+//2) return value by parameter or return value
+//3) Exception.
 	\end{lstlisting}
 	
 	\item errno() and strerror() is a typical C language style.
 	
 	
-	\item Besides above, you can use some custom function pointer to do some custom error handling behavior, such as set\_new\_handler function for new operator
+	\item Besides above, you can use some custom function pointer to do some custom error handling behavior, such as \texttt{set\_new\_handler} function for new operator
 	
 	\begin{enumerate}
 		\item In general, you should detect errors by checking return values, and use errno or perror() only to distinguish among the various causes of an error, such as "File not found" or "Permission denied."
 		
-		\begin{lstlisting}[frame=single, language=c++]
-		FILE * pFile = fopen ("unexist.ent","rb");
-		if (pFile==NULL)
-		perror ("The following error occurred");
-		\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+FILE * pFile = fopen ("unexist.ent","rb");
+if (pFile==NULL)
+perror ("The following error occurred");
+\end{lstlisting}
 		
 		\item It's only necessary to detect errors with errno when a function does not have a unique, unambiguous, out-of-band error return (that is, because all of its possible return values are valid; one example is atoi()). In these cases (and in these cases only; check the documentation to be sure whether a function allows this),
-		\begin{lstlisting}[frame=single, language=c++]
-		#include <cerrno>
-		errno = 0
-		// set it zero before call any math library function.
-		double not_a_number = std::log(-1.0);
-		if (errno == EDOM) {
+\begin{lstlisting}[frame=single, language=c++]
+#include <cerrno>
+errno = 0
+// set it zero before call any math library function.
+double not_a_number = std::log(-1.0);
+if (errno == EDOM) {
 		std::cout << "log(-1) failed: " <<
 		std::strerror(errno) << '\n';
-		\end{lstlisting}
-		\item you can detect errors by setting errno to 0, calling the function, and then testing errno. (Setting errno to 0 first is important, as no library function ever does that for you.)
+\end{lstlisting}
+		\item You can detect errors by setting errno to 0, calling the function, and then testing errno. (Setting errno to 0 first is important, as no library function ever does that for you.)
 	\end{enumerate}
 	
-	\item C11 provide fenv.h file to expand errno
-	\begin{lstlisting}[frame=single, language=c++]
-	#include <math.h>       /* math_errhandling */
-	#include <errno.h>      /* errno, EDOM */
-	#include <fenv.h>
-	/* feclearexcept, fetestexcept, FE_ALL_EXCEPT, FE_INVALID */
+\item C11 provide fenv.h file to expand errno
+\begin{lstlisting}[frame=single, language=c++]
+#include <math.h>       /* math_errhandling */
+#include <errno.h>      /* errno, EDOM */
+#include <fenv.h>
+/* feclearexcept, fetestexcept, FE_ALL_EXCEPT, FE_INVALID */
 	
-	#pragma STDC FENV_ACCESS on
-	errno = 0;
-	if (math_errhandling & MATH_ERREXCEPT)
-	feclearexcept(FE_ALL_EXCEPT);
+#pragma STDC FENV_ACCESS on
+errno = 0;
+if (math_errhandling & MATH_ERREXCEPT)
+feclearexcept(FE_ALL_EXCEPT);
 	
-	sqrt (-1);
-	if (math_errhandling & MATH_ERRNO) {
+sqrt (-1);
+if (math_errhandling & MATH_ERRNO) {
 	if (errno==EDOM) printf("errno set to EDOM\n");
-	}
+}
 	
-	if (math_errhandling  &MATH_ERREXCEPT) {
+if (math_errhandling  &MATH_ERREXCEPT) {
 	if (fetestexcept(FE_INVALID)) printf("FE_INVALID raised\n");
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 \end{itemize}
 
-\subsubsection{exceptions in C++}
+\subsection{exceptions in C++}
 \begin{itemize}
 	\item Exception mainly deal with runtime error: At the same time , these potentially recoverable error.  Such as open an unavailable file re request more memory than is available, they can be exceptions.
 	
 	\begin{enumerate}
 		\item A file write operation failed or file access operation because failed file change or non-exist.
 		
-		\item no enough memory
+		\item No enough memory
 		
 		\item invalid value, which come from user input, not come from you error code logic.
 		
 		\item System communication software invalid protocol, format, or no response.
 	\end{enumerate}
 	
-	\item unwinding the stack has cost problems, 1) it make progamme 10\% larger and slowlier. So you can use  -fno-exceptions to stop it.
+	\item unwinding the stack has cost problems, it make progamme 10\% larger and slowlier. So you can use \texttt{-fno-exceptions} to stop it.
 	
 	\item Exception specification is add throw in the end of function, no throw means that it will throw any exceptions, and throw() means it will not throw any exceptions. Throw( e1, e1) means that it will throw two kinds of exceptions. In C++, this feature has been unsupported and only one left is use throw() to indicates that it will not throw any exceptions.  At the same time, exception specification doesn't use very well with template.
 	
@@ -13718,13 +13879,11 @@ private:
 	
 	\item You can build exception class inside the C++ standard exception system. It need to derive you class from exception, and redefine function what();  if you exception class has very tight relationship with you real class, it can be declared as nested class.
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	Class my_ex :public std::exception
-	{
-	const char* what()
-	{return "my_ex reason is here"}
-	}
-	\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+Class my_ex :public std::exception{
+	const char* what(){return "my_ex reason is here"}
+}
+\end{lstlisting}
 	
 	\item Arranging the catch blocks in inverse order of derivation.
 	
@@ -13732,14 +13891,14 @@ private:
 	
 	\item \textbf{Catch use reference, 1) It will support polymorphic exception, and catch exception from specify to generic.2) It will avoid extra coping}
 	
-	\item Empty throw means that you throw present exception again.
+\item Empty throw means that you throw present exception again.
 	\begin{lstlisting}[frame=single, language=c++]
-	catch(my_base_ex &me){
+catch(my_base_ex &me){
 	......
 	throw;
 	//not use throw me,
 	//because maybe me is child class of my_base_ex;
-	}
+}
 	\end{lstlisting}
 	
 	\item In you destructor, don't throw any exception, or catch all the exception in side of it. Or it will call stop the application. see more effective C++ exception chapter.
@@ -13747,8 +13906,11 @@ private:
 	\item Compared with return error code, exception has advatnage:
 	\begin{enumerate}
 		\item  Can catch deeper called function exceptions. If you want to use return value, deeper called function is hard to deal with.
+		
 		\item Difficult to return value, 1) no return value, such as class constructor, 2) all return value is normal value, such as atoi().
+		
 		\item Make happy path and error-handle path clearly.
+		
 		\item You can't omit exception, Any unhandle exception will can terminate in the end.
 	\end{enumerate}
 	
@@ -13756,8 +13918,6 @@ private:
 
 \section{Conclusion}
 \begin{itemize}
-	
-	
 	\item  Consciously specify, and conscientiously apply, what so many projects leave to adhoc
 	(mis)judgment: Develop a practical, consistent, and rational error handling
 	policy early in design, and then stick to it. Ensure that it includes:
@@ -13792,19 +13952,17 @@ private:
 	\end{enumerate}
 	\item \textbf{ In previous example, You can use assert first, after you code-review, found that It's not bug, but cause by an exception, such as net disconnect. so you can change assert to throw. THAT IS  A GOOD STRATEGY!}
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	fun(int* pi, int j){
+\begin{lstlisting}[frame=single, language=c++]
+fun(int* pi, int j){
 	assert(j< 10);
 	if (pi == nullptr)
-	//don't throw it, It's logical error.
-	//you need to check caller of fun
-	//why pass a nullptr into fun
+	//don't throw it, It's logical error. you need to check 
+	//caller of fun why pass a nullptr into fun
 	
 	if(file.open())
-	throw runtime_error();
-	// file maybe deleted by other. It's not your logic error
-	//but runtime error.
-	}
+		throw runtime_error();
+		// file maybe deleted. It's not your logic error but runtime error.
+}
 	\end{lstlisting}
 	\item Use all throw and catch to replace return-code. For a simple function, just return one error code and user will not forget to test return code. this time, return-code method maybe is better.
 	
@@ -13835,20 +13993,19 @@ private:
 		\end{enumerate}
 		
 		\item For an atomic operation, there is only one try block. That is to say, inside one function, just include one try block
-		\begin{lstlisting}[frame=single, language=c++]
-		atomic_fun(){
-		try{
+\begin{lstlisting}[frame=single, language=c++]
+atomic_fun(){
+	try{
 		//complex operation.
-		.......
-		}
-		catch(...){
+	}
+	catch(...){
 		cout<<"I can't do it"<<endl;
 		throw;
-		}
-		\end{lstlisting}
+	}
+\end{lstlisting}
 	\end{enumerate}
 	
-	\item Exception in C++ is a tool; use it properly and it will help you; but don't blame the tool if you use it improperly. "Wrong exception-handling mindsets" in c++ FAQ website section 17 is good topic. You need to read it again if you have time.
+	\item Exception in C++ is a tool; use it properly and it will help you; \textbf{but don't blame the tool if you use it improperly.} "Wrong exception-handling mindsets" in c++ FAQ website section 17 is good topic. You need to read it again if you have time.
 	
 \end{itemize}
 
@@ -13877,14 +14034,14 @@ private:
 
 \section{synchronization}
 
-\chapter{New Feature in C++17/20}
+\chapter{New Feature in moder C++}
 
 \section{New Type}
 
-\begin{itemize}
-\item Add three new data types " long long", "char16\_t"  and "char32\_t".
+\subsection{New int}
 
-\item Going by the standard:
+\begin{itemize}
+\item Add three new data types " long long", "char16\_t"  and "char32\_t". standard define:
 \begin{enumerate}
 \item int must be at least 16 bits
 \item long must be at least 32 bits
@@ -13899,52 +14056,27 @@ int32_t and uint32_t
 int64_t and uint64_t
 \end{lstlisting}
 
-\item The fixed-width integers have two downsides: First, they may not be supported on architectures where those types can’t be represented. They may also be less performant than the built-in types on some architectures.To help address the above downsides, C++11 also defines two alternative sets of integers. They are int\_least and int\_fast 
+\item The fixed-width integers have two downsides: First, they may not be supported on architectures where those types can't be represented. They may also be less performant than the built-in types on some architectures.To help address the above downsides, C++11 also defines two alternative sets of integers. They are int\_least and int\_fast  
 
-
-
-\item integer best practices:
-
-
-int should be preferred when the size of the integer doesn’t matter (e.g. the number will always fit within the range of a 2 byte signed integer). For example, if you’re asking the user to enter their age, or counting from 1 to 10, it doesn’t matter whether int is 16 or 32 bits (the numbers will fit either way). This will cover the vast majority of the cases you’re likely to run across.
-
-If you need a variable guaranteed to be a particular size and want to favor performance, use std::int\_fast\_t.
-
-If you need a variable guaranteed to be a particular size and want to favor memory conservation over performance, use std::int\_least\_t. This is used most often when allocating lots of variables.
-Avoid the following if possible:
-
-Unsigned types, unless you have a compelling reason.
-The 8-bit fixed-width integer types.
+\item The 8-bit fixed-width integer types.
 Any compiler-specific fixed width integers -- for example, Visual Studio defines \_\_int8, \_\_int16, etc…
 
 
-\item New container: forward\_list, unordered\_map unordered\_set.  The latter two support implementing hash tables. std library provide basic hash function for some basic type, such as int and string. If you have you own class, you can use boost::hash\_combine. 
+\item integer best practices:
+\begin{enumerate}
+	\item int should be preferred when the size of the integer doesn't matter (e.g. the number will always fit within the range of a 2 byte signed integer). For example, if you're asking the user to enter their age, or counting from 1 to 10, it doesn't matter whether int is 16 or 32 bits (the numbers will fit either way). This will cover the vast majority of the cases you’re likely to run across.
+	
+	\item If you need a variable guaranteed to be a particular size and want to favor performance, use std::int\_fast\_t.
+	
+	\item If you need a variable guaranteed to be a particular size and want to favor memory conservation over performance, use std::int\_least\_t. This is used most often when allocating lots of variables.
+	Avoid the following if possible:
+	
+	\item Don't use unsigned types, unless you have a compelling reason.
+\end{enumerate}
 
-\item To support user-defined key types in std::unordered\_set<Key> and std::unordered\_map<Key, Value> one has to provide operator==(Key, Key) and a hash functor
-\begin{lstlisting}[frame=single, language=c++]
-struct X { int id; /* ... */ };
-bool operator==(X a, X b) { return a.id == b.id; }
 
-struct MyHash {
-  size_t operator()(const X& x) const { return std::hash<int>()(x.id); }
-};
 
-std::unordered_set<X, MyHash> s;
-\end{lstlisting}
 
-\item You are expressly allowed and encouraged to add specializations to namespace std*. The correct (and basically only) way to add a hash function is this:
-\begin{lstlisting}[frame=single, language=c++]
-namespace std {
-  template <> struct hash<Foo>{
-    size_t operator()(const Foo & x) const{
-      /* your code here, e.g. "return hash<int>()(x.value);" */
-    }
-  };
-}
-
-std::unordered_set<Foo> s;
-\end{lstlisting}
-\item A good std::hash example can be found in cppreference.com 
 
 \item nullptr is always a pointer type, Don't use NULL any more. NULL is just 0 In C language, but in strong type C++ language, NULL can be ambiguity in f(int); and f(foo *);
 
@@ -13976,8 +14108,37 @@ int cranky(){
 
 \end{itemize}
 
-\subsubsection{std::array}
+\subsection{new container}
 \begin{itemize}
+
+\item New container: forward\_list, unordered\_map unordered\_set.  The latter two support implementing hash tables. std library provide basic hash function for some basic type, such as int and string. If you have you own class, you can use boost::hash\_combine. 
+
+\item To support user-defined key types in std::unordered\_set<Key> and std::unordered\_map<Key, Value> one has to provide operator==(Key, Key) and a hash functor
+\begin{lstlisting}[frame=single, language=c++]
+struct X { int id; /* ... */ };
+bool operator==(X a, X b) { return a.id == b.id; }
+
+struct MyHash {
+size_t operator()(const X& x) const { return std::hash<int>()(x.id); }
+};
+
+std::unordered_set<X, MyHash> s;
+\end{lstlisting}
+
+\item You are expressly allowed and encouraged to add specializations to namespace std*. The correct (and basically only) way to add a hash function is this:
+\begin{lstlisting}[frame=single, language=c++]
+namespace std {
+template <> struct hash<Foo>{
+size_t operator()(const Foo & x) const{
+/* your code here, e.g. "return hash<int>()(x.value);" */
+}
+};
+}
+
+std::unordered_set<Foo> s;
+\end{lstlisting}
+\item A good std::hash example can be found in cppreference.com 
+
 \item std::array is just a class version of the classic C array. \textbf{Its size is fixed at compile time and it will be allocated  on the stack}.
 
 \item std::vector is a small class containing pointers into the heap. (So when you allocate a std::vector, it always calls new.) They are slightly slower to access because those pointers have to be chased to get to the arrayed data... But in exchange for that, they can be resized and they only take a trivial amount of stack space no matter how large they are.
@@ -14105,185 +14266,7 @@ printLength(myarray);
 	
 \end{itemize}
 
-
-
-\section{callable}
-\subsubsection{std::function}
-\begin{itemize}
-
-\item std::function can be called as \textbf{wrapper}, it use \textbf{type eraser} technology. It's a variadic template. A basic example of std::function is below:
- 
-\begin{lstlisting}[frame=single, language=c++]
-//list of callable objects
-void print_num(int i){  //1) common function
-    std::cout << i << '\n';
-}
-struct PrintNum {  //2) functor
-    void operator()(int i) const{ std::cout << i ;}
-    };
-
-std::function<void(int)> f_display;
-
-f_display = print_num;  //plain function
-f_display = PrintNum(); //functor
-f_display = [](int) { print_num(42); }; //lambda
-// you can call fun inside of lambda
-
-f_display(-9); // call function.
-
-std::function<void()> f_display_3 = std::bind(print_num, 3);
-\end{lstlisting}
-
-\item It copy and save a callable object. see code below.
-\begin{lstlisting}[frame=single, language=c++]
-int main() {
-   int value = 5;
-   typedef std::function<void()> fun;
-   fun f1 = [=]() mutable { std::cout << value++ << '\n' };
-   fun f2 = f1;
-   f1();                    // prints 5
-   fun f3 = f1;
-   f2();                    // prints 5
-   f3();                    // prints 6 (copy after first increment)
-}
-\end{lstlisting}
-
-\item If you want to check if a variable of type std::function is currently holding a valid function, you can always treat it like a boolean:
-\begin{lstlisting}[frame=single, language=c++]
-std::function<int ()> func;
-.......
-if ( func ) { // if we did have a function, call it
-    func();
-}
-\end{lstlisting}
-
-\item function can be used \textbf{CALL BACK} as a function argument. At this time, you can use reference, but you'd better pay attention reference dangling problem. 
-
-\begin{lstlisting}[frame=single, language=c++]
-void run_within_for_each(std::function<void (int)> func){
-    vector<int> numbers{ 1, 2, 3, 4, 5, 10, 15, 20, 25 };
-    for_each(numbers.begin(), numbers.end(), func);
-}
-
-void fun(int x){ }  //1) function pointer
-  cout<<x<<endl;
-};
-auto lambda1 = [](int y){  //4) lamba
-   cout << y <<endl;
-};
-
-run_within_for_each(fun);
-run_within_for_each(lambda1);
-\end{lstlisting}
-
-
-\item One big advantage of std::function over templates is that if you write a template, you need to put the whole function in the header file, whereas std::function does not. This can really help if you're working on code that will change a lot and is included by many source files.
-
-\item A good article: google "Should I use std::function or a function pointer in C++?" another is "How is std::function implemented?"
-
-\end{itemize}
-
-\subsubsection{member function}
-\begin{itemize}
-
-\item std::function can be used for member function.
-
-\begin{lstlisting}[frame=single, language=c++]
-struct Foo {
-    Foo(int num) : num_(num) {}
-    void print_add(int i) const { std::cout << num_+i << '\n'; }
-    int num_;
-};
-
-std::function<void(const Foo&, int)> f_add_display = &Foo::print_add;
-const Foo foo(3);
-f_add_display(foo, 1); // store a call to a member function
-//method 1, use std:ffunction directly.
-
-
-std::function<void(int)> f_add_display2=
-                       std::bind( &Foo::print_add,  foo,  _1 );
-f_add_display2(2); // a call to a member function and object
-
-
-std::function<void(int)> f_add_display3=
-                      std::bind( &Foo::print_add, &foo, _1 );
-f_add_display3(3); // a call to a member function and object ptr
-
-//method 2, use bind
-
-\end{lstlisting}
-
-\item If you want to input obj directly, Use a lambda that captures the foo instance and invokes print\_add on it. Another option is to use std::bind to bind the foo instance:
-
-\begin{lstlisting}[frame=single, language=c++]
-typedef std::function<void(int)> fp;
-
-void test(fp my_func){
-  my_func(5);
-}
-Foo foo;
-test([&foo](int i){ foo.print_add(i); });
-
-
-test(std::bind(&Foo::print_add, &foo, std::placeholders::_1));
-\end{lstlisting}
-
-\item You can't really compare std::function with std::mem\_fn. The former is a class template whose type you specify, and the latter is a function template with unspecified return type. There really isn't a situation in which you'd actually consider one versus the other.
-
-A better comparison might be between mem\_fn and std::bind. There, for the specific use-case of a pointer-to-member, mem\_fn is going to a lot less verbose if all you want to do is pass-through all the arguments. Given this simple type:
-\begin{lstlisting}[frame=single, language=c++]
-struct A { 
-    int x;
-    int getX() { return x; }
-    int add(int y) { return x+y; }
-};
-
-A a{2};
-
-auto get1 = std::mem_fn(&A::getX);
-auto get2 = std::bind(&A::getX, _1);
-
-get1(a); // yields 2
-get2(a); // same
-
-auto add1 = std::mem_fn(&A::add);
-auto add2 = std::bind(&A::add, _1, _2);
-
-add1(a, 5); // yields 7
-add2(a, 5); // same
-\end{lstlisting}
-\item Three ways to use member function.1) use std::function, 2) use bind, 3) use mem\_fun. All the detail can be found in the previous example. \textbf{Prefer mem\_fn than bind because it's verbose, Perfer mem\_fn  than std::function, because it lightweight.}
-
-
-\item mem\_fn(C++11) and mem\_fun. \textbf{mem\_fn is new, don't use mem\_fun any longer}
-\begin{enumerate}
-\item mem\_fn is faster than bind.  so prefer mem\_fn first.
-
-\item std::mem\_fun can only deal with member functions that take one or no argument. std::mem\_fn is variadic and can deal with members that take any number of arguments.
-
-\item You also need to pick between std::mem\_fun and std::mem\_fun\_ref depending on whether you want to deal with pointers or references for the class object (respectively). std::mem\_fn alone can deal with either, and even provides support for smart pointers.
-\end{enumerate}
-
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-struct Foo {
-    void display_number(int i) {
-        std::cout << "number: " << i << '\n';
-    }
-    int data = 7;
-};
-
-Foo f;
-auto print_num = std::mem_fn(&Foo::display_number);
-print_num(f, 42); 
-$\Hilight{25}$// for mem_fn, you have to give a object:f
-\end{lstlisting}
-
-\item \textbf{bind is deprecated in C++11, and will be given up in C++14. perfer to use lambda than bind, detail can be found in effective modern c++ item }
-
-\end{itemize}
-
-\subsubsection{lambda}
+\section{lambda}
 
 \begin{itemize}
 \item lambda basic syntax and an example.
@@ -14292,11 +14275,11 @@ $\Hilight{25}$// for mem_fn, you have to give a object:f
 int sum = 0, divisor = 3;
 vector<int> vc { 1, 2, 3, 4, 5, 10, 15, 20, 25, 35, 45 };
 for_each(vc.begin(), vc.end(), [divisor, &sum] (int y){
-      if (y % divisor == 0){
-         cout << y << endl;
-         sum += y;
-      }
-  });
+		if (y % divisor == 0){
+			cout << y << endl;
+			sum += y;
+		}
+	});
  cout << sum << endl;
 \end{lstlisting}
 
@@ -14306,9 +14289,9 @@ typedef std::vector< std::pair<int,std::string> > Record_t;
 //$\Hilight{28}$ typedef is your good friend, reuse it below
 Record_t k1;
 
-int find_it(std::string value, $\Hilight{6}$Record_t const& stuff){
+int find_it(std::string value, $\Hilight{5}$Record_t const& stuff){
   auto fit = std::find_if(stuff.begin(), stuff.end(),
-            [value]($\Hilight{14}$Record_t::value_type const& vt) -> bool
+            [value]($\Hilight{12}$Record_t::value_type const& vt) -> bool
                  { return vt.second == value; });
   if (fit != stuff.end())
            return fit->first;
@@ -14335,7 +14318,7 @@ f();
 
 \begin{lstlisting}[frame=single, language=c++]
 class MessageSizeStore{
-    public:
+public:
     MessageSizeStore () : _max_size( 0 ) {}
     void getMaxMessage (const std::string& message ) {...}
     int getSize (){...}
@@ -14344,10 +14327,9 @@ private:
 };
 
 MessageSizeStore size_store;
-for_each(s.begin(),s.end(),
-        [&] (const std::string& message) {
-               size_store.checkMessage( message );
-               });
+for_each(s.begin(),s.end(), [&] (const std::string& message){
+	size_store.checkMessage( message );
+});
 \end{lstlisting}
 
 \item Why functor is better than function pointer? because functor can be inline. 
@@ -14366,27 +14348,11 @@ std::count_if(v.begin(), v.end(),
 //how many number can be divided by 3.
 \end{lstlisting}
 \end{enumerate}
-
-
-\end{itemize}
-
-\subsubsection{summary}
-\begin{itemize}
-\item About std::function and template? In general, if you are facing a design situation that gives you a choice, use templates. I stressed the word design because I think what you need to focus on is the distinction between the use cases of std::function and templates, which are pretty different.
-
-\item In general, the choice of templates is just an instance of a wider principle: try to specify as many constraints as possible at compile-time. The rationale is simple: if you can catch an error, or a type mismatch, even before your program is generated, you won't ship a buggy program to your customer.
-
-\item Moreover, as you correctly pointed out, calls to template functions are resolved statically (i.e. at compile time), so the compiler has all the necessary information to optimize and possibly inline the code (which would not be possible if the call were performed through a vtable).
-
-
-\item When use std::function? One such use case arises when you need to resolve a call at run-time by invoking a callable object that adheres to a specific signature, but whose concrete type is unknown at compile-time. This is typically the case when you have a collection of callbacks of potentially different types, but which you need to invoke uniformly; the type and number of the registered callbacks is determined at run-time based on the state of your program and the application logic. Some of those callbacks could be functors, some could be plain functions, some could be the result of binding other functions to certain arguments.
-
-\includegraphics[scale=0.45]{pics/function.png} \newline
 \end{itemize}
 
 
 \section{Other New Feature}
-\subsubsection{delctype}
+\subsection{delctype}
 \begin{itemize}
 
 
@@ -14394,14 +14360,13 @@ std::count_if(v.begin(), v.end(),
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T1, typename T2>
 void f(T1 x, T2 y){
-decltype(x+y) xpy = x+y;
+	decltype(x+y) xpy = x+y;
 }
 
 //with return value;
 template<typename T1, typename T2>
-auto f(T1 x, T2 y) ->decltype(x+y)
-{
-x+y;
+auto f(T1 x, T2 y) ->decltype(x+y){
+	x+y;
 }
 \end{lstlisting}
 
@@ -14409,29 +14374,8 @@ x+y;
 
 \end{itemize}
 
-\subsubsection{constexpr}
-\begin{itemize}
 
-\item Unlike templates and preprocessor macros, constexpr allows for loops and recursion at compile-time without extreme boilerplate.
-
-\item constexpr functions can be used as regular functions, although internally they have greater restrictions.
-
-\item constexpr functions can easily be converted into regular functions as requirements change.
-
-\item constexpr functions compile much quicker than the equivalent template-based solutions, which scale linearly with the depth of the template-recursion.
-
-\item The basic idea is "compile time input yields compile time output". How can I know if a function is constexpr or not? 
-
-\item std::find is constexpr function now. 
-
-\item the question is : when should you use constexpr? The answer is the same than with const: as much as you can.
-
-\item The most powerful thing about constant expressions, is that they enable you to do meta-programming without resorting to templates.
-
-\item A good artical is "Demystifying constexpr". 
-\end{itemize}
-
-\subsubsection{alias declaration}
+\subsection{alias declaration}
 
 \begin{itemize}
 \item Alias declaration is better than typedef when you declare a function pointer, It's more verbose.
@@ -14452,7 +14396,7 @@ using MyAllocList = std::list<T, MyAlloc<T>>;
 MyAllocList<Widget> lw; // client code
 
 template<typename T>
-struct MyAllocList {
+	struct MyAllocList {
 typedef std::list<T, MyAlloc<T>> type;
 };
 // MyAllocList<T>::type is synonym for std::list<T,  MyAlloc<T>>
@@ -14465,9 +14409,10 @@ MyAllocList<Widget>::type lw; // client code
 template<typename T>
 class Widget { // Widget<T> contains
 private: // a MyAllocList<T>
-typename MyAllocList<T>::type list; // as a data member
+	typename MyAllocList<T>::type list; // as a data member
 };
 \end{lstlisting}
+
 \item A better way is to use Alias name
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
@@ -14476,7 +14421,7 @@ using MyAllocList = std::list<T, MyAlloc<T>>; // as before
 template<typename T>
 class Widget {
 private:
-MyAllocList<T> list; // no "typename" and no "::type"
+	MyAllocList<T> list; // no "typename" and no "::type"
 };
 \end{lstlisting}
 
@@ -14510,16 +14455,17 @@ someFunction(a);
 \begin{lstlisting}[frame=single, language=c++]
 template <class T>
 using remove_const_t = typename remove_const<T>::type;
+
 template <class T>
 using remove_reference_t = typename remove_reference<T>::type;
+
 template <class T>
-using add_lvalue_reference_t =
-typename add_lvalue_reference<T>::type;
+using add_lvalue_reference_t = typename add_lvalue_reference<T>::type;
 \end{lstlisting}
 
 \end{itemize}
 
-\subsubsection{scoped enums}
+\subsection{scoped enums}
 \begin{enumerate}
 \item C++98-style enums are now known as unscoped enums.
 \begin{lstlisting}[frame=single, language=c++]
@@ -14558,15 +14504,12 @@ forward-declared only if their declaration specifies an underlying type.
 
 
 
-
-
-
 \begin{lstlisting}[frame=single, language=c++]
 template <class charT, class traits = char_traits<charT> >
 class basic_ios : public ios_base {
 public:
-basic_ios(const basic_ios& ) = delete;
-basic_ios& operator=(const basic_ios&) = delete;
+	basic_ios(const basic_ios& ) = delete;
+	basic_ios& operator=(const basic_ios&) = delete;
 };
 
 bool isLucky(int number); // original function
@@ -14575,12 +14518,13 @@ bool isLucky(bool) = delete; // reject bools
 
 template<typename T>
 void processPointer(T* ptr);
+
 template<>
 void processPointer<void>(void*) = delete;
 //you can't not use void to instantiate
 \end{lstlisting} 
 
-\subsubsection{noexcept}
+\subsection{noexcept}
 
 \begin{enumerate}
 
@@ -14597,22 +14541,19 @@ depend on it.
 
 \end{enumerate}
 
-
-
-
-\subsubsection{Variadic Templates}
+\subsection{Variadic Templates}
 \begin{itemize}
 \item Finally, there's a way to write functions that take an arbitrary number of arguments in a type-safe way and have all the argument handling logic resolved at compile-time, rather than run-time.
 
 \begin{lstlisting}[frame=single, language=c++]
-template<typename T>
+template<typename T> //Basic condition
 T adder(T v) {
-  return v;
+	return v;
 }
 
 template<typename T, typename... Args>
 T adder(T first, Args... args) {
-  return first + adder(args...);
+	return first + adder(args...);
 }
 ////////////////////////////
 template<typename T>
@@ -14620,14 +14561,10 @@ show_list(const T& value){cout<<value<<endl;}
 
 template<typename T, typename... Args>
 show_list(const T& value, const Args&... args){
-cout<<value<<endl;
-show_list(args...);
+	cout<<value<<endl;
+	show_list(args...);
 }
 \end{lstlisting}
-
-\item clang++ -S -emit-llvm main.cpp -o out.bc
-
-
 \end{itemize}
 
 
