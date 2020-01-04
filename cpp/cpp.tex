@@ -688,209 +688,213 @@ extern "C" {
 
 \chapter{type, operator and expression}
 
-\section{Numerical}
+\section{Arithmetic types}
 \subsection{Numerical}
 \subsubsection{Numerical Overflow}
 
 \begin{itemize}
-	\item Integer type has \textbf{overflow} problem, and float has \textbf{precision} problem. So prefer to use \textbf{long long} and \textbf{double} as your numerical type. In mordern type, memory usage is not big concern, but it can save you a lot of trouble. 
+	\item Integer type has \textbf{overflow} problem, and float has \textbf{precision} problem. So prefer to use \texttt{long long} and \texttt{double} as your numerical type. In mordern hardware, memory usage is not big concern, type with enough width can save you a lot of trouble. 
 	
 	\item In C and C++, you can use limits.h or <limit> to get the all the type limit information.
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	INT_MAX //use in C
-	INT_MIN
+\begin{lstlisting}[numbers=none]
+INT_MAX //use in C
+INT_MIN
 	
-	//use in C++
-	cout<< std::numeric_limits<int>::lowest() << '\t'
-	cout<< std::numeric_limits<int>::max() << '\n';
-	\end{lstlisting}
+std::numeric_limits<int>::lowest() //use in C++
+std::numeric_limits<int>::max()
+\end{lstlisting}
 	
-	\item For integer addition or subtraction, It just a round-trip. When you reach a position in the circle, how to understanding depends on its context and type.
+	\item For integer addition or subtraction, It is just a round-trip. When you reach a position in the circle, how to understanding depends on its context and type.
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	unsigned int ui = 1;
-	int i = -2;
-	// i+ui will stop in one position in the round clock.
-	//how to interpret it depends on the programe context;
-	int j = i+ui; // as int interpret this position CORRECT
+\begin{lstlisting}
+unsigned int ui = 1;
+int i = -2;
+int j = i+ui; // j is -1, CORRECT
 	
-	(ui+i)<6 //  as unsigned interpret this position. ERROR!
-	//Most unsigned implicit cast error happen 
-	//when you compare with a constant number.
-	\end{lstlisting}
+(ui+i)<6 //  ERROR!
+\end{lstlisting}
+\begin{description}
+	\item[Line 3:] \texttt{i+ui} will stop in one position in the round clock. how to interpret it depends on the programe context, as int interpret this position correct.
+	\item[Line 5:]  as unsigned interpret this position, so \texttt{(ui+i)} is bit positive number. Most unsigned implicit cast error happen when you compare with a constant number.
+\end{description}
 	
 	\item There are three ways to deal with overflow:
 	\begin{enumerate}
 		\item Build your own template function.
-		\begin{lstlisting}[frame=single, language=c++]
-		template <class T>
-		void increment_without_wraparound(T& value) {
-		if (value < numeric_limits<T>::max())
-		value++;
-		}
-		\end{lstlisting}
+\begin{lstlisting}[numbers=none]
+template <class T>
+void increment_without_wraparound(T& value) {
+	if (value < numeric_limits<T>::max())
+	value++;
+}
+\end{lstlisting}
 		
 		\item  Judge it before calculation.
-		\begin{lstlisting}[frame=single, language=c++]
-		if ((x > 0) && (a > INT_MAX - x)) /* `a + x` would overflow */;
-		// a is point, x>0 clockwise turn, then it will overflow
-		
-		if ((x < 0) && (a < INT_MIN - x)) /* `a + x` would underflow */;
-		// a is point, x<0 anti-clockwise turn,  so it will underflow
-		//It's easy to understand if you draw a clock figure.
-		
-		if ((x < 0) && (a > INT_MAX + x)) /* `a - x` would overflow */;
-		if ((x > 0) && (a < INT_MIN + x)) /* `a - x` would underflow */;
-		
-		if (a > INT_MAX / x) /* `a * x` would overflow */;
-		if ((a < INT_MIN / x)) /* `a * x` would underflow */;
-		// need to check for -1 for two's complement machines
-		if ((a == -1) && (x == INT_MIN)) /* `a * x` overflow */
-		if ((x == -1) && (a == INT_MIN)) /* `a * x` (or `a / x`) overflow */
-		\end{lstlisting}
+\begin{lstlisting}
+if ((x > 0) && (a > INT_MAX - x)) // a + x would overflow 
+if ((x < 0) && (a < INT_MIN - x)) // a + x would underflow
+
+if ((x < 0) && (a > INT_MAX + x)) //a - x would overflow 
+if ((x > 0) && (a < INT_MIN + x)) //a - x would underflow
+
+if (a > INT_MAX / x)  // a * x would overflow 
+if ((a < INT_MIN / x)) // a * x would underflow 
+\end{lstlisting}
+\begin{description}
+	\item[Line 1:] a is point, x>0 clockwise turn, then it will overflow
+	\item[Line 2:] a is point, x<0 anti-clockwise turn,  so it will underflow It's easy to understand if you draw a clock figure.
+\end{description}
 		
 		\item Judge it after calculation
-		\begin{lstlisting}[frame=single, language=c++]
-		uint32 a,b;
-		//assign values
-		uint32 result = a + b;
-		if (result < a) {
-		//Overflow
-		}
-		\end{lstlisting}
-	\end{enumerate}
+\begin{lstlisting}[numbers = none]
+uint32 a,b;
+uint32 result = a + b;
+if (result < a) {
+	//Overflow
+}
+\end{lstlisting}
+\end{enumerate}
 	
 	
 	\item There's no simple, general, portable way to avoid integer overflow.
+	
 	\item You cannot safely check whether a signed integer addition or subtraction overflowed after the fact. An overflow in signed arithmetic causes undefined behavior. Typically the result wraps around, but in principle your program could crash before you have a chance to examine the result.
 	
 	\item Clang 3.4+ and GCC 5+ offer checked arithmetic builtins. They offer a very fast solution to this problem, especially when compared to bit-testing safety checks.
-	\begin{lstlisting}[frame=single, language=c++]
-	unsigned long b, c, c_test;
-	if (__builtin_umull_overflow(b, c, &c_test)){
+\begin{lstlisting}[frame=single, language=c++]
+unsigned long b, c, c_test;
+if (__builtin_umull_overflow(b, c, &c_test)){
 	// returned non-zero: there has been an overflow
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
-	\item When you do some calculation, you can have some tricks to avoid overflow. n! the last three digit. You need use mod to keep last two digits in each calculation.
-	\begin{lstlisting}[frame=single, language=c++]
-	(a+b)/2  //a+b maybe overflow
-	a/2+b/2 +(a&b&1);
-	\end{lstlisting}
-	
+\item When you do some calculation, you can have some tricks to avoid overflow. If you  want to know the last three digits of \texttt{n!}. You need use mod to keep last two digits in each calculation.
+\begin{lstlisting}[numbers = none]
+(a+b)/2  //a+b maybe overflow
+a/2+b/2 +(a&b&1);
+\end{lstlisting}
+
 \end{itemize}
 
 \subsection{Numerical conversions}
 
 \begin{itemize}
-	\item Type conversions happen in three contexts:
+	\item There are two kinds of conversion, one is \textbf{implicit}, and the other is \textbf{explicit}.
+	\item Numerical conversions happen in three contexts:
 	\begin{enumerate}
 		\item Assign a value of one \textbf{arithmetic type} to a variable of another arithmetic type.
 		
-		\item Combine mixed types in expressions.
+		\item Combine mixed types in expressions.(Most of time, implicit conversion)
 		
 		\item Pass arguments to or return from a function.
 	\end{enumerate}
+	\item convert short type to long type is promotion, it happens when we need hardware bit alignment optimization. See next section. 
+\end{itemize}
+
+\subsubsection{Implicit promotion}
+\begin{itemize}
+\item In an expression, C++ makes three kinds of automatic promotion conversion.
+\begin{enumerate}
+	\item Some type are automatically converted whenever they occur. For example, when you add char to char. C++ converts bool, char, unsigned char, signed char and short to int. Because int type is generally chosen to be the computer's most natural type. \textbf{It does calculations faster for that type.} It's called \textbf{integer promotions.}
 	
-	\item In an expression, C++ makes two kinds of automatic conversion.
-	\begin{enumerate}
-		\item Some type are automatically converted whenever they occur. For example, when you add char to char. Detail can be seen in the promotion section below.
-		
-		\item Some type are converted when they are combined with other types in an expression. When an operation involves two types, the smaller is converted to the larger. For example, when you add an int to a float, int is converted to float type. (You have to do it, because two types have the different inside binary representations.)
-	\end{enumerate}
+	\item Some type are converted when they are combined with other types in an expression. When an operation involves two types, the smaller is converted to the larger. For example, when you add an int to a float, int is converted to float type. (You have to do it, because two types have the different inside binary representations.)
 	
-	\item There are two kinds of conversion, one is \textbf{implicit}, and the other is \textbf{explicit}.
+	\item unsigned short convert to int if short is shorter than int, if they have the same size. unsigned short convert to unsigned int.  So no data loss in promoting.
+\end{enumerate}
+
+
+
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+char c1, c2, c //c1 and c2 convert to int first.
+c = c1+c2;  // then change int result back to char.
 	
+/*  LLVM IR code below
+store i8 97, i8* %c1, align 1
+store i8 2, i8* %c2, align 1
+%0 = load i8, i8* %c1, align 1
+%conv = $\Hilight{3}$sext i8 %0 to i32
+%1 = load i8, i8* %c2, align 1
+%conv1 = sext i8 %1 to i32
+%add = add nsw i32 %conv, %conv1
+%conv2 = $\Hilight{3}$trunc i32 %add to i8 */
+	
+i+f // i will promoted to f
+	
+float f1, f2, f
+f = f1+f2 
+\end{lstlisting}
+\begin{description}
+	\item[Last line:] whether f1 change to double debpends on compiler. clang++ has fadd in LLVM IR, so it doesn't change f to double.
+\end{description}
+\end{itemize}
+
+\subsubsection{Implicit conversion}
+
+\begin{itemize}
 	\item Assigned to a bool, zero converts to false, and nonzero converts to true.
 	
 	\item Assigning a value to a type with a greater range usually poses no problem. If shorter range or different type, maybe there are some problems.
 	
-	\item When conversion, maybe lost precision(double -> float, long long ->float) loss fragment(float -> i) or Undefine (int i = 666, then char c = i;). Detail example can be seen in my evernote bookmark.
+	\item When conversion, maybe lost precision(\texttt{double -> float, long long ->float}) loss fragment(\texttt{float -> i}) or Undefined (\texttt{int i = 666,} then \texttt{char c = i;}).
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	int i, float f;
-	i=f;
-	//1) fragment will be lost,  f= 3.99, i will be 3 (not rounding)
-	//2) If f is too big.  undefined behave
-	
-	f = i;
-	// 1) will lost precision if i is big.
-	\end{lstlisting}
-	
+\begin{lstlisting}
+int i, float f;
+i=f;
+
+f = i;
+\end{lstlisting}
+\begin{description}
+	\item[Line 2:] fragment will be lost,  f= 3.99, i will be 3 (not rounding). If f is too big.  undefined behave
+	\item[Line 4:] will lost precision if i is big.
+\end{description}
+
 	\item A implicit conversion will happen when you call a function.(Just like you use assignment operator=). Below they all compile successfully. Compile with -Wconversion flag, it doesn't included in -Wall in g++; It just give warning when standard conversion happen. (no warning for promotion conversion).
-	\begin{lstlisting}[frame=single, language=c++]
-	bool isLucky(int number);
+\begin{lstlisting}[numbers=none]
+bool isLucky(int number);
 	
-	isLucky('a') //i = 'a' , promotion  $\Hilight{10}$NO warning
-	isLucky(false) //i = false, promotion $\Hilight{10}$NO warning
-	isLucky(1.2f) //i = f , standard conversion.  Warning
-	\end{lstlisting}
+isLucky('a') // promotion ,NO warning
+isLucky(false) // promotion, NO warning
+isLucky(1.2f) //standard conversion.  $\Hilight{5}$Warning
+\end{lstlisting}
 	
 	
 	
 	\item In C++, introduce braces initialization \{\}, It will not allow narrowing happen. But in g++, it just show a -Wnarrowing message, Anyway, I think that it's helpful.
-	\begin{lstlisting}[frame=single, language=c++]
-	int x = 66;  char c1 = {x}; //ok
+\begin{lstlisting}[numbers=none]
+int x = 66;  char c1 = {x}; //ok	
+int x = 666; char c2 = {x};// not allowed;
 	
-	int x = 666;  char c2 = {x};// not allowed;
-	
-	int fun(){
+int fun(){
 	return 1.2f; //OK, no warning
 	return {1.2f}; //ERROR, -Wnarrowing
-	}
-	\end{lstlisting}
-	
-	\subsubsection{implicit promotion}
-	\item C++ converts bool, char, unsigned char, signed char and short to int. Because int type is generally chosen to be the computer's most natural type. \textbf{It does calculations faster for that type.} It's called \textbf{integer promotions.}
-	
-	\item unsigned short convert to int if short is shorter than int, if they have the same size. unsigned short convert to unsigned int.  So no data loss in promoting.
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	char c1, c2, c //c1 and c2 convert to int first.
-	c = c1+c2;  // then change int result back to char.
-	
-	/*  LLVM IR code below
-	store i8 97, i8* %c1, align 1
-	store i8 2, i8* %c2, align 1
-	%0 = load i8, i8* %c1, align 1
-	%conv = $\Hilight{3}$sext i8 %0 to i32
-	%1 = load i8, i8* %c2, align 1
-	%conv1 = sext i8 %1 to i32
-	%add = add nsw i32 %conv, %conv1
-	%conv2 = $\Hilight{3}$trunc i32 %add to i8
-	*/
-	
-	i+f // i will promoted to f and value keep the same.
-	
-	float f1, f2, f
-	f = f1+f2 // whether f1 change to double debpends on compiler
-	//clang++ has fadd in LLVM IR, so it doesn't change f to double.
-	\end{lstlisting}
-\end{itemize}
+}
+\end{lstlisting}
 
-\subsubsection{Explicit numerical conversion}
-\begin{itemize}
+\subsubsection{Explicit conversion}
+	
 	\item In order to suppress conversion warning, you can use explicit numerical conversion to state your intention clearly and loudly.
 	
 	\item In C language, there exist two main syntax for generic type-casting: functional and C-style cast.  \textbf{Prefer C-style cast}
 	
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	double x = 10.3;
-	int y;
-	unsigned int n1 = (unsigned int)f; $\Hilight{10}$// C-style cast
-	unsigned int n2 = unsigned(f);     // functional cast
-	//functional cast only be used in one word type.
-	//unsigned int (f)  is not right,
-	//int *(f) is not right either.
-	\end{lstlisting}
+\begin{lstlisting}[numbers=none]
+double x = 10.3;
+int y;
+unsigned int n1 = (unsigned int)f; $\Hilight{10}$// C-style cast
+unsigned int n2 = unsigned(f);     // functional cast
+\end{lstlisting}
+	\begin{description}
+		\item[Line 4:] functional cast only be used in one word type. \texttt{unsigned int (f)} is not right, \texttt{int *(p)} is not right either.
+	\end{description}
 	
 	\item In C++ language, \textbf{You should always use static\_cast}. 
-	
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	float f = 3.5; 
-	int a = f; // this is how you do in C 
-	int b = static_cast<int>(f);  //in C++
-	\end{lstlisting}
+\begin{lstlisting}[numbers=none]
+float f = 3.5; 
+int a = f; // implicit 
+int a = (int) f; //explicit C style
+int b = static_cast<int>(f);  //explicit C++ style
+\end{lstlisting}
+
 \end{itemize}
 
 
@@ -2396,7 +2400,7 @@ extern "C" {
 	\end{lstlisting}
 \end{itemize}
 
-\section{overload}
+\section{operator overload}
 \begin{itemize}
 	
 	\item  \textbf{Overloading just happens in the same name scope, not in the hierarchy}. So in this way, any same name is base class will not  visible in derived class. You can use using keyword to add it in your derived class. Then It will compile. Consider these complex things, \textbf{Don't redefine or overload base class non virtual functions in your child class}
