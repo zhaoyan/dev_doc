@@ -156,7 +156,12 @@ I also have blog: http://zhaoyan.website/blog/. You can find some Chinese blogs 
 		
 		\item Most of source code illustrate the basic idea, so they are not long. You can use online C++ compiler. These light weight online tools are very suitable for the source code in the book. Just google "online C++ compiler" and select one with black background, because light abstracts bug. :)
 	\end{enumerate}
-
+	\item \textbf{Why some source code has line number on left side?}
+	\begin{enumerate}
+		\item If the source code has line number, below the source code you can see some explanation about the source code. These explanation refer to the line number and make you understand it more accurately.
+		
+		\item If the source code has not line number, Usually the source code doesn't need further description. In order to make the book more clear and clean, I omit the line number besides the source code.
+	\end{enumerate}
 \end{itemize}
 
 \chapter{C++ Introduction}
@@ -480,29 +485,28 @@ $\HilightLine{17}$Widget::~Widget() = default;
 
 \subsubsection{ODR}
 \begin{itemize}
-	
 	\item For C language, there is tentative definition rule. You can define the same variable in two different .c file. The result will be undefined. But in the C++, this is not allowed any more. 
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	a.c
-	int g_i = 100;
-	////////////////////////////////
-	b.c
-	int g_i;
-	fun(){
+\begin{lstlisting}[numbers=none]
+a.c
+int g_i = 100;
+////////////////////////////////
+b.c
+int g_i;
+fun(){
 	printf("%d",g_i) //will print 100
-	//gcc a.c b.c report no error.
-	//g++ report error
-	//in b.c, if you g_i= 2; gcc report error.
-	}
-	\end{lstlisting}
-	
-	\item For C++ language ,tentative definition of variable is not allowed. At the same time, multi-definition of function is not allowed either. but there are another implicit risk as below. 
+}
+\end{lstlisting}
+	\begin{description}
+		\item[gcc:] (gcc a.c b.c) report no error. in b.c, if you write \texttt{g\_i= 2}; gcc reports error.
+		\item[g++:] (g++ a.c b.c) reports error.
+	\end{description}
+
+	\item For C++ language, tentative definition of variable is not allowed. At the same time, multi-definition of function is not allowed either. but there are another implicit risk as below. 
 	
 	\item In the same unit, you can't define class C1 again, but if you put two class C1 in two different .cpp file. compiler will not complain at all. When you run you application probably crash, it's dangerous. It's a little different with function and global variable. Because function and global variable all need allocation memory.
 	
 	\item \textbf{Either a name is for everyone (and declared in a header file) or is translation-unit-local in an anonymous namespace.} Detail can be found in "The One-Definition Rule  Andrzej's C++ blog".
-	
 \end{itemize}
 
 \subsubsection{external and internal linkage}
@@ -524,8 +528,8 @@ $\HilightLine{17}$Widget::~Widget() = default;
 	\item non-const global variable has external linkage.
 	\item Const global variables have internal linkage by default.
 	\item Functions have external linkage by default.
-	\item Inline functions is internal linkage.
 	\item static global variable has internal linkage.
+	\item \textbf{static function has internal linkage too.}
 \end{enumerate}
 
 	\item \textbf{const variables internally link by default} unless otherwise declared as \texttt{extern}. It means that:
@@ -554,20 +558,67 @@ const int a_global_var = /*const expression */;
 \end{lstlisting}
 \end{enumerate}
 
-	\item The most common case is for an inline function to appear in a header \#included by several source files, probably because the programmer wanted to request fast inline expansion. This requires the translation-unit locality rule, though, so that linker errors shouldn't arise.
-	
-	\item In one word \textbf{You can put inline function into the header file.}
-	
+
 \end{itemize}
 
 
 \subsubsection{Inline function}
 \begin{itemize}
+	\item Usage of inline keyword is very simple: \textbf{No matter for member or non-member inline function, put it into the header file.}
+	\begin{enumerate}
+		\item For non member function, put inline function into a header file, and when you need to use this function, include it.
+		
+		\item For member function, you have two options.
+\begin{lstlisting}[numbers=none]
+class Foo {  //option 1
+public:
+void method(){...};  //Give definition here
+};
+
+class Foo {  //option 2
+public:
+	void method(); //Don't put inline keyword here
+};
+inline void Foo::method(){  //Put inline keyword here
+	...
+}
+\end{lstlisting}
+	\end{enumerate}
+	
+	\item Why do we need follow these two rules about inline funciton? The explanation is a little complex, so if you don't want go deeper, you can skip now. If you are confident and like facing challenge, lets continue.
+	
+	\item \textbf{Inline function has external linkage.} We demonstrate this point by below code. We have a.cpp and b.cpp two files.
+\begin{lstlisting}
+inline int foo() { //File a.cpp
+	return 6;
+}
+void g() {
+printf("foo called from g: return value = %d, address = %p\n", foo(), &foo);
+}
+
+inline int foo() { //File b.cpp
+	return 12;
+}
+void g();
+int main(){
+	printf("foo called from main: return value = %d, address = %p\n", foo(), &foo);
+	g();
+}
+\end{lstlisting} 
+\begin{description}
+	\item[Line 1 and 8 without inline:] it will trigger multi-definition linkage error
+	\item[Line 1 and 8 one inline:] Only on inline, because inline has external linkage, so it will trigger multi-definition linkage error too.
+	\item[Line 1 and 8 two inline:] Redefining an inline function with the same name but with a different function body is illegal; however, the compiler does not flag this as an error, but simply generates a function body for the version defined in the first file entered on the compilation command line, and discards the others. Therefore, may not produce the expected results.
+	\item[Delete line 8 to 10:] Compiling error, identifier doesn't found.
+	\item[Source code:]  Inline just suppress multi-definition error. It is programmer's responsibility to ensure that inline function definitions with the same name match exactly across translation units, to avoid all above bad result. You can see the best way is:put inline function into header file.
+\end{description}
+
 	\item Inline functions are defined in the header because, in order to inline a function call, the compiler must be able to see the function body. For a naive compiler to do that, the function body must be in the same translation unit as the call. (A modern compiler can optimize across translation units, and so a function call may be inlined even though the function definition is in a separate translation unit, but these optimizations are expensive, aren't always enabled, and weren't always supported by the compiler)
 	
-	\item functions defined in the header must be marked inline because otherwise, every translation unit which includes the header will contain a definition of the function, and the linker will complain about multiple definitions (a violation of the One Definition Rule). The inline keyword suppresses this, allowing multiple translation units to contain (identical) definitions.
+	\item Functions defined in the header must be marked inline because otherwise, every translation unit which includes the header will contain a definition of the function, and the linker will complain about multiple definitions (a violation of the One Definition Rule). The inline keyword suppresses this, allowing multiple translation units to contain (identical) definitions.
+	
+	\item In the end. No matter how you designate a function as inline, it is a request that the compiler is allowed to ignore: the compiler might inline-expand some, all, or none of the places where you call a function designated as inline. (Don’t get discouraged if that seems hopelessly vague. The flexibility of the above is actually a huge advantage: it lets the compiler treat large functions differently from small ones, plus it lets the compiler generate code that is easy to debug if you select the right compiler options.)
 \end{itemize}
-
 
 
 \subsection{Combine C and C++}
@@ -583,30 +634,30 @@ const int a_global_var = /*const expression */;
 	
 	\item If your C++ file want to use a c function. You don't have C function source code(It is in a lib or obj file) or you don't want to recompile it( it's a very big C library). At this time, you have three options:
 	
-	\begin{enumerate}
-		\item You can put function declaration in to \texttt{extern "C"} directly.
-		\item You can put a head file into the \texttt{extern "C"}.
-		\item If you can control the header file, you can use \texttt{\_\_cplusplus + extern "C"}. it will used both in C and C++ compiler.
-	\end{enumerate}
-	\begin{lstlisting}[frame=single, language=c++, numbers=left,
-	stepnumber=1, xleftmargin=2em, framexleftmargin=1.9em]
-	extern "C"{  // method 1
+
+\begin{lstlisting}[numbers=none]
+extern "C"{  // method 1
 	c_function(int);
-	}
+}
 	
-	extern "C"{  // method 2
+extern "C"{  // method 2
 	#include "old_C_header.h"
-	}
+}
 	
-	#ifdef __cplusplus  //method 3
-	extern "C" {
-	#endif
+#ifdef __cplusplus  //method 3
+extern "C" {
+#endif
 	Foo (int a, int b);
-	#ifdef __cplusplus
-	}
-	#endif
-	\end{lstlisting}
-	
+#ifdef __cplusplus
+}
+#endif
+\end{lstlisting}
+	\begin{description}
+	\item[Line 1:] You can put function declaration in to \texttt{extern "C"} directly.
+	\item[Line 5:] You can put a head file into the \texttt{extern "C"}.
+	\item[Line 9:] If you can control the header file, you can use \texttt{\_\_cplusplus + extern "C"}. it will used both in C and C++ compiler.
+\end{description}
+
 	\item If you define a function in .cpp file(You have to use g++ to compile it), and this function will be used in legacy C system, you need to use \texttt{\_\_cplusplus + extern "C".}  You can give lib and head file to C system,  and then the C system can include head file and linked to lib.
 	
 	\item \textbf{In one word, if you have obj code produced by C or C++, When you want to linked it to different language, you should consider using \_\_cplusplus + extern "C" }
