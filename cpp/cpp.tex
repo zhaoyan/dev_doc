@@ -845,7 +845,6 @@ isLucky(false) // promotion, NO warning
 isLucky(1.2f) //standard conversion.  Warning
 \end{lstlisting}
 
-	
 	\item In C++, introduce braces initialization \{\}, It will not allow narrowing happen. But in g++, it just show a -Wnarrowing message, Anyway, I think that it's helpful.
 \begin{lstlisting}[numbers=none]
 int x = 66;  char c1 = {x}; //ok	
@@ -2436,17 +2435,15 @@ g() or g(10);
 \chapter{Initialization}
 \section{Basic}
 
-\subsection{principle rule}
+\subsection{basic conception and rule}
 \begin{itemize}
 	\item \textbf{Always initialize variable before you use it.} Manually initialize non-member objects of built-in types,including a pointer.
 	
-	\item Use \textbf{member initialization list} to initialize all members inside an object.
-	
-	\item There are three names: 1)initilizer list, 2) brace(list) initialization, 3) member initialization list(mem-init)
+	\item There are three names you need to distinguish: 1)initilizer list, 2) brace(list) initialization, 3) member initialization list(mem-init)
 	\begin{enumerate}
-		\item member initialization list is used in C++ ctor. it has some advantages: Detail can be found in "OOP" section. 
+		\item member initialization list is used in C++ ctor to initialize all members inside an object. it has some advantages: Detail can be found in "OOP" section. 
 		
-		\item brace initialization is a generic initialization syntax(method), it support more initialization, such as class member and aggregation. At the same time, it will avoid narrowing and vexing parsing problem. 
+		\item brace initialization is a generic initialization syntax(method), it supports more initialization, such as class member and aggregation. At the same time, it will avoid narrowing and vexing parsing problem. 
 		
 		\item initilizer list is \texttt{std::initializer\_list}. It is a \textbf{new data type. just like std::list.}
 	\end{enumerate}
@@ -2454,9 +2451,14 @@ g() or g(10);
 
 \subsection{initialization order}
 \begin{itemize}
-	\item In the same translation unit, formally, C++ initializes static and global variables in three phases: 1. Zero initialization 2. Static initialization 3. Dynamic initialization
+	\item In the same translation unit, formally, C++ initializes static and global variables in three phases:
+	\begin{enumerate}
+		\item Zero initialization.
+		\item Static initialization.
+		\item Dynamic initialization.
+	\end{enumerate}
 	
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 int g0;  //zero initialization
 int g1 = 42;    //  static initialization
 extern int f();
@@ -2470,10 +2472,10 @@ int f() {
 	++x;
 	return 123; // unimportant arbitrary number
 }
-// x equals to 23, not 22
-// bcause static initialization
-// is earlier than dynamic initialization
 \end{lstlisting}
+\begin{description}
+	\item[Source code:] x equals to 23, not 22. Bcause static initialization is earlier than dynamic initialization.
+\end{description}
 	
 	\item Pay attention to the global object which are initialized in right order. Because the order can be arranged in the same translation unit, but not \textbf{between translation units}, see effective c++ Item 47. So we don't encourage you to use global object unless it's very necessary.
 	
@@ -2482,23 +2484,26 @@ int f() {
 \begin{lstlisting}[frame=single, language=c++]
 #include "x.h" // File x.cpp
 X x;
-//x maybe initialize before y or after y
 	
 #include "y.h" // File y.cpp
 extern X x;
 Y y;
-Y::Y(){ //here x maybe not be constructed
+Y::Y(){ 
 	x.goBowling();
 }
 \end{lstlisting}
+\begin{description}
+	\item[Line 2:] x maybe initialize before y or after y.
+	\item[Line 8:] Here x maybe not be constructed
+\end{description}
 	
-	\item  How to resolve: build a singleton class
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+	\item  How to resolve: Using a singleton design pattern.
+	\begin{lstlisting}[numbers=none]
 #include "x.h"  // File x.cpp
 X& getX(){
 	static X x;
 	return x;
-	$\Hilight{30}$//another implementation.
+	//another implementation.
 	//static X* px = new X();
 	//return *px;
 }
@@ -2506,27 +2511,33 @@ X& getX(){
 #include "y.h" // File y.cpp
 Y y;
 Y::Y(){
-	$\Hilight{4}$getX().goBowling();
+	getX().goBowling();
 }
 \end{lstlisting}
 \end{itemize}
 
 
 \subsection{Init method}
-In this section,I will introduce a few conceptions togther. They are related. The first one is vexing parsing. The second one is value-initization. The third one is brace init and the last one is \texttt{initilizer\_list}
 
 \subsubsection{Six init methods}
 \begin{itemize}
-	\item There are six initializations forms: default, value, direct, copy, aggregate init and reference init.
-\begin{lstlisting}[frame=single, language=c++]
+	\item There are six \textbf{initializations forms}:
+	\begin{enumerate}
+		\item default initialization.
+\begin{lstlisting}[numbers=none]
 T t;
 new T;  //default
-//--------------------------------
+\end{lstlisting}
+		\item value initialization.
+\begin{lstlisting}[numbers=none]
 T t{};
 T(); T{};
 new T(); new T{};
-: member(), member{}  // class member initializer lists (value Init)
-//--------------------------
+: member(), member{}  
+// class member initializer lists (value Init)
+\end{lstlisting}
+		\item direct initialization.
+\begin{lstlisting}[numbers=none]
 T object(arg, ... );
 T(arg1, arg2, ... );
 new T(args, ...)
@@ -2536,7 +2547,9 @@ static_cast<T>(other) // explicit static_cast
 [arg](){...}          // lambda closure arguments captured by value
 //lambda is object, so for this object, 
 //lambda_1 obj(arg), is a direct init
-//-----------------------------
+\end{lstlisting}
+		\item copy initialization.
+\begin{lstlisting}[numbers=none]
 T object = other;        // Initialization via assignment
 T array[N] = {other};    // In array-initialization, the individual
 // values are copy-initialized
@@ -2545,20 +2558,21 @@ return other;            // Return-by-value
 catch (T object)         // Catch-by-value
 throw object;
 \end{lstlisting}
-
-%\item Aggregate initialization is a special case of list initialization. It is used when initializing arrays or simple structs (all-members-public, no user-provided c'tors）
-\begin{lstlisting}[frame=single, language=c++]
+		\item Aggregate initialization is used when initializing arrays or simple struct (all-member-public, no user-provided c'ctors.)
+\begin{lstlisting}[numbers=none]
 T object = {arg1, arg2, ...}; // If T is an array or a simple struct
 T object{arg1, arg2, ...};    // If T is an array or a simple struct
 \end{lstlisting}
-
-\item reference init is easy, it must has a reference symbol, 
-\begin{lstlisting}[frame=single, language=c++]
+		\item reference initialization. It must has a reference symbol.
+\begin{lstlisting}[numbers=none]
 T & ref = object ;
 T & ref = { arg1, arg2, ... };
 T & ref ( object ) ;
 T & ref { arg1, arg2, ... } ;
 \end{lstlisting}
+	\end{enumerate}
+
+
 	\item Summary:
 \begin{enumerate}
 	\item Without parentheses, it's default, tell the compiler to use it's default method;
@@ -2569,34 +2583,62 @@ T & ref { arg1, arg2, ... } ;
 	\item reference init is the most easy.
 	\item Many different syntax expression can be useful when you do generic programming.
 \end{enumerate}
-	
-\item for list init, there are three usages: value list init, direct list init and copy list init
-\begin{lstlisting}[frame=single, language=c++]
+
+\item list init is not initializations forms, but just a new syntax. \textbf{You can use list init syntax on three initializations forms:}
+\begin{enumerate}
+	\item value list init
+\begin{lstlisting}[numbers=none]
 T object{};
 T{};
 new T{}
 Class { T member{}; };
-: member{}                    // Class member initializer lists
-
+: member{}  // Class member initializer lists
+\end{lstlisting}
+	\item direct list init
+\begin{lstlisting}[numbers=none]
 T object{arg, ...};
 T {arg, ...};
 new T{arg, ...}
-Class { T member{arg, ...}; };  // Class member default initializer
-: member{arg, ...}         // Class member initializer lists
 
+Class {  // Class member initializer
+	T member{arg, ...}; 
+};
+ 
+: member{arg, ...} // Class member initializer lists
+\end{lstlisting}
+	\item copy list init
+\begin{lstlisting}
 T object = {arg, ...};
 object = {arg, ...};
-Class { T member = {arg, ...}; };// Class member default initializer
-function({arg, ...});  // Initializes temporary for the function arg
-return {arg, ...};     // Initializes temporary for return value
+Class { T member = {arg, ...}; };
+function({arg, ...}); 
+return {arg, ...};  
 \end{lstlisting}
-\item \textbf{brace init is just in syntax level, for the detail init method, it depends on the specific data type.}  For example: If T is an aggregate type, \textbf{aggregate initialization} is performed. Otherwise, If the braced-init-list is empty and T is a class type with a default constructor, \textbf{value-initialization} is performed.
+\begin{description}
+	\item[Line 3:] Class member default initializer
+	\item[Line 4:] Initializes temporary for the function arg
+	\item[Line 5:] Initializes temporary for return value
+\end{description}
+\end{enumerate}
 
+\item \textbf{list init is just in syntax level, for the detail init form, it depends on the specific data type.}  For example: If T is an aggregate type, \textbf{aggregate initialization} is performed. Otherwise, If the braced-init-list is empty and T is a class type with a default constructor, \textbf{value-initialization} is performed.
+
+\begin{lstlisting}
+A a{};
+A a{1};
+\end{lstlisting}
+\begin{description}
+	\item[Line 1:] It's value init.
+	\item[Line 2:] Even you see brace here, but it can be direct init or aggregate type. \textbf{You can't judge init form only by existing of brace.}
+\end{description}
+
+\item After you know six forms init, you also need to know more detail.I will introduce three differences in the next three sections: differences between value init and default init, differences between direct init and copy init and differences between traditional copy init and list copy init. The bad news is they are complicated, the good news is that a short summary is given in the end of each section. Let's Go!
 \end{itemize}
 
-\subsubsection{value init}
+
+\subsubsection{Value init and default init}
 \begin{itemize}
-	\item basic knowlege. googling "Value-initialization with C++"
+	\item Basic knowlege. googling "Value-initialization with C++"
 	
 	\item For value init, It's depends on if you have user define ctor. if you don't have, set it to zero. But if you have one, compiler will not set it to zero any more. That is easy to understand, you have higher authorization than compiler. 
 	
@@ -2607,35 +2649,44 @@ class exec{
 	int i;
 };
 	
-class exec2
-{
+class exec2{
 	public:
 	exec2();
 	int i;
 };
 exec2::exec2() = default;
 	
-const exec e;      //erro, exec has default ctor
-const exec2 e2;    //right, exec2 has user-define ctor
+const exec e;      
+const exec2 e2;    
 
-exec e    //default init, so e.i is random
-exec e{}  //value init, but there is no user-define ctor, so e.i == 0
+exec e    
+exec e{}  
 	
-exec2 e  // default init, so e.i is random
+exec2 e  
 exec2 e{}  
-//value init, but there is user-define ctor, so e.i is random
 \end{lstlisting}
+\begin{description}
+	\item[Line 14:] erro, exec has default ctor
+	\item[Line 15:] right, exec2 has user-define ctor
+	\item[Line 17:] default init, so e.i is random
+	\item[Line 18:] value init, but there is no user-define ctor, so e.i == 0
+	\item[Line 20:] default init, so e.i is random
+	\item[Line 21:] value init, but there is user-define ctor, so e.i is random
+\end{description}
 	
 	\item Value init also kick in when you use \texttt{new}. Detail can be found: "Do the parentheses after the type name make a difference with new?"
 	
 \begin{lstlisting}[frame=single, language=c++]
 struct A { int m; }; // POD
-struct B { ~B(); int m; }; //non-POD,compiler generated default ctor
+struct B { ~B(); int m; }; 
 struct C { C() : m() {}; ~C(); int m; }; 
-// non-POD, default-initialising m
 \end{lstlisting}
+\begin{description}
+	\item[Line 2:] non-POD,compiler generated default ctor.
+	\item[Line 3:] non-POD, default-initialising m
+\end{description}
 	
-	In a C++03 compiler, things should work like so:
+	In a C++03 compiler, things should work like this:
 	\begin{itemize}
 		\item new A - indeterminate value
 		\item new A() - value-initialize A, which is zero-initialization since it's a POD.
@@ -2648,104 +2699,129 @@ struct C { C() : m() {}; ~C(); int m; };
 		
 		\item new C() - value-initializes C, which calls the default ctor.
 	\end{itemize}
+\item \textbf{Summary:} 
+\begin{enumerate}
+	\item If there is empty parentheses or brace in the end, it maybe is value init.
+	\item the result of value init is affected by if you have user-defined default ctor.
+\end{enumerate}
 \end{itemize}
 
 \subsubsection{copy init and direct init}
 \begin{itemize}
-	\item A good article is "Is there a difference between copy initialization and direct initialization?"
-	
-	\item \textbf{copy init is difference with copy ctor.} calling copy ctor is  direct init? If it's copy init, so it need two steps, create temp, then copy temp.  if it's direct init, just call one ctor(by overload resolve). Above it's theoretical definition. When optimization kick in, it hide the deep theoretical definition.   
+
+	\item \textbf{copy init is difference with copy ctor.} calling copy ctor  is  direct init? If it's copy init, so it need two steps, create temp, then copy temp.  If it's direct init, just call one ctor(by overload resolve). Above it's theoretical definition. When optimization kick in, it hides the deep theoretical definition.
 	
 	\item An example and analysis:
-
 \begin{lstlisting}[frame=single, language=c++]
-ClassTest ct1("ab");//direct init
-ClassTest ct2 = "ab";//copy init 
-     // When optimization turn on, ct2 call single argument directly
-               // But it's still copy init.
-ClassTest ct3 = ct1;//copy init
-ClassTest ct4(ct1);//direct init
-ClassTest ct5 = ClassTest();//copy init Class has default ctor
+ClassTest ct1("ab"); //direct init
+ClassTest ct2 = "ab"; //copy init 
+ClassTest ct3 = ct1; //copy init
+ClassTest ct4(ct1); //direct init
+ClassTest ct5 = ClassTest(); //copy init Class has default ctor
 ClassTest ct6 = {1,2} //copy init Class has two parameter ctor.
 \end{lstlisting}
-
-	\begin{enumerate}
-		\item ct2 is copy init. Compiler analyzes the syntax according theoretical definition, for ct2, if copy ctor is private, then compile will stop. if copy ctor is public, then optimizaiton kick in, it call single argument ctor directly.
-		
-		\item for ct3, It's copy init. Compiler thinks the ct1(temp) has been created, then call copy ctor directly. but in fact, it's still copy init.
-		
-		\item ct4 is direct init call copy ctor. because in theoretical it's only one step, call a ctor by overload. 
-		
-		\item In one word, if it's a copy init is not depend on whether it call copy ctor.  it's depend on (in theoretical) whether it has two steps(has equal sign).
-	\end{enumerate}
-
-	\item  When copy ctor is explicit.
-\begin{lstlisting}[frame=single, language=c++]
-class A{
-public:
-	A(int a = 0);
-	$\Hilight{10}$explicit A(const A &a){} //EXPLICIT copy constructor
-};
+\begin{description}
+	\item[Line 2:]  When optimization turn on, ct2 call single argument directly. But it's still copy init. ct2 is copy init. Compiler analyzes the syntax according theoretical definition, for ct2, if copy ctor is private, then compile will stop. if copy ctor is public, then optimizaiton kick in, it call single argument ctor directly.
 	
-void funcX(A a) {
-	//ERROR to take A by value (implicit copying)	
-}
-A funcY(){ 
-	A a;
-	return a; //ERROR - function returning A by value (implicit copying)
-}
-A a1 = a;////ERROR  implicit copying of TestOverload not allowed
-A a1(a); //OK - EXPLICIT copying allowed
-\end{lstlisting}
+	\item[Line 3:] for ct3, It's copy init. Compiler thinks the ct1(temp) has been created, then call copy ctor directly. but in fact, it's still copy init.
 	
+	\item[Line 4:] ct4 is direct init call copy ctor. because in theoretical it's only one step, call a ctor by overload. 
+	
+	\item[Line 5:] It's not direct init, nor a copy init. It's complex statements.
+	
+	\item[Line 6:] It's copy init.
+	
+	\item[Source code:] 
+\end{description}
+
+	\item copy init and direct init has different behavior:
 	\begin{enumerate}
-		\item Difference between A a(a1) and A a = a1.  They are almost same. But When copy ctor is explicit,  A a1 = a will not work, but A a1(a) work.
+		\item Direct initialization behaves like a function call to an overloaded function: The functions, in this case, are the constructors of T (including explicit ones), and the argument is x. Overload resolution will find the best matching constructor, and when needed will do any implicit conversion required.
+		While direct initialization has all constructors available to call, and in addition can do any implicit conversion it needs to match up argument types.
 		
-		\item Usually, we don't make copy ctor explicit, because it will disable function call and return value.
-		
-		\item \textbf{With explict copy ctor, A a = 1 still work.But when the copy ctor is private, A a = 1 fail}
-
+		\item Copy initialization constructs an implicit conversion sequence: It tries to convert x to an object of type T. (It then may copy over that object into the to-initialized object, so a copy constructor is needed too - but this is not important below) copy initialization can just set up one implicit conversion sequence.
 	\end{enumerate}
-
-\item  When single parameter ctor is explicit.
-\begin{lstlisting}[frame=single, language=c++]
-class A{
-public:
-	int i;
-	explicit  A(int a = 0);
-	A(const A &a){} 
+\begin{lstlisting}
+struct B;
+struct A { 
+	operator B() {cout<<"A-o-B,"; return B();}
 };
-
-A a = 1; // fail. 
-//A a = {1}  //fail
-A a = A{1}  //work
-A a = A(1)  //work
-\end{lstlisting}
-
-\item When parameterized ctor and copy ctor are both explicit.
-\begin{lstlisting}[frame=single, language=c++]
-class A{
-public:
-	explicit A(int k):m_a(k){};
-	explicit A(const A& rhs){m_a = rhs.m_a;};
-	virtual ~A(){}; //not aggregate
-	int m_a;
+struct B { 
+	B() { }
+	B(A const&) { cout <<"A-c-B,"; }
 };
-
-int main(){
-A a={110};// will compile error,because A(int k) is explicit
-A a{110} //this will work here.
-A b = {a}; // will compile error, because copy ctor is explicit.
-}
+struct C{
+	operator A() {cout<<"C-o-A,"; return A();}
+};
+ 
+A a;
+B b = a;  //OK, print A-o-B
+C c;
+B b1(c); //OK, print C-o-A, A-c-B
+B b2 = c; //ERROR
 \end{lstlisting}
+\begin{description}
+	\item[Line 14:]  copy initialization will construct a conversion sequence when a has not type B or derived from it (which is clearly the case here). So it will look for ways to do the conversion, and will find the following candidates: 1) B(A const\&) and operator B(A\&). Because a is not const, so less const version wins. 
+	
+	\item[Line 16:] Direct initialization behaves like a function call. it will do any implicit conversion it needs to match up argument types.
+	
+	\item[Line 17:] copy initialization can just set up one implicit conversion sequence. Although there is two steps conversion: C-->A-->B, but there is not one step conversion C-->B. So copy init fail here.
+	
+\end{description}
 
+
+\item \textbf{Summary:}
 \begin{enumerate}
-	\item  \textbf{Most of time, Single parameter ctor is explicit, copy ctor is not.}
-	\item \textbf{With explicict A(int i) ctor, A a = 1 will fail, but A a = A{1} will work.} 
+	\item In one word, Whether it's a copy init or direct init doesn't depend on whether it call copy ctor.  it depends on (in theoretical) whether it has two steps(has equal sign).
+	
+	\item For direct init, it call ctor directly, and do do any implicit conversion it needs to match up argument types..
+	
+	\item For copy init, 1) make sure copy ctor accessible(not private) 2) one the right side of =, just set up one implicit conversion sequence.
 \end{enumerate}
 
-\item Another more interesting example 
+		
+\item a good link is \verb|https://www.cnblogs.com/pluse/p/7088880.html|
+\item A good article is "Is there a difference between copy initialization and direct initialization?"
 
+	
+\end{itemize}
+
+\subsubsection{traditional copy init and list copy init}
+\begin{itemize}
+	\item The most important differences:
+	\begin{enumerate}
+		\item traditional copy init uses notion of user-defined conversion sequences (and, particularly, requires availability of copy constructor, as was mentioned)
+		
+		\item list copy init just performs overload resolution among applicable constructors, i.e. brace initialization can't use operators of conversion to class type
+	\end{enumerate}
+\begin{lstlisting}
+struct Intermediate {};
+struct S{
+	operator Intermediate() { return {}; }
+};
+struct S1{
+	S1(Intermediate) {}
+};
+
+S s;
+Intermediate im1 = s; // OK
+Intermediate im2 = {s}; // ill-formed
+S1 s11 = s; // ill-formed
+S1 s12 = {s}; // OK
+\end{lstlisting}
+
+	\begin{description}
+		\item[Line 10:] copy initialization uses notion of user-defined conversion sequences (and, particularly, requires availability of copy constructor, as was mentioned)
+		
+		\item[Line 11:] list copy initialization just performs overload resolution among applicable constructors, i.e. brace initialization can't use operators of conversion to class type. Intermediate has not ctor with S as argument.
+		
+		\item[Line 12:] copy initialization can just set up one implicit conversion sequence. In this case 1) S change to Intermediate by operator, 2) from Intermediate to S1 by constructor.  You can see there are two implicit conversion.
+		
+		\item[Line 13:] list copy initialization use constructors, and it will do any implicit conversion it needs to match up argument types. In this case 1) S change to Intermediate by operator, 2) call S1's constructor and pass this temporary Intermediate.
+	\end{description}
+	
+	
+\item copy list init also supports multiple arguments.
 \begin{lstlisting}[frame=single, language=c++]
 class A{
 public:
@@ -2754,39 +2830,118 @@ public:
 	A(int a , int b ):i(a){cout<<"two";}
 	A(const A &T){ cout<<"copy ctor";} 
 };
+	
+A too = (1,2); 
+A too = {1,2};
+A fun(A);
+fun({1,2}) {return{3,4};}
+\end{lstlisting}
+	\begin{description}
+		\item[Line 9:] fail, it (1,2) became 2, then call single ctor() and comma is operator, it's different with {}
+		
+		\item[Line 10:] work, call two parameter ctor. 
+		
+		\item[Line 12:] Usually, we don't declare two parameter ctor as explicit. So we can also pass fun argument and return by using a copy list init form. You can see the expression is simple and it will call ctor directly. 
+	\end{description}
 
-A too = (1,2); //fail, it (1,2) became 2, then call single ctor
-          //() and comma is operator, it's different with {}
-A too = {1,2}; //work, call two parameter ctor
+
 \end{lstlisting}
 
-
-	\item For assignment, you can use braced init and avoid type name. But when you define explicit converting ctor, it will not work. 
-\begin{lstlisting}[frame=single, language=c++]
-pair<int, string> p;
-p = {1,"aaa"}
-
-A a;
-a = {1} //without explicit converting ctor
-a = A{1} //with explicit converting ctor
-\end{lstlisting}
-
-
-\item Summary:
+\item \textbf{Summary:}
 \begin{enumerate}
-	\item The first step is to see the right side of =, if converting ctor is explicit, we have to use A\{x, y\} to explicit call it. For example: A a = A\{x, y\} will work. A a = \{x,y\} will not work. 
+	\item copy list init just performs overload resolution among applicable constructors
+	
+	\item copy list init with multiple arguments ctor make function call and return easier, illustrated by the previous source code.
+\end{enumerate}
+
+	\item A good article is "Any difference between copy-list-initialization and traditional copy-initialization?"
+
+\end{itemize}
+
+\subsubsection{explicit}
+\begin{itemize}
+	\item When copy ctor is explicit.
+\begin{lstlisting}[frame=single, language=c++]
+class A{
+public:
+	A(int a = 0);
+	explicit A(const A &a){} //EXPLICIT copy constructor
+};
+	
+void funcX(A a) {
+	//ERROR, take A by value (implicit copying)
+}
+A funcY(){ 
+	A a;
+	return a; //ERROR, returning A by value(implicit copying)
+}
+A a1 = a; //ERROR, implicit copying of A not allowed
+A a1(a); //OK - EXPLICIT copying allowed
+A a = 1;
+\end{lstlisting}
+	\begin{description}
+		\item[Line 4:] Usually, we don't make copy ctor explicit, because it will disable function call and return value.
+		
+		\item[Line 14 and 15:] Difference between A a(a1) and A a = a1.  They are almost same. But When copy ctor is explicit,  A a1 = a will not work, but A a1(a) work.
+		
+		\item[Line 16:] \textbf{With explicit copy ctor, A a = 1 still work.But when the copy ctor is private, A a = 1 fail}.Although we don't call copy ctor directly, but we need to make sure it accessible. We don't consider copy ctor's explicit in this case.
+	\end{description}
+	
+	\item When parameterized ctor and copy ctor are both explicit.
+\begin{lstlisting}[frame=single, language=c++]
+class A{
+public:
+	explicit A(int k):m_a(k){};
+	explicit A(const A& rhs){m_a = rhs.m_a;};
+	int m_a;
+};
+	
+A a=110;// ERROR
+A a(110) //this will work here.
+A a1 = a; // ERROR, because copy ctor is explicit.
+\end{lstlisting}
+	\begin{description}
+		\item[8] it's copy list init, It will call ctor directly, because \texttt{A(int k)} is explicit, so it fails.
+		\item[9] Work, satisfy explicit requirement
+		\item[10] it's copy list init, It will call ctor directly, because \texttt{A(const A\& rhs)} is explicit, so it fails.
+	\end{description}
+	
+	\item  When single parameter ctor is explicit.
+\begin{lstlisting}[numbers=none]
+class A{
+public:
+	explicit A(int k):m_a(k){};
+	A(const A& rhs){m_a = rhs.m_a;};
+	int m_a;
+};
+	
+A a = 1; // fail. 
+A a = {1}  //fail
+A a = A{1}  //work
+A a = A(1)  //work
+\end{lstlisting}
+	\begin{description}
+		\item[Line 3 and 4:] Most of time, Single parameter ctor is explicit, copy ctor is not.
+		
+		\item[Line 7 and 8:] With explicict A(int i) ctor, A a = 1 will fail, but A a = A{1} will work.
+	\end{description}
+
+
+\item \textbf{Summary:}
+\begin{enumerate}
+	\item The first step is to see the right side of =, if converting ctor is explicit, we have to use A\{1\} to explicit call it. For example: A a = A\{1\} will work. A a = \{1} will not work. 
 	
 	\item The second step is to see when you use brace init. if it has initlizer\_list ctor, it has strong preference. we will talk about it later.
 	
-	\item The third step is to see if copy ctor is explicit. if yes, A a = A\{x, y\} will fail, but A a = \{x,y\} work.
+	\item The third step is to see if copy ctor is explicit. if yes, A a = A\{1\} will fail, but A a = \{1\} work.
 	
-	\item if copy ctor is private, both A a = A\{x, y\} and A a = A(x,y) fail But A a = \{x,y\} still work.
+	\item \textbf{explicit copy ctor only disable A a1=a; but not disable A a1=1; But private copy ctor will disable both.}
 	
 \end{enumerate}
 
-	\includegraphics[scale=0.8]{pics/copy_init.png} \\
+\includegraphics[scale=0.8]{pics/copy_init.png} \\
 
-	\begin{tabular}{|p{0.27\textwidth}|p{0.6\textwidth}|}
+\begin{tabular}{|p{0.27\textwidth}|p{0.6\textwidth}|}
 	\hline
 	Expression & meaning \\
 	\hline
@@ -2796,26 +2951,7 @@ a = A{1} //with explicit converting ctor
 	\hline
 \end{tabular}
 
-\item In C++, anonymous variables are primarily used either to pass or return values without having to create lots of temporary variables to do so.
-		
-\item anonymous objects are treated as rvalues (not lvalues, which have an address). This means anonymous objects can only be passed or returned by value or const reference. Otherwise, a named variable must be used instead.
-		
-\begin{lstlisting}[frame=single, language=c++]
-Cents add(const Cents &c1, const Cents &c2){
-	return Cents(c1.getCents() + c2.getCents());
-	// return anonymous Cents value
-}
-		
-cout <<add(Cents{6}, Cents{8}).getCents();
-\end{lstlisting}
-
-\item a good link is \verb|https://www.cnblogs.com/pluse/p/7088880.html|
-
-
-	
 \end{itemize}
-
-
 
 \section{Brace Init}
 
@@ -2971,7 +3107,18 @@ MyClass myClass1= {2011,3.14};
 MyClass2 myClass2{2011,3.14};     
 MyClass2 myClass3= {2011,3.14};   
 \end{lstlisting}
-	
+
+
+\item In C++, anonymous variables are primarily used either to pass or return values without having to create lots of temporary variables to do so. anonymous objects are treated as rvalues (not lvalues, which have an address). This means anonymous objects can only be passed or returned by value or const reference. Otherwise, a named variable must be used instead.
+
+\begin{lstlisting}[frame=single, language=c++]
+Cents add(const Cents &c1, const Cents &c2){
+return Cents(c1.getCents() + c2.getCents());
+// return anonymous Cents value
+}
+
+cout <<add(Cents{6}, Cents{8}).getCents();
+
 \item \textbf{omit type name}
 	
 \begin{lstlisting}
@@ -3028,7 +3175,7 @@ forwarder<vector<int>>    ( 1, 2, 3, 4 );          // ok because of {}
 \subsection{copy-list-initialization and traditional copy-initialization?}
 
 \begin{itemize}
-	\item A good article is "Any difference between copy-list-initialization and traditional copy-initialization?"
+
 	
 	\item Basic idea of all kinds of initialization.What's the difference?
 \begin{lstlisting}[frame=single, language=c++]
@@ -3281,7 +3428,9 @@ std::map<std::string, int> scores{
 	{"Alex", 522}, {"Pumu", 423}, {"Kitten", 956} 
 };
 \end{lstlisting}
-	
+
+
+
 	\item An empty pair of braces can be:
 	\begin{enumerate}
 		\item Default initialization.
