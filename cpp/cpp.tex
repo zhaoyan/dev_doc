@@ -2844,7 +2844,21 @@ fun({1,2}) {return{3,4};}
 		\item[Line 12:] Usually, we don't declare two parameter ctor as explicit. So we can also pass fun argument and return by using a copy list init form. You can see the expression is simple and it will call ctor directly. 
 	\end{description}
 
-
+\item Does the equal sign make a difference in brace initialization? eg. 'T a = \{\}' vs 'T a\{\}' The only significant difference I know is in the treatment of explicit constructors:
+\begin{lstlisting}
+struct foo{
+	explicit foo(int);
+};
+foo f0 {42};    // OK
+foo f1 = {42};  // not allowed
+\end{lstlisting}
+\item in C++11 that allows brace-elision only for the copy list init.
+\begin{lstlisting}
+struct aggr{
+	int arr[5];
+};
+aggr a0 = {1,2,3,4,5};  // OK
+aggr a1 {1,2,3,4,5};    // not allowed
 \end{lstlisting}
 
 \item \textbf{Summary:}
@@ -2855,6 +2869,7 @@ fun({1,2}) {return{3,4};}
 \end{enumerate}
 
 	\item A good article is "Any difference between copy-list-initialization and traditional copy-initialization?"
+	
 
 \end{itemize}
 
@@ -2901,13 +2916,13 @@ A a(110) //this will work here.
 A a1 = a; // ERROR, because copy ctor is explicit.
 \end{lstlisting}
 	\begin{description}
-		\item[8] it's copy list init, It will call ctor directly, because \texttt{A(int k)} is explicit, so it fails.
-		\item[9] Work, satisfy explicit requirement
-		\item[10] it's copy list init, It will call ctor directly, because \texttt{A(const A\& rhs)} is explicit, so it fails.
+		\item[Line 8:] it's copy list init, It will call ctor directly, because \texttt{A(int k)} is explicit, so it fails.
+		\item[Line 9:] Work, satisfy explicit requirement
+		\item[Line 10:] it's copy list init, It will call ctor directly, because \texttt{A(const A\& rhs)} is explicit, so it fails.
 	\end{description}
 	
 	\item  When single parameter ctor is explicit.
-\begin{lstlisting}[numbers=none]
+\begin{lstlisting}
 class A{
 public:
 	explicit A(int k):m_a(k){};
@@ -2929,7 +2944,7 @@ A a = A(1)  //work
 
 \item \textbf{Summary:}
 \begin{enumerate}
-	\item The first step is to see the right side of =, if converting ctor is explicit, we have to use A\{1\} to explicit call it. For example: A a = A\{1\} will work. A a = \{1} will not work. 
+	\item The first step is to see the right side of =, if converting ctor is explicit, we have to use A\{1\} to explicit call it. For example: A a = A\{1\} will work. A a = \{1\} will not work. 
 	
 	\item The second step is to see when you use brace init. if it has initlizer\_list ctor, it has strong preference. we will talk about it later.
 	
@@ -2939,17 +2954,31 @@ A a = A(1)  //work
 	
 \end{enumerate}
 
-\includegraphics[scale=0.8]{pics/copy_init.png} \\
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.7\linewidth]{pics/copy_init.png}
+	\caption{}
+	\label{Explicit and init }
+\end{figure}
 
 \begin{tabular}{|p{0.27\textwidth}|p{0.6\textwidth}|}
 	\hline
 	Expression & meaning \\
-	\hline
+	\tophline
 	A a = (i), A a=\{i\} & explicit converting ctor will not work \\
-	\hline
-	A a = A(i), A a = A\{i\} & explicit copy ctor will not work \\
-	\hline
+	\tophline
+	A a = A(i), A a = A\{i\} & explicit copy ctor will not work 
+	\bottomhline
 \end{tabular}
+
+\item Last summary about previous three sections.
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\linewidth]{pics/copy_list.png}
+	\caption{difference between direct, copy and list-copy init}
+	\label{fig:copylist}
+\end{figure}
+
 
 \end{itemize}
 
@@ -2960,97 +2989,115 @@ A a = A(1)  //work
 	
 	\item The basic syntax examples. 
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
-int x1 = 27;  //1) asiignment
-int x2(27); //2) parentheses before C++11
+int x1 = 27;  
+int x2(27);   //before C++11
 
-int x3{ 27 }; //3) brace init, introudced in C++11
-int x4={ 27 }; //Like 3, but for class type, a trivial difference. 
-              //can't use with explicit copy ctor(introduced before)
+int x3{ 27 }; //after C++11
+int x4={ 27 }; 
 \end{lstlisting}
-	
+\begin{description}
+	\item[Line 4:] Brace init, introudced in C++11.
+	\item[Line 5:] Like line 3, but for class type, a trivial difference. can't use with explicit copy ctor(introduced before)
+\end{description}
 	
 \item More detail syntax analysis.
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
-widget w;                   // (a)
-widget w();                 // (b)
-widget w{};                 // (c)
+widget w;               // (a)
+widget w();             // (b)
+widget w{};             // (c)
 	
-widget w(x);                // (d)
-widget w{x};                // (e)
+widget w(x);            // (d)
+widget w{x};            // (e)
 	
-widget w = x;               // (f)
-widget w = {x};             // (g)
+widget w = x;           // (f)
+widget w = {x};         // (g)
 	
-auto w = x;                 // (h)
-auto w = widget{x};         // (i)
+auto w = x;             // (h)
+auto w = widget{x};     // (i)
 \end{lstlisting}
 	
 	\begin{enumerate}
 		\item (a) is just default init with default ctor.
+		
 		\item \textbf{(b) is function declaration.} That is why we prefer use brace init (c), it will avoid this vex problem.
 		
-		\item (d) and (e) Assuming x is not the name of a type, these are both direct initialization. That's because the variable w is initialized "directly" from the value of x by calling widget::widget(x). If x is also of type widget, this invokes the copy constructor. Otherwise, it invokes a converting constructor.
+		\item For (d) and (e), These are both direct initialization. The variable w is initialized "directly" from the value of x by calling \texttt{widget::widget(x)}. If x is also of type widget, this invokes the copy constructor. Otherwise, it invokes a converting constructor.
 		
 		\item (e) is better than (d) to avoid narrowing, for example:
-\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+\begin{lstlisting}[numbers=none]
 Class A{
 	A(int){}
 }
 A a(1.2); //work
 A a{1.2}; //fail
 \end{lstlisting}
-		\item For (e), it prefer constructor that takes an initializer\_list
+		\item For (e), it prefer constructor that takes an \texttt{initializer\_list.}
 		
-		\item For (f), when x is type of widget, just like (d), but can't work when copy ctor is explicit(introudced before)
+		\item For (f), when x is type of widget, just like (d), but can't work when copy ctor is explicit(introduced before)
 		
-		\item for (f), when x is not type of widget, it will convert x to a temporary If x is of some other type, \textbf{conceptually} the compiler first implicitly converts x to a temporary widget object, then move-constructs w from that temporary rvalue, using copy construction as "the slow way to move" as a backup if no better move constructor is available. Assuming that an implicit conversion is available, (f) means the same as widget w( widget(x) );. Note that I said "conceptually" a few times above. That's because practically compilers are allowed to, and routinely do, optimize away the temporary and, if an implicit conversion is available, convert (f) to (d), thus optimizing away the extra move operation. However, even when the compiler does this, the widget copy constructor must still be accessible, even if is not called—the copy constructor's side effects may or may not happen.
+		\item for (f), when x is not type of widget, it will convert x to a temporary If x is of some other type, \textbf{conceptually} the compiler first implicitly converts x to a temporary widget object, then move-constructs w from that temporary rvalue, using copy construction as "the slow way to move" as a backup if no better move constructor is available. Assuming that an implicit conversion is available, (f) means the same as widget w( widget(x) );. Note that I said "conceptually" a few times above. That's because practically compilers are allowed to, and routinely do, optimize away the temporary and, if an implicit conversion is available, convert (f) to (d), thus optimizing away the extra move operation. However, even when the compiler does this, the widget copy constructor must still be accessible, even if is not called, the copy constructor's side effects may or may not happen.
 
-		\item For (g), just like (f)
+		\item For (g), This is called “copy list initialization.” It means the same as \texttt{widget w{x}}; except that explicit constructors cannot be used. It’s guaranteed that only a single constructor is called.
 		
-		\item (h), just like type-of-x w(x), A w(a) That will call A copy ctor directly. is same with (d).(when copy ctor is explicit, it will not work)
+		\item (h) just like type-of-x w(x), is same with (d), only single copy ctor is called
 		
-		\item (i), Line (i) is the most consistent spelling when you do want to commit to a specific type and explicitly request a conversion if needed, and once again the \{ \} syntax happily avoids lossy narrowing conversions. In practice on most compilers, only a single constructor is called-similarly to what we saw with (f) and (g).
+		\item (i) is the most consistent spelling when you do want to commit to a specific type and explicitly request a conversion if needed, and once again the \{ \} syntax happily avoids lossy narrowing conversions. In practice on most compilers, only a single constructor is called-similarly to what we saw with (f) and (g).
 		
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
-class TestOverload{
+class Test{
 public:
 	int i;
-	TestOverload(int a = 0):i(a){}
-	TestOverload(const TestOverload &T){ cout<<"copy ctor";} 
+	Test(int a = 0):i(a){}
+	Test(const Test &T){ cout<<"copy ctor";} 
 };
 		
-TestOverload too = 2;  //test for (f) 
-TestOverload too = {2} // test for (g)
-//1) both (f) and (g) work and no call
-         // copy ctor(no output:"copy ctor")
-//2) If converting ctor has explicit 
-         //--both fail.TestOverload too{2} --succeed.
-//3) if copy ctor is private -- (f) fail.
-//(strange, even I don't call you, but you must accessible)
+Test too = 2;  //test for (f) 
+Test too = {2} // test for (g)
 		
-TestOverload too;  //test for (h)
-auto w = too
-1) When if copy ctor has explict --fail.
-
-auto w = TestOverload{2} //test for (i)
-//1) you can use auto w = TestOverload(2),
-        // it just call ctor, and w is not const reference.
-//2) {} is better, it more generic and avoid narrow
-// auto w = TestOverload{1.2} fail, auto w=TestOverload(1.2) ok 
-//3) even converting ctor is explict, it can work too.
-//4) don't call copy ctor at all
+Test too;  
+auto w = too //test for (h)
+auto w = Test{2} //test for (i)
 \end{lstlisting}
+\begin{description}
+	\item[Line 8 and 9:] Both (f) and (g) work and no call copy ctor (no output:"copy ctor"); If converting ctor has explicit both fail,but Test too{2} succeed; if copy ctor is private, (f) fail.
 
-		\item summary, (h) and (i) is the best way. stick to them when you write the problem in the future. 
+	\item[Line 11 and 12:] When copy ctor has explict --fail.
+	
+	\item[Line 13:] you can use auto w = Test(2), it just call ctor, and w is not const reference.
+	\item[Line 13:]  \{\} is better, it more generic and avoid narrow auto w = Test\{1.2\} fail, auto w=Test(1.2) ok. Even converting ctor is explict, it can work too. don't call copy ctor at all.
+\end{description}
+
 	\end{enumerate}
 
 \end{itemize}
 
 \subsection{Brace init advantage}
 \begin{itemize}
-	\item \textbf{empty brace for single or aggreaged varaible} An empty pair of braces indicates value initialization. value initialization of POD types usually means initialization to binary zeros, whereas for non-POD types value initialization means 1) zero if you don't user defined ctor 2) use user defined ctor:
-
+	\item compared with c++98, we can see the improvement of brace init.
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
+// C++98 
+double *pd= new double [3];
+rectangle       w( origin(), extents() );     
+vector<int>     v;
+for( int i = 1; i <= 4; ++i ) v.push_back(i);
+
+// C++11 (note: "=" is mostly optional)
+double *pd= new double [3] {0.5, 1.2, 12.99};
+rectangle       w   = { origin(), extents() }; 
+vector<int>     v   = { 1, 2, 3, 4 };
+\end{lstlisting}
+\begin{description}
+	\item[Line 2:] before C++11, you can't init it.
+	
+	\item[Line 3:] vexing parse, will introduce later.
+	
+	\item[Line 5:] need more code  to initialize this.
+\end{description}
+	
+	
+	\item \textbf{empty brace is value init.} An empty pair of braces indicates value initialization. value initialization of POD types usually means initialization to binary zeros, whereas for non-POD types value initialization means 1) zero if you don't user defined ctor 2) use user defined ctor:
+
+\begin{lstlisting}[numbers = none]
 //C++11: default initialization using {}
 int *p{}; //initialized to nullptr
 char s[12]{}; //all 12 characters are initialized to '\0'
@@ -3078,12 +3125,9 @@ private:
 int intArray[]= {1,2,3,4,5};   
 std::vector<int> intArray1{1,2,3,4,5};  
 std::map<std::string,int> myMap{{"Scott",1976}, {"Dijkstra",1972}};
-	
-// Initialization of a const heap array
-const float* pData= new const float[3]{1.1,2.2,3.3};
 \end{lstlisting}
 	
-\item \textbf{ init a class event without ctor}
+\item \textbf{init a class even without ctor}
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 class MyClass{			
 public: 
@@ -3108,7 +3152,6 @@ MyClass2 myClass2{2011,3.14};
 MyClass2 myClass3= {2011,3.14};   
 \end{lstlisting}
 
-
 \item In C++, anonymous variables are primarily used either to pass or return values without having to create lots of temporary variables to do so. anonymous objects are treated as rvalues (not lvalues, which have an address). This means anonymous objects can only be passed or returned by value or const reference. Otherwise, a named variable must be used instead.
 
 \begin{lstlisting}[frame=single, language=c++]
@@ -3118,7 +3161,8 @@ return Cents(c1.getCents() + c2.getCents());
 }
 
 cout <<add(Cents{6}, Cents{8}).getCents();
-
+	\end{lstlisting}
+	
 \item \textbf{omit type name}
 	
 \begin{lstlisting}
@@ -3134,22 +3178,8 @@ MyClass2 mc2;
 mc2 = {2011,3.14}  // or MyClass2(2011, 3.14)
 	\end{lstlisting}
 	
-\item compared with c++98, we can see the improvement of brace init.
-\begin{lstlisting}[frame=single, language=c++,mathescape=true]
-double *pd= new double [3] {0.5, 1.2, 12.99}; 
-$\Hilight{22}$//before { no =,  or compile error
-	
-// C++98 
-rectangle       w( origin(), extents() );       // oops, vexing parse 
-vector<int>     v;                              // urk, need more code
-for( int i = 1; i <= 4; ++i ) v.push_back(i);   //   to initialize this
-	
-// C++11 (note: "=" is mostly optional)
-rectangle       w   = { origin(), extents() }; 
-vector<int>     v   = { 1, 2, 3, 4 };
-\end{lstlisting}
-	
-\item \textbf{Also work in template}And note that this isn't just an aesthetic issue. Consider writing generic code that should be able to initialize any type… and while we're at it, let's gratuitously use perfect forwarding as an example:
+
+\item \textbf{Also work in template.} And note that this isn't just an aesthetic issue. Consider writing generic code that should be able to initialize any type… and while we're at it, let's gratuitously use perfect forwarding as an example:
 	
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 template<typename T, typename ...Args>
@@ -3168,82 +3198,10 @@ forwarder<vector<int>>    ( 1, 2, 3, 4 );          // ok because of {}
 	
 	\item I'd say the brace one is better, because it's future proof. If you later rename the class, the brace one will continue to work as is, while the parenthesis one will require a name change. Also, if you change the type of vec3D, the brace one will still create an object of vec3D's type, while the second one will keep creating and assigning from a float3 object. It's not possible to say universally, but I'd say the former behaviour is usually preferred. 
 	
-	\item A good reference article is GotW \#1 Solution: Variable Initialization – or Is It?
-	\item Another good one is Overview of C++ Variable Initialization. address is \\ \verb=https://greek0.net/cpp/initialization.html=
+	\item A good reference article is GotW \#1 Solution: Variable Initialization or Is It? Another good one is Overview of C++ Variable Initialization. address is \\ \verb=https://greek0.net/cpp/initialization.html=
 \end{itemize}
 
-\subsection{copy-list-initialization and traditional copy-initialization?}
-
-\begin{itemize}
-
-	
-	\item Basic idea of all kinds of initialization.What's the difference?
-\begin{lstlisting}[frame=single, language=c++]
-widget w{x};  1)
-widget w = x; 2)
-widget w = {x}; 3)
-\end{lstlisting}
-	\item For the number 1, behaves like a function call to an overloaded function: The functions, in this case, are the constructors of T (including explicit ones), and the argument is x. Overload resolution will find the best matching constructor, and when needed will do any implicit conversion required.
-	
-	\item For the number 2, Copy initialization constructs an implicit conversion sequence: It tries to convert x to an object of type T. (It then may copy over that object into the to-initialized object, so a copy constructor is needed too - but this is not important below)
-	
-	\item for the number 2, If x is of some other type, conceptually the compiler \textbf{first implicitly converts x to a temporary widget object}, then move-constructs w from that temporary rvalue, using copy construction as "the slow way to move" as a backup if no better move constructor is available. Assuming that an implicit conversion is available.
-	
-	\item For the number 2, implicitly convert x has two different ways:As said above, copy initialization will construct a conversion sequence when a has not type B or derived from it (which is clearly the case here). So it will look for ways to do the conversion, and will find the following candidates
-	
-\begin{lstlisting}[frame=single, language=c++]
-struct B;
-struct A { 
-	operator B() { std::cout << "<copy> "; return B(); }
-};
-	
-struct B { 
-	B() { }
-	B(A const&) { std::cout << "<direct> "; }
-};
-	
-int main() { 
-	A a;
-	B b1(a);  // 1)
-	B b2 = a; // 2)
-}
-// output: <direct> <copy>
-\end{lstlisting}
-	
-	
-	\item For the number 3, This is called "copy list initialization." It means the same as widget w{x}; except that explicit constructors cannot be used. It's guaranteed that only a single constructor is called. So number 3 is different with number 2
-	
-	\item Old initialization uses notion of user-defined conversion sequences (and, particularly, requires availability of copy constructor, as was mentioned). Brace initialization just performs overload resolution among applicable constructors, i.e. brace initialization can't use operators of conversion to class type.
-	
-	\begin{lstlisting}[frame=single, language=c++]
-	struct Intermediate {};
-	
-	struct S{
-	operator Intermediate() { return {}; }
-	operator int() { return 10; }
-	};
-	
-	struct S1{
-	S1(Intermediate) {}
-	};
-	
-	S s;
-	Intermediate im1 = s; // OK
-	Intermediate im2 = {s}; // ill-formed
-	               // no Intermediate ctor receive S
-	S1 s11 = s; // ill-formed
-	S1 s12 = {s}; // OK
-	             // S1 ctor receive Intermediate, then 
-	             //s implicitly convert to Intermediate
-	
-	// note: but brace initialization can use operator of conversion to int
-	int i1 = s; // OK
-	int i2 = {s}; // OK
-	\end{lstlisting}
-	
-\end{itemize}
-
-\subsection{vexing parsing}
+\subsection{Vexing parsing}
 \begin{enumerate}
 	\item The basic reason behind of vexing parsing come from C++ standard: "If it can be a function declaration, it is".
 	
@@ -3362,10 +3320,10 @@ float3 y{float3{}};  // a variable
 \end{enumerate}
 
 
-\section{initilizaer\_list}
+\section{Initilizaer\_list}
 \subsection{why initilizaer\_list}
 \begin{itemize}
-	\item the whole story comes from initilize format of array in C language. But this way can't be use in C++ vector object
+	\item The whole story comes from initilize format of array in C language. But this way can't be use in C++ vector object
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 int array[] = {1,2,3,4,5}  //OK 
 vector<int> vt = {1,2,3,4,5}  //Can't use in this way
