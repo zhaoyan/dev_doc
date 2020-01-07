@@ -2852,6 +2852,7 @@ struct foo{
 foo f0 {42};    // OK
 foo f1 = {42};  // not allowed
 \end{lstlisting}
+
 \item in C++11 that allows brace-elision only for the copy list init.
 \begin{lstlisting}
 struct aggr{
@@ -3071,9 +3072,100 @@ auto w = Test{2} //test for (i)
 
 \end{itemize}
 
-\subsection{Brace init advantage}
+\subsection{Brace init advantages}
+
 \begin{itemize}
-	\item compared with c++98, we can see the improvement of brace init.
+\item Compared with old C++(C++03), modern C++(C++11) introduced Brace init, (also called Uniform init) and it has some advantages.
+\begin{enumerate}
+	\item avoid narrow error.
+	\item simple value init.
+	\item uniform support for more types.(Aggregate, Container, class member etc)
+	\item omit type when you pass or return from function by using copy list init.
+	\item avoid vexing problem.
+\end{enumerate}
+I will introduce these advantages in the next subseciton.
+\end{itemize}
+
+\subsubsection{Basic advantage}
+\begin{itemize}
+\item First, let's introduce narrowing problem
+\begin{lstlisting}{numbers=none}
+double val = 7.4;
+int i {val}; //error, possible truncation.
+\end{lstlisting}
+
+
+\item Second, let's introduce the simple value init. \textbf{empty brace is value init.} Value initialization of aggregate types usually means initialization to binary zeros, whereas for non-aggregate types, value initialization means default construction.
+\begin{lstlisting}[numbers = none]
+//C++11: default initialization using {}
+int *p{}; //initialized to nullptr
+char s[12]{}; //all 12 characters are initialized to '\0'
+char *p=new char [5]{}; // all five chars are initialized to '\0'
+
+int i{};                // i becomes 0, can't use () here
+std::string s{};        // s becomes "" can't use () here
+std::vector<float> v{}; // v becomes an empty vector
+double d{};             // d becomes 0.0, can't use () here
+\end{lstlisting}
+
+\begin{lstlisting}{numbers=none}
+#include <iostream>
+struct A {
+	A(int i) : i(i) {}
+	A() = default;
+	int i;
+};
+
+int main() {
+	A a{};
+	std::cout << a.i << std::endl;
+}
+\end{lstlisting}
+\begin{enumerate}
+	\item List initialization of A, causes 2.
+	
+	\item Non-aggregate, class type with a default constructor, and an empty braced-init-list causes value initialization, go to 3.
+	
+	\item No user-provided default constructor found (my lie by omission above), so zero-initialize the object, go to 4.
+	
+	\item Invoke default-initialization if the implicitly-defined default constructor is non-trivial (it is in this case so nothing is done).
+\end{enumerate}
+
+\item A good article about this is "Initialization in C++ is Seriously Bonkers"
+
+\item In C++, anonymous variables are primarily used either to pass or return values without having to create lots of temporary variables to do so. anonymous objects are treated as rvalues (not lvalues, which have an address). This means anonymous objects can only be passed or returned by value or const reference. Otherwise, a named variable must be used instead.
+
+\begin{lstlisting}[frame=single, language=c++]
+Cents add(const Cents &c1, const Cents &c2){
+return Cents(c1.getCents() + c2.getCents());
+// return anonymous Cents value
+}
+
+cout <<add(Cents{6}, Cents{8}).getCents();
+\end{lstlisting}
+
+\item Third, omit type when you pass or return from function by using copy list init. it's future proof. If you later rename the class, the brace one will continue to work as is, while the parenthesis one will require a name change.
+
+\begin{lstlisting}
+MyClass2 fun (MyClass2 m) 
+
+fun ( {2011,3.14} ){
+return {2011,3.14};  //pay attention, there is ; in the end
+}
+
+fun ( MyClass2(2011,3.14) ) // fun ( (2011,3.14) ) doesn't work
+
+MyClass2 mc2;
+mc2 = {2011,3.14}  // or MyClass2(2011, 3.14)
+\end{lstlisting}
+
+
+\end{itemize}
+
+\subsubsection{Uniform init syntax}
+\begin{itemize}
+
+\item Uniform support for more types. \textbf{Next few example will demonstrate how to init aggregate, class member and STL container.} This feature make it easier to right more generic template function. 
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 // C++98 
 double *pd= new double [3];
@@ -3094,21 +3186,6 @@ vector<int>     v   = { 1, 2, 3, 4 };
 	\item[Line 5:] need more code  to initialize this.
 \end{description}
 	
-	
-	\item \textbf{empty brace is value init.} An empty pair of braces indicates value initialization. value initialization of POD types usually means initialization to binary zeros, whereas for non-POD types value initialization means 1) zero if you don't user defined ctor 2) use user defined ctor:
-
-\begin{lstlisting}[numbers = none]
-//C++11: default initialization using {}
-int *p{}; //initialized to nullptr
-char s[12]{}; //all 12 characters are initialized to '\0'
-char *p=new char [5]{}; // all five chars are initialized to '\0'
-	
-int i{};                // i becomes 0, can't use () here
-std::string s{};        // s becomes "" can't use () here
-std::vector<float> v{}; // v becomes an empty vector
-double d{};             // d becomes 0.0, can't use () here
-\end{lstlisting}
-	
 	\item Only brace init can be used to initialize \textbf{class aggregated member}
 
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
@@ -3127,15 +3204,15 @@ std::vector<int> intArray1{1,2,3,4,5};
 std::map<std::string,int> myMap{{"Scott",1976}, {"Dijkstra",1972}};
 \end{lstlisting}
 	
-\item \textbf{init a class even without ctor}
+\item Init aggregate type date
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
-class MyClass{			
+class MyClass{ //aggregate type.
 public: 
 	int x;
 	double y;
 };
 	
-class MyClass2{		
+class MyClass2{ //non-aggregate type.
 public:
 	MyClass2(int fir, double sec):x{fir},y{sec} {};
 private: 
@@ -3143,49 +3220,20 @@ private:
 	double y;
 };
 	
-// Initializations of an arbitrary object using public attributes	
 MyClass myClass{2011,3.14};      
 MyClass myClass1= {2011,3.14};    
 	
-// Initializations of an arbitrary object using the constructor
 MyClass2 myClass2{2011,3.14};     
 MyClass2 myClass3= {2011,3.14};   
 \end{lstlisting}
 
-\item In C++, anonymous variables are primarily used either to pass or return values without having to create lots of temporary variables to do so. anonymous objects are treated as rvalues (not lvalues, which have an address). This means anonymous objects can only be passed or returned by value or const reference. Otherwise, a named variable must be used instead.
+\item Brace init can be used on many different kind of type. this flexible ability is isn't just an aesthetic issue. Consider writing generic template code that should be able to initialize any type. Using perfect forwarding as an example:
 
-\begin{lstlisting}[frame=single, language=c++]
-Cents add(const Cents &c1, const Cents &c2){
-return Cents(c1.getCents() + c2.getCents());
-// return anonymous Cents value
-}
-
-cout <<add(Cents{6}, Cents{8}).getCents();
-	\end{lstlisting}
-	
-\item \textbf{omit type name}
-	
-\begin{lstlisting}
-MyClass2 fun (MyClass2 m) 
-	
-fun ( {2011,3.14} ){
-	return {2011,3.14};  //pay attention, there is ; in the end
-}
-	
-fun ( MyClass2(2011,3.14) ) // fun ( (2011,3.14) ) doesn't work
-
-MyClass2 mc2;
-mc2 = {2011,3.14}  // or MyClass2(2011, 3.14)
-	\end{lstlisting}
-	
-
-\item \textbf{Also work in template.} And note that this isn't just an aesthetic issue. Consider writing generic code that should be able to initialize any type… and while we're at it, let's gratuitously use perfect forwarding as an example:
-	
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 template<typename T, typename ...Args>
 void forwarder( Args&&... args ) {
-	T local = { std::forward<Args>(args)... };
-	// ...
+T local = { std::forward<Args>(args)... };
+// ...
 }
 
 forwarder<int>            ( 42 );                  // ok
@@ -3195,13 +3243,22 @@ forwarder<mystruct>       ( 1, 2 );                // ok because of {}
 forwarder<int[]>          ( 1, 2, 3, 4 );          // ok because of {}
 forwarder<vector<int>>    ( 1, 2, 3, 4 );          // ok because of {}
 \end{lstlisting}
-	
-	\item I'd say the brace one is better, because it's future proof. If you later rename the class, the brace one will continue to work as is, while the parenthesis one will require a name change. Also, if you change the type of vec3D, the brace one will still create an object of vec3D's type, while the second one will keep creating and assigning from a float3 object. It's not possible to say universally, but I'd say the former behaviour is usually preferred. 
-	
+
+
 	\item A good reference article is GotW \#1 Solution: Variable Initialization or Is It? Another good one is Overview of C++ Variable Initialization. address is \\ \verb=https://greek0.net/cpp/initialization.html=
+	
+	\item \textbf{Summary}, Brace init is called uniform init, you can see uniform is the biggest strengthen of this new feature.Most of the time, you result is obvious and simple. But there are two things you need to know.
+	\begin{enumerate}
+		\item In order to acheive the uniform, \textbf{brace init must be able to deal with different kind of type, such as build in type, aggregate, class with different ctor etc.} it add its complexity of analysis. We must read boring CPP document carefully to understand the different branch, different action when we use brace init on the different type 
+		
+		\item A lot of people think that when we use brace init, it will prefer to use list\_initilaizer. or when we use auto and brace init, it has strange behaviour,(this will be introduce in auto init section). Based on previous point of view, I don't think that it's a problem, on the contrary, you can think that it's more "Uniform", That means that brace init can be used on more context. 
+		
+		\item In fact, brace init is very good, just pay attention when the class has list\_initiaizer, or when you use it with auto together.
+		
 \end{itemize}
 
-\subsection{Vexing parsing}
+
+\subsubsection{Vexing parsing}
 \begin{enumerate}
 	\item The basic reason behind of vexing parsing come from C++ standard: "If it can be a function declaration, it is".
 	
@@ -3625,7 +3682,9 @@ int main(){
 //after:   v[0] = 0, $\Hilight{15}$//Because it returns reference, 
                      // so v[0] has been modified.
 \end{lstlisting}
+
 		\item init brace return init\_list. Prior to C++17 the type for all the following objects (a, b, c and d) is deduced to std::initializer\_list<int>. There is no difference between the direct-list-initialization and the copy-list-initialization on the result of the type deduction.
+		
 \begin{lstlisting}
 auto a = {42};   // std::initializer_list<int>
 auto b {42};     // std::initializer_list<int>
@@ -3831,6 +3890,19 @@ int i = 3;
 
 \subsection{How to understand init}
 \begin{itemize}
+	\item Basic rules:
+	\begin{enumerate}
+		\item If the object I'm creating conceptually holds the values I'm passing in the constructor (e.g. containers, POD structs, atomics, smart pointers etc.), then I'm using the braces.
+		\item If the constructor resembles a normal function call (it performs some more or less complex operations that are parametrized by the arguments) then I'm using the normal function call syntax.
+		\item For default initialization I always use curly braces.
+\begin{lstlisting}
+vector<int> a{10,20};   //Curly braces -> fills the vector with the arguments
+
+vector<int> b(10,20);   //Parentheses -> uses arguments to parametrize some functionality,                          
+vector<int> c(it1,it2); //like filling the vector with 10 integers or copying a range.
+\end{lstlisting}
+	\end{enumerate}
+	
 	\item Understanding some basic conceptions. such as aggregate type. copy-list-init, converting ctor. All the high level usages are based on these basic conceptions. 
 	
 	\item \textbf{familier with Six Init methods.} You should know how to distinguish them. For example, when use = , it is called copy init. 
