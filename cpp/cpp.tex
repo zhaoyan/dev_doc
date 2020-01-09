@@ -3055,7 +3055,6 @@ https://en.cppreference.com/w/cpp/language/aggregate_initialization
 	
 	\item A good article about this is "Initialization in C++ is Seriously Bonkers"
 	
-	
 \end{itemize}
 
 \section{Brace Init}
@@ -4044,37 +4043,39 @@ vector<int> c(it1,it2);
 \begin{itemize}
 	\item That is a long story. In C language, if you forget a header file, what will happen? (I have add answer to my evernote). In one word, It will(c99) or will not produce(c89) warning, and compiler will assume a "implicit int" rule. That is to say, It presumes that the function without prototype (declaring in the header file) just return int type.
 	
-	\item continue: if you have code below: you comment stdlib.h. Then compiler will assume that malloc return a int.  This code will run on 32 bit computer, because int and int* have same length. but on some 64 bit computer, int* is 64 bit and int is 32 bit.  so half data will be lost, and you code will crash.
+	\item Continue: if you have code below: you comment stdlib.h. Then compiler will assume that malloc return a \texttt{int}.  This code will run on 32 bit computer, because \texttt{int} and \texttt{int*} have same length. but on some 64 bit computer, int* is 64 bit and int is 32 bit.  so half data will be lost, and you code will crash.
 	And if you add (int*) cast, it will suppress the warning message.(You kill the only clue, it's bad).
-	\begin{lstlisting}[frame=single, language=c++]
-	// include "stdlib.h"
-	// with cast, it will NOT produce a (missing protype)warning.
-	int *sieve = (int *)malloc(sizeof(int)*length);
+\begin{lstlisting}[frame=single, language=c++]
+// include "stdlib.h"
+int *sieve = (int *)malloc(sizeof(int)*length);
 	
-	// without cast, will produce a warning.
-	int *sieve = malloc(sizeof(int)*length);
-	\end{lstlisting}
-	
+int *sieve = malloc(sizeof(int)*length);
+\end{lstlisting}
+\begin{description}
+	\item[Line 2:] With explicit cast, it will NOT produce a (missing protype)warning.
+	\item[Line 4:] Without explicit cast, will produce a warning.
+\end{description}
+
 	\item continue: So don't recommend to use (int*) cast at all. Next question is that malloc actually return void*. Can void* automatically implicit be cast to int* or other pointer type in assignment? the answer is \textbf{YES}.
 	
 	\item  continue: In C language:
-	\begin{lstlisting}[frame=single, language=c++]
-	#define NULL ( (void*) 0)
-	int *p = NULL;  //legal
-	FILE * f = NULL;  //legal
-	\end{lstlisting}
+\begin{lstlisting}[numbers=none]
+#define NULL ( (void*) 0)
+int *p = NULL;  //legal
+FILE * f = NULL;  //legal
+\end{lstlisting}
 	
-	\item continue: In C++, int *p = (void *) 0 is not legal any more.(C++ is type safe language).  So in C++ NULL is literal 0. But It produce another ambiguity problem.  So In C++11, we define nullptr to resolve this problem.
-	\begin{lstlisting}[frame=single, language=c++]
-	#define NULL 0
-	int *p = NULL //legal
-	--------------------------------------
-	f(int i)
-	f(int * p);
-	
-	f(NULL);  //which one will be called. Answer is f(int i).
-	f(nullptr) //will call f(int *p)
-	\end{lstlisting}
+	\item continue: In C++, \texttt{int *p = (void *) 0} is not legal any more.(C++ is type safe language).  So in C++ NULL is literal 0. But It produce another ambiguity problem.  So In C++11, we define \texttt{nullptr} to resolve this problem.
+\begin{lstlisting}[frame=single, language=c++]
+#define NULL 0
+int *p = NULL //legal
+--------------------------------------
+f(int i)
+f(int * p);
+
+f(NULL);  //which one will be called. Answer is f(int i).
+f(nullptr) //will call f(int *p)
+\end{lstlisting}
 	
 	\item calloc() zero-initializes the buffer, while malloc() leaves the memory uninitialized. Zeroing out the memory may take a little time, so you probably want to use malloc() if that performance is an issue. If initializing the memory is more important, use calloc(). For example, calloc() might save you a call to memset().
 	
@@ -4088,13 +4089,13 @@ vector<int> c(it1,it2);
 	
 	
 	\item Don't return value assign to input ptr, use another local pointer, such as new\_ptr;
-	\begin{lstlisting}[frame=single, language=c++]
-	void *new_ptr = realloc(ptr, new_size);
-	if (!new_ptr) {
+\begin{lstlisting}[numbers=none]
+void *new_ptr = realloc(ptr, new_size);
+if (!new_ptr) {
 	// deal with error;
-	}
-	ptr = new_ptr
-	\end{lstlisting}
+}
+ptr = new_ptr
+\end{lstlisting}
 \end{itemize}
 
 
@@ -4110,20 +4111,22 @@ vector<int> c(it1,it2);
 		\item operator new (just allocate, no ctor)
 	\end{enumerate}
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	std::set_new_handler(noMem);
-	MyClass * p1 = new MyClass;  //1: if fail, call noMem
+\begin{lstlisting}[frame=single, language=c++]
+std::set_new_handler(noMem);
+MyClass * p1 = new MyClass;  
+
+MyClass * p2 = new (std::nothrow) MyClass; 
+
+new (p2) MyClass;  
 	
-	MyClass * p2 = new (std::nothrow) MyClass; //2: no throw
-	
-	new (p2) MyClass;  //3: placement new
-	
-	//4: operator new
-	MyClass * p3 = (MyClass*) ::operator new (sizeof(MyClass));
-	// allocates memory by calling: operator new
-	// but does not call MyClass's ctor
-	\end{lstlisting}
-	
+MyClass * p3 = (MyClass*) ::operator new (sizeof(MyClass));
+\end{lstlisting}
+\begin{description}
+	\item[Line 2:] if fail, call noMem
+	\item[Line 4:] no throw
+	\item[Line 6:] placement new
+	\item[Line 8:] operator new, allocates memory by calling: operator new. but does not call MyClass's ctor
+\end{description}	
 	\item \texttt{new} will call constructor function of a class, but \texttt{malloc} will not call constructor function.  \textbf{So in C++, you should use new instead of \texttt{malloc}.}
 	
 	\item For default new operator, you can use \texttt{set\_new\_handler} to adjust the behavior when you can't allocate enough memory. Detail can be found in the below sub section.
@@ -4135,33 +4138,38 @@ vector<int> c(it1,it2);
 
 \subsection{Inside of new operator}
 \begin{itemize}
-	\item \textbf{There is three level knowledges: 1) new operator, 2)operator new, 3)new\_handler. new operator calling operator new, operator new calling new\_handler.} 
+	\item There is three level knowledges: 
+	\begin{enumerate}
+		\item new operator.
+		\item operator new.
+		\item new\_handler
+	\end{enumerate}
+	\textbf{new operator calling operator new, operator new calling new\_handler.} 
 	
 	\item Basic logic of new operator and delete operator.
-	\begin{lstlisting}[frame=single, language=c++]
-	Point3d *origin = new Point3d;
+\begin{lstlisting}[numbers=none]
+Point3d *origin = new Point3d;
 	
-	//C++ pseudo code
-	if(origin = operator new(sizeof(Point3d))){
+//C++ pseudo code
+if(origin = operator new(sizeof(Point3d))){
 	try{
-	origin = Point3d::Point3d(origin);
+		origin = Point3d::Point3d(origin);
 	}
 	catch(...){
-	operator delete(origin);
-	throw
+		operator delete(origin);
+		throw
 	}
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	delete origin;
+\begin{lstlisting}[numbers=none]
+delete origin;
 	
-	//C++ pseudo code
-	if (origin != NULL) {
+if (origin != NULL) {
 	origin->~Foo();
 	operator delete(origin);
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 	\begin{enumerate}
 		\item call operator new to allocate space in memory. (different with new opeator), in this way, ctor will not be called.
@@ -4172,47 +4180,50 @@ vector<int> c(it1,it2);
 	\end{enumerate}
 	
 	
-	\item Basic logic of operator new and operator delete
-	\begin{lstlisting}[frame=single, language=c++]
-	void * operator new(std::size_t size) throw(std::bad_alloc){
-	// your operator new might
-	using namespace std; // take additional params
-	
-	if (size == 0) {   // handle 0-byte requests
-	size = 1;              // by treating them as
-	}                 // 1-byte requests
+\item Basic logic of operator new and operator delete
+\begin{lstlisting}[frame=single, language=c++]
+void * operator new(std::size_t size) throw(std::bad_alloc){
+using namespace std; 
+	if (size == 0) {   
+		size = 1;             
+	}                 
 	void *last_alloc;
 	while (true) {
-	*last_alloc = malloc(size)
-	if (last_alloc)
-	return last_alloc;
-	
-	// allocation was unsuccessful; find out what the
-	// current new-handling function is (see below)
-	$\Hilight{35}$new_handler globalHandler = set_new_handler(0);
-	$\Hilight{30}$set_new_handler(globalHandler);
-	
-	if (globalHandler) 
-	(*globalHandler)();
-	else 
-	throw std::bad_alloc();
-	}
-	}
+		*last_alloc = malloc(size)
+		if (last_alloc)
+			return last_alloc;
+		new_handler globalHandler = set_new_handler(0);
+		set_new_handler(globalHandler);
+		if (globalHandler) 
+			(*globalHandler)();
+		else 
+			throw std::bad_alloc();
+		}
+}
 	\end{lstlisting}
+\begin{description}
+	\item[Line 1:] Your operator new might take additional params
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	operator delete (void *ptr){
+	\item[Line 4:] handle 0-byte requests by treating them as 1-byte requests
+	
+	\item[Line ?:] allocation was unsuccessful; find out what the. current new-handling function is (see below)
+\end{description}
+
+
+\begin{lstlisting}[numbers=none]
+operator delete (void *ptr){
 	if (ptr)
-	free(ptr)
+		free(ptr)
 	}
-	\end{lstlisting}
+\end{lstlisting}
 	\begin{enumerate}
-		\item if size is 0, change it to 1
-		\item Why we need to call set\_new\_handler twice, The first one get the current handler, and the second one change it back. That is only way we can get the current handler.
+		\item if size is 0, change it to 1.
 		
-		\item This idiom is also used in set\_terminate and set\_unexpect. 
+		\item Why we need to call \texttt{set\_new\_handler} twice, The first one get the current handler, and the second one change it back. That is only way we can get the current handler.
 		
-		\item In C++11, introduce get\_new\_handler() function. We don't need to call set\_new\_handler twice. 
+		\item This idiom is also used in \texttt{set\_terminate} and \texttt{set\_unexpect}. 
+		
+		\item In C++11, introduce \texttt{get\_new\_handler()} function. We don't need to call \texttt{set\_new\_handler} twice. 
 		
 		\item Most of time, we use malloc and free to allocate and free physical memory.
 	\end{enumerate}
@@ -4228,20 +4239,20 @@ vector<int> c(it1,it2);
 	\begin{enumerate}
 		\item make more memory available. \textbf{resolve the problem by myself.}
 		
-		\item throw exception of type std::bad\_alloc or derived from std::bad\_alloc. \textbf{resolve the problem by a user.}
+		\item throw exception of type \texttt{std::bad\_alloc} or derived from \texttt{std::bad\_alloc}. \textbf{resolve the problem by a user.}
 		
-		\item terminate the program. e.g. by calling std::terminate. \textbf{(No resolve)}
+		\item terminate the program. e.g. by calling \texttt{std::terminate}. \textbf{(No resolve)}
 	\end{enumerate}
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	void noMemory(){
+\begin{lstlisting}[frame=single, language=c++]
+void noMemory(){
 	closeIE; // method 1 release mem
 	set_new_handler(nullptr); //mehtod 2 throw bad_alloc exception.
 	abort();  //method 3, end application.
-	}
-	//in the beginning of main() function.
-	set_new_handler(noMemory)
-	\end{lstlisting}
+}
+//in the beginning of main() function.
+set_new_handler(noMemory)
+\end{lstlisting}
 	
 	
 	\item What can we do in side new handler function? Below choices give you considerable flexibility in implementing new-handler functions.
@@ -4264,68 +4275,70 @@ vector<int> c(it1,it2);
 
 \begin{itemize}
 	\item construct an object in memory you've already got a pointer to ,use placement new. If you use placement new to create an object in some memory, you should avoid using the delete operator on that memory.  Detail can be seen in C++ primer
-	\begin{lstlisting}[frame=single, language=c++]
-	Foo* p;
-	// don't catch exceptions thrown by the allocator itself
-	// Return a void type pointer
-	void* raw = operator new(sizeof(Foo)*100);
+\begin{lstlisting}[frame=single, language=c++]
+Foo* p;
+void* raw = operator new(sizeof(Foo)*100);
 	
-	// catch any exceptions thrown by the ctor
-	try {
+try {
 	p = new(raw) Foo();  // call the ctor with raw as this
-	}
-	catch (...) {
+}
+catch (...) {
 	// oops, ctor throw an exception
 	operator delete(raw);
 	throw;  // rethrow the ctor's exception
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
+\begin{description}
+	\item[Line 2:] Don't catch exceptions thrown by the allocator itself. Return a void type pointer
+\end{description}
 	
 	\item Another example to use placement new.
-	\begin{lstlisting}[frame=single, language=c++]
-	void* buffer = operator new(sizeof(FOO)*100);
-	p1 = new(buffer) FOO();
-	p2 = new(buffer+sizeof(FOO) ) FOO();
+\begin{lstlisting}[numbers=none]
+void* buffer = operator new(sizeof(FOO)*100);
+p1 = new(buffer) FOO();
+p2 = new(buffer+sizeof(FOO) ) FOO();
 	
-	p1->~FOO(); // call dtor directly,
-	p2->~FOO(); //don't call delete p1.
+p1->~FOO(); // call dtor directly,
+p2->~FOO(); //don't call delete p1.
 	
-	delete[] buffer;
-	\end{lstlisting}
+delete[] buffer;
+\end{lstlisting}
 	
 	\item placement operator new is defined as below. \textbf{You are not allowed to customize it.}
-	\begin{lstlisting}[frame=single, language=c++]
-	void operator new(size_t, void* p){
+\begin{lstlisting}[numbers = none]
+void operator new(size_t, void* p){
 	return p;
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 	\item You can build a object on an existing object. Pay attention, this is only place where you can call destructor directly. Don't call delete. 
-	\begin{lstlisting}[frame=single, language=c++]
-	FOO* p1 = new(buffer) FOO();
+\begin{lstlisting}[numbers=none]
+FOO* p1 = new(buffer) FOO();
 	.....
-	p1->~FOO();
-	//Don't use delete p1!!!
+p1->~FOO();
+//Don't use delete p1!!!
 	
-	//A new object in an existing object.
-	p1 = new(buffer) FOO(); 
-	\end{lstlisting}
+//A new object in an existing object.
+p1 = new(buffer) FOO(); 
+\end{lstlisting}
 	
 	\item If operator new receive another parameter beside that size\_t, that is placement new.There is special version with void* pMemeory
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	void* operator new (std::size_t size, void* pMemeory) throw();
-	\end{lstlisting}
+\begin{lstlisting}[numbers=none]
+void* operator new (std::size_t size, void* pMemeory) throw();
+\end{lstlisting}
 	
 	\item If you define your own placement operator new(non-pMemeory version). You must provide your own placement operator delete. Because when the constructor throw exception, it will call the corresponding custimzied placement operator delete. Detail can be found in "effective C++ item 52"
-	\begin{lstlisting}[frame=single, language=c++]
-	void* operator new (std::size_t size, void* pMemeory) throw();
-	void* operator new (std::size_t size, ostream& logStream) throw();
-	Widget* pw = new(std::cerr) Widget
-	//When Widget ctor throw exception, it will call 
-	void operator delete(void* pM, ostream& logStream). 
-	//If no such function, placement new do nothing and memory leak.
-	\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+void* operator new (std::size_t size, void* pMemeory) throw();
+void* operator new (std::size_t size, ostream& logStream) throw();
+Widget* pw = new(std::cerr) Widget
+
+void operator delete(void* pM, ostream& logStream). 
+\end{lstlisting}
+\begin{description}
+	\item[Line 5:] //When Widget ctor throw exception, it will call operator delete. if no such function, placement new do nothing and memory leak.
+\end{description}
 	
 	\item A good article is "The many faces of operator new in C++", It give  detail information about operator new and how to rewrite it. I have added it to my ref.
 \end{itemize}
@@ -4335,34 +4348,40 @@ vector<int> c(it1,it2);
 \subsection{array new}
 \begin{itemize}
 	\item \textbf{When you use array new to allocate an arry, must use the array delete.} If you don't use array delete, maybe you just delete the frist object in array. If you use array delete to single new, it's undefined. 
-	\begin{lstlisting}[frame=single, language=c++]
-	Foo pa* = new Foo[10];
-	delete [] pa;
-	//system will remember the size corresponding with pa, 
-	//with [], it will iterate with size. 
-	//When you forget [], it will just free the first object.
-	\end{lstlisting}
+\begin{lstlisting}[frame=single, language=c++]
+Foo pa* = new Foo[10];
+delete [] pa;
+\end{lstlisting}
+\begin{description}
+	\item[Line 2:] system will remember the size corresponding with pa,  with [], it will iterate with size.  When you forget [], it will just free the first object.
+\end{description}
+
 	\item Basic logic of array new. An basic implementation can be found in"Inside the C++ Object Model" 6.2 chapter
-	\begin{lstlisting}[frame=single, language=c++]
-	vec_new(int elem_count, int size, funptr ctor){
+\begin{lstlisting}[frame=single, language=c++]
+vec_new(int elem_count, int size, funptr ctor){
 	total_size = size*elem_count;
 	ptr_array = new char[total_size];
 	regist pair of ptr_array elem_count to system
 	while(elem<end of address){
-	(*ctor)(elem) //call the ctor
-	elem+=size;
+		(*ctor)(elem) //call the ctor
+		elem+=size;
 	}
-	}
-	\end{lstlisting}
-	\item When you use array new with inheriance. There is one important thing to notice. Don't use base pointer to point the array with derived class. 
-	\begin{lstlisting}[frame=single, language=c++]
-	base *bp = new derived[10]
-	//always use derived *dp = new derived[10];
-	bp[2] //dangerous, undefine. size is wrong: bp+sizeof(base)*2
+}
+\end{lstlisting}
 	
-	delete [] bp //dangerous, 1)size is wrong, 
-	2) it will call base::~base() destructor. 
-	\end{lstlisting}
+	\item When you use array new with inheriance. There is one important thing to notice. Don't use base pointer to point the array with derived class. 
+\begin{lstlisting}[frame=single, language=c++]
+base *bp = new derived[10]
+bp[2] 
+	
+delete [] bp;
+\end{lstlisting}
+\begin{description}
+	\item[Line 1:] always use derived *dp = new derived[10];
+	\item[Line 2:] dangerous, undefine. size is wrong: bp+sizeof(base)*2
+	\item[Line 4:] dangerous, 1)size is wrong, 2)it will call base::~base() destructor. 
+\end{description}
+
 	\item Above code, Don't use pointer to understand it, When you use delete [] bp, it will think that is a base array, and each element in it is just base object, so virtual function doesn't play a role here. Please refer the section "inheritance" in this book for more detail.
 \end{itemize}
 
@@ -4370,41 +4389,40 @@ vector<int> c(it1,it2);
 \begin{itemize}
 	\item The operator new and nothrow version are also replaceable: A program may provide its own definition that replaces the one provided by default to produce the result described above, or can overload it for specific types. 
 	\item For placement new, You can't replace it. There is no "operator new array", it use operator new to allocate memory. 
-	\begin{lstlisting}[frame=single, language=c++]
-	void* operator new (std::size_t size) throw (std::bad_alloc);
-	void* operator new (std::size_t size, 
-	const std::nothrow_t& nothrow_value) throw();
-	
-	void* operator new (std::size_t size, void* ptr) throw();
-	\end{lstlisting}
+\begin{lstlisting}[numbers=none]
+void* operator new (std::size_t size) throw (std::bad_alloc);
+void* operator new (std::size_t size, 
+const std::nothrow_t& nothrow_value) throw();
+
+void* operator new (std::size_t size, void* ptr) throw();
+\end{lstlisting}
 	
 	\item You can't change "new operator" behavior, but you can override global "operator new" and overload class its own "operator new". Pay attention its argument and return void*. 
 	
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	//global operator new
-	$\Hilight{4}$ void* operator new($\Hilight{7}$size_t size){
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+//global operator new
+void* operator new($\Hilight{7}$size_t size){
 	cout<<"Yan's own operator new" ;
 	void* mem = malloc(size);
 	if(mem)
-	return mem;
+		return mem;
 	else
-	throw bad_alloc();
+		throw bad_alloc();
 	
-	
-	class Foo{ //class operator new
-	public:
+class Foo{ //class operator new
+public:
 	static void* operator new(size_t size);
-	// use $\Hilight{4}$ static
+		..
 	}
 	
-	void* Foo::operator new(size_t size){
+void* Foo::operator new(size_t size){
 	cout<<"Foo's own operator new";
 	....
-	}
+}
 	
-	int *p = new int[100]; //output Yan's own operator new
-	Foo* fp = new Foo();  //output Foo's own operator new
-	\end{lstlisting}
+int *p = new int[100]; //output Yan's own operator new
+Foo* fp = new Foo();  //output Foo's own operator new
+\end{lstlisting}
 	
 	\item Above code is just a simple demo, In the new\_handler section, you can see a better operator new demo with support of call your own new\_handler. You need to combine above code and code in new\_handler section together. 
 	
@@ -4424,20 +4442,20 @@ vector<int> c(it1,it2);
 	\item If you have to rewrite operator new, You need to read  effective c++( third edition) Item 51 in detail. For example, All operator new should contain a loop calling a new-handling function.  should deal with request of zero size. you can see the pseudocode in Item 51.
 	
 	\item In C++, after you define a name in a scope (e.g., in a class scope), it will hide the same name in all enclosing scopes (e.g., in base classes or enclosing namespaces), and overloading never happens across scopes. And when said name is operator new, If you provide any class-specific new, provide all of the standard forms(plain, in-place, and nothrow)
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	class C {
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+class C {
 	static void* operator new(size_t, MemoryPool&);
 	// hides three normal forms
 	};
-	$\Hilight{12}$//1) plain new
 	void* operator new(std::size_t);
-	
-	$\Hilight{12}$//2) nothrow new
 	void* operator new(std::size_t, std::nothrow_t) throw();
-	
-	$\Hilight{12}$//3) inplace new
 	void* operator new(std::size_t, void*);
-	\end{lstlisting}
+\end{lstlisting}
+\begin{description}
+	\item[Line 5:] plain new
+	\item[Line 6:] nothrow new
+	\item[Line 7:] inplace new
+\end{description}
 	
 	\item Always provide new and delete together, see "C++ coding standards" item 45 and 46.
 \end{itemize}
@@ -4459,13 +4477,15 @@ void failNew(){
 -----------------------------------------
 extern void ( *set_new_handler ( void (*)() ) ) ();
 
-// This function declaration is very complex.
 set_new_handler(failNew);
 \end{lstlisting}
+\begin{description}
+	\item[Line 6:] This function declaration is very complex.
+\end{description}
 
 \item A better method is to use typedef method.
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers = none]
 typedef void(* FunPtr)();
 FunPtr (*set_new_handler) (FunPtr);
 set_new_handler(failNew);
@@ -4483,7 +4503,7 @@ set_new_handler(failNew);
 
 \item When you want to create a obj in runtime according runtime condition or user input dynamically. (maybe don't create it. ) Below code demonstrates previous two conditions.  \texttt{ToothBrush} need to be control life time and created dynamically.
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Person{
 ToothBrush* pbrush;
 
@@ -4539,7 +4559,7 @@ auto_ptr<int> aupr;
 \item "Just remember" is seldom the best solution! So we need smart pointer to perform delete operator automatically.
 
 \item When throw an exception, or return in the middle of code. delete will not be invoked at all, It will cause memory leaking. When you use smart pointer, If an exception is thrown in the middle of fun, there will no be memory leak.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 void methodA() {
    unique_ptr<int> buf(new int[256]);
 
@@ -4561,7 +4581,7 @@ void methodA() {
 	\item When you assign targetP = sourceP, it will cause sourceP set to be NULL, It will cause trouble when you use sourceP in the future. 
 	\item You can't create container includes auto\_ptr, compiler prohibit you doing so!
 \end{enumerate}
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 auto_ptr<string> ps (new string("hello world") );
 auto_ptr<string> ps1;
 ps1 = ps;   // ps will be set null.
@@ -4575,7 +4595,7 @@ auto_ptr<string> ps = parray[2];
 \item \textbf{When you construct a smart pointer, you must use 1) a pointer and 2) this pointer must be produced by new.} You can't build smart pointer by address operator. such as \texttt{unique\_ptr<double> ptr(\&int);}   Why? because smart pointer will call delete when it is out of scope.  delete operator has to be used on pointer produced by new operator.
 
 \item Obtain the raw pointer (get), to relinquish control of the pointed object (release), and to replace the object it manages (reset).
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 string * cp = new string("hello world");
 shared_ptr<string> ps(cp);
 string * cp1 = ps.get(); //use get() get normal pointer.
@@ -4583,28 +4603,28 @@ string * cp1 = ps.get(); //use get() get normal pointer.
 
 
 \item Smart pointer has bool operator, you can use if to test if it's nullptr directly.
-\begin{lstlisting}[frame=single, language=c++]
- std::unique_ptr<int> ptr(new int(42));
- if (ptr) std::cout <<  *ptr << '\n';
- ptr.reset();
- if (ptr) std::cout <<  *ptr << '\n';
+\begin{lstlisting}[numbers=none]
+std::unique_ptr<int> ptr(new int(42));
+if (ptr) std::cout <<  *ptr << '\n';
+ptr.reset();
+if (ptr) std::cout <<  *ptr << '\n';
 \end{lstlisting}
 
 \item shared\_ptr<T> and shared\_ptr<const T> are not interchangable. It goes one way - shared\_ptr<T> is convertable to shared\_ptr<const T> but not the reverse.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 shared_ptr<int> pint(new int(4)); 
 // normal shared_ptr
 shared_ptr<const int> pcint = pint; 
 // shared_ptr<const T> from shared_ptr<T>
-shared_ptr<int> pint2 = pcint; // error! comment out to compile
+shared_ptr<int> pint2 = pcint; // error! 
 \end{lstlisting}
 
 \item Smart pointer and const:
-\begin{lstlisting}[frame=single, language=c++]
-shared_ptr<T> p;        ---> T * p;
-const shared_ptr<T> p;   ---> T * const p;
-shared_ptr<const T> p;   ---> const T * p;
-const shared_ptr<const T> p; ---> const T * const p;
+\begin{lstlisting}[numbers = none]
+shared_ptr<T> p;        //---> T * p;
+const shared_ptr<T> p;   //---> T * const p;
+shared_ptr<const T> p;   //---> const T * p;
+const shared_ptr<const T> p; //---> const T * const p;
 \end{lstlisting}
 
 \end{itemize}
@@ -4618,17 +4638,16 @@ const shared_ptr<const T> p; ---> const T * const p;
 \begin{lstlisting}[frame=single, language=c++]
 string * cp = new string("hello world");
 
-unique_ptr<string> ps = cp; $\Hilight{8}$// NOT allow
-
-//ok, but not good style(outside new)
+unique_ptr<string> ps = cp; // NOT allow
 unique_ptr<string> ps (cp);
-
-//good style(inside new)
 unique_ptr<string> ps (new string("hello world"));
-
-//best style make_unique
 unique_ptr<string> ps( std::make_unique<string>("hello") );
 \end{lstlisting}
+\begin{description}
+	\item[Line 4:] ok, but not good style(outside new)
+	\item[Line 5:] good style(inside new)
+	\item[Line 6:] best style make\_unique
+\end{description}
 
 \item Basic 1-2: Create unique\_ptr from another unique\_ptr, you have to use move.
 \begin{lstlisting}[frame=single, language=c++]
@@ -4636,21 +4655,25 @@ unique_ptr<string> ps1 (new string("hello world"));
 
 unique_ptr<string> ps2 ( ps1 ); //compile error, not allow.
 unique_ptr<string> ps2 ( move(ps1) ); //ok
-//ownship transfer from ps1 to ps2, nothing delete.
 \end{lstlisting}
+\begin{description}
+	\item[Line 4:] ownship transfer from ps1 to ps2, nothing delete.
+\end{description}
 
 \item Basic 2: When pass value into a function, \textbf{1) for some exist \texttt{unique\_ptr}, use move to transfer ownership, 2) for new \texttt{unique\_ptr}, use \texttt{make\_unique} to assure exception safe.}
 
 \begin{lstlisting}[frame=single, language=c++]
 void sink( unique_ptr<widget> arg1, unique_ptr<gadget> arg2);
 
-//1) use move
 sink( std::move(exist_uptr_wi), std::move(exist_uptr_ga))
 
-//2) use make function to assure exception safety.
 sink( make_unique<widget>(new ...),
 make_unique<gadget>(new ...) );  // exception-safe
 \end{lstlisting}
+\begin{description}
+	\item[Line 3:] use move
+	\item[Line 6:] use make function to assure exception safety.
+\end{description}
 
 
 \item Basic 3: \texttt{unique\_ptr} assignment.
@@ -4660,23 +4683,22 @@ unique_ptr<string> ps2 (new string("ps2"));
 
 ps1= ps2; //compile error, not allow
 
-//method1: use move
 ps1 = std::move(ps2);
-//pointer inside previous ps1 will be deleted.
-//pointer inside ps1 point to "ps2" string now.
-//pointer inside ps2 will set to null
 
-//method2: reset
 ps1.reset(cp); //ok
-//pointer inside previous ps1 will be delete
 
 string* pstr = ps1.release();
-// use pstr get pointer managed by ps1.
+
 \end{lstlisting}
+\begin{description}
+	\item[Line 6:] Method 1, pointer inside previous ps1 will be deleted. pointer inside ps1 point to "ps2" string now. pointer inside ps2 will set to null
+	\item[Line 8:] method2: reset.pointer inside previous ps1 will be delete.
+	\item[Line 10:] Use pstr get pointer managed by ps1.
+\end{description} 
 
 \item Basic 4-1: If a program attempts to assign one unique\_ptr to another. The compiler allows it if the source object is a temporary rvalue (It will call move ctor or assignment of unique\_ptr inside.) and disallows it if the source object has some duration. \textbf{It is a move-only type.}
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-unique_ptr<string> ps2 = $\Hilight{19}$uqique_ptr<string>(new string("yo") ); //OK
+\begin{lstlisting}[numbers=none]
+unique_ptr<string> ps2 = uqique_ptr<string>(new string("yo") ); 
 
 uqique_ptr<string> fun(){
 	return unique_ptr<string> temp(new string("yan");
@@ -4685,7 +4707,7 @@ pu2 = fun(); //OK
 \end{lstlisting}
 
 \item Basic 4-2: unique\_ptr support source and sink idiom.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 unique_ptr fun() //support source
 
 fun(unique_ptr up);  //use move to support sink
@@ -4693,7 +4715,7 @@ fun(move(other_up));
 \end{lstlisting}
 
 \item Basic 5: Just observer, not transfer ownership , you can get pointer, or use \texttt{unique\_ptr} reference.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 unique_ptr<string> ps1 (new string("ps1"));
 
 fun(string* pstr);  //ps1.get()
@@ -4703,7 +4725,7 @@ fun(unique_ptr<string> & ref_ptr);
 \item By default, \texttt{std::unique\_ptrs} are the same size as raw pointers, so efficiency of it is just like raw pointer.
 
 \item Unique\_ptr has new [] version. The existence of std::unique\_ptr for arrays should be of only intellectual interest to you, because std::array, std::vector, and std::string are virtually always better data structure choices than raw arrays. About the only situation I can conceive of when a std::unique\_ptr<T[]> would make sense would be when you're using a C-like API that returns a raw pointer to a heap array that you assume ownership of it.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 unique_ptr<double []>  pda(new double[5] );
 // it will call delete [] inside.
 \end{lstlisting}
@@ -4711,7 +4733,7 @@ unique_ptr<double []>  pda(new double[5] );
 \item When in doubt, prefer \texttt{unique\_ptr} by default, and you can always later move-convert to \texttt{shared\_ptr} if you need it. If you do know from the start you need shared ownership, however, go directly to \texttt{shared\_ptr} via make\_shared. If you compiler report error about \texttt{unique\_ptr}, then you should consider to use shared\_ptr
 
 \item \texttt{unique\_ptr} can be used inside of class. Below class B disable value-copying (or to define a suitable copy-constructor  and operator= to handle it safely).
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class B {  // this class can't be copy
 public:
    unique_ptr<int> i;
@@ -4731,7 +4753,7 @@ in a hierarchy. Detail can be seen "effective modern c++ item 18"
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 //only c++ 14 support return type deduction
 template<typename... Ts>
-$\Hilight{4}$auto makeInvestment(Ts&&... params) {
+auto makeInvestment(Ts&&... params) {
 auto delInvmt = [](Investment* pInvestment) {
 	makeLogEntry(pInvestment); // makedelete
 	delete pInvestment; // Investment
@@ -4741,7 +4763,7 @@ std::unique_ptr<Investment, decltype(delInvmt)>
 pInv(nullptr, delInvmt);
 
 if (...){
-	pInv.reset(new Stock($\Hilight{16}$std::forward<Ts>(params)...));
+	pInv.reset(new Stock(std::forward<Ts>(params)...));
 }
 else if (... ) {
 	pInv.reset(new Bond(std::forward<Ts>(params)...));
@@ -4788,7 +4810,7 @@ m_fruits.push_back(std::make_unique<Tomato>());
 
 \item You can store unique\_ptr objects in an STL container providing you don't invoke methods or algorithm, such as copy(), that copy or assign one unique\_ptr to another.  see effective stl item 8.
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 bool compare_by_uniqptr(
                const unique_ptr<SomeLargeData>& a,
                const unique_ptr<SomeLargeData>& b) {
@@ -4827,7 +4849,7 @@ std::sort(vec1.begin(), vec1.end());
 \begin{lstlisting}[frame=single, language=c++]
 string * cp = new string("hello world");
 
-shared_ptr<string> ps = cp; // $\Hilight{8}$NOT allow
+shared_ptr<string> ps = cp; //NOT allow
 
 //method1: use constructor
 shared_ptr<string> ps (cp); //ok, but not good style
@@ -4843,12 +4865,13 @@ unique_ptr<string> ps( std::make_shared<string>("hello world") );
 auto pw = new Widget; // pw is raw ptr
 
 std::shared_ptr<Widget> spw1(pw, loggingDel);
-// create control block for *pw
 
 std::shared_ptr<Widget> spw2(pw, loggingDel);
-// create 2nd control block for *pw!
-//$\Hilight{20}$ BAD! That will cause undefine result!
 \end{lstlisting}
+\begin{description}
+	\item[line 3:] create control block for *pw
+	\item[Line 5:] create 2nd control block for *pw! BAD! That will cause undefine result!
+\end{description}
 
 \item shared\_ptr basic 2: Create shared\_ptr from another shared\_ptr
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
@@ -4858,33 +4881,29 @@ shared_ptr<string> ps2 ( ps1 );
 //use_count of ps1 and ps2 are all 2
 
 shared_ptr<string> ps2 ( move(ps1) );
-//the original ps1 will become null, and
-//the reference count does not get modified.
-$\Hilight{20}$//Just transfer use_count to ps2. 
+
 \end{lstlisting}
+\begin{description}
+	\item[Line 6:] the original ps1 will become null, and the reference count does not get modified. Just transfer use\_count to ps2. 
+\end{description}
 
 \item shared\_ptr basic 3: shared\_ptr assignment
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 shared_ptr<string> ps1 (new string("ps1"));
 shared_ptr<string> ps2 (new string("ps2"));
 
-//method1: use assignment
 ps1 = ps2;
-$\Hilight{9}$// 1) previous use_count decrements 1(If equal 0, will delete)
-$\Hilight{9}$// 2) ps1 points to current use_count
-$\Hilight{9}$// 3) and current use_count increments 1
-
-//method2: use move
 ps1 = std::move(ps2);
-$\Hilight{9}$// 1) previous use_count decrements 1(If equal 0, will delete)
-$\Hilight{9}$// 2) ps1 points to current use_count
-$\Hilight{9}$// 3) ps2 is null now. 
-
-//method3: reset
 ps1.reset(cp); //ok
-//pointer inside previous ps1 will decrement 1.
-//by now, current ps1 reference count will be 1.
 \end{lstlisting}
+\begin{description}
+	\item[Line 4:] method1: use assignment  1) previous use\_count decrements 1(If equal 0, will delete) 2) ps1 points to current use\_count 3) and current use\_count increments 1
+	
+	\item[Line 5:] //method2: use move 1) previous use\_count decrements 1(If equal 0, will delete) 2) ps1 points to current use\_count 3) ps2 is null now. 
+	
+	\item[Line 6:] //method3: reset //pointer inside previous ps1 will decrement 1.
+	//by now, current ps1 reference count will be 1.
+\end{description}
 
 \item shared\_ptr basic 4: Difference between ctor and assignment.
 \begin{enumerate}
@@ -4894,7 +4913,7 @@ ps1.reset(cp); //ok
 \end{enumerate}
 
 \item shared\_ptr basic 5: Just observer, not transfer ownership , you can get pointer, or use shared\_ptr reference. Or use reference directly!
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers = none]
 shared_ptr<string> ps1 (new string("ps1"));
 
 fun(string* pstr);
@@ -4937,7 +4956,7 @@ std::shared_ptr<Widget> spw(new Widget, loggingDel);
 \end{lstlisting}
 
 \item In order to correctly use shared\_ptr with an array, you must supply a custom deleter. But we don't recommend using shared\_ptr with array. \textbf{Any time you new a array, you should first consider using STL container directly.}
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template< typename T >
 struct array_deleter {
   void operator ()( T const * p){
@@ -4981,19 +5000,21 @@ int main(int argc, char *argv[]){
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 auto spw =
 std::make_shared<Widget>();
-// the pointed-to Widget's ref count (RC) is 1.
 
 std::weak_ptr<Widget> wpw(spw);
-// wpw points to same Widget as spw. RC remains 1
 ...
 spw = nullptr;
-// RC goes to 0, and the Widget is destroyed.
-// wpw now dangles
-$\Hilight{12}$if (wpw.expired())
-// if wpw doesn't point to an object
-\end{lstlisting}
 
-\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+if (wpw.expired())
+
+\end{lstlisting}
+\begin{description}
+	\item[Line 4:] the pointed-to Widget's ref count (RC) is 1.
+	\item[Line 6:] wpw points to same Widget as spw. RC remains 1
+	\item[Line 8:]RC goes to 0, and the Widget is destroyed. wpw now dangles, if wpw doesn't point to an object
+\end{description}
+
+\begin{lstlisting}[numbers=none]
 std::shared_ptr<Widget> spw1 = wpw.lock();
 // if wpw's expired, spw1 is null
 auto spw2 = wpw.lock();
@@ -5010,8 +5031,7 @@ std::shared_ptr<const Widget> fastLoadWidget(WidgetID id){
 	static std::unordered_map<WidgetID, 
 	                std::weak_ptr<const Widget>> cache;
 	auto objPtr = cache[id].lock();
-// objPtr is std::shared_ptr to cached object 
-//(or null if object's not in cache)
+
 	if (!objPtr) { // if not in cache,
 		objPtr = loadWidget(id); // load it
 		cache[id] = objPtr; // cache it
@@ -5019,6 +5039,10 @@ std::shared_ptr<const Widget> fastLoadWidget(WidgetID id){
 	return objPtr;
 }
 \end{lstlisting}
+\begin{description}
+	\item[Line 6:] objPtr is std::shared\_ptr to cached object . (or null if object's not in cache)
+\end{description}
+
 
 \item For above requirement, you also can use raw pointer, But for raw pointer, you can't detect if original one has been delete. 
 
@@ -5044,7 +5068,7 @@ when it dangles, i.e., when the object it is supposed to point to no longer exis
 		\item The method of using new repeat the type being created, but the make functions don't.  
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 auto upw1(std::make_unique<Widget>()); // with make func
-std::unique_ptr<$\Hilight{4}$Widget> upw2(new $\Hilight{4}$Widget); // without make func
+std::unique_ptr<Widget> upw2(new Widget); // without make func
 		
 auto spw1(std::make_shared<Widget>()); // with make func
 std::shared_ptr<Widget> spw2(new Widget); // without make func
@@ -5146,12 +5170,15 @@ FooWrapper foo(createObject(32, 3.14));
 	\item Example for FILE* is below:
 	
 \begin{lstlisting}[frame=single, language=c++]
-//$\Hilight{30}$ For customized deleter, you need callable object
 unique_ptr<std::FILE, decltype(&std::fclose)> 
 			fp(std::fopen("demo.txt", "r"), &std::fclose);
 			
-if(fp) // fopen could failed; in which case fp holds a null pointer
+if(fp) 
 \end{lstlisting}
+\begin{description}
+	\item[Line 1:] For customized deleter, you need callable object.
+	\item[Line 3:] Fopen could failed; in which case fp holds a null pointer
+\end{description}
 	
 	\item We can make FILE* example better, use unique\_ptr source semantic.
 \begin{lstlisting}[frame=single, language=c++]
@@ -5192,7 +5219,7 @@ if (err != 0){
 	return nullptr;
 }
 	
-return FILE_shared_ptr(fileHandle, $\Hilight{10}$FILEDeleter());
+return FILE_shared_ptr(fileHandle, FILEDeleter());
 	//Pay attention!, use FILEDeleter(), but unique_ptr use FILEDeleter
 }
 \end{lstlisting}
@@ -5264,7 +5291,7 @@ void setLog(const Foo & foo, const Bar & bar) {
 	//File file("/path/to/file", File::append);  1) //RAII auto obj
 	//File* file = new File("/path/to/file", File::append); //2) raw new
 	shared_ptr<File> file =
-		shared_ptr<File>(new File("/path/to/file");$\Hilight{10}$FILEDeleter())//3)best
+		shared_ptr<File>(new File("/path/to/file");FILEDeleter())//3)best
 	
 foo.setLogFile(file);
 bar.setLogFile(file);
@@ -5274,7 +5301,7 @@ bar.setLogFile(file);
 	\item for fstream, it's different with FILE*. It's based on value semantic. So common usage just fstream f1; f1.open and f1.close. If you want to manage it's time smartly, you can produce a fstream* pointer and wrapped by shared\_ptr.\textbf{Pay attention, you don't need input customized deleter, because fstream is RAII object, it does close automatically at the end of the scope}
 	
 	\item fstream is value semantic, so you can use shared\_ptr directly. just like to deal with other value semantic variable, such as int and class.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 shared_ptr<fstream> fp{new fstream(name,mode)};
 if(!*fp)
 	throw No_file{};
@@ -5454,7 +5481,7 @@ delete p; // this will not run.
 \end{lstlisting}
 	
 	\item For this problem, you should use smart pointer to declare a auto object.  If you use string object, It's ok.  So in previous example,  you can use smart pointer, it will help you to avoid memory leakage problem.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 unique_ptr<int> aupr (new int(100);
 string a   //a is ok, a will be destructed properly
 //due to the C++ unwind stack.
@@ -5471,7 +5498,7 @@ throw exception.
 	\end{enumerate}
 	
 \item Another example is when you make program based on Win API.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class module {
 	public:
 	explicit module(std::wstring const& name)
@@ -5488,7 +5515,7 @@ class module {
 	\item There are three RAII implementation instances in your practical programming:
 	\begin{enumerate}
 		\item Use auto member; You have to keep m\_str and vc are RAII.  In this way, you don't need to build dtor manually.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class RAII {
 private:
 		string m_str;
@@ -5497,7 +5524,7 @@ private:
 		\end{lstlisting}
 		
 		\item Use pointer and handle; In this way, You have to use pointer, Maybe you need some customized action in runtime , \textbf{Use handle is only method to use this resource} or any other reason. And this time, you have to write your own dtor.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class RAII {
 private:
 		string* m_str;
@@ -5506,7 +5533,7 @@ private:
 \end{lstlisting}
 		
 		\item Use smart point wrap pointer and handle; When you wrap handle, you can custom this delete behavior. See source code below:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class RAII {
 private:
 		unique_ptr<string>  m_str;
@@ -5514,7 +5541,7 @@ private:
 };
 		\end{lstlisting}
 		
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class module {
 public:
 	explicit module(std::wstring const& name)
@@ -5531,7 +5558,7 @@ private:
 		\item For auto member resource: \textbf{1)Same life duration(RAII), 2)exclusive ownship to a single obj, but it's copyable(A a1 = a2).  3)move with efficiency(A a1 = A() ) }. If auto member has it's own copy and move special function, You don't need to write any special function in your class. You follow the "Rule of Zero".
 		
 		\item For raw pointer and handle: \textbf{1) default copy ctor will cause two pointer or handle refer the same resource, It's absolutely BAD SMELL of code 2) So you have to follow "Rule of five" to build your special member function. 3) After you build five special member function, you get RAII and exclusive ownship to a single object, and copyable and efficient move}
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 Class RawPointer{
 		...........
 	RawPointer(const RawPointer& rhs){
@@ -5561,13 +5588,13 @@ Resource* pRes;
 		\item Prefer to use auto member for most of time! It follow "Rule of Five" and support copyable and movable. Such as std::string
 		
 		\item  For special demand, for example Car class,  people can \textbf{custom} its engine, and buy \textbf{two} at the same time. In this context, you car class should use raw pointer, 1) auto member doesn't support custom 2) uniqu\_ptr doesn't support copyable.  And you have to follow "Rule of Five"
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Car{
 		//follow "Rule of Five"
 		Engine *pEn;
 		~Car(){delete pEn} // assure RAII
 }
-		\end{lstlisting}
+\end{lstlisting}
 		
 		\item For special context, It doesn't support object copy: for example 1) Person class in semantic;  2) other  perform consideration, Class Big{int [30000];};  3) Other implementation constrain, such as iostream class.   Under such context, you can use uniqu\_ptr to manage the resource and implement uncopyable.
 \begin{lstlisting}[frame=single, language=c++]
@@ -5577,7 +5604,7 @@ class Person{
 		\end{lstlisting}
 		
 		\item For special context, shared resource, you can use shared\_ptr.  You still can follow "Rule of zero" and resource will be deleted when ref count is 0.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Student{
 		shared_ptr<SchoolBus> pBus
 }
@@ -5618,8 +5645,7 @@ class Student{
 ObserveFun(Foo* p);
 ObserveFun(smart_pointer.get() );
 ObserveFun(unique_ptr<Foo> &p);
-//Not use very often, can be used as fun_obj
-// in a container of unique_ptr.
+
 
 UniqueFun(unique_ptr<Foo> p);
 UniqueFun(make_unique_ptr<Foo>(new Foo() )); //get ownership
@@ -5627,6 +5653,9 @@ UniqueFun(move(other_unique_ptr) )  //transfer ownership
 
 SharedFun(shared_ptr<Foo> p);
 \end{lstlisting}
+\begin{description}
+	\item[Line 3:] Not use very often, can be used as fun\_obj in a container of unique\_ptr.
+\end{description}
 
 \item If you want to get the full benefit of smart pointers, your code should avoid using raw pointers to refer to the same objects; otherwise it is too easy to have problems with \textbf{dangling pointers and double deletions}. In particular, smart pointers have a get() function that returns the pointer member variable as a built-in pointer value. This function is rarely needed. As much as possible, leave the built-in pointers inside the smart pointers and use only the smart pointers.
 \end{enumerate}
@@ -5642,10 +5671,10 @@ SharedFun(shared_ptr<Foo> p);
 \item \textbf{Observer pointer,observing pointers are pointers which do not keep the pointed object alive} raw pointers are bad when used for performing manual memory management, i.e. new and delete. When used purely as a means to achieve reference semantics and pass around non-owning, observing pointers, there is nothing intrinsically dangerous in raw pointers. Just not to dereference a dangling pointer
 \begin{lstlisting}[frame=single, language=c++]
 observe(subject * s1)
-// subject is a class ovserver is function.
-//just use raw pointer subject, use weak_ptr or raw pointer.
-//observer doesn't have owner policy and life time policy with subject
 \end{lstlisting}
+\begin{description}
+	\item[Line 1:] subject is a class ovserver is function. just use raw pointer subject, use weak\_ptr or raw pointer. observer doesn't have owner policy and life time policy with subject
+\end{description}
 
 \end{itemize}
 
@@ -5658,7 +5687,7 @@ observe(subject * s1)
 \item If you don't want to create dynamically or large array, don't use new. Just use local auto object. Even you need large array, consider STL container first.
 \item When you have to use new, and this function has \textbf{Ownership of pointer, means that they have the same life time},  use unique\_ptr. In this way, you don't need delete and it's exception safe.
 \end{enumerate}
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 fun(){
 	Foo fo();
 	// it make obj directly,
@@ -5743,29 +5772,30 @@ shared_ptr<Server> serverForClass2  = serverForClass1;
 \end{itemize}
 
 
-
 \chapter{reference and rvalue reference}
 \section{reference basic}
 
 \begin{itemize}
 \item \textbf{Reference has two characteristics, no null, no change}.In other words, top level of const of reference is default. You can't change it. That is why you have to initiliaze it.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}
 int x = 12;
-int* const p = &x; // you have to init it.
-p  = &y ; //you can't point to different object.
-//reference is a kind of top level const pointer.
+int* const p = &x; 
+p  = &y ; 
 \end{lstlisting}
+\begin{description}
+	\item[Line 2 and 3:] you have to init reference when you declare it. You can't point to different object. Because it can't change, reference is like a kind of top level const pointer.
+\end{description}
 
 \begin{enumerate}
 \item No change, a reference always refers to the object with which it's initialized firstly.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers = none]
 string &rs = s1;
-rs = s2; // s1's value is modified, rs still refer to s1.
+rs = s2; //modified s1's value,rs still refer to s1
 \end{lstlisting}
 
 \item Reference is different with pointer. Reference has not wild pointer problem. So a reference doesn't need to be test if it's null reference.
-\begin{lstlisting}[frame=single, language=c++]
-if(pointer) // don't need to do it for a reference.
+\begin{lstlisting}[numbers=none]
+if(pointer) // don't need for a reference.
 cout<< *pointer<<endl;
 \end{lstlisting}
 
@@ -5773,60 +5803,59 @@ cout<< *pointer<<endl;
 \end{enumerate}
 
 \item you can have reference to pointer, but pointer to reference is illegal. In grammar level, reference to reference has different means, it's called rvalue reference. This doesn't exist. As stated earlier, a reference is merely an alias to another object. You can't "point" to a reference, because it isn't an object in itself but merely another name for a real object. Of course, you can have a pointer to the object that a reference is referring to. But now we are back in vanilla pointer territory.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 int *p;
 int *& rp = p; // reference to pointer is OK
-int &* pr //not legal in c++
-$\Hilight{25}$//error: cannot declare pointer to 'int&'
+int &* pr  //pointer to reference is ERROR
 int && rv //rvalue reference.
 \end{lstlisting}
 
+
 \item non-const reference can't refer to const object.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 const int i = 12;
-int& j = i;
+int& j = i; //ERROR
 \end{lstlisting}
 
 \item A \texttt{const} object reference passed into a function, if you want to return it , it must be \texttt{const} too. Usually, It has no any practical meanings when you do in this way. 
-\begin{lstlisting}[frame=single, language=c++]
-//method 1
-const int &fun(const int& i){
+\begin{lstlisting}[numbers=none]
+const int &fun(const int& i){ //method 1
 	return i;
-}//Why we need this? Just a syntactic demo, no semantic meaning
+}
 
-//method 2
-int &fun(const int& i){
+int &fun(const int& i){ //method 2
 	return const_cast<int&>(i);
 }
 \end{lstlisting}
 
 \item Only \texttt{const} reference can bound to temporary and prolong temporary variable life. Temporary is not lvalue, and only lvalue can bound to reference to \texttt{non-const}. Only stack-base \texttt{const} reference can work in this way. If a \texttt{const} reference is class member, it can't work.  See two examples below:
 \begin{lstlisting}[frame=single, language=c++]
-//case 1:
-Foo f(){
+Foo f(){ //case 1:
 	return obj;
 }
 const Foo & rf = f();
 
-//case 2:
-class Foo(int i); // ctor
+class Foo(int i); // case 2:
 f(const Foo & crf); //function declaration
-//here, must const & in f argument.
-f(1); //1 -->"temp obj build by ctor" -->crf
-//if you skip const, compiler will report error:
+
+f(1);
 \end{lstlisting}
+\begin{description}
+	\item[Line 10:] temp obj build by ctor, if you skip const in line 8 function declartion, compiler will report error.
+\end{description}
 
 \item \texttt{const} reference bound to rvalue used in copy ctor widely. See example below: But in C++11, For a class with a lot allocated resource, please use move copy ctor which explained in the next section:
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Foo{
 	Foo(const Foo & foo);
 }
 
 Foo f3 = f1+f2;
-// because a temp Foo is produced first from f1+f2
-// without const in copy ctor, compiler will bark
 \end{lstlisting}
+\begin{description}
+	\item[Line 5:] because a temp Foo is produced first from f1+f2 .without const in copy ctor, compiler will bark.
+\end{description}
 \end{itemize}
 
 \section{lvalue, rvalue and xvalue}
@@ -5863,10 +5892,10 @@ Foo f3 = f1+f2;
 	
 	\item \textbf{Any value must be one of three, lvalue, xvalue, or prvalue.} These three categories are complementary.  \textbf{lvalue pay attention to  identity and persist, rvalue=(xvalue + prvalue) shout "I can be moved" loudly.  So we call \&\& rvalue reference, don't call it xvalue reference. }
 	
-	\begin{figure}
+	\begin{figure}[h]
 		\centering
 		\includegraphics[width=0.4\linewidth]{pics/xvalue1.png}
-		\caption{}
+		\caption{lvalue, rvalue and xvalue.}
 		\label{fig:xvalue1}
 	\end{figure}
 	
@@ -5875,26 +5904,31 @@ Foo f3 = f1+f2;
 	
 	\item Summary table: \newline
 	\begin{tabular}{|c|c|c|}
-		\hline
+		\tophline
 		& persist(Identity) & move \\
-		\hline
+		\tophline
 		lvalue & Yes & No \\
-		\hline
+		\tophline
 		pvalue & No & Yes \\
-		\hline
-		xvalue & Yes & Yes \\
-		\hline
+		\tophline
+		xvalue & Yes & Yes \bottomhline
 	\end{tabular}
 
 \item An example shows that xvalue has identity and persist, and will persist beyond expression and can be move(stolen). it usually near the end of its lifetime (so that its resources may be moved).
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 string&& xvalue_fun();
 
-xvalue_fun(); // after you call this fun, value still exist.
-xvalue_fun() = "hello" // you can modify because it persist
-&xvalue_fun(); // you can get address because it has identity.
-string a = xvalue_fun(); // call move ctor, can move
+xvalue_fun(); 
+xvalue_fun() = "hello" 
+&xvalue_fun(); //
+string a = xvalue_fun(); 
 \end{lstlisting}
+\begin{description}
+	\item[Line 3:] After you call this fun, value still exist.
+	\item[Line 4:] You can modify because it persist.
+	\item[Line 5:] You can get address because it has identity.
+	\item[Line 6:] call move ctor, can move.
+\end{description}
 
 \item A method to judge if a var is lvalue.
 \begin{lstlisting}[frame=single, language=c++]
@@ -5906,10 +5940,11 @@ constexpr bool is_lvalue(T&&) {
 std::string a("Hello");
 is_lvalue(std::string()); // false
 is_lvalue(a); // true  
-//in the case you pass a std::string lvalue then 
-//T will deduce to std::string& or const std::string&,
-//for rvalues it will deduce to std::string
 \end{lstlisting}
+
+\begin{description}
+	\item[Line 8:] in the case you pass a std::string lvalue, then T will deduce to std::string\& or const std::string\&, for rvalues it will deduce to std::string
+\end{description}
 
 \item \textbf{How to determine programmatic if an expression is rvalue or lvalue}
 \begin{lstlisting}[frame=single, language=c++]
@@ -5933,17 +5968,22 @@ std::is_lvalue_reference<decltype(xvalue_fun())>::value
 	
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 string& lvalue_fun();
-lvalue_fun(); // after you call this fun, lvalue still exist.
-lvalue_fun() = "hello" // you can modify because it persist
-&lvalue_fun(); // you can get address because it has identity.
-string a = lvalue_fun //call copy ctor, can't move
+lvalue_fun(); 
+lvalue_fun() = "hello" 
+&lvalue_fun(); 
+string a = lvalue_fun 
 
 string pvalue_fun();
-pvalue_fun(); // after call this fun, value disappear.
-pvalue_fun() = "hello" $\Hilight{20}$//NOT modify because it doesn't persist
-&pvalue_fun(); $\Hilight{20}$// NOT get address because it no identity.
-string a = pvalue_fun() //call move ctor, can move
+pvalue_fun(); 
+pvalue_fun() = "hello" 
+&pvalue_fun(); 
+string a = pvalue_fun() 
 \end{lstlisting}
+\begin{description}
+	\item[Line 2 to 5:] After you call this fun, lvalue still exist. you can modify because it persist. you can get address because it has identity. call copy ctor, can't move
+	
+	\item[Line 8 to 11:]  After call this fun, value disappear. NOT modify because it doesn't persist. NOT get address because it no identity. call move ctor, can move
+\end{description}
 	
 	\item An xvalue is the result of certain kinds of expressions involving rvalue references. \textbf{The result of calling a function whose return type is an rvalue reference is an xvalue.}
 	
@@ -5962,8 +6002,10 @@ A&& f();  //f() is xvalue
 f().m // f().m is also xvluae
 A a;
 A&& ar = static_cast<A&&>(a);
-//static_cast<A&&>(a) is xvalue, but ar is lvalue
 \end{lstlisting}
+\begin{description}
+	\item[Line 9:] static\_cast<A\&\&>(a) is xvalue, but ar is lvalue
+\end{description}
 	
 	\item After C++11, we added two new xvalues.\\
 	1) a[n], the built-in subscript expression, where one operand is an array rvalue;\\
@@ -5979,27 +6021,18 @@ A&& ar = static_cast<A&&>(a);
 	
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 void foo(int&& t) {
-	// t is initialized with an rvalue expression
-	// but is actually an lvalue expression itself
+
 }
 	
 std::string a;   //a, b, c are all lvalue.
 std::string& b;
 std::string&& c;
-	\end{lstlisting}
-	
-	
-\item goo is declared as an rvalue reference and does not have a name, and is therefore an value.
-\begin{lstlisting}[frame=single, language=c++,mathescape=true]
-X&& goo();
-X x = goo();
-// calls X(X&& rhs) because the thing on
-// the right hand side has no name
-	
-std::move(x)  // get rid of x name,
-//then return rvalue reference
 \end{lstlisting}
+\begin{description}
+	\item[Line 1:] t is initialized with an rvalue expression, but is actually an lvalue expression itself
+\end{description}
 	
+
 	\item Why is there such confusion? Here are the circumstances under which it is safe to move something:\\
 	1) When it's a temporary or sub-object thereof. (prvalue) \\
 	2) When the user has explicitly said to move it.
@@ -6009,9 +6042,11 @@ SomeType &&Func() { ... }
 SomeType &&val = Func();
 SomeType otherVal{val}; // Do you really want to move 
 	....
-cout<<val; //what happen if you have forget you have move.
-//so here, val is lvalue. because it's a named rvalue reference.
+cout<<val; 
 \end{lstlisting}
+\begin{description}
+	\item[Line 6:] what happen if you have forget you have move? it will crash the probrem. so standard said that val is lvalue. because it's a named rvalue reference.
+\end{description}
 	
 \item Another deep trap happen when you implement move ctor in derived class
 \begin{lstlisting}[frame=single, language=c++]
@@ -6024,7 +6059,7 @@ Derived(Derived&& rhs) : Base(std::move(rhs)){
 	// good, calls Base(Base&& rhs)
 	// Derived-specific stuff
 }
-	\end{lstlisting}
+\end{lstlisting}
 	
 \end{itemize}
 
@@ -6033,10 +6068,14 @@ Derived(Derived&& rhs) : Base(std::move(rhs)){
 \begin{itemize}
 	\item given a type T, you can have lvalues of type T as well as rvalues of typeT. It's especially important to remember this when dealing with a parameter of rvalue reference type, because the parameter itself is an lvalue.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
-int && i = 2;  //i expression is rvalue referene type lvalue
+int && i = 2;  
 int && fun()
-fun() //fun() expression is vralue reference type rvalue. 
+fun() 
 \end{lstlisting}
+\begin{description}
+	\item[Line 1:] i expression is rvalue referene type lvalue
+	\item[Line 3:] fun() expression is vralue reference type rvalue. 
+\end{description}
 	
 	\item before C++11, we have used value category to overload function. plain lvalue reference can only bind to lvalue, can't bind to rvalue. So we use \textbf{const lvalue reference}.  Const lvalue reference can bind to both lvalue and rvalue, but you can't change it. We have used this technology in copy ctor very common before C++11. Because const reference can bind both lvalue and rvalue, so we can't distinguish when to move, when to copy, that is the problem of efficiency.
 	
@@ -6044,37 +6083,40 @@ fun() //fun() expression is vralue reference type rvalue.
 
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 int a = 7;  // a is lvalue, It has Identity
-int && r1 = 13,  $\Hilight{16}$//r1, r2 and r3 are lvalue
+int && r1 = 13,  //r1, r2 and r3 are lvalue
 int && r2= x+y; //x+y is prvalue
 int && r3 = sqrt(2.0);  //sqrt(2.0) is prvalue
-int && r4 = a //error, rvalue reference can't refer to lvalue.
+int && r4 = a 
 
 cont int & lv = x+y; //lv is lvalue
-int & r = x+y; //error,lvalue reference can not bind with an rvalue.
+int & r = x+y; 
 \end{lstlisting}
+\begin{description}
+	\item[Line 5:] error, rvalue reference can't refer to lvalue.
+	\item[Line 8:] error,lvalue reference can not bind with an rvalue.
+\end{description}
 	
 	\begin{tabular}{|c|c|}
-		\hline 
+		\tophline 
 		type & value category \\ 
-		\hline 
+		\tophline 
 		lvalue reference & lvalue(non-const)  \\ 
-		\hline 
+		\tophline 
 		rvalue reference &  rvalue(non-const)\\ 
-		\hline 
-		const lvalue reference & lvalue or rvalue(const or non-const)  \\ 
-		\hline 
+		\tophline 
+		const lvalue reference & lvalue or rvalue(const or non-const)  \bottomhline 
 	\end{tabular} 
 	
 	\item C++11 allows you to use move semantics not just on rvalues, but, at your discretion, on lvalues as well. An good example is swap function, here if you can move lvalue, the efficiency will be better. 
 	
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 template<class T> 
 void swap(T& a, T& b) { 
 	T tmp(std::move(a));
 	a = std::move(b); 
 	b = std::move(tmp);
 } 
-	\end{lstlisting}
+\end{lstlisting}
 	
 	\item So for std::move() function, return value can be value(rvalue), but it can't support dynamic binding in C++.  return value can be reference(lvalue), but it can't be used move context. So we have to use rvalue reference as return type. 
 	
@@ -6082,9 +6124,11 @@ void swap(T& a, T& b) {
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 string str = "hello"
 std::move(str)[0] = 'z';
-cout<<str<<endl // print zello here.
-// so std::move() return a xvalue, it can persist and move.
+cout<<str<<endl 
 \end{lstlisting}
+\begin{description}
+	\item[Lie 3:] print "zello" here. Because std::move() return a xvalue, it can persist and move.
+\end{description}
 	
 	\item Summary:
 	\begin{enumerate}
@@ -6094,10 +6138,10 @@ cout<<str<<endl // print zello here.
 	\end{enumerate}
 
 	
-	\begin{figure}
+	\begin{figure}[h]
 		\centering
 		\includegraphics[width=0.7\linewidth]{pics/xvalue.png}
-		\caption{}
+		\caption{move semantic application}
 		\label{fig:xvalue}
 	\end{figure}	
 \end{itemize}
@@ -6116,19 +6160,22 @@ cout<<str<<endl // print zello here.
 
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 std::string s1 = "Test";
-//  std::string&& r1 = s1;           
-// error: rvalue ref can't bind to lvalue
 
 const std::string& r2 = s1 + s1; 
-// okay: lvalue reference to const extends lifetime
-//  r2 += "Test";                    
-// error: can't modify through reference to const
+r2+="test" //Error
 
 std::string&& r3 = s1 + s1;      
-// okay: rvalue reference extends lifetime
 r3 += "Test";                    
-// okay: can modify through reference to non-const
 \end{lstlisting}
+\begin{description}
+	\item[Line 1:] std::string\&\& r1 = s1; error: rvalue ref can't bind to lvalue.
+	
+	\item[Line 3:] okay: lvalue reference to const extends lifetime.
+
+	\item[Line 4:] error: can't modify through reference to const.
+	\item[Line 6:] okay: rvalue reference extends lifetime
+	\item[Line 7:] okay: can modify through reference to non-const.
+\end{description}
 
 \end{itemize}
 
@@ -6148,7 +6195,7 @@ r3 += "Test";
 		\item \textbf{In move ctor, always set rhs.ptr = nullptr;}
 		
 		\item No const qualifier in move ctor and move assignment
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 Foo::Foo(const Foo & foo){
 	while(ptr++;)
 	ptr[i] = foo.ptr[i]  //expensive copy
@@ -6171,21 +6218,24 @@ Foo& Foo::operator=(Foo&& rhs){
 	
 \item When the move ctor will be called? Below are some examples.
 \begin{lstlisting}[frame=single, language=c++]
-class obj = 2 //same as class obj(2)
-// call single argument ctor
+class obj = 2 
 	
 obj =2         //call assignment operator
 	
-class obj1 = obj2 // call  copy ctor
-// not call assignment operator
+class obj1 = obj2 
 	
 obj1 = obj2         //call assignment operator
 	
-class obj1 = obj2+obj3   //call move ctor
-//if you dont' have move ctor, It will call copy ctor
+class obj1 = obj2+obj3   
 	
-obj1 = obj2+obj3 //call move assignment operator  if you define.
+obj1 = obj2+obj3 
 \end{lstlisting}
+\begin{description}
+	\item[Line 1:] same as class obj(2), call single argument ctor
+	\item[Line 5:] call  copy ctor, not call assignment operator
+	\item[Line 9:] call move ctor, if you dont' have move ctor, It will call copy ctor
+	\item[Line 11:] call move assignment operator  if you define.
+\end{description}
 	
 	\item In below examples, Foo obj1=obj2+obj3. if you don't have move ctor, In operator + function, a temp obj is produced,  and when operator+ function return, another temp obj temp2 is produced .  Then in the end, objtemp2 is passed to ctor,  So, ctor is called three times. and copy content is also called three times.
 	
@@ -6196,7 +6246,8 @@ Foo Foo::operator+( const Foo & f) const {
 	return temp;
 }
 	
-Foo obj1=obj2+obj3  // three ctor called with move ctor
+Foo obj1=obj2+obj3  
+// three ctor called without move ctor
 \end{lstlisting}
 	
 	\item If you have move ctor. In operator + function, a temp objtemp1 is produced,  When return objtemp1, It will not produce objtemp2. (becasue objtemp1 is rvalue.) then objtemp1 is passed to move ctor. In side move ctor, the resource address has been move to new obj1.  Just one temp objtemp1 and one actual copy happen. ( just new pointer = old pointer; and old pointer = NULL).
@@ -6211,23 +6262,23 @@ Foo obj1=obj2+obj3  // three ctor called with move ctor
 
 \begin{lstlisting}[frame=single, language=c++]
 explicit Annotation(const std::string text)
-: value(std::move(text)) // "move" text into value; this code
-// doesn't do what it seems to, because text is const
+: value(std::move(text)) 
 \end{lstlisting}
-
+\begin{description}
+	\item[Line 1:] That is constructor, we want to "move" text into value; this code doesn't do what it seems to, because text is const
+\end{description}
 
 \item Move ctor and move assignment work with rvalue, What if you want to use them with lvalues? You can call std::move function, It will call you move ctor or assignment to "move" resource, not "copy" resource.
 \begin{lstlisting}[frame=single, language=c++]
 Foo choices[10];
 Foo best;
 best = choices[3];
-//I don't want to keep choices after I pick up what I want
-//here, It will call normal move assignment,
-//because choices[3] is not rvalue.
 
 best = std::move(choices[3]);
-//It will call move assignment
 \end{lstlisting}
+\begin{description}
+	\item[Line 5:] I don't want to keep choices after I pick up what I want here, It will call normal move assignment, because choices[3] is not rvalue. It will call move assignment
+\end{description}
 \end{itemize}
 
 
@@ -6240,12 +6291,12 @@ best = std::move(choices[3]);
 \begin{enumerate}
 	\item In pre-11 C++, it was not allowed to take a reference to a reference: something like A\&\& would cause a compile error. C++11, by contrast, introduces the following reference collapsing rules1:
 	
-	\begin{lstlisting}[frame=single, language=c++]
-	A& & becomes A&
-	A& && becomes A&
-	A&& & becomes A&
-	A&& && becomes A&&
-	\end{lstlisting}
+\begin{lstlisting}[numbers=none]
+A& & becomes A&
+A& && becomes A&
+A&& & becomes A&
+A&& && becomes A&&
+\end{lstlisting}
 	
 	\item forwarding reference type deduction rules: For lvalue and rvalue, we use the different rule to deduct type.
 \end{enumerate}
@@ -6267,7 +6318,7 @@ template <class... Args>
 void emplace_back(Args&&... args);  //args is universal reference
 };
 
-//------------$\Hilight{29}$below are not universal reference----
+//------------below are not universal reference----
 template<typename T>
 void f(std::vector<T>&& param); // rvalue reference
 // form is quite constrained. It must be precisely "T&&".
@@ -6289,10 +6340,11 @@ void push_back(T&& x); //no type deduction
 
 \begin{lstlisting}[frame=single, language=c++]
 auto&& var = some_expression_that_may_be_rvalue_or_lvalue;
-// var was initialized with either an lvalue or rvalue, but var itself
-// is an lvalue because named rvalues are lvalues
-use_it_elsewhere($\Hilight{9}$std::forward<decltype(var)>(var));
+use_it_elsewhere(std::forward<decltype(var)>(var));
 \end{lstlisting}
+\begin{description}
+	\item[Line 1:] var was initialized with either an lvalue or rvalue, but var itself is an lvalue because named rvalues are lvalues
+\end{description}
 
 \item When to use auto\&\&. I will accept any initializer regardless of whether it is an lvalue or rvalue expression and I will preserve its constness. This is typically used for forwarding (usually with T\&\&). The reason this works is because a "universal reference", auto\&\& or T\&\&, will bind to anything. A good example of\\
 "some\_expression\_that\_may\_be\_rvalue\_or\_lvalue;"
@@ -6334,28 +6386,26 @@ std::cout << global_vec[0] << std::endl;
 \item For overload method, it can be less efficient. For example, consider this use of setName: w.setName("Adela Novak"); With the version of setName taking a universal reference, the string literal "Adela Novak" would be passed to setName, where it would be conveyed to the assignment operator for the std::string inside w. w's name data member would thus be assigned directly from the string literal; no temporary std::string objects would arise. With the overloaded versions of setName, however, a temporary std::string object
 would be created for setName's parameter to bind to, and this temporary std::string would then be moved into w's data member.
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Widget {
 public:
- template<typename T>
- void setName(T&& newName) // newName is universal reference
- { name = std::forward<T>(newName); }
- 
- ... 
- string name;    
+	template<typename T>
+	void setName(T&& newName) // newName is universal reference
+	{ name = std::forward<T>(newName); }
+...
+	string name;    
 };
-
 \end{lstlisting}
 
 
 \item overload has the poor scalability of the design. Widget::setName takes only one parameter, so only two overloads are necessary, but for functions taking more parameters, each of which could be an lvalue or an rvalue, the number of overloads grows geometrically: n parameters necessitates 2n overloads. Such as make\_shared function, It's also support variadic parameter
 
 \begin{lstlisting}[frame=single, language=c++]
-template<class T, class... Args> // from C++11
-shared_ptr<T> make_shared(Args&&... args); // Standard
+template<class T, class... Args> 
+shared_ptr<T> make_shared(Args&&... args); 
 
-template<class T, class... Args> // from C++14
-unique_ptr<T> make_unique(Args&&... args); // Standard
+template<class T, class... Args> 
+unique_ptr<T> make_unique(Args&&... args); 
 \end{lstlisting}
 
 \subsection{cons}
@@ -6367,8 +6417,8 @@ unique_ptr<T> make_unique(Args&&... args); // Standard
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T> // reference
 fun(T&& value){
-vector<Foo> vect;
-vect.push_back(std::forward<T>(value)); // use move here to implement
+	vector<Foo> vect;
+	vect.push_back(std::forward<T>(value)); 
 }
 \end{lstlisting}
 
@@ -6409,13 +6459,17 @@ auto&& vec = some_expression_that_may_be_rvalue_or_lvalue;
 auto i = std::begin(vec);
 (*i)++;
 
-auto         //will copy the vector, but we wanted a reference
-auto&       //will only bind to modifiable lvalues
-const auto&  
-//will bind to anything but make it const, giving us const_iterator
-const auto&& //will bind only to rvalues
-$\Hilight{19}$//with const, It's not univerisal reference any more.
+auto         
+auto&       
+const auto&
+const auto&& 
 \end{lstlisting} 
+\begin{description}
+	\item[Line 5:] will copy the vector, but we wanted a reference
+	\item[Line 6:] will only bind to modifiable lvalues
+	\item[Line 7:] will bind to anything but make it const, giving us const\_iterator
+	\item[Line 8:] will bind only to rvalues with const, It's not univerisal reference any more.
+\end{description}
 	\end{enumerate}
 
 \item There are three function emplace, make\_shared and make\_unique. They use:
@@ -6430,7 +6484,7 @@ $\Hilight{19}$//with const, It's not univerisal reference any more.
 \subsection{std::move and std::forward implementation}
 \begin{itemize}
 	\item Basic implementation of move
-\begin{lstlisting}
+\begin{lstlisting}[numbers=none]
 template<typename T> // in namespace std
 typename remove_reference<T>::type&&
 move(T&& param){
@@ -6448,7 +6502,7 @@ T&& forward(typename remove_reference<T>::type& param){
 \end{lstlisting}
 
 	\item basic usage of forward is like this:
-\begin{lstlisting}
+\begin{lstlisting}[numbers=none]
 template<class T>
 void wrapper(T&& arg) {
 // arg is always lvalue
@@ -6459,7 +6513,7 @@ foo(std::forward<T>(arg));
 	\begin{figure}
 		\centering
 		\includegraphics[width=0.8\linewidth]{pics/rvalue_ref.png}
-		\caption{}
+		\caption{move and forward implementation}
 		\label{fig:rvalueref}
 	\end{figure}
 
@@ -6470,10 +6524,11 @@ void fun(int&& r){
 	int&& r1 = r;  //error: cannot bind 'int' lvalue to 'int&&'
 	cout<<r1<<endl;
 }
-//----------------------------------------
+
 int r = 2;
 fun(std::move(r));
 \end{lstlisting}
+
 \end{itemize}
 
 
@@ -6481,8 +6536,15 @@ fun(std::move(r));
 
 \subsection{Generic function parameter design}
 \begin{itemize}
-\item Main content in this section illustrated below: \\
-\includegraphics[scale=0.5]{pics/move.png}
+\item Main content in this section illustrated below: 
+
+	\begin{figure}[h]
+	\centering
+	\includegraphics[width=1.0\linewidth]{pics/move.png}
+	\caption{move and forward implementation}
+	\label{fig:rvalueref}
+\end{figure}
+
 
 \item  By now, you imagine you have a function with parameter, then you have three main operations inside to operate on the parameter: \textbf{1) only read 2) copy from the parameter 3) write to parameter.}
 
@@ -6490,7 +6552,7 @@ fun(std::move(r));
 \begin{lstlisting}[frame=single, language=c++]
 writeFun(Foo &);
 
-writeFun(foo1+foo2) // will not compile, foo1+foo2 is rvalue.
+writeFun(foo1+foo2) //ERROR
 \end{lstlisting}
 
 \item For only read build-in type, such as int, char, short, double.. You can use value directly, it has the same performance as reference. If you want to change it, you still need to use reference.
@@ -6520,16 +6582,16 @@ writeFun(foo1+foo2) // will not compile, foo1+foo2 is rvalue.
  & lvalue  & rvalue \\
 \hline
 copyFun(Foo foo) & \specialcell[t]{copy parameter\\move inside} & \specialcell[t]{move parameter \\ move inside} \\
-\hline
+\tophline
 copyFun(Foo \&)  & copy inside & (NOT support) \\
-\hline
+\tophline
 copyFun(const Foo \&) & copy inside & copy inside \\
-\hline
+\tophline
 copyFun(Foo \&\&)  & (NOT support) & move inside \\
-\hline
+\tophline
 \specialcell[t]{template<T\&\&> \\
-copyFun(T \&\&)}  & copy inside & move inside \\
-\hline
+copyFun(T \&\&)}  & copy inside & move inside 
+\bottomhline
 \end{tabular}
 
 \subsubsection{overload solution}
@@ -6538,13 +6600,12 @@ copyFun(T \&\&)}  & copy inside & move inside \\
 \begin{lstlisting}[frame=single, language=c++]
 //rvalue reference
 fun(Foo&& foo);
-fun(foo1+foo2) // will compile, It means that inside fun
-// you will steal resource. 
+fun(foo1+foo2) 
 fun(f_return_foo()); // call move ctor.
 \end{lstlisting}
-
-\item The most common use of this is move ctor and move assignment. 
-
+\begin{description}
+	\item[Line 3:] will compile, It means that inside fun, you will steal resource. 
+\end{description}
 
 \subsubsection{only value solution}
 
@@ -6562,12 +6623,14 @@ sorted(std::vector<std::string> names){
 	return names;
 }
 
-// names is an lvalue; a copy is required so we don't modify names
 std::vector<std::string> sorted_names1 = sorted( names );
 
-// get_names() is an rvalue expression; we can omit the copy!
 std::vector<std::string> sorted_names2 = sorted( get_names() );
 \end{lstlisting}
+\begin{description}
+	\item[Line 7:] names is an lvalue; a copy is required so we don't modify names
+	\item[Line 9:] get_names() is an rvalue expression; we can omit the copy!
+\end{description}
 
 \begin{lstlisting}[frame=single, language=c++]
 std::vector<std::string> 
@@ -6607,18 +6670,22 @@ sorted2(std::vector<std::string> const& names) {
 
 \item You can apply this guideline immediately is in assignment operators. The canonical, easy-to-write, always-correct, strong-guarantee, copy-and-swap assignment operator is often seen written this way:
 \begin{lstlisting}[frame=single, language=c++]
-T& T::operator=(T const& x){ // x is a reference to the source
-	T tmp(x);          // copy construction of tmp does the hard work
-	swap(*this, tmp);  // trade our resources for tmp's
-	return *this;      // our (old) resources get destroyed with tmp 
+T& T::operator=(T const& x){ 
+	T tmp(x);          
+	swap(*this, tmp);  
+	return *this;      
 }
 
-// A better one is below
-T& operator=(T x){// x is a copy of the source;hard work already done
-	swap(*this, x);// trade our resources for x's
-	return *this;  // our (old) resources get destroyed with x
+T& operator=(T x){ 
+	swap(*this, x);
+	return *this;   
 }
 \end{lstlisting}
+\begin{description}
+	\item[Line 2 to 4:] x is a reference to the source. copy construction of tmp does the hard work. trade our resources for tmp's. our (old) resources get destroyed with tmp 
+	
+	\item[Line 7 to 10:] A better one is below. x is a copy of the source;hard work already done. trade our resources for x's. our (old) resources get destroyed with x
+\end{description}
 
 \item Two good articles about this topic are:"Want Speed? Pass by Value." and "WANT SPEED? DON'T (ALWAYS) PASS BY VALUE."
 
@@ -6630,20 +6697,27 @@ struct S{
 };
 
 SomeType t;
-s.initByRef(std::move(t)); // this works, and even better (less moves)
-s.initByRef(SomeType()); // this also works
+s.initByRef(std::move(t)); 
+s.initByRef(SomeType()); 
 \end{lstlisting}
+\begin{description}
+	\item[Line 5:] this works, and even better (less moves)
+\end{description}
 
 \item But for lvalue, you need a help function here.
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 T copy_to_temp(const T& t) { return t; }
 
-SomeType t; // I'll need t later, so cannot std::move(t)
-s.initByRef(copy_to_temp(t)); // but can copy
+SomeType t; 
+s.initByRef(copy_to_temp(t)); 
 
-s.initByVal(t); // note that here t is also copied, it just happens implicitly
+s.initByVal(t); 
 \end{lstlisting}
+\begin{description}
+	\item[Line 5:] I'll need t later, so cannot std::move(t), but can copy
+	\item[Line 7:] note that here t is also copied, it just happens implicitly
+\end{description}
 
 \item the same idea can be applied to move-only types (such as unique\_ptr<T>)
 \begin{lstlisting}[frame=single, language=c++]
@@ -6653,20 +6727,22 @@ T move_to_temp(T& t) { return std::move(t); }
 void foo(unique_ptr<SomeType>&& param);
 
 unique_ptr<SomeType> p;
-foo(move_to_temp(p)); // note: this does move, p will become empty
-foo(std::move(p)); //here, p will not become empty. 
+foo(move_to_temp(p)); 
+foo(std::move(p)); 
 \end{lstlisting}
+\begin{description}
+	\item[Line 7:] note: this does move, p will become empty
+	\item[Line 8:] here, p will not become empty. 
+\end{description}
 
 
 \item More interesting example:
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 T move_to_temp1(T& t) { return std::move(t); }
-//here move ctor is called when return to a value
-
 
 T&& move_to_temp2(T& t) { return std::move(t);}
-//here no move ctor is called, just reference value assignment.
+
 
 void foo(unique_ptr<SomeType>&& param);
 
@@ -6674,6 +6750,10 @@ unique_ptr<SomeType> p;
 foo(move_to_temp1(p));  //compile ok, return value is prvalue
 foo(move_to_temp2(p));  //compile ok, return value is xvalue
 \end{lstlisting}
+\begin{description}
+	\item[Line 2:] here move ctor is called when return to a value
+	\item[Line 4:] here no move ctor is called, just reference value assignment.
+\end{description}
 
 
 \subsubsection{forwarding reference}
@@ -6707,7 +6787,7 @@ Foo fun(){
 	return fauto;
 }
 		
-Foo flast = ($\Hilight{12}$ftemp created here)fun();
+Foo flast = (ftemp created here)fun();
 \end{lstlisting}
 		\item ftemp is not on the stack, so you can use const ref or rref to prolong its life.
 		
@@ -6717,10 +6797,13 @@ Foo fun(){
 	return fauto;
 }
 		
-$\Hilight{39}$\\fun return Value, if run return reference, it's dangerous.
-const Foo& flast = ($\Hilight{9}$ftemp created here)fun();
+const Foo& flast = (ftemp created here)fun();
 Foo&& flast = fun();
 \end{lstlisting}
+\begin{description}
+	\item[Line 5:] fun return Value, if run return reference, it's dangerous.
+\end{description}
+
 	\end{enumerate}
 	
 	\item The basic RVO is implemented by this way:
@@ -6750,7 +6833,7 @@ void bar(x &__result){
 	\end{enumerate}
 	
 	\item About return reference, by now, I only know three functions which return reference. = and << are for support cascading syntactic usage: such as cout<<a<<b, a=b=c.  [] is for support assignment obj[3]= 12.  That is all.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 operator =
 operator []
 operator << and >>
@@ -6760,9 +6843,13 @@ operator << and >>
 	
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 string& a = FindAddr( emps, "John Doe" );
-emps.clear(); // This statement will invalid a.
-cout << a; // may or may not work, It's difficult to debug.
+emps.clear(); 
+cout << a; 
 \end{lstlisting}
+\begin{description}
+	\item[Line 2:] This statement will invalid a.
+	\item[Line 3:] may or may not work, It's difficult to debug.
+\end{description}
 	
 	\item If you want to return reference,  there is a defensible option that allows returning a reference and thus avoiding a temporary. But it's your last resort.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
@@ -6773,7 +6860,7 @@ FindAddr( /* pass emps and name by reference */ ){
 			return i->addr;
 		}
 	}
-	$\Hilight{20}$static const string empty;
+	static const string empty;
 	return empty;
 	}
 \end{lstlisting}
@@ -6798,7 +6885,7 @@ FindAddr( /* pass emps and name by reference */ ){
 \begin{lstlisting}[frame=single, language=c++]
 A&& rrfun1(A&& arg){
 	return std::move(arg);
-	//You have to use move here, because arg is lvalue.
+	//arg is lvalue, so use move
 }
 	
 A&& rrfun2(A& arg){
@@ -6815,16 +6902,18 @@ A b = rrfun2(a);
 \begin{lstlisting}[frame=single, language=c++]
 A rrfun(A& arg){
 	return std::move(arg);
-	}
+}
 	
 A a;
 A&& b = rrfun(a);
-//after this a is invalid, and b refer a ftemp
 \end{lstlisting}
+\begin{description}
+	\item[Line 6:] after this a is invalid, and b refer a ftemp.
+\end{description}
 	
 
 	\item return rvalue reference 3:   below code will not call move ctor at all. So you mean that I want to keep watch for a while, and obj a is still intact right now.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 A&& rrfun(A& arg){
 	return std::move(arg);
 }
@@ -6850,16 +6939,16 @@ A&& b = rrfun(a);
 	\item \textbf{In summary 2, If function return value, For only copy lvalue, return value; for rvalue reference, move;  For universal refence, forward. }
 	
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
-Matrix operator+$/Hilight{5}$Matrix& lhs, const Matrix& rhs) {
+Matrix operator+Matrix& lhs, const Matrix& rhs) {
 	return lhs
 }
 	
-Matrix operator+($/Hilight{5}$Matrix&& lhs, const Matrix& rhs) {
+Matrix operator+(Matrix&& lhs, const Matrix& rhs) {
 	return move(lhs)
 }
 	
 template<type T>
-T operator+($/Hilight{5}$T&& lhs) {
+T operator+(T&& lhs) {
 	return forward<T>(lhs)
 }
 \end{lstlisting}
@@ -6871,14 +6960,14 @@ struct Beta {
 	Beta_ab ab;
 	Beta_ab const& getAB() const& { return ab; }
 	Beta_ab && getAB() && { return move(ab); }
-	$/Hilight{30}$// return && is not Good interface design.
+	// return && is not Good interface design.
 	
 	Beta_ab ab = Beta().getAB();
 	// It will call move version.
 	//Beta_ab && ab = Beta().getAB(); ab is dangling rref
 	
 	2) Beta_ab getAB() && { return move(ab); }
-	$/Hilight{30}$//Good interface design.
+	//Good interface design.
 };
 \end{lstlisting}
 
@@ -6886,12 +6975,15 @@ struct Beta {
 \begin{lstlisting}[frame=single, language=c++]
 DataType data() && { return std::move(values); } // why DataType?
 auto values = makeWidget().data();
-//with ROV, just move once. 
 
 DataType && data() && { return std::move(values); }
 auto&& values = makeWidget().data();
-//values will be dangling because makeWidget() return value disappear.
+
 \end{lstlisting}
+\begin{description}
+	\item[Line 2:] with ROV, just move once. 
+	\item[Line 5:] values will be dangling because makeWidget() return value disappear.
+\end{description}
 
 	\item about rvalue reference qualifier, please google "C++ Gems: ref-qualifiers"
 	
@@ -6920,7 +7012,7 @@ auto&& values = makeWidget().data();
 	\item Three common cases are:
 	\begin{enumerate}
 		\item Name RVO, \texttt{t} has a name. It's called NRVO.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 Thing f() {
 	Thing t;
 	return t;
@@ -6929,7 +7021,7 @@ Thing t2 = f();
 \end{lstlisting}
 
 		\item RVO, No name, just return temporary.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 Thing f() {
 	return Thing();
 }
@@ -6937,14 +7029,14 @@ Thing t2 = f();
 \end{lstlisting}
 
 		\item temporary is passed by value
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 void foo(Thing t);
 
 foo(Thing());
 \end{lstlisting}
 
 \item exception is thrown and caught by value
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 void foo() {
 	Thing c;
 	throw c;
@@ -6966,19 +7058,18 @@ int main() {
 \subsubsection{RVO limitations}
 \begin{itemize}
 	\item Different named object sample will not trigger RVO
-	\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-RVO MyMethod (int i)
-{
+\begin{lstlisting}[numbers=none]
+RVO MyMethod (int i){
 	RVO rvo;
 	rvo.mem_var = i;
 	if (rvo.mem_var == 10)
 		return RVO();
 	return rvo; 
 }
-	\end{lstlisting}
+\end{lstlisting}
 	
 	\item returning a parameter or Global
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 Snitch global_snitch;
 
 Snitch ReturnParameter(Snitch snitch) {
@@ -6999,7 +7090,7 @@ Snitch CreateSnitch() {
 \end{lstlisting}
 	
 \item In some cases even an unnamed variable can't RVO:
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 struct Wrapper {
 	Snitch snitch;
 };
@@ -7123,38 +7214,45 @@ int main() {
 \begin{itemize}
 	\item For local variable, don't use move. compiler will use RVO , so It has already had high efficiency.
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 Foo fun(){
 	Foo foo;
-	return foo;
-	$\Hilight{12}$//Don't use move here.
+	return foo; //Don't use move here.
 }
-	\end{lstlisting}
+\end{lstlisting}
 	
 	\item A common error is when there is no RVO, use std::move to avoid copy: but Although parameter is not eligbile for RVO, or different path is not eligible, but you don't need to explicit use std::move, the compiler will use them implicitly.
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}
 Widget makeW(Widget w){
 	.....
 	return w
-	//return std::move(w) //don't write it, compiler will do it for you.
+	//return std::move(w) 
 } 
-	\end{lstlisting}
+\end{lstlisting}
+\begin{description}
+	\item[Line 4:] don't write it, compiler will do it for you.
+\end{description}
 	
 	\item If a function is value return, and you want to return a rvalue reference parameter, you have to use move in the return.
 	\begin{enumerate}
 		\item \textbf{lhs is not local object, but reference, so No RVO}
 		\item you may say: but lhs is rvalue reference, but lhs is name rvalue reference. It's lvalue.
+		
 		\item Just like you pass a lvalue reference, you can't move it unless you want to do it explicitly. That is why we need std::move here.
 	\end{enumerate}
 \begin{lstlisting}[frame=single, language=c++]
-Matrix // by-value return , by rvalue parameter
-operator+(Matrix&& lhs, const Matrix& rhs){
+Matrix operator+(Matrix&& lhs, const Matrix& rhs){
 	lhs += rhs;
-	return std::move(lhs); // move lhs into return value
-	//return lhs // will copy lhs into return value 
+	return std::move(lhs); 
+	//return lhs 
 } 
-	\end{lstlisting}
+\end{lstlisting}
+\begin{description}
+	\item[Line 1:] by-value return , by rvalue parameter.
+	\item[Line 3:] move lhs into return value.
+	\item[line 4:] will copy lhs into return value.
+\end{description}
 
 \subsubsection{RVO summary}
 
@@ -7202,13 +7300,13 @@ be eligible for the return value optimization.
 	\end{enumerate}
 	
 	\item Policies are classes (or class templates) to \textbf{inject behavior} into a parent class, typically through inheritance. Through decomposing a parent interface into orthogonal (independent) dimensions, policy classes form the building blocks of more complex interfaces. An often seen pattern is to supply policies as user-definable template (or template-template) parameters with a library-supplied default. An example from the Standard Library are the Allocators, which are policy template parameters of all STL containers
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template<class T, class Allocator =
 	std::allocator<T> > class vector;
 \end{lstlisting}
 	
 	\item Traits are class templates to \textbf{extract properties} from a generic type. There are two kind of traits: single-valued traits and multiple-valued traits. Examples of single-valued traits are the ones from the header <type\_traits>. Single-valued traits are often used in template-metaprogramming and SFINAE tricks to overload a function template based on a type condition.
-	\begin{lstlisting}[frame=single, language=c++]
+	\begin{lstlisting}[numbers=none]
 template< class T >
 struct is_integral{
 	static const bool value
@@ -7227,8 +7325,9 @@ int main() {
 }
 \end{lstlisting}
 \end{itemize}
-\subsection{Interface}
 
+
+\subsection{Interface}
 \begin{itemize}
 	
 	\item Nesting a class does not create a class member of another class. Instead, it defines a type that is known just locally to the class that contains the nested class declaration.  A good example is Class queue nest class node,  because node is just used inside the class Queue. Another good example is vector and it's iterator.
