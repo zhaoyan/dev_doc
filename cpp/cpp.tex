@@ -5865,12 +5865,12 @@ f(const Foo & crf); //function declaration
 f(1);
 \end{lstlisting}
 \begin{description}
-	\item[Line 10:] temp obj build by ctor, if you skip const in line 8 function declartion, compiler will report error.
+	\item[Line 9:] temp obj build by ctor, if you skip const in line 7 function declartion, compiler will report error.
 \end{description}
 
 \item \texttt{const} reference bound to rvalue used in copy ctor widely. See example below: But in C++11, For a class with a lot allocated resource, please use move copy ctor which explained in the next section:
 
-\begin{lstlisting}[numbers=none]
+\begin{lstlisting}
 class Foo{
 	Foo(const Foo & foo);
 }
@@ -5939,7 +5939,7 @@ Foo f3 = f1+f2;
 	\end{tabular}
 
 \item An example shows that xvalue has identity and persist, and will persist beyond expression and can be move(stolen). it usually near the end of its lifetime (so that its resources may be moved).
-\begin{lstlisting}[numbers=none]
+\begin{lstlisting}
 string&& xvalue_fun();
 
 xvalue_fun(); 
@@ -5971,7 +5971,7 @@ is_lvalue(a); // true
 \end{description}
 
 \item \textbf{How to determine programmatic if an expression is rvalue or lvalue}
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 if (std::is_lvalue_reference<decltype(var)>::value) {
 	// var was initialised with an lvalue expression
 } else if (std::is_rvalue_reference<decltype(var)>::value) {
@@ -6073,8 +6073,8 @@ cout<<val;
 \end{description}
 	
 \item Another deep trap happen when you implement move ctor in derived class
-\begin{lstlisting}[frame=single, language=c++]
-Derived(Derived&& rhs) : Base(rhs) // wrong: rhs is an lvalue
+\begin{lstlisting}[numbers=none]
+Derived(Derived&& rhs):Base(rhs)//wrong: rhs is an lvalue
 {
 	// Derived-specific stuff
 }
@@ -6263,7 +6263,7 @@ obj1 = obj2+obj3
 	
 	\item In below examples, Foo obj1=obj2+obj3. if you don't have move ctor, In operator + function, a temp obj is produced,  and when operator+ function return, another temp obj temp2 is produced .  Then in the end, objtemp2 is passed to ctor,  So, ctor is called three times. and copy content is also called three times.
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 Foo Foo::operator+( const Foo & f) const {
 	Foo temp = Foo(n+f.n);
 	//copy happen here.
@@ -6330,7 +6330,7 @@ A&& && becomes A&&
 \item  Universal references arise in two contexts. The most common is function template parameters. The second context is auto\&\&\textbf{1)must be constrained T\&\& form, 2) type deduction happen.}
 
 \item If the form of the type declaration isn't precisely type\&\&, or if type deduction does not occur, type\&\& denotes an rvalue reference.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 auto&& var2 = var1; // universal reference
 
 template<typename T>
@@ -6383,8 +6383,6 @@ return global_vec;
 template <typename T>
 void foo(){
 auto&& vec = get_vector<T>(); 
-//only auto&& work here. 
-//auto, auto& , const auto&, const auto&& all failed.
 auto i = std::begin(vec);
 (*i)++;
 std::cout << vec[0] << std::endl;
@@ -6394,8 +6392,10 @@ foo<std::vector<int>>();
 std::cout << global_vec[0] << std::endl;
 foo<std::vector<int>&>();
 std::cout << global_vec[0] << std::endl;
-
 \end{lstlisting}
+\begin{description}
+	\item[Line 10:] only auto\&\& work here. auto, auto\& , const auto\&, const auto\&\& all failed.
+\end{description}
 
 \end{itemize}
 
@@ -6424,7 +6424,7 @@ public:
 
 \item overload has the poor scalability of the design. Widget::setName takes only one parameter, so only two overloads are necessary, but for functions taking more parameters, each of which could be an lvalue or an rvalue, the number of overloads grows geometrically: n parameters necessitates 2n overloads. Such as make\_shared function, It's also support variadic parameter
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template<class T, class... Args> 
 shared_ptr<T> make_shared(Args&&... args); 
 
@@ -6438,7 +6438,7 @@ unique_ptr<T> make_unique(Args&&... args);
 
 \item There are argument types that can't be passed by universal reference (see Item 30), and if clients pass improper argument types, compiler error messages can be intimidating (see Item 27).
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template<typename T> // reference
 fun(T&& value){
 	vector<Foo> vect;
@@ -6518,7 +6518,7 @@ move(T&& param){
 \end{lstlisting}
 	
 	\item Basic implementation of forward
-\begin{lstlisting}
+\begin{lstlisting}numbers=none]
 template<typename T>
 T&& forward(typename remove_reference<T>::type& param){
 	return static_cast<T&&>(param);
@@ -6526,14 +6526,18 @@ T&& forward(typename remove_reference<T>::type& param){
 \end{lstlisting}
 
 	\item basic usage of forward is like this:
-\begin{lstlisting}[numbers=none]
+\begin{lstlisting}
 template<class T>
 void wrapper(T&& arg) {
-// arg is always lvalue
-foo(std::forward<T>(arg)); 
-// Forward as lvalue or as rvalue, depending on T
+	foo(std::forward<T>(arg)); 
 }
 \end{lstlisting}
+\begin{description}
+	\item[Line 2:] arg is always lvalue.
+	\item[Line 3:] Forward as lvalue or as rvalue, depending on T.
+	
+	
+\end{description}
 	\begin{figure}
 		\centering
 		\includegraphics[width=0.8\linewidth]{pics/rvalue_ref.png}
@@ -6542,7 +6546,7 @@ foo(std::forward<T>(arg));
 	\end{figure}
 
 	\item In forward function, why parameter is std::remove\_reference\_t<T>\& t?
-\begin{lstlisting}
+\begin{lstlisting}[numbers=none]
 void fun(int&& r){
 	//int& r1 = r;  //OK
 	int&& r1 = r;  //error: cannot bind 'int' lvalue to 'int&&'
@@ -6573,7 +6577,7 @@ fun(std::move(r));
 \item  By now, you imagine you have a function with parameter, then you have three main operations inside to operate on the parameter: \textbf{1) only read 2) copy from the parameter 3) write to parameter.}
 
 \item For only read, "const type\&" is the best, For write, "type\&" is good, because I don't need to write any new thing into prvalue. Based on previous explanation, below code will not compile. 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 writeFun(Foo &);
 
 writeFun(foo1+foo2) //ERROR
@@ -6656,7 +6660,7 @@ std::vector<std::string> sorted_names2 = sorted( get_names() );
 	\item[Line 9:] get\_names() is an rvalue expression; we can omit the copy!
 \end{description}
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 std::vector<std::string> 
 sorted2(std::vector<std::string> const& names) {
 	std::vector<std::string> r(names);   // and explicitly copied
@@ -6725,7 +6729,7 @@ s.initByRef(std::move(t));
 s.initByRef(SomeType()); 
 \end{lstlisting}
 \begin{description}
-	\item[Line 5:] this works, and even better (less moves)
+	\item[Line 6:] this works, and even better (less moves)
 \end{description}
 
 \item But for lvalue, you need a help function here.
@@ -6783,7 +6787,7 @@ foo(move_to_temp2(p));  //compile ok, return value is xvalue
 \subsubsection{forwarding reference}
 
 \item The last option is universial reference. At this time, you have to use std::forward 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template<typename T>
 Fraction // by-value return
 reduceAndCopy(T&& frac) // universal reference param
@@ -6806,7 +6810,7 @@ reduceAndCopy(T&& frac) // universal reference param
 	\item \textbf{Three basic knowledges about function return when no RVO:}
 	\begin{enumerate}
 		\item It's very important understand there are two phrases when you return from function. The first step  is from inside fun fauto to ouside of function ftemp(unname tempory), then fauto disappear(call destructor for value).  Then in second step, \textbf{Move} from ftemp to flast. because ftemp is rvalue.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 Foo fun(){
 	return fauto;
 }
@@ -6825,13 +6829,13 @@ const Foo& flast = (ftemp created here)fun();
 Foo&& flast = fun();
 \end{lstlisting}
 \begin{description}
-	\item[Line 5:] fun return Value, if run return reference, it's dangerous.
+	\item[Line 6:] fun return Value, if run return reference, it's dangerous.
 \end{description}
 
 	\end{enumerate}
 	
 	\item The basic RVO is implemented by this way:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 X bar(){
 	X xx;
 	return xx;
@@ -6876,7 +6880,7 @@ cout << a;
 \end{description}
 	
 	\item If you want to return reference,  there is a defensible option that allows returning a reference and thus avoiding a temporary. But it's your last resort.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 const string&
 FindAddr( /* pass emps and name by reference */ ){
 	for( /* ... */ ){
@@ -6906,7 +6910,7 @@ FindAddr( /* pass emps and name by reference */ ){
 	
 	\item return rvalue reference 1:   If you want to return plain reference, or rvalue reference from a function, you have to input a plain reference or rvalue reference first, because you can't return any reference bound to local auto obj.
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 A&& rrfun1(A&& arg){
 	return std::move(arg);
 	//arg is lvalue, so use move
@@ -6962,7 +6966,7 @@ A&& b = rrfun(a);
 	
 	\item \textbf{In summary 2, If function return value, For only copy lvalue, return value; for rvalue reference, move;  For universal refence, forward. }
 	
-\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+\begin{lstlisting}[numbers=none]
 Matrix operator+Matrix& lhs, const Matrix& rhs) {
 	return lhs
 }
@@ -6979,7 +6983,7 @@ T operator+(T&& lhs) {
 	
 	\item The ref-qualifier \&\& says that the second function is invoked on rvalue temporaries, making the following move, instead of copy
 	
-\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+\begin{lstlisting}[numbers=none]
 struct Beta {
 	Beta_ab ab;
 	Beta_ab const& getAB() const& { return ab; }
@@ -7002,7 +7006,6 @@ auto values = makeWidget().data();
 
 DataType && data() && { return std::move(values); }
 auto&& values = makeWidget().data();
-
 \end{lstlisting}
 \begin{description}
 	\item[Line 2:] with ROV, just move once. 
@@ -7106,7 +7109,7 @@ Snitch ReturnGlobal() {
 \end{lstlisting}
 
 \item return by std::move()
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 Snitch CreateSnitch() {
 	Snitch snitch;
 	return std::move(snitch);
@@ -7162,19 +7165,23 @@ Snitch CreateSnitch() {
 int main() {
 	Snitch s = CreateSnitch();
 }
-	
-//	with -fno-elide-constructors
-//	c'tor    //Snitch()
-//	move c'tor  //Snitch() to return value
-//	d'tor       //Snitch() destory
-//	move c'tor //return value to s
-//	d'tor     //return value destory
-//	d'tor     //s destory
-//------------------------------
-//	without -fno-elide-constructors
-//	c'tor   //s
-//	d'tor   //s destory
-	\end{lstlisting}
+\end{lstlisting}
+\begin{description}
+	\item[Output:] The compiler switch and its output:
+	\begin{verbatim}
+		with -fno-elide-constructors
+		c'tor    //Snitch()
+		move c'tor  //Snitch() to return value
+		d'tor       //Snitch() destory
+		move c'tor //return value to s
+		d'tor     //return value destory
+		d'tor     //s destory
+	------------------------------
+		without -fno-elide-constructors
+		c'tor   //s
+		d'tor   //s destory
+	\end{verbatim}
+\end{description}
 	
 	\item test 2 and output
 	\begin{lstlisting}[frame=single, language=c++]
@@ -7182,25 +7189,29 @@ int main() {
 	Snitch s;
 	s = CreateSnitch();
 }
-
-//	with -fno-elide-constructors
-//	c'tor    //Snitch s
-//	c'tor    //Snitch() in side CreateSnitch
-//	move c'tor  //Snitch() to return value
-//	d'tor       //Snitch() destory
-//	move assignment //return value to s
-//	d'tor     //return value destory
-//	d'tor     //s destory
-//----------------------	
-//	without -fno-elide-constructors
-//	c'tor   //Snitch s
-//	c'tor   //Snitch()
-//	move assignment //s has been implicit passed to CreateSnitch, 
-//	//so s = Snitch() happen inside CreateSnitch
-//	d'tor   //Snitch() destory
-//	d'tor   //s destory
 	\end{lstlisting}
-	
+\begin{description}
+	\item[Output:] The compiler switch and its output:
+	\begin{verbatim}
+		with -fno-elide-constructors
+		c'tor    //Snitch s
+		c'tor    //Snitch() in side CreateSnitch
+		move c'tor  //Snitch() to return value
+		d'tor       //Snitch() destory
+		move assignment //return value to s
+		d'tor     //return value destory
+		d'tor     //s destory
+	----------------------	
+		without -fno-elide-constructors
+		c'tor   //Snitch s
+		c'tor   //Snitch()
+		move assignment //s has been implicit passed to CreateSnitch, 
+		//so s = Snitch() happen inside CreateSnitch
+		d'tor   //Snitch() destory
+		d'tor   //s destory
+	\end{verbatim}
+\end{description}
+
 	\item test 3 and output
 \begin{lstlisting}[frame=single, language=c++]
 Snitch CreateSnitch() {
@@ -7214,23 +7225,27 @@ Snitch CSnitch(Snitch&& rs) {
 int main() {
 	Snitch s = CSnitch(CreateSnitch());
 }
-	
-//	with -fno-elide-constructors
-//	c'tor    //
-//	copy c'tor    //
-//	d'tor       /
-//	copy c'tor    //
-//	copy c'tor    //
-//	d'tor       /
-//	d'tor     //r
-//	d'tor     //
-//-------------------------
-//	without -fno-elide-constructors
-//	c'tor   //Snitch s
-//	copy c'tor //
-//	d'tor   //Snitch() destory
-//	d'tor   //s destory
 \end{lstlisting}
+\begin{description}
+	\item[Output:] The compiler switch and its output:
+	\begin{verbatim}
+		with -fno-elide-constructors
+		c'tor    //
+		copy c'tor    //
+		d'tor       /
+		copy c'tor    //
+		copy c'tor    //
+		d'tor       /
+		d'tor     //r
+		d'tor     //
+	-------------------------
+		without -fno-elide-constructors
+		c'tor   //Snitch s
+		copy c'tor //
+		d'tor   //Snitch() destory
+		d'tor   //s destory
+	\end{verbatim}
+\end{description}
 \end{itemize}
 
 
@@ -7339,7 +7354,8 @@ struct is_integral{
 	
 template <class T>
 T f(T i){
-	static_assert(std::is_integral<T>::value, "Integer required.");
+	static_assert(
+		std::is_integral<T>::value, "Int required.");
 	return i;
 }
 
@@ -7425,7 +7441,7 @@ str= temp // make it more efficient
 	\end{enumerate}
 	
 	\item Prefer minimal classes to monolithic classes: big class is difficult to reach error-safe because it tackle multiple responsibilities. It's also difficult maintain, understand and deploy.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 Class Matrix{
 	//100 member function.
 } ; //bad design.
@@ -7441,7 +7457,7 @@ namespace MAT{
 	Cal2(Matrix m1, Matrix m2)
 	......
 }
-	\end{lstlisting}
+\end{lstlisting}
 
 	\item Interface Principle: For a class X, all functions, including free functions, that both:
 	\begin{enumerate}
@@ -7665,7 +7681,7 @@ easy, because C++11's "= default" lets you say that explicitly:
 \item reference member
 \item  member objects which do not have default constructor: (why I need default ctor can be explained here too)
 \item need pass argument to base class ctor
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class A {
     int i;
 public:
@@ -7707,7 +7723,7 @@ class(string &a, string &b){
 \item List member in a initialization list in the order in which they are declared in class. see effective c++ item 13. Order is important.
 
 \item Member variables are always initialized in the order they are declared in the class definition. The order in which you write them in the ctor initialization list is ignored.  \textbf{So you'd better not have one member's initialization depend on other members}.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Student{
 	string m_email;  //m_email will be init first, ingore order
 	string m_first_name;  // in the ctor initialization list.
@@ -7721,7 +7737,7 @@ class Student{
 is initialized before Container. Unfortunately, that means we're trying to use a member of the
 not-yet-initialized Container base subobject.
 
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 template<class T>
 class Array : private ArrayBase, public Container
 
@@ -7754,18 +7770,24 @@ public:
 
 class Circle : public Shape {
 public:
-	Circle* clone()  const;   // Covariant Return Types; see below
-	Circle* create() const;   // Covariant Return Types; see below
+	Circle* clone()  const;  
+	Circle* create() const;   
 };
-Circle* Circle::clone()  const { return new Circle(*this); }
-Circle* Circle::create() const { return new Circle();      }
+Circle* Circle::clone()  const{
+	 return new Circle(*this); }
+	 
+Circle* Circle::create() const{
+	 return new Circle();      }
 
 Shape* s2 = s.clone();
 Shape* s3 = s.create();
-// ...
+
 delete s2;    // You need a virtual destructor here
 delete s3;
 \end{lstlisting}
+\begin{description}
+	\item[Line 13 and 15:] Covariant Return Types; 
+\end{description}
 	
 	\item Avoid calling virtual functions in ctor and dtor. Detail can be found in "C++ Coding Standards" item 49.
 	
@@ -7796,26 +7818,24 @@ class Empty{
 	\item Make Constructors Protected to prohibit direct Instantiation. Make constructors Private to prohibit Derivation.
 	
 	\item Use default arguments to reduce the number of ctor.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Brush{
 	Brush();
 	Brush(Color c);
 	Brush(Texture t);
-	
-	Brush(Color c= Black, Texture t = Solid); 
-	// it will be better.
+	Brush(Color c= Black,Texture t=Solid); //better
 }
-	\end{lstlisting}
+\end{lstlisting}
 	
 	
 	\item From previous example, you can see that default ctor is very important. but when class MUST need another information when create, such as  worker class, You must provide SSN when you create a worker.At this time, if you create default ctor, It's not good idea. A NULL SSN will cause a lot of trouble in the future.  So you have to use Worker pointer, and vector<Worker>.  You also need to use delete to disable default ctor. That is C++ spirit, \textbf{You never have the best answer, only have context answer. }
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Worker{
 	char* SSN;
 	Worker(const char*);
 	Worker(){SSN=nullptr); //bad smell.
 }
-	\end{lstlisting}
+\end{lstlisting}
 	
 	\item Normally you will have to explicitly declare your own destructor if:
 	\begin{enumerate}
@@ -7868,16 +7888,16 @@ class & class::operator=(class &a){
 	
 	\item We first notice an important choice: the parameter argument is taken by-value. While one could just as easily do the following (and indeed, many naive implementations of the idiom do): Not only that, but this choice is critical in C++11, which is discussed later. On a general note, a remarkably useful guideline is as follows: if you're going to make a copy of something in a function, let the compiler do it in the parameter list.
 	
-\begin{lstlisting}
+\begin{lstlisting}[numbers=none]
 dumb_array& operator=(const dumb_array& other){
-	dumb_array temp(other);  //low effeicient, only copy here.
+	dumb_array temp(other);//low effeicient,only copy.
 	swap(*this, temp);
 	return *this;
 }
 \end{lstlisting}
 
 \item A simple example code:
-\begin{lstlisting}
+\begin{lstlisting}[numbers=none]
 class dumb_array{
 	dumb_array(const dumb_array& other)
 		: mSize(other.mSize),
@@ -8044,7 +8064,7 @@ class A & operator=(const class A& rhs){
 \section{inheriantce}
 \begin{itemize}
 	\item OO just kick in when you use reference and pointer to base class
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class A{
 		public:
 		virtual void fun(){ cout<<"A";}
@@ -8111,7 +8131,6 @@ subclass::subclass(int s, int b): base(b){
 //////////////////////////////////////////
 subclass sc1(2,3);
 
-	
 subclass sc2(2);  // implicit call base default ctor
 subclass sc3;   // implicit call base default ctor
 
@@ -8184,7 +8203,7 @@ void f( std::unary_function* f ){
 
 \begin{itemize}
 	\item copy ctor(assignment ctor) in inheritance will cause slicing problem.  and slicing. Below four are all SLICING.  number 5 and number 4 is not very obvious. They are call base class ctor.  No matter what you input a reference to a derived class or not.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Base{};
 class Derived1 : Base{};
 class Derived2 : Base{};
@@ -8208,7 +8227,7 @@ base* bp2 = new Derived2();
 \end{lstlisting}
 	
 \item Think a problem as below: how to make deep copy and avoid slicing in base class copy ctor?
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Base{};
 class Derived1 : Base{};
 class Derived2 : Base{};
@@ -8234,9 +8253,9 @@ Base* Copy(Base& Bref){
 }
 \end{lstlisting}
 	\item Continue- Think this problem: TypeID method.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 Base* Copy(Base& Bref){
-
+	int typeid;
 }
 \end{lstlisting}
 \begin{description}
@@ -8245,7 +8264,7 @@ Base* Copy(Base& Bref){
 	
 \item Continue- Think this problem: Virtual Clone method.
 	A function's return type is never considered part of its signature. You can override a member function with any return type as long as the return type could be used wherever the base class return type could be used.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 class Base{
 	virutal Base* Clone() = 0;
 };
@@ -8321,7 +8340,7 @@ https://stackoverflow.com/questions/1051379/is-there-a-difference-between-copy-i
 		\item To these constraints, which were also part of C++98, C++11 adds one more: The functions' reference qualifiers must be identical.
 	\end{enumerate}
 	\item reference qualifier explain:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Widget {
 public:
 	void doWork() &; // this version of doWork applies
@@ -8339,7 +8358,7 @@ public:
 \end{lstlisting}
 	
 \item Any small error will not real override base virtual function. but creating a new virtual method with a different signature. such as examples below.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Base {
 public:
 	virtual void mf1() const;
@@ -8358,7 +8377,7 @@ public:
 \end{lstlisting}
 	
 	\item override specifier should be used in derived class member function used to check if they are match with member function in base class.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 struct A{
 	virtual void foo();
 	void bar();
@@ -8371,7 +8390,7 @@ struct B : A{
 	\end{lstlisting}
 	
 \item Use final in Base class, to stop sub class override.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 class Base{
 	virtual void method1() final;
 }
@@ -8447,7 +8466,7 @@ class Base{
 	
 	\item Summary: \newline
 	
-	\begin{tabular}{|p{0.3\textwidth}|p{0.15\textwidth}|p{0.15\textwidth}|p{0.15\textwidth}|p{0.15\textwidth}|}
+	\begin{tabular}{|p{0.25\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|p{0.15\textwidth}|}
 		\tophline 
 		 & Composition  & Aggregation  & association & Dependency \\ 
 		\tophline 
@@ -8501,7 +8520,7 @@ class UserClass            { B b; /*...*/ };
 	\end{enumerate}
 
 	\item To make a public member of B public in D\_priv or D\_prot, state the name of the member with a B:: prefix. E.g., to make member B::f(int,float) public in D\_prot, you would say:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class D_prot : protected B {
 public:
 	using B::f;  // Note: Not using B::f(int,float)
@@ -8511,7 +8530,7 @@ public:
 \item In short, composite uses object names to invoke a method, whereas private Inheritance uses the class name and scope resolution operator Instead. If you need the base class itself, use a type case (const string\&) * this; detail can be seen in C++ primer, P800
 
 \item If you want to reuse string code in class student(also means \textbf{has-a} relationship, student has a string name) you have two options, The first is composition,  the second is private inheritance. See below:
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 class Student{ // 1) use composition.
 	int getNameLen();
 private:
@@ -8524,7 +8543,7 @@ int Student::getNameLen(){
 }
 \end{lstlisting}
 
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 class Student: private string, private std::vector<double>{
 	int getNameLen();
 	// We don't need private memeber data any more
@@ -8553,7 +8572,7 @@ const string& Student::getName(){
 	\item By now, I want to not only reuse class A, I also want to make a class adaptable. or make it possible to select different algorithms from the outside.  An example is  to replace brakes of a car (at runtime) Intend to pass Car around to non-template functions There are three options.
 	\begin{enumerate}
 		\item Version 1: Abstract base class, In fact, consider \textbf{same life time and composition relationship},  Using Brake obj directly is better. But you want to have runtime polymorphism at the same time, So have to use pointer or reference. Here you can use smart pointer(uniqu\_ptr).
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Brake {
 	public: virtual void stopCar() = 0;
 };
@@ -8571,7 +8590,7 @@ Car(Brake* brake) : _brake(brake) { brake->stopCar(); }
 		
 		\item Version 2a: Template
 		
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template<class Brake>
 class Car {
 		Brake brake;
@@ -8581,7 +8600,7 @@ public:
 		
 \end{lstlisting}
 		\item Version 2b: Template and private inheritance
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template<class Brake>
 class Car : private Brake {
 		using Brake::stopCar;
@@ -8639,7 +8658,7 @@ myFind(const string& str){
 \end{lstlisting}
 	
 \item Even you have specific state, you also can use composition to avoid inheritance.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class MyString{
 	size_t length(){return str.length}
 	//just need to write forward function here;
@@ -8666,7 +8685,7 @@ class MyString{
 		\item Inheritance must pass Liskov Substitution Principle. Previous example about ellipse and circle fail this test. because ellipse has setLongAxis() and setShortAxis(), but circle doesn't have them at all.
 	\end{enumerate}
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Shape{
 	virtual draw() = 0 // you have to re
 }
@@ -8749,7 +8768,6 @@ class Person{
 	
 	buyNewBrush(string &name){
 		unpbrush.reset(new Brush());
-	
 	}
 }
 \end{lstlisting}
@@ -8760,7 +8778,7 @@ class Person{
 	\item OOP example 3: if it's wife-husband(Association) relationship, If you want to express \textbf{Strong Not Nullity}, use reference, such as Mother-Son association, You need to use initialization list to init mother. If Nullity, such as wife, just use raw pointer, weak\_ptr or shared\_ptr. \textbf{Because no ownership involved, don't use uniqu\_ptr at all. }
 	
 	\item OOP example 3-1: What's different with raw pointer, weak\_ptr or shared\_ptr?
-	\begin{lstlisting}[frame=single, language=c++]
+	\begin{lstlisting}[numbers=none]
 class Man{
 	Woman*  wife; // can be set to nullptr.
 	//maybe change or live longer than you.
@@ -8771,7 +8789,7 @@ class Man{
 \end{lstlisting}
 	
 	\item OOP example 4: if it's Dependency,  such as friend relationship,  Most of time, we just use pointer or reference as function parameter.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Man{
 	lendMoney(Friend* mike);
 }
@@ -8779,7 +8797,7 @@ class Man{
 \end{lstlisting}
 	
 	\item OOP example 5: Suppose Man and Computer(Associate from structure semantic) is has-a relationship(from inheritance semantic) and same life time. Don't use pointer or reference, just copy from a common computer, and maybe later you can customize your computer, and it will not effect common one.  We can copy from commonComputer and init all Worker object.  And this time use initialization list can improve efficiency.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Worker{
 	Computer m_desktop;
 	Worker (Computer u): m_desktop(u){}
@@ -8792,11 +8810,11 @@ Worker Han(commonComputer);
 	
 	
 	\item OOP example6:  Change a semantic,  Unit may have a Bus, but \textbf{owner policy} tell us that bus can be shared by different unit. and \textbf{life time policy} tell us that bus and unit has separate life time. so here, we should use shared\_ptr.
-	\begin{lstlisting}[frame=single, language=c++]
-	class Unit{
+\begin{lstlisting}[numbers=none]
+class Unit{
 	shared_ptr<Bus> shr_p_bus;
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 	\item OOP example7: One class provides a container to hold multiple objects of another type. A value container is a composition that stores copies of the objects it is holding. A reference container is an aggregation that stores pointers or references to objects that live outside the container.
 	
@@ -8828,7 +8846,7 @@ Worker Han(commonComputer);
 	\item You need to design the base class and it should include at least one virtual function.
 \end{enumerate}
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Car{
 ....................
 Power* pow
@@ -8858,7 +8876,7 @@ car.start();
 \begin{itemize}
 
 	\item Inheritance three usage: 1) I want to inherit a interface. (pure virtual, you have to rewrite ) 2) I want to inherit a implement,but I want to change it. (virtual, you may or maynot rewrite) 3) I want to inherit a implement, but I don't want to change it. (Non-virtual, you can't rewrite it at all)
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class shape{
 public:
 	virtual draw() = 0 // you have to re
@@ -8895,7 +8913,7 @@ public:
 	\item When implementing RAII, be conscious of copy construction and assignment. the compiler-generated version probably won't be correct. If it's not copyable, use =delete , if it's copyable, duplicate the resource.  You also can use smart\_pointer in this scenario too.
 	
 	\item The basic idea of RAII  is to represent a resource by a local object, so that the local object's destructor will release the resource.  That is to say: To prevent resource leaks, use RAII objects that acquire resources in their constructors and release them in their destructors.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 //C version,
 File* fp = fopen("/path/to/file");
 // throw exception here, then resource leaking
@@ -8928,7 +8946,7 @@ fclose );              // the deleter function: fclose()
 	\item We should consider resource generically, pointer *p pointed to a new object is resource, A handle to a file is a resource to. \textbf{We wrap handle to a file into ifstream, and wrap pointer *p into smart\_pointer}
 	
 	\item Just like return value,  Exception will skip all the statement below the throw, In C++, It doesn't support finally statement sometimes. At this time, we need to use RAII.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 Int *p = new int;
 string a   //a is ok, a will be destructed properly
 //due to the C++ unwind stack.
@@ -8937,7 +8955,7 @@ delete p; // this will not run.
 \end{lstlisting}
 	
 	\item For this problem, you should use smart pointer to declare a auto object.  If you use string object, It's ok.  So in previous example,  you can use smart pointer, it will help you to avoid memory leakage problem.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 unique_ptr<int> aupr (new int(100);
 string a   //a is ok, a will be destructed properly
 //due to the C++ unwind stack.
@@ -8954,7 +8972,7 @@ throw exception.
 	\end{enumerate}
 	
 	\item Another example is when you make program based on Win API.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class module {
 public:
 	explicit module(std::wstring const& name)
@@ -8971,7 +8989,7 @@ private:
 	\item There are three RAII implementation instances in your practical programming:
 	\begin{enumerate}
 		\item Use auto member; You have to keep m\_str and vc are RAII.  In this way, you don't need to build dtor manually.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class RAII {
 		private:
 		string m_str;
@@ -8980,7 +8998,7 @@ class RAII {
 \end{lstlisting}
 		
 		\item Use pointer and handle; In this way, You have to use pointer, Maybe you need some customized action in runtime , \textbf{Use handle is only method to use this resource} or any other reason. And this time, you have to write your own dtor.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class RAII {
 		private:
 		string* m_str;
@@ -8989,7 +9007,7 @@ class RAII {
 \end{lstlisting}
 		
 		\item Use smart point wrap pointer and handle; When you wrap handle, you can custom this delete behavior. See source code below:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class RAII {
 private:
 		unique_ptr<string>  m_str;
@@ -9014,7 +9032,7 @@ public:
 		\item For auto member resource: \textbf{1)Same life duration(RAII), 2)exclusive ownship to a single obj, but it's copyable(A a1 = a2).  3)move with efficiency(A a1 = A() ) }. If auto member has it's own copy and move special function, You don't need to write any special function in your class. You follow the "Rule of Zero".
 		
 		\item For raw pointer and handle: \textbf{1) default copy ctor will cause two pointer or handle refer the same resource, It's absolutely BAD SMELL of code 2) So you have to follow "Rule of five" to build your special member function. 3) After you build five special member function, you get RAII and exclusive ownship to a single object, and copyable and efficient move}
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 Class RawPointer{
 		...........
 		RawPointer(const RawPointer& rhs){
@@ -9044,7 +9062,7 @@ private:
 		\item Prefer to use auto member for most of time! It follow "Rule of Five" and support copyable and movable. Such as std::string
 		
 		\item  For special demand, for example Car class,  people can \textbf{custom} its engine, and buy \textbf{two} at the same time. In this context, you car class should use raw pointer, 1) auto member doesn't support custom 2) uniqu\_ptr doesn't support copyable.  And you have to follow "Rule of Five"
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Car{
 		//follow "Rule of Five"
 		Engine *pEn;
@@ -9053,14 +9071,14 @@ class Car{
 \end{lstlisting}
 		
 		\item For special context, It doesn't support object copy: for example 1) Person class in semantic;  2) other  perform consideration, Class Big{int [30000];};  3) Other implementation constrain, such as iostream class.   Under such context, you can use uniqu\_ptr to manage the resource and implement uncopyable.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Person{
 		uniqu_ptr<Resource> pRes;
 }
 \end{lstlisting}
 		
 		\item For special context, shared resource, you can use shared\_ptr.  You still can follow "Rule of zero" and resource will be deleted when ref count is 0.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Student{
 		shared_ptr<SchoolBus> pBus
 }
@@ -9074,7 +9092,7 @@ class Student{
 \subsection{MI or bridge}
 \begin{itemize}
 	\item Multiple Inheritance will cause one grandson has two copy of grandfathers. A solution is use virtual key word: When you use this method, you need to follow New Constructor Rules, Detail can be seen in C++ primer P815.  Just look back when you really need MI.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 Father 1: virtual public grandfather
 Father2: virtual public grandfather
 son : public Father1, public Father 2
@@ -9109,11 +9127,11 @@ son : public Father1, public Father 2
 
 		\centering
 		\includegraphics[width=0.9\linewidth]{pics/visitor.png}
-	
+	    
 \end{itemize}
-
+     
 \chapter{Generic programming}
-
+     
 \section{Template Basic}
 \begin{itemize}
 \item A simple way to simulate template is \verb=typedef int Item=; But when you change the data type, you need to change header file, and you can't have int and double to template class at the same programme. so C++ introduces a better method: \texttt{template<typename T>}.
@@ -10246,14 +10264,16 @@ struct is_member_function_pointer_helper<T U::*> :
 	
 template< class T >
 struct is_member_function_pointer : 
-    is_member_function_pointer_helper< std::remove_cv_t<T>  {};
+    is_member_function_pointer_helper<
+    		 std::remove_cv_t<T>  {};
 	
 class A {
 public:
 	void member() { }
 };
 // output 0 if A::member is a data member and not a function
-cout<<std::is_member_function_pointer<decltype(&A::member)>::value
+cout<<std::is_member_function_pointer<
+			decltype(&A::member)>::value
 \end{lstlisting}
 	
 	\item summary: Common type traits implementation methods
@@ -10415,7 +10435,7 @@ f<>(2) //tell compiler use #1, not #2.
 \begin{itemize}
 
 	\item Explicit Specialization: Because for char *, you can't use > , but use strcmp.  So you need to build explicit Specialization Version. The prototype and definition of an explicit spcialization should be preceded by template<> and should mention the specialized type by name.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 Template<typename T>
       void sortedArrary(T) {...};
 
@@ -10450,12 +10470,14 @@ template void foo<>(int param);
 \end{description}
 \item There seems to be (a lot) of confusion regarding explicit instantiation and specialization. The code I posted above deals with explicit instantiation. The syntax for specialization is different. Here is syntax for specialization: Note that angle brackets after template!
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template <typename T> void func(T param) {} // definition
 
-template void func<int>(int param); // explicit instantiation.
+template void func<int>(int param); 
+// explicit instantiation.
 
-template <> void func<int>(int param) {} // specialization
+template <> void func<int>(int param) {} 
+// specialization
 \end{lstlisting}
 
 	\item  If you want to customize a function base template and want that customization to participate in overload resolution (or, to always be used in the case of exact match), make it a plain old function, not a specialization. And, if you do provide overloads, avoid also providing specializations. Detail you can google" Why Not Specialize Function Templates?" \textbf{prefer to use overload than template function specification.}
@@ -10512,7 +10534,7 @@ template<typename T> void func(T* p) {
 \end{description}
 
 \item p3
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template <typename T> struct Base {
    void f() {...}
 };
@@ -10528,7 +10550,7 @@ template <typename T> struct Derived : Base<T> {
 
 \item p4 name look up has two stages. 1) from process function, then it found a) current namespace, b)using namespace and c)all previous declaration.  At these time only f(T) is visible, Then add it into overload options.  2) When T is knowing, It will search all options in the boost namespace, \textbf{At this time, it will not search framework namespace again}
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 namespace framework { // library 1
 	template <typename T>
 	void f(T) { puts("master");}
@@ -10564,7 +10586,7 @@ int main(){
 
 \item p5, In instaniation, with help of ADL, boost namespace is searched and two other functions are added into overload options.
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 namespace framework{  // library 1
   template <typename T>
   void f(T) { puts("master"); }
@@ -10598,7 +10620,7 @@ int main(){
 \end{lstlisting}
 
 \item p6 template specification happen in the end and after overload. 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 namespace framework  // library 1
 {
   template <typename T>
@@ -10682,7 +10704,7 @@ int main(){
 	
 	\item Non-Template class Derived from Template Base class specification
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class u8toU16 : public 
            std::codecvt<wchar_t, char, std::mbstate_t>{
 	...
@@ -10690,7 +10712,7 @@ class u8toU16 : public
 \end{lstlisting}
 
 	\item Template class Deriving from the non-template class
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Base
 	
 template<typename T>
@@ -10700,7 +10722,7 @@ class Derived: public Base
 	\item template class can be used as base class and used as a component class. So we can inehrite from a template class
 \begin{enumerate}
 	\item A basic example
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template< typename Type>
 class SpecialStack: public Stack<Type>{
 	Array<Type> array;
@@ -10709,7 +10731,7 @@ class SpecialStack: public Stack<Type>{
 	
 	\item If an enum is used by several member functions of the std::codecvt template class, and does not relate to the template parameters. Hence it can exist in a separate base class.
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template<typename T>
 class codecvt_base{
 public:
@@ -10718,7 +10740,7 @@ public:
 \end{lstlisting}
 	
 	\item You also can extending the derived class
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template< typename T>
 class Base
 	
@@ -10754,7 +10776,7 @@ public:
 
 	
 	\item Specializing the base class
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template< typename T>
 class Base
 	
@@ -10766,7 +10788,7 @@ class Derived: public Base<int>
 \item Parameterised inheritance
 	\begin{enumerate}
 	\item Basic example 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template<typename T>
 class Derived: public T
 \end{lstlisting}
@@ -10781,7 +10803,7 @@ class Derived: public T
 
 \item public inheritance will expose interface to outside, just like Create() function. private inheritance just implement it. 
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template <class T>
 struct OpNewCreator{
 	static T* Create(){
@@ -10832,7 +10854,7 @@ These three patterns are associated, so I put them together.
 	
 	\item The Policy class can be thought as an optional of multi-inheritance. 
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template <typename OutputPolicy, typename LanguagePolicy>
 class HelloWorld : private 
           OutputPolicy, private LanguagePolicy{
@@ -10866,7 +10888,7 @@ protected:
 };
 \end{lstlisting}
 \item Client code is below:
-\begin{lstlisting}	
+\begin{lstlisting}[numbers=none]
 int main(){
 	/* Example 1 */
 	typedef HelloWorld<OutputPolicyWriteToCout, 
@@ -10905,7 +10927,6 @@ static const char* find (const char* s, std::size_t n, char c)
 	
 std::basic_string<char,custom_traits> str ("Test");
 std::cout<< "found at position" <<str.find('t') ;
-
 \end{lstlisting}
 \begin{description}
 	\item[Line 13:] some (non-conforming) implementations of basic\_string::find call this instead of eq:
@@ -10923,7 +10944,7 @@ std::cout<< "found at position" <<str.find('t') ;
 	\item \textbf{Mixin refers to the following idiom - a template class that is parameterized on its base class.} Here Mixin classes are template classes that define a generic behaviour, and are designed to inherit from the type you wish to plug their functionality onto.
 	
 	\item For example, \texttt{RepeatPrint} is Mixin class, T is the type you wish to plug their functionality onto.
-\begin{lstlisting}
+\begin{lstlisting}[numbers=none]
 template<typename T>
 class RepeatPrint : T{
 	explicit RepeatPrint(T const& printable) : T(printable) {}
@@ -10937,7 +10958,7 @@ class RepeatPrint : T{
 \end{lstlisting}
 	
 	\item Supposing that we have an existing type which has print method.
-\begin{lstlisting}
+\begin{lstlisting}[numbers=none]
 class Name{
 public:
 	Name(std::string firstName, std::string lastName)
@@ -10954,7 +10975,7 @@ private:
 \end{lstlisting}
 	
 	\item We can use it two ways:
-\begin{lstlisting}
+\begin{lstlisting}[numbers=none]
 //method 1, we use object generator pattern
 template<typename T>
 RepeatPrint<T> rpGen(T const& printable){
@@ -10975,7 +10996,7 @@ rp.repeat(10)
 \begin{itemize}
 	\item The basic syntax is Templates Parameterised by a Derived Class.
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template <class T> 
 struct Base{
 	void interface(){
@@ -11004,7 +11025,7 @@ struct Derived : Base<Derived>{
 	\item There are two common usages from CRTP:
 	\begin{enumerate}
 		\item Static polymorphism. It avoids runtime polymorphism cost. 
-\begin{lstlisting}
+\begin{lstlisting}[numbers=none]
 template <typename T>
 class Amount{
 	public:
@@ -11028,7 +11049,7 @@ Constant42 c42;
 print(c42);
 \end{lstlisting}
 \item Adding Functionality
-\begin{lstlisting}
+\begin{lstlisting}[numbers=none]
 template <typename T>
 struct counter{
 	static int objects_created;
@@ -11058,7 +11079,7 @@ cout<<X::objects_created<<endl;
 		
 		\item A detail can be found "C++ Mixins - Reuse through inheritance is good... when done the right way" and "Mixin Classes: The Yang of the CRTP"
 		
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class MyTask{
 public:
 void Execute(){
@@ -11083,7 +11104,7 @@ t.Execute();
 \end{lstlisting}
 		
 		\item if you have a MyTask value, you can build a helper function to build Mixin class 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template<typename Task>
 LogTask<Task> getLogTask(Task const& task){
 	//Call the below explicit ctor in LogTask class
@@ -11101,7 +11122,7 @@ getLogTask(task).Execute //with log funcitons
 		\item Expose Execute interface to client by base class 
 		\item Client can directly use MyTask.
 	\end{enumerate}
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template< class Task >
 class LoggingTask {
 public:
@@ -11128,7 +11149,7 @@ t.Execute();
 		\item No template, just use run time polymorphism
 		\item Base class define a basic flow of action, some part of action is override in the Child class, That is Template Method pattern in design pattern.
 	\end{enumerate}
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class BaseLoggingTask{
 public:
 	void Execute(){
@@ -11157,7 +11178,7 @@ public:
 		\newline
 		\includegraphics[scale=1.1]{pics/command.png}
 	\end{enumerate}
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class LoggingTask : public ITask{
 	ITask* task_;
 public:
@@ -11190,7 +11211,7 @@ t->Execute();
 	
 	\item method 5, mixin many mixin
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template< class T >
 class LoggingTask : public T{
 	public:
@@ -11228,7 +11249,7 @@ t4.Execute();
 \end{lstlisting}
 
 		\item method 6, policy base
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class coutLog{
 	void beginLog(){
 		cout<< "LOG: The task is starting - " <<endl
@@ -11288,7 +11309,7 @@ class Task: private LogPolicy, TimePolicy{
 		
 		\item There is some tag type which need to be defined. And you should use these tags in the functions which you want to dispatched by overload resolve in compiling time. 
 	\end{enumerate}
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 struct input_iterator_tag { };
 struct random_access_iterator_tag { };
 	
@@ -11318,7 +11339,7 @@ void advance(InputIterator& i, Distance n) {
 	\item The second implementation of tag dispatch is use integral\_constant
 	\begin{enumerate}
 		\item \textbf{std::true\_type use inegral\_constant(type generator)to define a new type. is\_arithmetic derived form true\_type or false\_type}
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 std::integral_constant<bool, true>
 		
 template< class T >
@@ -11357,7 +11378,7 @@ auto foo(T value) {
 		\item From this trait, it return value, not a type. So you need use enable\_if template in the client code. change the value to a type, then use the type to overload resolving.
 		
 		\item For false, enable\_if is empty define.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template <bool, typename T = void>
 struct enable_if
 {};
@@ -11370,7 +11391,7 @@ struct enable_if<true, T> {
 
 \item an example which use enalbe\_if. has\_serialize trait has been introduced in the type trait section, you can see the detail there. 
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template <class T>
 enable_if<has_serialize<T>::value, std::string>::type
 serialize(const T& obj){
@@ -11397,7 +11418,7 @@ serialize(const T& obj){
 	
 	\item Note SFINAE. When we make the call do\_stuff(25), the compiler selects the first overload: since the condition std::is\_integral<int> is true, the specialization of struct enable\_if for true is used, and its internal type is set to int. The second overload is omitted because without the true specialization (std::is\_class<int> is false) the general form of struct enable\_if is selected, and it doesn't have a type, so the type of the argument results in a substitution failure.
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template <typename T>
 void do(typename enable_if<std::is_integral<T>::value, T>::type &t){
 	// an implementation for integral types (int, char, unsigned, etc.)
@@ -11418,7 +11439,7 @@ class vector {
 	template <class InputIterator>
 	vector(InputIterator first, InputIterator last);
 	...
-	}
+}
 	
 	template <class _InputIterator>
 	vector(_InputIterator __first,
@@ -11434,7 +11455,7 @@ class vector {
 
 \begin{enumerate}
 	\item use true\_type or flase\_type tag.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template <typename T>
 auto get_value(T t, std::true_type) {
 	return *t;
@@ -11452,9 +11473,9 @@ return get_value(t, std::is_pointer<T>{});
 \end{lstlisting}
 \item use SFINAE 
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template <typename T, 
-             std::enable_if_t<std::is_pointer_v<T>, int> = 0>
+		std::enable_if_t<std::is_pointer_v<T>, int> = 0>
 auto get_value(T t) {
 	return *t;
 }
@@ -11467,7 +11488,7 @@ auto get_value(T t) {
 \end{lstlisting}
 \item use constexpr if: 
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template <typename T>
 auto get_value(T t){
 	if constexpr (std::is_pointer_v<T>) {
@@ -11488,7 +11509,7 @@ auto get_value(T t){
 
 \begin{itemize}
 	\item function template support \textbf{copyable and callable.}
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 double add(double a, double b){
 	return a + b;
 }
@@ -11515,7 +11536,7 @@ cout<<dispTable['+'](3.5, 4.5) <<dispTable['-'](3.5, 4.5)
 \end{lstlisting}
 	
 	\item If you want to check if a variable of type std::function is currently holding a valid function, you can always treat it like a boolean:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 std::function<int ()> func;
 	.......
 if ( func ) { // if we did have a function, call it
@@ -11525,7 +11546,7 @@ if ( func ) { // if we did have a function, call it
 	
 	\item function can be used \textbf{CALL BACK} as a function argument. At this time, you can use reference, but you'd better pay attention reference dangling problem. 
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 void run_within_for_each(std::function<void (int)> func){
 	vector<int> numbers{ 1, 2, 3, 4, 5, 10, 15, 20, 25 };
 	for_each(numbers.begin(), numbers.end(), func);
@@ -11539,8 +11560,8 @@ auto lambda1 = [](int y){  //4) lamba
 	cout << y <<endl;
 };
 	
-	run_within_for_each(fun);
-	run_within_for_each(lambda1);
+run_within_for_each(fun);
+run_within_for_each(lambda1);
 \end{lstlisting}
 	
 	\item One big advantage of std::function over templates is that if you write a template, you need to put the whole function in the header file, whereas std::function does not. This can really help if you're working on code that will change a lot and is included by many source files.
@@ -11640,16 +11661,18 @@ struct Sum{
     void operator()(int n) { sum += n; }
     int sum;
 };
-//////////////////////
+
  std::vector<int> nums{3, 4, 2, 8, 15, 267};
 
- std::for_each(nums.begin(), nums.end(), [](int &n){ n++; });
- // g++ -std=c++11 compile lambda syntax.
-
+ std::for_each(nums.begin(), nums.end(), [](int &n){ n++; })
+ 
  Sum s = std::for_each(nums.begin(), nums.end(), Sum());
- // It return a Sum struct.
  cout<<s.sum<<endl;
 \end{lstlisting}
+\begin{description}
+	\item[Line 9:]  g++ -std=c++11 compile lambda syntax.
+	\item[Line 11:] It return a Sum struct.
+\end{description}
 
 \end{itemize}
 
@@ -11660,19 +11683,20 @@ struct Sum{
 \begin{itemize}
 
 \item For all container, \textbf{Copy in, Copy out}. In C++11, you can use emplace\_back to build object directly on the vector to avoid copy.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 int j = 10;
 vector<int> vc;
 vc.push_back(j); // not j, but copy of j to vc
 
-int i = vc.pop_back(); //
+int i = vc.pop_back(); 
 i = -99 // when you modify i, not effect on vc
 \end{lstlisting}
 
 \item Even copy in, copy out. vector is better than array in C language.Because it use heap memory, if you want to use stack memory, you can use std::array.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 Foo farray[50]; //default ctor has been called 50 times.
-Foo *parray = new Foo[50]; Same, ctor will be called 50 times.
+Foo *parray = new Foo[50]; 
+//Same, ctor will be called 50 times.
 
 vector<Foo> fvc; // no default ctor has been called.
 fvc.reserve(50);
@@ -11684,14 +11708,14 @@ fvc.reserve(50);
 \item Copy in and copy out can cause efficient problem. Furthermore, It brings  another problem. when you inserting a derived class object into a container of base class objects is always error(slicing error). In order to fight this problem, you can use container of pointer. But it will cause resource leaking problem if you forget or an exception is thrown. So a better choice is use smart pointer. But don't use auto\_ptr in any container, It's prohibited in c++, and produce a compiler error, see effective stl item 8.
 
 \item All container is not thread-safe. It's your duty to make thread-safe, and thread-safe is OS depended. Detail can be seen effective STL item 12
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 getMutexFor(v);
 // do something on v.
 releaseMutexFor(v);
 \end{lstlisting}
 
 \item There are three kinds of for-loop container syntax;
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 for(auto it = con.begin(), itend != con.end()
          it !=itend ; ++it){
    foo(*it);
@@ -11817,10 +11841,11 @@ Things have no associated Widget, prefer map<Thing, shared\_ptr<Widget> >.
 
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]	
 vecArr.insert ( it + 2, 1 , 200 );
-
-// Reinitialize the invalidated iterator to the begining.
 it = vecArr.begin();
 \end{lstlisting}
+\begin{description}
+	\item[Line 2:] Reinitialize the invalidated iterator to the begining.
+\end{description}
 
 \item[Erasure]
 	\begin{itemize}
@@ -11836,9 +11861,9 @@ it = vecArr.begin();
 			\item Container adaptors: stack, queue and priority\_queue: inherited from underlying container
 	\end{itemize}
 
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]	
-	 auto it = std::find(vecArr.begin(), vecArr.end(), 5);
-    if(it != vecArr.end())
+\begin{lstlisting}[]
+auto it = std::find(vecArr.begin(), vecArr.end(), 5);
+if(it != vecArr.end())
         vecArr.erase(it);
        it = vecArr.erase(it);
 
@@ -11863,7 +11888,7 @@ vector, deque and list  as per insert/erase
 \begin{itemize}
 \item Distinguish among count, find, binary\_search, lower\_bound, upper\_bound, and equal\_range.
 
-\includegraphics[scale=0.8]{pics/distinguish.png}
+\includegraphics[scale=0.6]{pics/distinguish.png}
 
 \begin{enumerate}
 \item \textbf{For unsorted range, just generic find() or find\_if() algorithm or  count. return last if no find element.}
@@ -11905,15 +11930,18 @@ vector, deque and list  as per insert/erase
 v1.clear();
 copy(v2.begin(), v2.end(), back_inserter(v1) );
 
-//prefer to use below three range memeber function
 v1.insert(v1.end(), v2.begin(),v2.end() );  //better than copy
 v1.assign(v2.begin(), v2.end() )
-// if want to replace all value in v1.
 vector<int> v1( v2.begin(), v2.end() );
-// build from sractch.
 v1.erase( v1.begin(), v1.begin()+5);
-//erage range.
 \end{lstlisting}
+\begin{description}
+	\item[Line 4 and 5:] //prefer to use below three range memeber function, if want to replace all value in v1.
+	
+	\item[Line 6:] build from sractch.
+	
+	\item[Line 7:]erase range.
+\end{description}
 
 \item A good example to explain why use range member function is below: When you use insert, inside of insert,  STL will get distance(n elements) of v2,begin() and v2.end(). Then , It will reserve and move the all element in v1 just once according to the distance.  If you use copy, it use loop insert one by one, It will move all element in v1 n times. if no space, it will reallocate and copy old element, just like common vector do. So use range member function, can save you a lot of time in this example.
 
@@ -11935,7 +11963,7 @@ v1.insert(v1.begin(),  v2,begin() , v2.end());
 \item Range assignment:
 \end{enumerate}
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 container::container(inputIterator1, inputIterator2);
 container::insert(insertPosition, inputIt1, inputIt2);
 container::erase(inputIterator1, inputIterator2);
@@ -11970,17 +11998,17 @@ container::assign(inputIterator1, inputIterator2);
 \item For associative container, use its erase member function.
 \end{enumerate}
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 vect.erase(remove(vect.begin(), vect.end(),1963), vect.end());
 list.remove(1963);
 map.erase(1963);
 \end{lstlisting}
 
 \item  To eliminate all objects in a container that satisfy a particular predicate, 1)for vector, string or deque, use erase-remove. 2) for a list, use remove\_if, 3) for associative container, write loop being sure to postincrement your iterator. detail can be sen in effective STL item 9;
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 bool badValue(int x);
-vc.erase(remove(vc.begin(), vc.end(), badValue),
-                                          vc.end());
+vc.erase(
+	remove(vc.begin(), vc.end(), badValue), vc.end());
 
 lsit.remove_if(badValue);
 for(auto i = map.begin();i!=map.end(); /* no ++i here*/) {
@@ -11991,7 +12019,7 @@ for(auto i = map.begin();i!=map.end(); /* no ++i here*/) {
 \end{lstlisting}
 
 \item  To do something inside the loop (in addition to erasing objects);  You can't use remove, just write a loop,
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 bool badValue(int x);
 for(vect<int>::iterator i = vect.begin();i!=vect.end(); ){
 	if(badVaue(*i)) {
@@ -12006,7 +12034,7 @@ for(vect<int>::iterator i = vect.begin();i!=vect.end(); ){
 \subsubsection{type definition in container}
 \begin{itemize}
 \item value\_type in container.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 vector<uint> vecs;
 cout << sizeof(vecs.value_type)  //error usage
 cout<<sizeof(vector<uint>::value_type);
@@ -12014,7 +12042,7 @@ cout<<sizeof(vector<uint>::value_type);
 \end{lstlisting}
 
 \item Having the commonly-used types available as a type on the container is useful when the container's type itself is unknown. For example, someone may want to write library code that works equally well with std::map and std::unordered\_map:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template<typename TMap>
 void insert_default_pair(TMap& map)
 {
@@ -12025,7 +12053,7 @@ void insert_default_pair(TMap& map)
 
 \item Inside templated code, prefix value\_type with the keyword typename. Why, It depending on whether some identifier designates a type or a variable, e.g.T * p may be a multiplication or a pointer declaration. Not explicitly marked as type by prefixing it with typename is considered a variable.
 
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 template <typename T>
 class TSContainer {
 private:
@@ -12076,8 +12104,8 @@ std::vector<int> myvector;
 for (int i=0; i<100; i++) myvector.push_back(i);
 
 std::cout << (int) myvector.size() << '\n'; // 100
-std::cout  << (int) myvector.capacity() << '\n';  //128
-std::cout << (int) myvector.max_size() << '\n';  //1073741823
+std::cout  << (int) myvector.capacity() << '\n';//128
+std::cout << (int) myvector.max_size() << '\n';//1073741823
 \end{lstlisting}
 
 
@@ -12085,14 +12113,13 @@ std::cout << (int) myvector.max_size() << '\n';  //1073741823
 \begin{lstlisting}[frame=single, language=c++]
 capacity() //how many CAN hold
 size()   //how many are in NOW
-resize(n) // forces the container to change to n,
-//if n <size(),  object in the end will be lost
-// if n>size(),  default ctor of element will be called.
-// after resize(n), size will return n.
-// but resize don't change capacity
+resize(n) 
 
 reserve(n) //cause the container's capacity() to at lease n.
 \end{lstlisting}
+\begin{description}
+	\item[Line 3:] forces the container to change to n, if n <size(),  object in the end will be lost. if n>size(),  default ctor of element will be called. after resize(n), size will return n. but resize don't change capacity
+\end{description}
 
 \item You want to avoid allocation, 1), if you know the number, then use reserve, 2) if you don't know the number, you can reserve maximum space, then you can trim off any excess capaciy.  you can use shrink\_to\_fit() function too. Just remember \textbf{string(s).swap(s)}
 \begin{lstlisting}[frame=single, language=c++]
@@ -12108,7 +12135,7 @@ string(s).swap(s) // the same idea behind.
 \end{description}
 
 \item Worthwhile note about vector: It will avoid allocate new space many times.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 std::vector<int> v
 for(){ ...
  v.clear
@@ -12120,10 +12147,13 @@ for(){vector<int> v ...} //bad smell
 \begin{lstlisting}[frame=single, language=c++]
 vector<Foo> vcFoo;
 vcFoo.reserve(10);
-vcFoo.resize(10); // will call Foo ctor 10 times
-vcFoo[2] = foo; // will call Foo ctor and assignment 1 times
-// if no reserve or resize. vcFoo[2] = foo will fail.
+vcFoo.resize(10); 
+vcFoo[2] = foo; 
 \end{lstlisting}
+\begin{description}
+	\item[Line 3:] will call Foo ctor 10 times.
+	\item[Line 4:] will call Foo ctor and assignment 1 times. if no reserve or resize. vcFoo[2] = foo will fail.
+\end{description}
 
 
 \end{itemize}
@@ -12132,7 +12162,7 @@ vcFoo[2] = foo; // will call Foo ctor and assignment 1 times
 \begin{itemize}
 
 \item \textbf{When you use STL Container, you should realize that typedef are your best friends.}
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 typedef vector<Foo, SpecialAllocator<Foo> > FooContainer;
 typedef FooContainer::iterator FooIt;
 
@@ -12153,7 +12183,7 @@ FooIt it1;
 \item item 22 Avoid in-place key modification in set and multiset
 \begin{enumerate}
    \item you can't change key in map because it's const default.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 map.begin()->fist = 10 //compile error
 \end{lstlisting}
 
@@ -12163,27 +12193,21 @@ iterator i = set.find(employee);
 if( i != set.end())
    i->setTitle("manager")  // it's also ok or
    const_cast<Employee &> (*i).setTitle("manager")
-   // you must change it to a reference, then you can modify it.
-   // if you just use  const_cast<Employee >
-   // this is not right. it will create a temporary obj
-   //and then modify a temporary obj.
 \end{lstlisting}
+\begin{description}
+	\item[Source Code:]  you must change it to a reference, then you can modify it. if you just use const\_cast<Employee >. this is not right. it will create a temporary obj and then modify a temporary obj.
+\end{description}
 
 \item If you want to modify the key part in set or map.
 \begin{lstlisting}[frame=single, language=c++]
- // 1) find the one
- iterator i = se.find(employee);
- //2) create temp one.
- if(i ! = se.end())
- Employee e(*i);
- //3) modify
- e.setKey("new key")
- //4) delete the old one and keep ;
-  se.erase(i++);
-  //5) insert new one
-  se.insert(i,e);
+iterator i = se.find(employee); 
+if(i ! = se.end())   // 1) find the one
+	Employee e(*i);    //2) create temp one.
+	e.setKey("new key") //3) modify
+	se.erase(i++);  4) delete the old one and keep ;
+	se.insert(i,e); //5) insert new one
 \end{lstlisting}
-    \end{enumerate}
+ \end{enumerate}
 
 \item Item19 effective STL, Understand the difference between equality and equivalence in associative Containers.
   \begin{enumerate}
@@ -12200,12 +12224,10 @@ if( i != set.end())
   \item It will lead to item 21 in effective STL. Always have comparison functions return false for equal values. (strict weak ordering )
   \item It will lead to item 20 in effective STL. For associative container of pointers, You need to specify comaprsion types, You want to order by pointers or want to order by objects pointed by pointer.(Most of time, the second option is what we want)
 \begin{lstlisting}[frame=single, language=c++]
-struct stringLess: binary_fucntion<const string* ,
-                         const string * , bool>{
-   bool operator()(const string* s1 ,
-                            const string * s2){
+struct stringLess: binary_fucntion<const string* ,const string * , bool>{
+   bool operator()(const string* s1 , const string * s2){
         return *s1<*s2;
-}
+	}
 }
  set<*string,  stringLess> ss;
 \end{lstlisting}
@@ -12221,7 +12243,7 @@ struct stringLess: binary_fucntion<const string* ,
 	\item String::npos is the maximum possible length of the string. Equal the maximum value of an unsigned int.
 	\item String is template specialization basic\_string<char> , from this point of view, you will know how to construct a w\_char string.
 	\item There are a lot of ways that can be used construct a string object, you can see the reference , such as:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 string(const char* s);
 string(const char*, size_type n);
 string(const string& str, size_type pos, size_type n = npos)
@@ -12244,12 +12266,14 @@ Old_c(str.c_str());  // legacy C function read a string
 size_t Old_c(char *pArray, size_t arraySize);
 	
 vector<char> vc(maxNumChars);
-// 1) create a vector whose size is maxNumChars
 size_t charsWritten = Old_c(&vc[0], vc.size());
-// 2) have fillString write into vc
 string s(vc.begin(), vc.begin()+charsWritten);
-// 3) copy data from vc to s via range constructor
 \end{lstlisting}
+\begin{description}
+	\item[Line 7:] create a vector whose size is maxNumChars
+	\item[Line 8:] have fillString write into vc
+	\item[Line 9:] copy data from vc to s via range constructor
+\end{description}
 	
 	\item string method lists:
 	
@@ -12343,15 +12367,14 @@ cout<< "find 30"<<endl;
 	\item clear will delete all the characers, and erase will remove character in certain position.
 	
 	\item position in find method can be used in loop
-	\begin{lstlisting}[frame=single, language=c++]
-	std::string str ("Please, replace the vowels with asterisks.");
-	std::size_t found = str.find_first_of("aeiou");
-	while (found!=std::string::npos)
-	{
+\begin{lstlisting}[numbers=none]
+std::string str ("Please, replace the vowels with asterisks.");
+std::size_t found = str.find_first_of("aeiou");
+while (found!=std::string::npos){
 	str[found]='*';
 	found=str.find_first_of("aeiou",found+1);
-	}
-	\end{lstlisting}
+}
+\end{lstlisting}
 	
 	
 \end{itemize}
@@ -12386,8 +12409,8 @@ cout<< "find 30"<<endl;
 \begin{lstlisting}[frame=single, language=c++]
 template<type T>
 vector{
-....
-typedef T* iterator;
+	....
+	typedef T* iterator;
 };
 
 vector<int>::iterator ip; //use it outside.
@@ -12398,9 +12421,11 @@ and All the member function of vector know the iterator very well, inside, it wi
 \begin{lstlisting}[frame=single, language=c++]
 push_back(T x){
 *end++ = x;
-}  // you can see there is no iterator
-   // when you implement container implementation.
+}  
 \end{lstlisting}
+\begin{description}
+	\item[Source code:] you can see there is no iterator when you implement container implementation.
+\end{description}
 
 
 \item When you see the algorithm,  you will see the algorithm is based on template, not inheritance. (You don't need to make type can be cast or not. ). \textbf{Algorithm don't care what iterator really is, It just make sure each iterator can support what operation. }
@@ -12462,15 +12487,16 @@ std::cout  << std::distance(first,last)
 
  ifstream inputFile("aa.txt");
  string fileData((istreambuf_iterator<char>(inputFile)) ,
-  istreambuf_iterator<char>());
-// It will just read all the character.(including white character)
-// I don't need format data,
+	istreambuf_iterator<char>());
 
  ifstream inputFile("aa.dat");
  list<int> data((istreambuf_iterator<char>(inputFile)) ,
-  istreambuf_iterator<char>());
- // It wil  read format data, and use white space as delimiter.
+	istreambuf_iterator<char>());
 \end{lstlisting}
+\begin{description}
+	\item[Line 5:] It will just read all the character.(including white character) I don't need format data,
+	\item[Line 9:] It wil  read format data, and use white space as delimiter.
+\end{description}
 
 \end{itemize}
 
@@ -12489,7 +12515,7 @@ std::cout  << std::distance(first,last)
 
 \item Why do we need it. in some algorithm, such as copy and generator, if you read sth from a container, you can use regular iterator, but when you want to write into a container.  You must keep regular iterator is valid. so a method is to use reverse before you write to a container.
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 list<State> res2( src.size() );
 copy( src.begin(), src.end(),
     res2.begin() ); // often works...
@@ -12524,30 +12550,32 @@ for (int i=1; i<=5; i++)
 You need a front-to-back traversal or a back-to-front traversal. The reason for reverse iterators is that the standard algorithms do not know how to iterate over a collection backwards. For example:
 \begin{lstlisting}[frame=single, language=c++]
 std::find(foo.begin(), foo.end(), L'a');
-                  // Returns an iterator pointing
-                      // to the first a character.
-std::find(foo.rbegin(), foo.rend(), L'a').base()-1;
-                      //Returns an iterator
-                       // pointing to the last A.
-std::find(foo.end(), foo.begin(), L'a');
-                   //WRONG!! (Buffer overrun)
-\end{lstlisting}
 
+std::find(foo.rbegin(), foo.rend(), L'a').base()-1;
+
+std::find(foo.end(), foo.begin(), L'a');
+\end{lstlisting}
+\begin{description}
+	\item[Line 1:] Returns an iterator pointing to the first a character.
+	\item[Line 3:] Returns an iterator pointing to the last A.
+	\item[Line 5:] WRONG!! (Buffer overrun)
+\end{description}
 \item reverse\_iterator can use base() to change a normal iterator, because all the contain member function just receive normal iterator. such as insert and erase.
 why ri.base() and ri will have step 1 advance. detail can be seen effective stl item 28.
 \begin{lstlisting}[frame=single, language=c++]
 reverse_iterator ri =
     find(foo.rbegin(), foo.rend(), L'a');
-foo.insert(ri.base()); // you can use ri.base() directly.
-                               // when you want to insert.
-foo.erase((++ri).base()); //you can't use ri.base() directly.
-                                 //when you erase what you want.
+foo.insert(ri.base()); 
+                          
+foo.erase((++ri).base()); 
       ri
 1 2 3 4 5
         i = ri.base()
 \end{lstlisting}
-
-
+\begin{description}
+	\item[Line 3:] you can use ri.base() directly. when you want to insert.
+	\item[Line 5:] you can't use ri.base() directly. when you erase what you want.
+\end{description}
 
 \end{itemize}
 
@@ -12561,27 +12589,30 @@ foo.erase((++ri).base()); //you can't use ri.base() directly.
 \begin{enumerate}
 \item  Handing writing is prone to bug
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 for( size_t i = 0; i < max; ++i )
-d.insert( current++, data[i] + 41 ); // do you see the bug?
+d.insert( current++, data[i] + 41 ); 
+// do you see the bug?
 \end{lstlisting}
 \item You can fix it bu with careful design
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}
 for( size_t i = 0; i < max; ++i ) {
 	current = d.insert( current, data[i] + 41 ); 
-	// be careful to keep current valid
-	++current;    //  then increment it when it's safe
+	++current;    
 }
 \end{lstlisting}
+\begin{description}
+	\item[Line 2 and 3:] be careful to keep current valid, then increment it when it's safe
+\end{description}
 \item but a better way is
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 transform( data, data + max, // copy elements from data
 inserter(d, d.begin()), // to the front of
 \end{lstlisting}
 
 \item With a complex algorithem, just use STL alogrithem+lambda
 \item but a better way is
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 for( vector<int>::iterator i = v.begin(); i != v.end(); ++i )
 if( *i > x && *i < y ) break;
 
@@ -12594,7 +12625,7 @@ vector<int>::iterator i = find_if( v.begin(), v.end(),
 
 \end{enumerate}
 But if you need a loop that dees something fairly simpler, but would require a confusing tangle of binders and adapters, just use loop.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 list<Widget> lw;
 type list<Widget>::iterator WI;
 for_each(lw.begin(),lw.end(),
@@ -12607,7 +12638,7 @@ transform(data, data+10, inserter(deque, deque.begin()),
 \item There are four groups: non modifying sequence , mutating sequence, sorting, generalized numeric operations. Detail can be see c++ primer p1286.
 
 \item Note which algorithm expect sorted ranges:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 binary_search lower_bound upper_bound equal_range
 set_union set_intersection set_difference
 merge  inplace_merge  includes
@@ -12624,17 +12655,17 @@ int doSth(int x); // function
 result.reserve(result.size()+values.size() );
 
 transform(values.begin(), values,end(), result.end(),doSth );
-// It's error. transform writes its result by making
-//assignment. result.end() has no object at all
 
 transform(values.begin(), values,end(),
   back_inserter(result), doSth)  //insert end
 
 transform(values.rbegin(), values,rend(),
   front_insert(result), doSth)
-  //result must be a list
-  // use rbegin make insert in front right order
 \end{lstlisting}
+\begin{description}
+	\item[Line 6:] It's error. transform writes its result by making assignment. result.end() has no object at all.
+	\item[Line 11:]  result must be a list, use rbegin make insert in front right order
+\end{description}
 
 
 
@@ -12648,7 +12679,7 @@ transform(values.rbegin(), values,rend(),
   \item spearate the elements of a standard sequence container, do satisfy some criterion, you use partition or stable\_partition.
   \item for list, you should use list.sort() in place of common sort.
   \end{enumerate}
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 vector<Foo> vf;
 bool compare(const Foo& f1, constFoo& f2);
 partial_sort(vf.begin(),vf.begin()+20, vf.end(),  compare);
@@ -12660,7 +12691,7 @@ partition(vf.begin(), vf.end(), good);
 \end{lstlisting}
 
 \item Be wary of remove-like algorithm on container of pointers
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 void delAndNULL(Foo*& pf){ // use pointer reference here.
 if(!pf->isCertified(){ delete pf; pf = nullptr}
 }
@@ -12708,7 +12739,7 @@ Parameter:  \\
 \bottomhline
 \end{tabular}
 
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 void fun(int n){
     cout<<" "<<n;
 } //all function definition end no semicolon
@@ -12733,7 +12764,7 @@ for_each(nums.begin(), nums.end(), [sumEven](int n){
 \item For fun example, a better way is for(auto e: nums)\{cout<<e<<" ";\}. Here just demonstrate that  you can input fun.
 \item For struct Sum just use once, lambda function is better, because it is cleaner.
 \item If functor need to be 1)customized state and 2)reuse many time, then functor is better.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 struct GreatThanX{
     GreatThanX(int x): cutoff{x} { } 
     bool operator()(int n) { if(n>x) ; 
@@ -12748,7 +12779,7 @@ copy_if(nums.begin(), nums.end(),GreatThanX(7));
 \end{lstlisting}
 \item \textbf{Only functor can be use a argument input to map or set container set}. See below examples.
 
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 struct lex_compare {
     bool operator() (const int64_t& lhs, const int64_t& rhs) const{
         stringstream s1,s2;        s1 << lhs;  s2 << rhs;
@@ -12762,7 +12793,7 @@ set<int64_t, lex_compare> s;
 \item Lambdas aren't useful for more complex scenarios because they weren't made for them. They provide a short and concise way of creating simple function objects for correspondingly simple situations.
 
 \item with function, bind and name lambda, You can reach above requirement.  but it's not as good as functor
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 auto f = [](int x, int y){if(y>x) return true; return false;} ;
 auto f1 = bind(f, 3, placeholders::_1) // GreatThanX(3);
 if(f1(8)) cout<<"8>3"<<endl;
@@ -12786,14 +12817,14 @@ if(f1(8)) cout<<"8>3"<<endl;
 \item If output is associate container, you need use inserter( ) function to get inserter iterator.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 std::transform(a.begin(), a.end(),
-                               std::inserter(set, set.begin()), modify);
+        std::inserter(set, set.begin()), modify);
 
 std::transform(a.begin(), a.end(), b.begin(),
-                                     a.begin(), plus<int>() );
-// 1) you can make in place modification.
-// 2) plus minus, multiplies, divides, modulus, negate, equal_to
-// are often used in transform algorithms.
+        a.begin(), plus<int>() );
 \end{lstlisting}
+\begin{description}
+	\item[Source code:] 1) you can make in place modification. 2) plus minus, multiplies, divides, modulus, negate, equal\_to are often used in transform algorithms.
+\end{description}
 
 \item
 \end{itemize}
@@ -12833,7 +12864,7 @@ bool lexicographical\_compare (i1,i1last,i2,i2last,bpred)  & Compare two ranges 
 \end{tabular}
 \begin{itemize}
 \item An example to use equal:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 bool is_palindrome(const std::string& s){
     return std::equal(s.begin(), s.begin() + s.size()/2,
                       s.rbegin());
@@ -12852,18 +12883,17 @@ Example:
 \begin{lstlisting}[frame=single, language=c++]
 for (int i=1; i<=5; i++)
     myvector.push_back(i*10);
-    // myvector: 10 20 30 40 50
 
-copy(myvector.begin(), myvector.end(), myvector.begin()+3)
-//error, when source and targe is overlap,
-//you have to use backward copy
+copy(myvector.begin(), myvector.end(),
+	 myvector.begin()+3)
 
-copy_backward(myvector.begin(), myvector.end(), myvector.begin()+4)
-// pay attention, copy_backward, *(--last) =
-//if you want copy to position 3, you need to input position 4
-//or you can input vector.end() as target,
-//but for copy, you can't input vector.end()
+copy_backward(myvector.begin(), myvector.end(), 
+	myvector.begin()+4)
 \end{lstlisting}
+\begin{description}
+	\item[Line 4:] error, when source and targe is overlap, you have to use backward copy
+	\item[Line 7:]pay attention, copy\_backward, *(--last) = if you want copy to position 3, you need to input position 4. or you can input vector.end() as target, but for copy, you can't input vector.end()
+\end{description} 
 
 \begin{itemize}
 \item Copy.  Inside Copy, It use assignment operator =. o should be insert iterator or target should be use reserve() to allocate space for assignment operator =.
@@ -12894,7 +12924,7 @@ copy_backward(myvector.begin(), myvector.end(), myvector.begin()+4)
 
 \begin{itemize}
 \item examples:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 std::vector<int> v(5);
 std::generate(v.begin(), v.end(), std::rand);
                    // Using the C function rand()
@@ -12920,7 +12950,7 @@ o unique\_copy(i,i,o,bpred)  } & Copy a range of values, performing the same act
 
 \end{tabular}
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 int myints[] = {10,20,20,20,30,30,20,20,10};
   std::vector<int> myvector (myints,myints+9);
 
@@ -12972,7 +13002,7 @@ o partial\_sum(i,i,o, bfunc)   } & Fill a range with running totals and return a
 
 \item An example about partial\_sum
 
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 std::vector<int>v(10, 2); // new initialize method
 std::partial_sum(v.begin(), v.end(),
           std::ostream_iterator<int>(std::cout, " "));
@@ -12987,22 +13017,20 @@ std::cout << "The first 10 powers of 2 are: ";
 \end{lstlisting}
 \item An example about accumulate
 
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
 std::vector<int> v{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 int sum = std::accumulate(v.begin(), v.end(), 0);
 int product = std::accumulate(v.begin(), v.end(), 1,
                               multiplies<int>());
 
-std::string s = std::accumulate(v.begin(), v.end(),
-                              std::string{},
-                   [](const std::string& a, int b) {
-               return a.empty() ? to_string(b)
-                        : a + '-' + to_string(b); });
-                         to_string is in C++11
+string s=accumulate(v.begin(), v.end(),std::string{},
+    [](const std::string& a, int b) {
+    return a.empty() ? to_string(b): 
+    a + '-' + to_string(b); });
 \end{lstlisting}
 
 \item An example about adjacency\_difference. produces fibonacci.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}[numbers=none]
  v = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
     std::adjacent_difference(v.begin(), v.end() - 1,
            v.begin() + 1, std::plus<int>());
@@ -13067,15 +13095,17 @@ b stable\_partition(b,b,upred)     } & Partition a range using a predicate witho
 
 \begin{itemize}
 \item  An example of partition:
-\begin{lstlisting}[frame=single, language=c++]
- std::vector<int> v = {0,1,2,3,4,5,6,7,8,9};
- auto it = std::partition(v.begin(), v.end(),
-                         [](int i){return i % 2 == 0;});
-  std::copy(std::begin(v), it,
-               std::ostream_iterator<int>(std::cout, " "));
-  std::copy(it, std::end(v),
-               std::ostream_iterator<int>(std::cout, " "));
-  \\output: 0 8 2 6 4   5 3 7 1 9
+\begin{lstlisting}[numbers=none]
+std::vector<int> v = {0,1,2,3,4,5,6,7,8,9};
+auto it = std::partition(v.begin(), v.end(),
+                     [](int i){return i % 2 == 0;});
+                     
+std::copy(std::begin(v), it,
+         std::ostream_iterator<int>(std::cout, " "));
+         
+std::copy(it, std::end(v),
+         std::ostream_iterator<int>(std::cout, " "));
+\\output: 0 8 2 6 4   5 3 7 1 9
 \end{lstlisting}
 
 \item \textbf{Partition return: Iterator to the first element of the second group.}
@@ -13100,7 +13130,7 @@ bool prev\_permutation (b,b)  \\
 bool prev\_permutation \\ (b,b, bpred)     } & Change a range of values to the previous lexicographic permutation of those values, and return true, or return false if no previous permuation exists.  \bottomhline
 \end{tabular}
 A example:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 int a[] = {1,2,3};
 do {
     cout << a[0] << ' ' << a[1] << ' ' << a[2] << '\n';
@@ -13164,12 +13194,12 @@ Copy  replacing one specified value with another specified value.  \\
 \begin{itemize}
 \item Rotates the order of the elements in the range [first,last), in such a way that the element pointed by middle becomes the new first element.
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 for (int i=1; i<10; ++i) myvector.push_back(i);
 // 1 2 3 4 5 6 7 8 9
-rotate(myvector.begin(),myvector.begin()+3,
-                                             myvector.end());
-                              // 4 5 6 7 8 9 1 2 3
+rotate(myvector.begin(),
+			myvector.begin()+3,myvector.end());
+// 4 5 6 7 8 9 1 2 3
 \end{lstlisting}
 
 \end{itemize}
@@ -13241,7 +13271,6 @@ o set\_intersection \\(i1,i1,i2,i2,o,bpred) } &
 \tophline \specialcell[t]{o set\_union(i1,i1,i2,i2,o) \\
 o set\_union(i1,i1,i2,i2,o,bpred) } &
 either in the first range or in the second range and return the end of that output range. \\
-\tophline
 
 \tophline \specialcell[t]{o set\_symmetric\_difference \\ (i1,i1,i2,i2,o)  \\
 o set\_symmetric\_difference \\ (i1,i1,i2,i2,o,bpred) } &
@@ -13279,8 +13308,7 @@ Sort a range of values.\\
 
 \tophline \specialcell[t]{ stable\_sort(r,r) \\
 stable\_sort(r,r,bpred) } &
-Sort and maintaining the same relative order of duplicate values.\\
-\tophline
+Sort and maintaining the same relative order of duplicate values.\bottomhline
 \end{tabular}
 
 \section{Function object}
@@ -13288,7 +13316,7 @@ Sort and maintaining the same relative order of duplicate values.\\
 
 \begin{enumerate}
 \item  In C language, we use function pointer.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 int(*pf)(int, int); //declare a pointer function
 int fun1(int i,int j);
 pf = fun1 // or pf=&fun1; we usually skip &.
@@ -13296,13 +13324,16 @@ pf = fun1 // or pf=&fun1; we usually skip &.
 \end{lstlisting}
 
 \item In C++, Some generic algorithms can also accept function by template.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 void fun(int i) {
 	//do stuff
 }
-//here just input fun name, it's function pointer usage
+
 for_each(a.begin(), a.end(), fun);
 \end{lstlisting}
+\begin{description}
+	\item[Line 5:] here just input fun name, it's function pointer usage. function pointer is variable.
+\end{description}
 
 \item But passing function has shortcomings:
 \begin{enumerate}
@@ -13312,14 +13343,13 @@ for_each(a.begin(), a.end(), fun);
 \end{enumerate}
 So STL invented a functor(function object). It is class or structure objects for which the () operator is overloaded.
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class functor { // also call function objects
 public:
   void operator()(int i);
 };
 
 for_each(a.begin(), a.end(), functor());
-
 \end{lstlisting}
 \begin{description}
 	\item[Line 1:] here, use functor, (class object); overload operator();
@@ -13328,8 +13358,6 @@ for_each(a.begin(), a.end(), functor());
 
 \item  You can use struct or class. If you want to have a private customized  value, you have to use class to build a functor.  Such as cutoff value in below code.
 \begin{lstlisting}[frame=single, language=c++]
-// you can use class instead struct, but you need to make
-//operator() public, in struct, default is public, so struct is better!
 struct less_than_7 : std::unary_function<int, bool>{
     bool operator()(int i) const { return i < 7; }
 };
@@ -13341,9 +13369,12 @@ class less_than_value : std::unary_function<int, bool>{
     int value;
 };
 
-std::count_if(v.begin(), v.end(), std::not1(less_than_7()));
-std::count_if(v.begin(), v.end(), std::not1(less_than_value(7)));
+count_if(v.begin(),v.end(), std::not1(less_than_7()));
+count_if(v.begin(),v.end(),std::not1(less_than_value(7)));
 \end{lstlisting}
+\begin{description}
+	\item[Line 1:] you can use class instead struct, but you need to make operator() public, in struct, default is public, so struct is better!
+\end{description}
 
 
    \item In previous example, you can see advantage of usage less\_than\_value.
@@ -13359,12 +13390,13 @@ class yanCompare{
 };
 
 set<string, yanCompare> setDic;
-//just yanCompare, no() follow it. pass into a type, not obj
-
-
 remove_if(...yanComare() );
-//yanCompare(), to pass a function obj.
- \end{lstlisting}
+\end{lstlisting}
+\begin{description}
+	\item[Line 5:] just yanCompare, no() follow it. pass into a type, not obj
+	\item[Line 6:] yanCompare(), to pass a function obj.
+\end{description}
+ 
 \end{enumerate}
 
 \item Based on previous example, I would like to say something about \textbf{type, variable, expression, value}.
@@ -13385,9 +13417,12 @@ remove_if(...yanComare() );
 \item Sometimes, you don't want to reuse this functor which will cause you write clutter code, so C++14 introduce lambda.  Detail can be seen in C++ 11 New features.
 \begin{lstlisting}[frame=single, language=c++]
  []->bool(int){return x<7};
- // if only return, you can omit ->bool (return type);
+
 std::count_if(v.begin(), v.end(), [](int x){return x<7;} );
 \end{lstlisting}
+\begin{description}
+	\item[Line 1:]  if only return, you can omit ->bool (return type);
+\end{description}
 
 \item Why you use  unary\_funciton and binary\_function template, then inherit from it.  It can make you functor adaptable, see below section:
 \end{enumerate}
@@ -13396,7 +13431,7 @@ std::count_if(v.begin(), v.end(), [](int x){return x<7;} );
 \subsubsection{Before c++11}
 \begin{itemize}
 \item Four adapter is not1, not2, bind1st and bind2nd. It can change you current functor. An example is below: equal\_to is binary function, but count\_if only need unary function.  bind1st or bind2nd can change binary function to unary function.  another function is not1, used for unary function, not2 used for binary function.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 int array[] = {10,20,30,40,50,10}; int cx;
 cx = count_if (array, array+6, bind1st(equal_to<int>(),10));
 \end{lstlisting}
@@ -13407,20 +13442,19 @@ cx = count_if (array, array+6, bind1st(equal_to<int>(),10));
 \begin{lstlisting}[frame=single, language=c++]
 bool IsBad(Foo& f);
 
-find_if(vect.begin(), vect.end(),
-  not1(IsBad);  //error! don't compile;
+find_if(vect.begin(), vect.end(),not1(IsBad);  
 
-find_if(vect.begin(), vect.end(),
-  not1(ptr_fun(IsBad ) ); //OK, now:
-
+find_if(vect.begin(), vect.end(), not1(ptr_fun(IsBad )); 
 //recommend to use c++11 new feature
-//  std::not1(std::cref(isvowel)));
-//  std::not1(std::function<bool(char)>(isvowel)));
+std::not1(std::cref(isvowel)));
+std::not1(std::function<bool(char)>(isvowel)));
 \end{lstlisting}
 
 
+
+
 \item Usage of mem\_fun, mem\_fun\_ref
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 list<Foo*> lpf
 for_each(lpf.begin(),lpf.end(),mem_fun_ref(&Foo::testFun) );
 
@@ -13469,7 +13503,9 @@ std::cout << "data: " << access_data(f) << '\n';
 	If you called for\_each() with \texttt{\&Item::Foo}, the code try to call \texttt{(\&Item::Foo)(x)}, which is ill-formed since for pointers to members you have to write \texttt{(x.*\&Item::Foo)()}. It's that syntactical difference that mem\_fn is meant to solve: mem\_fn deals with the invocation syntax of pointers to members so that you can use all the algorithms with pointers to members as well as functions and function objects. You cannot have \texttt{for\_each(v.begin(), v.end(), \&Item::Foo)} but you can have \texttt{for\_each(v.begin(), v.end(), mem\_fn(\&Item::Foo))}.
 \begin{lstlisting}
 template<class InputIt, class UnaryFunction>
-UnaryFunction for_each(InputIt first, InputIt last, UnaryFunction f){
+UnaryFunction for_each(InputIt first, 
+	InputIt last, UnaryFunction f){
+		
 	for (; first != last; ++first) {
 		f(*first); // <== N.B. f(*first)
 	}
@@ -13478,20 +13514,23 @@ UnaryFunction for_each(InputIt first, InputIt last, UnaryFunction f){
 	\item In order to resolve this problem.Three ways to use member function:
 	\begin{enumerate}
 		\item use std::function:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 struct Foo {
 	Foo(int num) : num_(num) {}
-	void print_add(int i) const { std::cout << num_+i << '\n'; }
+	void print_add(int i) const{
+		std::cout << num_+i << '\n'; }
 	int num_;
 };
 
-std::function<void(const Foo&, int)> f_add_display = &Foo::print_add;
+std::function<void(const Foo&, int)> 
+			f_add_display = &Foo::print_add;
+			
 const Foo foo(3);
 f_add_display(foo, 1); 
 \end{lstlisting}
 
 	\item use mem\_fn:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 struct Foo {
 	void display_number(int i) {
 		std::cout << "number: " << i << '\n';
@@ -13507,7 +13546,7 @@ std::cout << "data: " << access_data(f) << '\n';
 \end{lstlisting}
 
 	\item use lambda:
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 typedef std::function<void(int)> fp;
 
 void test(fp my_func){
@@ -13559,7 +13598,7 @@ add2(a, 5); // same
 	\item prefer to use lambda than std::bind, detail can be found in "Effective modern C++" item 34.
 
 \item Functor can be template.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template<typename Type>
 class TooBig{
 	Type cutoff;
@@ -13574,16 +13613,17 @@ struct Average{
 	T operator()(T t1, T t2){t1+t2/2;}
 };
 
-transfor(beg1, end1, beg1,
+transform(beg1, end1, beg1,
 Average<typename iterator_traits<beg1>::value_type> () );
-// 1) I also can extract value_type information from container.
-// 2) This information can be used in template function object.
 \end{lstlisting}
+\begin{description}
+	\item[Source code:] I also can extract value\_type information from container.This information can be used in template function object. \textbf{This source code is very interesting, it combines container, algorithm and template function together. and almost support "Generic type"}
+\end{description}
 
 
 
 \item Make predicates pure function, see effective STL item 39. That means that there is no side effect in side the fucntion. 1) no I/O, 2) no change any state.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class Predicate: public unary_function<Foo, bool>{
 public:
 	bool operator()(const Foo& f) const{ // two const
@@ -13608,7 +13648,7 @@ private:
 	
 	\item When use std::function? One such use case arises when you need to resolve a call at run-time by invoking a callable object that adheres to a specific signature, but whose concrete type is unknown at compile-time. This is typically the case when you have a collection of callbacks of potentially different types, but which you need to invoke uniformly; the type and number of the registered callbacks is determined at run-time based on the state of your program and the application logic. Some of those callbacks could be functors, some could be plain functions, some could be the result of binding other functions to certain arguments.
 	
-	\includegraphics[scale=0.9]{pics/function.png} \newline
+	\includegraphics[scale=0.9]{pics/function.png} 
 \end{itemize}
 
 
@@ -13628,7 +13668,7 @@ private:
 	\end{enumerate}
 	
 	\item \texttt{atexit()} Registers the function pointed to by func to be called on normal program termination (via std::exit() or returning from the main function)
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 void myProgramIsTerminating1(void){
 	cout<<"exit function 1"<<endl;
 }
@@ -13650,14 +13690,14 @@ int main(int argc, char**argv){
 	
 	
 	\item assert just call abort. You can use assert in this way.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 assert(! "You should not reach here");
 \end{lstlisting}
 	
 	\item \texttt{std::terminate} is what is automatically called in a C++ program when there is an unhandled C++ exception. \textbf{This is essentially the C++ equivalent to abort.} This calls a handler that is set by the std::set\_terminate function, which by default simply calls abort.
 	
 	\item Don't use exit in main, It will not destroy local object in main function. Catch the exceptions you can't handle in main() and simply return from there. This means that you are guaranteed that stack unwinding happens correctly and all destructors are called.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 int main() {
 	try {
 		// your stuff
@@ -13679,10 +13719,10 @@ catch(end_exception& ex){
 	//do something here
 	throw;
 }
-	// or just skip the whole catch, end_exception will reach
-	//main function all clean all the local object,
-	//when it return from main, it will do the same work as exit();
 \end{lstlisting}
+\begin{description}
+	\item[Source code:] or just skip the whole catch, end\_exception will reach main function all clean all the local object, when it return from main, it will do the same work as exit();
+\end{description}
 	
 \end{itemize}
 
@@ -13709,9 +13749,10 @@ fun(char* p){
 \begin{lstlisting}[frame=single, language=c++]
 #include <cassert>
 assert(I<5 && "I is more than 5");
-//string literal is always true;
-//when I<5 is false, the whole condition will be printed out.
 \end{lstlisting}
+\begin{description}
+	\item[Line 2:] string literal is always true; when I<5 is false, the whole condition will be printed out.
+\end{description}
 	
 	
 	\item Assert is just if()+abort(): Difference of assert and return error(throw exception)  lies in two sides: 
@@ -13721,15 +13762,15 @@ assert(I<5 && "I is more than 5");
 	\end{enumerate}
 	
 	\item A practical example is dead battery in cell phone, It's a exception. But if you have diarrhea, It's a unnormal, It's not exception. For example, opening file failure is exception, You should (throw exception). but age<0 is a indication of a bug.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 	FILE *f = fopen("hr.dat".....);
 if(f==nullptr){  // It's an exception, so don't use assert here.
 	return -1;
 	throw runtime_error();
 }
 	
-	assert(age>=0); //Here use assert.
-	fprintf(f, %d, age);
+assert(age>=0); //Here use assert.
+fprintf(f, %d, age);
 \end{lstlisting}
 	
 \end{itemize}
@@ -13737,7 +13778,7 @@ if(f==nullptr){  // It's an exception, so don't use assert here.
 \subsection{Trace}
 \begin{itemize}
 	\item you can implement trace, such as it in the MFC
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 #if defined NDEBUG
 	#define TRACE( format, ... )
 #else
@@ -13760,14 +13801,12 @@ if(f==nullptr){  // It's an exception, so don't use assert here.
 		\item Exception.
 	\end{enumerate}
 \begin{lstlisting}[frame=single, language=c++]
-//1) global error code, C language method
-errno() and strerror()
-//1) status in object , C++ method
+//C language
+errno(), strerror()
+//C++ language
 cin.fail()
-	
-//2) return value by parameter or return value
-//3) Exception.
-	\end{lstlisting}
+\end{lstlisting}
+
 	
 	\item errno() and strerror() is a typical C language style.
 	
@@ -13777,14 +13816,14 @@ cin.fail()
 	\begin{enumerate}
 		\item In general, you should detect errors by checking return values, and use errno or perror() only to distinguish among the various causes of an error, such as "File not found" or "Permission denied."
 		
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 FILE * pFile = fopen ("unexist.ent","rb");
 if (pFile==NULL)
 perror ("The following error occurred");
 \end{lstlisting}
 		
 		\item It's only necessary to detect errors with errno when a function does not have a unique, unambiguous, out-of-band error return (that is, because all of its possible return values are valid; one example is atoi()). In these cases (and in these cases only; check the documentation to be sure whether a function allows this),
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 #include <cerrno>
 errno = 0
 // set it zero before call any math library function.
@@ -13810,11 +13849,13 @@ feclearexcept(FE_ALL_EXCEPT);
 	
 sqrt (-1);
 if (math_errhandling & MATH_ERRNO) {
-	if (errno==EDOM) printf("errno set to EDOM\n");
+	if (errno==EDOM) 
+		printf("errno set to EDOM\n");
 }
 	
 if (math_errhandling  &MATH_ERREXCEPT) {
-	if (fetestexcept(FE_INVALID)) printf("FE_INVALID raised\n");
+	if (fetestexcept(FE_INVALID)) 
+		printf("FE_INVALID raised\n");
 }
 \end{lstlisting}
 	
@@ -13842,7 +13883,7 @@ if (math_errhandling  &MATH_ERREXCEPT) {
 	
 	\item You can build exception class inside the C++ standard exception system. It need to derive you class from exception, and redefine function what();  if you exception class has very tight relationship with you real class, it can be declared as nested class.
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 Class my_ex :public std::exception{
 	const char* what(){return "my_ex reason is here"}
 }
@@ -13859,10 +13900,11 @@ Class my_ex :public std::exception{
 catch(my_base_ex &me){
 	......
 	throw;
-	//not use throw me,
-	//because maybe me is child class of my_base_ex;
 }
-	\end{lstlisting}
+\end{lstlisting}
+\begin{description}
+	\item[Line 3:] 	Don't use throw me, because maybe me is child class of my\_base\_ex;
+\end{description}
 	
 	\item In you destructor, don't throw any exception, or catch all the exception in side of it. Or it will call stop the application. see more effective C++ exception chapter.
 	
@@ -13919,14 +13961,16 @@ catch(my_base_ex &me){
 fun(int* pi, int j){
 	assert(j< 10);
 	if (pi == nullptr)
-	//don't throw it, It's logical error. you need to check 
-	//caller of fun why pass a nullptr into fun
 	
 	if(file.open())
 		throw runtime_error();
-		// file maybe deleted. It's not your logic error but runtime error.
 }
-	\end{lstlisting}
+\end{lstlisting}
+\begin{description}
+	\item[Line 2 and 3:] don't throw it, It's logical error. you need to check  caller of fun why pass a nullptr into fun.
+	\item[Line 5:] file maybe deleted. It's not your logic error but runtime error.
+\end{description}
+
 	\item Use all throw and catch to replace return-code. For a simple function, just return one error code and user will not forget to test return code. this time, return-code method maybe is better.
 	
 	\item For object constructor, always use exception and try block.
@@ -13956,7 +14000,7 @@ fun(int* pi, int j){
 		\end{enumerate}
 		
 		\item For an atomic operation, there is only one try block. That is to say, inside one function, just include one try block
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 atomic_fun(){
 	try{
 		//complex operation.
@@ -14081,7 +14125,7 @@ while(true){
 \end{description}
 	
 	\item \verb=cin>>c= will not read white character(tab, space , newline), If you want to read them from input buffer, You should use getchar() or cin.get(); If you want the user to input his or her name
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+\begin{lstlisting}
 while(true){
 	cin>>c;
 	cout<<"you input:"<<c<<endl;
@@ -14112,7 +14156,7 @@ std::getline(istream&  is, string& str)
 	\item[Line 1:] read a word until reach white character.
 	\item[Line 7:] recommend to use this for safety.
 	\item[Line 9:] c++ read and discard newline
-	\item[Line 10:] not read newline
+	\item[Line 1:] not read newline
 \end{description}
 	
 	\item cin.read function has the same interface with cin.get, but it doesn't append a null character to input, It's not intend for keyboard input, but for binary format of file
@@ -14134,7 +14178,7 @@ cin.get()!= EOF
 \end{description}
 	
 	\item Three confused functions: cin.get and cin.getline are almost the same thing.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 cin.get ( char* s, streamsize n, char delim );
 cin.getline (char* s, streamsize n, char delim );
 istream& getline (istream&  is, string& str);
@@ -14201,7 +14245,7 @@ std::cerr << "Error opening 'test.txt'\n";
 	
 	\item \textbf{clear() function is very important, when cin.fail() return true, you have to use clear(), otherwise all he below cin operation will not work.} See below example.
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 char ch, str[20];
 cin.getline(str, 5);
 cout<<"flag1:"<<cin.good()<<endl;    // check good bit
@@ -14231,7 +14275,7 @@ cout<<"str:"<<str<< " ch:" <<ch<<endl;
 \begin{itemize}
 	\item It is bad idea to test the stream on the outside and then read/write to it inside the body of the conditional/loop statement. This is because the act of reading may make the stream bad. It is usually better to do the read as part of the test.
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 while(!cin.fail()){  // that is bad programming style
 	cin>>i;  //here may make stream fail().
 	.....      //then i is not valid value
@@ -14240,7 +14284,7 @@ while(!cin.fail()){  // that is bad programming style
 	
 	\item If you just want to input, You don't want to know eof or deal with failbit. You can use below: \\
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 while(scanf("%d",&i) != 1)
 while((int c = getchar())!=EOF)
 while( fgets(line, sizeof(line), fp) != NULL )
@@ -14260,24 +14304,24 @@ While(true)  // use break to exit loop;
 {
 	cin>>i // or getline(ifstream, string);
 	if(cin.eof()){   //If it's EOF
-	cout<<"EOF encountered"<<endl
-	//break;
-}
-	
-if(cin.fail())          //Invalide input
-{
-	cin.clear();    //Important. clear state and buffer
-	while(cin.get()!='\n')  //get rid rest of line,
-	continue ;
-	cout<<"please input a number"<<endl;
-	continue;
+		cout<<"EOF encountered"<<endl
+		//break;
 	}
-	...  //do some useful things.  //input is right.
+	
+	if(cin.fail())    //deal with Invalide input
+	{
+		cin.clear(); //Important. clear state and buffer
+		while(cin.get()!='\n')  //get rid rest of line,
+			continue ;
+		cout<<"please input a number"<<endl;
+		continue;
+	}
+	...  // input is right.do some useful things.
 }
 \end{lstlisting}
 	
 	\item In the previous example, Why do we need to distinguish eof and fail? When fail happen, maybe there are invalid character in buffer. After clean the buffer, I can continue to read input from input buffer. Three methods to clean invalid character in the buffer
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 cin.clear();    //Important. clear state and buffer
 while(cin.get()!='\n')
 	continue ;      // method 1
@@ -14296,8 +14340,7 @@ cin.ignore(numeric_limits<streamsize>::max(), '\n');
 \begin{lstlisting}[frame=single, language=c++]
 class A{
 private:
-	int x;
-	int y;
+	int x,y;
 	friend istream& operator>>(istream& in, A&);
 	friend ostream& operator<<(ostream& in, const A&);
 };
@@ -14312,12 +14355,10 @@ ostream& operator<<(ostream& out, const A& a){
 	return out;
 }
 	
-int main(){
 	vector<A> v;
 	copy(istream_iterator<A>(cin), istream_iterator<A>(),
 	back_inserter(v));
 	copy(v.begin(), v.end(),ostream_iterator<A>(cout, "\n"));
-}
 \end{lstlisting}
 	
 	
@@ -14326,12 +14367,11 @@ int main(){
 
 \section{output}
 
-
 \begin{itemize}
 	\item For cout, It can recognize type automatically, and It is extensible, You can redefine \verb=<<= operator so that cout can recognize you data type.
 \begin{lstlisting}[frame=single, language=c++]
 class Foo{
-	friend ostream & operator<<(ostream& s, const Foo &r);
+	friend ostream & operator<<(ostream& s,const Foo &r);
 }
 	
 ostream & operator<<(ostream& s, const Foo &r){
@@ -14340,11 +14380,11 @@ ostream & operator<<(ostream& s, const Foo &r){
 \end{lstlisting}
 	
 	\item  How to print pointer address in C and C++?
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 char* amount = "dozen";
 cout<< amount  ; //print "dozen" string
 	
-cout<<(void*) amount;   //prints the address of pointer
+cout<<(void*) amount;//prints the address of pointer
 printf("%p", (void*) p);
 \end{lstlisting}
 	
@@ -14367,7 +14407,7 @@ printf("%p", (void*) p);
 \begin{itemize}
 	\item When you studied cin and cout very well, you will find that file operation is so easy. just change cin or cout to your ifstream , ofstream or fstream object.
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 std::fstream ifs;
 ifs.open ("test.txt", ios_base::in| ios_base::binary);
 if(!ifs.is_open())
@@ -14395,30 +14435,31 @@ ifs.close();
 	
 \begin{lstlisting}[frame=single, language=c++]
 stringstream outstr;
-//change number to a text
 outstr<<"salary value"<<123333.00<<endl;
 string str = outstr.str() //change to string
 	
-//change text to number
 istringstream Instr(str);
 while(instr>>number)
-cout<<number<<endl
+	cout<<number<<endl
 	
-////////below is C language/////////
 char sentence []="Yan is 41 years old";
 char str [20];
 int i;
 sscanf (sentence,"%s %*s %d", str, &i);
-//* means input will be ignored. So str = Yan, i = 41.
 sprintf(.....);
 \end{lstlisting}
+\begin{description}
+	\item[Line 1 to 3:] change number to a text.
+	\item[Line 5 to 7:] change text to a number.
+	\item[Line 9 to end:] C language method. In line 12, you can see "*s", it means input will be ignored. So str = Yan, i = 41.
+\end{description}
 	
 \end{itemize}
 
 \section{manipulate stream}
 \begin{enumerate}
 	\item \textbf{peek} return the next character from input without extracting from the input stream. For example, you want to read input up to the first newline or period.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 char input[80];
 int i = 0;
 while( (ch=cin.peek()) != '.' && ch != '\n')
@@ -14501,7 +14542,7 @@ int cranky(){
   return cranky();
 \end{lstlisting}
 \begin{description}
-	\item[Line 9 and 10:] below two statements produce compiler warning.
+	\item[Line 8 and 9:] below two statements produce compiler warning.
 \end{description}
 
 \end{itemize}
@@ -14512,7 +14553,7 @@ int cranky(){
 \item New container: forward\_list, unordered\_map unordered\_set.  The latter two support implementing hash tables. std library provide basic hash function for some basic type, such as int and string. If you have you own class, you can use boost::hash\_combine. 
 
 \item To support user-defined key types in std::unordered\_set<Key> and std::unordered\_map<Key, Value> one has to provide operator==(Key, Key) and a hash functor
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 struct X { int id; /* ... */ };
 bool operator==(X a, X b) { return a.id == b.id; }
 
@@ -14527,15 +14568,17 @@ std::unordered_set<X, MyHash> s;
 \item You are expressly allowed and encouraged to add specializations to namespace std*. The correct (and basically only) way to add a hash function is this:
 \begin{lstlisting}[frame=single, language=c++]
 namespace std {
-template <> struct hash<Foo>{
-size_t operator()(const Foo & x) const{
-/* your code here, e.g. "return hash<int>()(x.value);" */
+	template <> struct hash<Foo>{
+		size_t operator()(const Foo & x) const{
+			//your code here
+		}
+	};
 }
-};
-}
-
 std::unordered_set<Foo> s;
 \end{lstlisting}
+\begin{description}
+	\item[Line 4] your code here, e.g. return hash<int>()(x.value);
+\end{description}
 \item A good std::hash example can be found in cppreference.com 
 
 \item std::array is just a class version of the classic C array. \textbf{Its size is fixed at compile time and it will be allocated  on the stack}.
@@ -14546,13 +14589,9 @@ std::unordered_set<Foo> s;
 \item Because it does bounds checking, at() is slower (but safer) than operator [].
 
 \item array support copy and assignment between the same size.
-\begin{lstlisting}[frame=single, language=c++]
-//Making a new array via copy
-auto a3 = a2;
-
-//This works too:
-auto a4(a2);
-
+\begin{lstlisting}[numbers=none]
+auto a3 = a2; //Making a new array via copy
+auto a4(a2); //same
 a5 = a2 // a2 and a5 must have the same size.
 \end{lstlisting}
 
@@ -14561,20 +14600,17 @@ a5 = a2 // a2 and a5 must have the same size.
 
 \item Like std::vector, std::array doesn't implicitly decay into a raw pointer. If you want to use the underlying std::array pointer, you must use the data() member function.For example, let's assume you are using an API with a C-style buffer interface: For other new function, you can use std::array\& as a function parameter. 
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 void carr_func(int * arr, size_t size){
     std::cout << "carr_func - arr: " << arr << std::endl;
 }
 
-//Error:
-//carr_func(a2, a2.size());
-
-//OK:
-carr_func(a2.data(), a2.size());
+carr_func(a2, a2.size()); //Error:
+carr_func(a2.data(), a2.size()); //OK
 \end{lstlisting}
 
 \item Use std::vector unless (a) your profiler tells you that you have a problem and (b) the array is tiny.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 #include <iostream>
 #include <array>
 void printLength(const std::array<double, 5> &myarray){
@@ -14599,10 +14635,10 @@ printLength(myarray);
 	\begin{enumerate}
 		\item For observing the elements, use the following syntax. For observing the elements in generic code. since we can't make assumptions about generic type T being cheap to copy, it's safe to always use for (const auto\& elem : container).
 		(This won't trigger potentially expensive useless copies, will work just fine also for cheap-to-copy types like int, and also for containers using proxy-iterators, like std::vector<bool>.)
-		\begin{lstlisting}[frame=single, language=c++]
-		for (const auto& elem : container)    
-		// capture by const reference
-		\end{lstlisting}	
+\begin{lstlisting}[numbers=none]
+for (const auto& elem : container)    
+// capture by const reference
+\end{lstlisting}	
 		
 		
 		\item If the objects are cheap to copy (like ints, doubles, etc.), it's possible to use a slightly simplified form. 
@@ -14633,7 +14669,7 @@ for(const auto *ptr: Container){ ptr->read();}
 	
 	
 	\item For vector<bool>, below code doesn't work, because std::vector template is specialized for bool, with an implementation that packs the bools to optimize space (each boolean value is stored in one bit, eight "boolean" bits in a byte). Because of that (since it's not possible to return a reference to a single bit), vector<bool> uses a so called "proxy iterator" pattern. A "proxy iterator" is an iterator that, \textbf{when dereferenced, does not yield an ordinary bool \&, but instead returns (by value) a temporary object}, which is a proxy class convertible to bool. 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 vector<bool> v = {true, false, false, true};
 for (auto& x : v)
 x = !x;
@@ -14649,7 +14685,7 @@ for(auto const & i: bv)
 \end{lstlisting}
 	
 	\item If we want generic code to work also in case of proxy-iterators, the best option is for (auto\&\& elem : container).This will work just fine also for containers using ordinary non-proxy-iterators, like std::vector<int> or std::vector<string>.It also can modify vector<bool> 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 for (auto&& elem : container)
 \end{lstlisting}
 	
@@ -14667,7 +14703,7 @@ for (auto&& elem : container)
 
 \begin{itemize}
 \item lambda basic syntax and an example.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 [ captures ] (parameters) -> returnTypesDeclaration { ..; }
 int sum = 0, divisor = 3;
 vector<int> vc { 1, 2, 3, 4, 5, 10, 15, 20, 25, 35, 45 };
@@ -14695,6 +14731,7 @@ int find_it(std::string value, Record_t const& stuff){
 \end{lstlisting}
 \begin{description}
 	\item[Line 1:] typedef is your good friend, reuse it on line 4 and line 6.
+	\item[Line 6 to 7:] we define a lambda function.
 \end{description}
 \item This auto-declaration defines a closure type named factorial that you can call later instead of typing the entire lambda expression (a closure type is in fact a compiler-generated function class):
 \begin{lstlisting}[numbers=none]
@@ -14712,13 +14749,13 @@ func f = [] () -> int { return 2; };
 f();
 \end{lstlisting}
 
-\item A delegate. When you call a normal function, all you need is the function itself. When you call a method on an object, you need two things: the function and the object itself. It's the difference between func() and obj.method(). Starting with some code that again expects a function as an argument, into which we'll pass a delegate. \textbf{lambda is like a glue to combine for\_each and class MessageSizeStor().}
+\item A delegate. When you call a normal function, all you need is the function itself. When you call a method on an object, you need two things: the function and the object itself. It's the difference between func() and obj.method(). Starting with some code that again expects a function as an argument, into which we'll pass a delegate. \textbf{lambda is like a glue to combine for\_each and class MessageSizeStore.}
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 class MessageSizeStore{
 public:
     MessageSizeStore () : _max_size( 0 ) {}
-    void getMaxMessage (const std::string& message ) {...}
+    void checkMaxMessage (const std::string& message ) {...}
     int getSize (){...}
 private:
     int _max_size;
@@ -14741,9 +14778,9 @@ for_each(s.begin(),s.end(), [&] (const std::string& message){
 \item Placing the code closer to where it's called improves code clarity.
 \begin{lstlisting}[numbers=none]
 int count3 = 0;
-std::count_if(v.begin(), v.end(),
-[&count3](int x){count3 += (x%3 == 0)} );
-//how many number can be divided by 3.
+std::count_if(v.begin(), v.end(), 
+        [&count3](int x){count3 += (x%3 == 0)} 
+           );
 \end{lstlisting}
 \end{enumerate}
 \end{itemize}
@@ -14753,7 +14790,6 @@ std::count_if(v.begin(), v.end(),
 \subsection{delctype}
 \begin{itemize}
 
-
 \item decltype and  Trailing Return type(C++11 new feature)
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T1, typename T2>
@@ -14761,12 +14797,15 @@ void f(T1 x, T2 y){
 	decltype(x+y) xpy = x+y;
 }
 
-//with return value;
 template<typename T1, typename T2>
 auto f(T1 x, T2 y) ->decltype(x+y){
 	x+y;
 }
 \end{lstlisting}
+\begin{description}
+	\item[Line 1 to 4:] It can be used inside a function to declare variable.
+	\item[Line 6 to 9:] It also can be used in function return.
+\end{description}
 
 \item How to make your template class has more generic use for client, "exceptional C++" item 5 introduces more idea in this topics.
 
@@ -14781,44 +14820,37 @@ auto f(T1 x, T2 y) ->decltype(x+y){
 typedef void (*FP)(int, const std::string&);
 
 using FP = void (*)(int, const std::string&);
-// alias declaration
 \end{lstlisting}
 \begin{description}
 	\item[Line 1:] FP is a synonym for a pointer to a function taking an int and a const std::string\& and returning nothing
+	\item[Line 3:] Alias declaration looks clean and simple.
 \end{description}
 
-\item C++11 doesn't support typedef template directly, only can be put inside a struct.
+\item C++98 doesn't support typedef template directly, only can be put inside a struct.
 \begin{lstlisting}[frame=single, language=c++]
-template<typename T> // MyAllocList<T>
-using MyAllocList = std::list<T, MyAlloc<T>>;
-// is synonym for std::list<T, MyAlloc<T>>
-MyAllocList<Widget> lw; // client code
-
 template<typename T>
-	struct MyAllocList {
-typedef std::list<T, MyAlloc<T>> type;
+struct MyAllocList {
+	typedef std::list<T, MyAlloc<T>> type;
 };
-
 MyAllocList<Widget>::type lw; // client code
-\end{lstlisting}
-\begin{description}
-	\item[Last line:] MyAllocList<T>::type is synonym for std::list<T,  MyAlloc<T>>
-\end{description}
 
-\item MyAllocList<T>::type is thus a dependent type, and one of C++'s many endearing rules is that the names of dependent types must be preceded by typename.
-
-\begin{lstlisting}[frame=single, language=c++]
 template<typename T>
-class Widget { // Widget<T> contains
-private: // a MyAllocList<T>
+class Widget { 
+private:
 	typename MyAllocList<T>::type list; 
 };
 \end{lstlisting}
+\begin{description}
+	\item[Line 1 to 5:] C++98 style. You have to use ::type to declare a variable.
+	\item[Line 10:] MyAllocList<T>::type is thus a dependent type, and one of C++'s many endearing rules is that the names of dependent types must be preceded by typename.
+\end{description}
 
-\item A better way is to use Alias name
+
+\item In C++14, A better way is to use Alias name
 \begin{lstlisting}[frame=single, language=c++]
-template<typename T>
+template<typename T> 
 using MyAllocList = std::list<T, MyAlloc<T>>;
+MyAllocList<Widget> lw; // client code
 
 template<typename T>
 class Widget {
@@ -14826,40 +14858,42 @@ private:
 	MyAllocList<T> list; 
 };
 \end{lstlisting}
+
+
 \begin{description}
-	\item[Line 7:] no "typename" and no "::type"
+	\item[Line 1 to 3:] C++14 style. You can use this template alias directly.
+	\item[Line 8:] no "typename" and no "::type"
 \end{description}
 
-\item Another advantage of Alias Name is below:
+\item Another advantage of Alias Name is below.The first source code uses typedef inside a struct; The second source code uses "using alias".
 
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 struct type{ typedef std::vector<T> sometype; }
-
 template<typename TT>
-void someFunction( typename type<TT>::sometype& myArg );
-
+void someFunction(typename type<TT>::sometype& myArg);
 
 std::vector<int> a;
-someFunction(a); // error, cannot deduce 'TT'
-someFunction<int>(a);
+someFunction(a); // error, cannot deduce int
+someFunction<int>(a); //have to expilict do it 
+\end{lstlisting}
+\begin{description}
+	\item[Line 4:] You need typename here, because sometype is depended T. \newline typename indicates type<TT>::sometype is a type.
+\end{description}
 
-
+\begin{lstlisting}[numbers=none]
 template<typename T>
 using sometype = std::vector<T>;
-
 template<typename T>
 void someFunction(sometype<T> &myArg );
 
 std::vector<int> a;
-someFunction(a);
+someFunction(a); //OK, can deduce int
 \end{lstlisting}
-\begin{description}
-	\item[Line 5:] You need typename here, because sometype is depended T. typename indicates type<TT>::sometype is a type.
-\end{description}
+
 
 \item C++14 offers alias templates for all the C++11 type traits transformations.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 template <class T>
 using remove_const_t = typename remove_const<T>::type;
 
@@ -14879,28 +14913,33 @@ using add_lvalue_reference_t =
 \item C++98-style enums are now known as unscoped enums.
 \begin{lstlisting}[frame=single, language=c++]
 enum Color { black, white, red };
-// black, white, red are in same scope as Color
-auto white = false; // error! white already
+auto white = false; // error! 
 
 enum class Color { black, white, red };
-// black, white, red are scoped to Color
-auto white = false; // fine, no other
+auto white = false; // fine, 
 
 Color c = white; // error!
 Color c = Color::white; // fine
-auto c = Color::white; // also fine (and in accord
-// with Item 5's advice)
+auto c = Color::white; //fine
 \end{lstlisting}
+\begin{description}
+	\item[Line 1:] black, white, red are in same scope as Color, That is why when you define the duplicated varaible name "white" again in line 2, compiler report error.
+	
+	\item[Line 4:]black, white, red are scoped to Color
+\end{description}
 
 \item Enumerators of scoped enums are visible only within the enum. They convert
 to other types only with a cast.
 \begin{lstlisting}[frame=single, language=c++]
-enum class Color { black, white, red }; // enum is now scoped
-Color c = Color::red; // as before, but
-... // with scope qualifier
-if (c < 14.5) { // error! can't compare
-// Color and double
+enum class Color { black, white, red }; 
+Color c = Color::red; 
+if (c < 14.5) { 
 \end{lstlisting}
+\begin{description}
+	\item[Line 1:] enum is now scoped.
+	\item[Line 2:] as before, but with scope qualifier.
+	\item[Line 3:] error! can't compare Color type and double type.
+\end{description}
 \item Both scoped and unscoped enums support specification of the underlying type.
 The default underlying type for scoped enums is int. Unscoped enums have no
 default underlying type.
@@ -14910,7 +14949,6 @@ forward-declared only if their declaration specifies an underlying type.
 
 \item Prefer deleted functions to private undefined ones. because Any function may be deleted, including non-member functions and template instantiations.
 \end{enumerate}
-
 
 
 \begin{lstlisting}[frame=single, language=c++]
@@ -14930,8 +14968,10 @@ void processPointer(T* ptr);
 
 template<>
 void processPointer<void>(void*) = delete;
-//you can't not use void to instantiate
 \end{lstlisting} 
+\begin{description}
+	\item[Line 16:] You can't not use void to instantiate
+\end{description}
 
 \subsection{noexcept}
 
@@ -14974,6 +15014,10 @@ show_list(const T& value, const Args&... args){
 	show_list(args...);
 }
 \end{lstlisting}
+\begin{description}
+	\item[Line 1 to 4:] it is base condition case, you can see there is only one parameter here.
+	\item[Source cdoe:] The whole idea is like the recursive function.
+\end{description}
 \end{itemize}
 
 
@@ -15035,9 +15079,8 @@ show_list(const T& value, const Args&... args){
 	
 	\item The prefix \texttt{is} should be used for boolean variables and methods which return bool.
 	
-\end{itemize}
-
-\begin{lstlisting}[frame=single, language=c++]
+	\item Below is code example demonstrates the above rules. 
+\begin{lstlisting}[numbers=none]
 #define ARRAY_NUM 10
 bool isVisible;
 
@@ -15061,7 +15104,7 @@ main(){
 
 printTeacherName(const string& name){...}
 \end{lstlisting}
-
+\end{itemize}
 \subsection{Comment and Document}
 
 \begin{itemize}
@@ -15171,10 +15214,12 @@ it != layout.end(); ++it ) {
 
 typedef int(*CB)(int, const char*); 
 CB callBack;  //decare a functions pointer.
-	
 int sort(int, const char*){..}
-callBack = sort; // & operator is optional here!
+callBack = sort; // &operator is optional here!
 \end{lstlisting}
+\begin{description}
+	\item[Line 6:] Use typedef when you want to define a function pointer type. It make easier for you to define a funciton pointer variable in line 7.
+\end{description}
 	
 	\item Using alias(C++11) is better than typedef. 
 	\begin{enumerate}
@@ -15211,7 +15256,7 @@ using CB = int(*)(int, const char*);
 	
 	\item \textbf{Uses early exits to simplify code.}
 	
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 if(IsValid){   //bad style
 	do something;
 } else{
@@ -15236,7 +15281,7 @@ if(flag){...}
 if(isHasSth()){...}
 \end{lstlisting}
 \begin{description}
-	\item[Line 8:] That is good style.
+	\item[Line 8:] Put line 1 to Line 5 into a function \texttt{isHasSth().} That is good style.
 \end{description}
 	
 	\item Use \texttt{static\_assert} to test some compile-time boolean conditions. It supports a message parameter. It doesn't need to build execution application. It will stop when you are compiling your code. 
@@ -15245,7 +15290,7 @@ static_assert(sizeof(int) > 4, "int is too small");
 \end{lstlisting}
 	
 	\item Use assert more in your project. You don't need to include file name and line number in the string. assert will output these hint messages.
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 #include<cassert>
 assert(index>=0 && " index is negative");
 \end{lstlisting}
@@ -15256,7 +15301,7 @@ assert(index>=0 && " index is negative");
 	
 	\item \textbf{If you don't modify container inside loop}, don't need to evaluate end() every time through for loop. Please remember below code block. \textbf{Just remember auto i,e ++i}
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 vector<int> con={1,2,3}; //list initializer
 for(auto i = con.begin, e = con.end();i!=e; ++i){
 	...........
@@ -15305,8 +15350,11 @@ while(*p++ != '\0')
 #pragma warning(push)
 #pragma warning(disable:4512);
 #include<not_change.h>
-#pragma warning(pop) //restore original warning level
+#pragma warning(pop)
 \end{lstlisting}
+\begin{description}
+	\item[Line 2 and 4:] disable warning on line 2 and restore original warning level on line 4.
+\end{description}
 	
 \end{itemize}
 
