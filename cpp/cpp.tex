@@ -3808,6 +3808,15 @@ int main(){
 	\item[Source code:] before:  v[0] = 1; after:   v[0] = 0;Because it returns reference,  so v[0] has been modified.
 \end{description}
 
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.7\linewidth]{pics/auto2.png}
+	\caption{auto and proxy class}
+	\label{fig:auto2}
+\end{figure}
+
+
+
 		\item init brace return init\_list. Prior to C++17 the type for all the following objects (a, b, c and d) is deduced to std::initializer\_list<int>. There is no difference between the direct-list-initialization and the copy-list-initialization on the result of the type deduction.
 		
 \begin{lstlisting}[numbers=none]
@@ -5799,6 +5808,15 @@ observe(subject * s1)
 	\item[Line 1:] subject is a class and observer is function. just use raw pointer subject, use weak\_ptr or raw pointer. observer doesn't have owner policy and life time policy with subject
 \end{description}
 
+\item Summary:
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.8\linewidth]{pics/smartPointer}
+	\caption{When to use smart pointer?}
+	\label{fig:smartpointer}
+\end{figure}
+
+
 \end{itemize}
 
 \subsection{Function interface}
@@ -5938,7 +5956,7 @@ cout<< *pointer <<endl;
 int *p;
 int *& rp = p; // reference to pointer is OK
 int &* pr  //pointer to reference is ERROR
-int && rv //rvalue reference.
+int && rv //that is rvalue reference.
 \end{lstlisting}
 
 
@@ -5950,11 +5968,11 @@ int& j = i; //ERROR
 
 \item A \texttt{const} object reference passed into a function, if you want to return it , it must be \texttt{const} too. Usually, It has no any practical meanings when you do in this way. 
 \begin{lstlisting}[numbers=none]
-const int &fun(const int& i){ //method 1
+const int &fun(const int& i){ 
 	return i;
 }
-
-int &fun(const int& i){ //method 2
+//or const_cast 
+int &fun(const int& i){ 
 	return const_cast<int&>(i);
 }
 \end{lstlisting}
@@ -6007,7 +6025,7 @@ Foo f3 = f1+f2;
 \subsection{Definition}
 
 \begin{itemize}
-	\item Each C++ expression (an operator with its operands, a literal, a variable name, etc.) is characterized by two independent properties: \textbf{a type and a value category}. Each expression is certain kind of type,such as int type, reference type or rvalue reference type. Each expression belongs to exactly one of the three primary value categories: \textbf{lvalue, prvalue, and xvalue;} 
+	\item Each C++ expression (an operator with its operands, a literal, a variable name, etc.) is characterized by two independent properties: \textbf{a type and a value category}. Each expression is certain kind of type, such as \texttt{int} type, reference type or rvalue reference type. Each expression belongs to exactly one of the three primary value categories: \textbf{lvalue, prvalue, and xvalue;} 
 	
 	\item lvalue is not defined "can be put on the left side of =". Because \texttt{const int a} is also a lvalue, and you can't put a on the left side of = . It has three characteristics:
 	\begin{enumerate}
@@ -6016,15 +6034,15 @@ Foo f3 = f1+f2;
 		\item \textbf{lvalue can't be move(stolen),} because you need to keep original one intact.
 	\end{enumerate}
 	
-	\item On the contrary, prvalue has no \textbf{identity}, and will not \textbf{persist} beyond expression and can be move(stolen)
+	\item On the contrary, prvalue has no \textbf{identity}, and will not \textbf{persist} beyond expression and should be move(stolen) for efficient.
 	
 	\item Why pvalue doesn't persist? because rvalues in C++ stored differently. It's freedom for the compiler to improve performances of your code. A more concrete way to understand this is to remember that a value can be stored in a register of your CPU and never actually be in your memory which more or less means that the value has no address. I won't bet everything i have on it but this is probably one of the main reasons why "we cannot get an address of an rvalue".
 	
-	\item In a more general way since an rvalue is semantically temporary it is more likely to be put in temporary places or optimised in a way where it cannot easily be mapped to an address and even if it can that would be counter productive in terms of performance.
+	\item In a more general way since an rvalue is semantically temporary it is more likely to be put in temporary places or optimized in a way where it cannot easily be mapped to an address and even if it can that would be counter productive in terms of performance.
 	
-	\item First, we can use \textbf{persist and identity} to classify value into lvalue and rvalue, then c++11 introduce \textbf{rvalue reference}. rref can persist and move at the same time.  So we divide lvalue into lvalue and xvalue.  and give them new name.  lvalue+xvalue = glvalue(persist)  and xvalue + prvalue = rvalue(move).
+	\item First, we can use \textbf{persist and identity} to classify value into lvalue and rvalue, then c++11 introduce \textbf{std::move}. The return value of std::move is unnamed rvalue reference. this unnamed rvalue reference can persist and move at the same time.  So we divide lvalue into lvalue and xvalue and give them new name.  lvalue+xvalue = glvalue(persist)  and xvalue + prvalue = rvalue(move).
 	
-	\item \textbf{Any value must be one of three, lvalue, xvalue, or prvalue.} These three categories are complementary.  \textbf{lvalue pay attention to  identity and persist, rvalue=(xvalue + prvalue) shout "I can be moved" loudly.  So we call \&\& rvalue reference, don't call it xvalue reference. }
+	\item \textbf{Any value must be one of three value categories: lvalue, xvalue, or prvalue.} These three categories are complementary.  \textbf{lvalue pay attention to  identity and persist, rvalue=(xvalue + prvalue) shout "I can be moved" loudly.  So we call \&\& rvalue reference, don't call it xvalue reference. }
 	
 	\begin{figure}[h]
 		\centering
@@ -6034,7 +6052,7 @@ Foo f3 = f1+f2;
 	\end{figure}
 	
 	
-	\item To know this conception can help you to understand decltype. 
+	\item Distinguishing these three value categories is very important when you try to understand decltype deducting rule. I will introduce in "Generic programming" chapter.
 	
 	\item Summary table: 
 	\begin{center}
@@ -6051,21 +6069,7 @@ Foo f3 = f1+f2;
 	\end{center}
 	
 
-\item An example shows that xvalue has identity and persist, and will persist beyond expression and can be move(stolen). it usually near the end of its lifetime (so that its resources may be moved).
-\begin{lstlisting}
-string&& xvalue_fun();
 
-xvalue_fun(); 
-xvalue_fun() = "hello" 
-&xvalue_fun(); //
-string a = xvalue_fun(); 
-\end{lstlisting}
-\begin{description}
-	\item[Line 3:] After you call this fun, value still exist.
-	\item[Line 4:] You can modify because it persist.
-	\item[Line 5:] You can get address because it has identity.
-	\item[Line 6:] call move ctor, can move.
-\end{description}
 
 \item A method to judge if a var is lvalue.
 \begin{lstlisting}[frame=single, language=c++]
@@ -6101,30 +6105,47 @@ std::is_lvalue_reference<decltype(xvalue_fun())>::value
 \subsection{Example of xvalue}
 
 \begin{itemize}
+	
 	\item Remember that any expression that evaluates to an lvalue reference (e.g., a function call, an overloaded assignment operator, etc.) is \textbf{an lvalue}. Any expression that \textbf{returns an object by value is an rvalue}.
 	
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 string& lvalue_fun();
 lvalue_fun(); 
-lvalue_fun() = "hello" 
-&lvalue_fun(); 
-string a = lvalue_fun 
+lvalue_fun() = "hello"; //OK
+&lvalue_fun();          //OK
+string a = lvalue_fun   //Copy
 
 string pvalue_fun();
 pvalue_fun(); 
-pvalue_fun() = "hello" 
-&pvalue_fun(); 
-string a = pvalue_fun() 
+pvalue_fun() = "hello"; //ERROR
+&pvalue_fun();          //ERROR
+string a = pvalue_fun() //move
 \end{lstlisting}
 \begin{description}
 	\item[Line 2 to 5:] After you call this fun, lvalue still exist. you can modify because it persist. you can get address because it has identity. call copy ctor, can't move
 	
 	\item[Line 8 to 11:]  After call this fun, value disappear. NOT modify because it doesn't persist. NOT get address because it no identity. call move ctor, can move
 \end{description}
-	
+
+\item An example of xvalue.
+\begin{lstlisting}
+string&& xvalue_fun();
+
+xvalue_fun(); 
+xvalue_fun() = "hello" 
+&xvalue_fun(); //
+string a = xvalue_fun(); 
+\end{lstlisting}
+\begin{description}
+	\item[Line 3:] After you call this fun, value still exist.
+	\item[Line 4:] You can modify because it persist.
+	\item[Line 5:] You can get address because it has identity.
+	\item[Line 6:] call move ctor, can move.
+\end{description}
+
 	\item An xvalue is the result of certain kinds of expressions involving rvalue references. \textbf{The result of calling a function whose return type is an rvalue reference is an xvalue.}
 	
-	\item textbf{fun return lvalue reference is lvalue, fun return value is pvalue, and fun return rvalue reference is xvalue.}
+	\item \textbf{fun return lvalue reference is lvalue, fun return value is pvalue, and fun return rvalue reference is xvalue.}
 	
 	\item In definition,  xvalue is just value with Identity and can be movable. \textbf{In real life, it's  return value of std::move() or static\_cast<A\&\&>}. A better introduction can be seen: " C++11 Tutorial: Explaining the Ever-Elusive Lvalues and Rvalues"
 	
@@ -6144,9 +6165,11 @@ A&& ar = static_cast<A&&>(a);
 	\item[Line 9:] static\_cast<A\&\&>(a) is xvalue, but ar is lvalue
 \end{description}
 	
-	\item After C++11, we added two new xvalues.\\
-	1) a[n], the built-in subscript expression, where one operand is an array rvalue;\\
-	2) a.m, the member of object expression, where a is an rvalue and m is a non-static data member of non-reference
+	\item After C++11, we added two new xvalues.
+	\begin{enumerate}
+		\item \texttt{a[n]}, the built-in subscript expression, where one operand is an array rvalue;
+		\item \texttt{a.m}, the member of object expression, where a is an rvalue and m is a non-static data member of non-reference
+	\end{enumerate}
 \end{itemize}
 
 \subsection{xvalue and rvalue reference}
@@ -6214,7 +6237,7 @@ fun()
 	\item[Line 3:] fun() expression is vralue reference type rvalue. 
 \end{description}
 	
-	\item before C++11, we have used value category to overload function. plain lvalue reference can only bind to lvalue, can't bind to rvalue. So we use \textbf{const lvalue reference}.  Const lvalue reference can bind to both lvalue and rvalue, but you can't change it. We have used this technology in copy ctor very common before C++11. Because const reference can bind both lvalue and rvalue, so we can't distinguish when to move, when to copy, that is the problem of efficiency.
+	\item \textbf{before C++11, we have used value category to overload function.} Plain lvalue reference can only bind to lvalue, can't bind to rvalue. So we use \textbf{const lvalue reference}.  Const lvalue reference can bind to both lvalue and rvalue, but you can't change it. We have used this technology in copy ctor very common before C++11. Because const reference can bind both lvalue and rvalue, so we can't distinguish when to move, when to copy, that is the problem of efficiency.
 	
 	\item After C++11, in order to improve efficiency when deal with rvalue, we introduced rvalue reference.  rvalue reference only bind to rvalue, (rvalue is composed of prvalue+ xvalue). \textbf{That is how funciton overload kick in?}
 
@@ -6232,10 +6255,11 @@ int & r = x+y;
 	\item[Line 5:] error, rvalue reference can't refer to lvalue.
 	\item[Line 8:] error,lvalue reference can not bind with an rvalue.
 \end{description}
-	
+
+\begin{center}
 	\begin{tabular}{|c|c|}
 		\tophline 
-		type & value category \\ 
+		type & which value category can bind \\ 
 		\tophline 
 		lvalue reference & lvalue(non-const)  \\ 
 		\tophline 
@@ -6243,7 +6267,8 @@ int & r = x+y;
 		\tophline 
 		const lvalue reference & lvalue or rvalue(const or non-const)  \bottomhline 
 	\end{tabular} 
-	
+\end{center}
+
 	\item C++11 allows you to use move semantics not just on rvalues, but, at your discretion, on lvalues as well. An good example is swap function, here if you can move lvalue, the efficiency will be better. 
 	
 \begin{lstlisting}[numbers=none]
@@ -6255,7 +6280,14 @@ void swap(T& a, T& b) {
 } 
 \end{lstlisting}
 	
-	\item So for std::move() function, return value can be value(rvalue), but it can't support dynamic binding in C++.  return value can be reference(lvalue), but it can't be used move context. So we have to use rvalue reference as return type. 
+	\item So for std::move() function, Let's make assumption the return value type:
+	\begin{enumerate}
+		\item return value can be value(rvalue), but in input a value, then return value, you must copy inside this function, that's low efficient.So ignore it.
+		
+		\item return lvalue reference, when you a= std::move(b), it can't be used move, just copy. So ignore it too.
+		
+		\item So we have to use rvalue reference as return type.
+	\end{enumerate}
 	
 	\item for this kind of rvalue reference, we can put it on the left side of assignment, so it's not prvalue. At the same time, you can move it, so it's not lvalue.  \textbf{In this way, we have to introduced a new value type--xvalue.}    
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
@@ -6297,6 +6329,7 @@ cout<<str<<endl
 
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 std::string s1 = "Test";
+std::string&& r1 = s1; //ERROR
 
 const std::string& r2 = s1 + s1; 
 r2+="test" //Error
@@ -6305,11 +6338,11 @@ std::string&& r3 = s1 + s1;
 r3 += "Test";                    
 \end{lstlisting}
 \begin{description}
-	\item[Line 1:] std::string\&\& r1 = s1; error: rvalue ref can't bind to lvalue.
+	\item[Line 2:]  error: rvalue ref can't bind to lvalue.
 	
-	\item[Line 3:] okay: lvalue reference to const extends lifetime.
+	\item[Line 4:] okay: lvalue reference to const extends lifetime.
 
-	\item[Line 4:] error: can't modify through reference to const.
+	\item[Line 5:] error: can't modify through reference to const.
 	\item[Line 6:] okay: rvalue reference extends lifetime
 	\item[Line 7:] okay: can modify through reference to non-const.
 \end{description}
@@ -6443,7 +6476,7 @@ A&& && becomes A&&
 \item  Universal references arise in two contexts. The most common is function template parameters. The second context is auto\&\&\textbf{1)must be constrained T\&\& form, 2) type deduction happen.}
 
 \item If the form of the type declaration isn't precisely type\&\&, or if type deduction does not occur, type\&\& denotes an rvalue reference.
-\begin{lstlisting}[numbers=none]
+\begin{lstlisting}
 auto&& var2 = var1; // universal reference
 
 template<typename T>
@@ -6451,25 +6484,27 @@ void f(T&& param); // universal  reference
 
 template<class T, class Allocator = allocator<T>>
 class vector {
-template <class... Args>
-void emplace_back(Args&&... args);  //args is universal reference
+	template <class... Args>
+	void emplace_back(Args&&... args);  
 };
 
 //------------below are not universal reference----
 template<typename T>
 void f(std::vector<T>&& param); // rvalue reference
-// form is quite constrained. It must be precisely "T&&".
 
 template<typename T>
 void f(const T&& param); // with const
 
-template<class T, class Allocator = allocator<T>> // from C++
-class vector { // Standards
+template<class T, class Allocator = allocator<T>>
+class vector { 
 public:
-void push_back(T&& x); //no type deduction
+	void push_back(T&& x); //no type deduction
 };
 \end{lstlisting}
-
+\begin{description}
+	\item[Line 9:] args is universal reference.
+	\item[Line 14:] form is quite constrained. It must be precisely "T\&\&".
+\end{description}
 
 \item For auto\&\&, basic idea just like universal reference, you need to use decltype(var) to get type information when you use forward function on the universal reference. 
 
@@ -6483,8 +6518,9 @@ use_it_elsewhere(std::forward<decltype(var)>(var));
 	\item[Line 1:] var was initialized with either an lvalue or rvalue, but var itself is an lvalue because named rvalues are lvalues
 \end{description}
 
-\item When to use auto\&\&. I will accept any initializer regardless of whether it is an lvalue or rvalue expression and I will preserve its constness. This is typically used for forwarding (usually with T\&\&). The reason this works is because a "universal reference", auto\&\& or T\&\&, will bind to anything. A good example of\\
-"some\_expression\_that\_may\_be\_rvalue\_or\_lvalue;"
+\item When to use auto\&\&. I will accept any initializer regardless of whether it is an lvalue or rvalue expression and I will preserve its constness. This is typically used for forwarding (usually with T\&\&). The reason this works is because a "universal reference", auto\&\& or T\&\&, will bind to anything. 
+
+\item A good example of "some\_expression\_that\_may\_be\_rvalue\_or\_lvalue;" is illustrated below:
 \begin{lstlisting}[frame=single, language=c++]
 std::vector<int> global_vec{1, 2, 3, 4};
 
@@ -6592,7 +6628,7 @@ fun(T&& value){
 
 		\item You might say, well why not just use a const auto\& because that will also bind to anything? The problem with using a const reference is that it's const! You won't be able to later bind it to any non-const references or invoke any member functions that are not marked const.
 \begin{lstlisting}[frame=single, language=c++]
-auto&& vec = some_expression_that_may_be_rvalue_or_lvalue;
+auto&& vec=some_expression_that_may_be_rvalue_or_lvalue;
 auto i = std::begin(vec);
 (*i)++;
 
@@ -6625,7 +6661,9 @@ const auto&&
 template<typename T> // in namespace std
 typename remove_reference<T>::type&&
 move(T&& param){
-	using ReturnType = typename remove_reference<T>::type&&; // see Item 9
+	using ReturnType = typename 
+			remove_reference<T>::type&&; 
+			
 	return static_cast<ReturnType>(param);
 }
 \end{lstlisting}
@@ -6659,16 +6697,19 @@ void wrapper(T&& arg) {
 	\end{figure}
 
 	\item In forward function, why parameter is std::remove\_reference\_t<T>\& t?
-\begin{lstlisting}[numbers=none]
+\begin{lstlisting}
 void fun(int&& r){
 	//int& r1 = r;  //OK
-	int&& r1 = r;  //error: cannot bind 'int' lvalue to 'int&&'
+	int&& r1 = r;  
 	cout<<r1<<endl;
 }
 
 int r = 2;
 fun(std::move(r));
 \end{lstlisting}
+\begin{description}
+	\item[Line 3:] error: cannot bind 'int' lvalue to 'int\&\&'
+\end{description}
 
 \end{itemize}
 
