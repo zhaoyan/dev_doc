@@ -6676,6 +6676,13 @@ T&& forward(typename remove_reference<T>::type& param){
 }
 \end{lstlisting}
 
+	\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.85\linewidth]{pics/rvalue_ref.png}
+	\caption{move and forward implementation}
+	\label{fig:rvalueref}
+\end{figure}
+
 	\item basic usage of forward is like this:
 \begin{lstlisting}
 template<class T>
@@ -6689,12 +6696,7 @@ void wrapper(T&& arg) {
 	
 	
 \end{description}
-	\begin{figure}[h]
-		\centering
-		\includegraphics[width=0.85\linewidth]{pics/rvalue_ref.png}
-		\caption{move and forward implementation}
-		\label{fig:rvalueref}
-	\end{figure}
+
 
 	\item In forward function, why parameter is std::remove\_reference\_t<T>\& t?
 \begin{lstlisting}
@@ -6718,32 +6720,32 @@ fun(std::move(r));
 
 \subsection{Generic function parameter design}
 \begin{itemize}
-\item Main content in this section illustrated below: 
+\item Main content in this section illustrated in Figure \ref{fig:rvalueref}
 
 	\begin{figure}[h]
 	\centering
 	\includegraphics[width=1.0\linewidth]{pics/move.png}
-	\caption{move and forward implementation}
+	\caption{rvalue reference and function interface.}
 	\label{fig:rvalueref}
 \end{figure}
 
 
-\item  By now, you imagine you have a function with parameter, then you have three main operations inside to operate on the parameter: \textbf{1) only read 2) copy from the parameter 3) write to parameter.}
+\item  By now, you imagine that you have a function with parameter, then you have three main operations inside to operate on the parameter: \textbf{1) only read 2) copy from the parameter 3) write to parameter.}
 
-\item For only read, "const type\&" is the best, For write, "type\&" is good, because I don't need to write any new thing into prvalue. Based on previous explanation, below code will not compile. 
+\item For only read, "\texttt{const type\&}" is the best, For write, "\texttt{type\&}" is good, because I don't need to write any new thing into prvalue. Based on previous explanation, below code will not compile. 
 \begin{lstlisting}[numbers=none]
 writeFun(Foo &);
 
 writeFun(foo1+foo2) //ERROR
 \end{lstlisting}
 
-\item For only read build-in type, such as int, char, short, double.. You can use value directly, it has the same performance as reference. If you want to change it, you still need to use reference.
+\item For only read build-in type, such as \texttt{int, char, short, double}. You can use value directly, it has the same performance as reference. If you want to change it, you still need to use reference.
 
 \item If the function read in some values and \textbf{build} other something based on the value which just read in. You need to consider the parameter design. When I say \textbf{build}, it could be:
 \begin{enumerate}
 	\item call ctor inside fun
 	\item assign these values to other.
-	\item put values to container.
+	\item put values into container.
 \end{enumerate} 
 \end{itemize}
 
@@ -6759,6 +6761,9 @@ writeFun(foo1+foo2) //ERROR
 		\item Use universal reference
 	\end{enumerate}
 	
+\begin{center}
+
+
 \begin{tabular}{|c|c|c|}
 \tophline
  & lvalue  & rvalue \\
@@ -6776,6 +6781,8 @@ copyFun(T \&\&)}  & copy inside & move inside
 \bottomhline
 \end{tabular}
 
+\end{center}
+
 \subsubsection{overload solution}
 
 \item Use Overload function to deal with rvalue only. So usually function which accepts rvalue reference doesn't exist by itself, it just stay with another version to accept lvalue, fun(const Foo\& foo);
@@ -6786,7 +6793,7 @@ fun(foo1+foo2)
 fun(f_return_foo()); // call move ctor.
 \end{lstlisting}
 \begin{description}
-	\item[Line 3:] will compile, It means that inside fun, you will steal resource. 
+	\item[Line 3:] will compile, It means that inside fun, you can move. 
 \end{description}
 
 \subsubsection{only value solution}
@@ -6850,7 +6857,7 @@ sorted2(std::vector<std::string> const& names) {
 
 \item The same idea can be seen in the "more effective C++ item 41" 
 
-\item You can apply this guideline immediately is in assignment operators. The canonical, easy-to-write, always-correct, strong-guarantee, copy-and-swap assignment operator is often seen written this way:
+\item You can apply this guideline immediately in assignment operators. The canonical, easy-to-write, always-correct, strong-guarantee, copy-and-swap assignment operator is often seen written this way:
 \begin{lstlisting}[frame=single, language=c++]
 T& T::operator=(T const& x){ 
 	T tmp(x);          
@@ -6868,6 +6875,14 @@ T& operator=(T x){
 	
 	\item[Line 7 to 10:] A better one is below. x is a copy of the source;hard work already done. trade our resources for x's. our (old) resources get destroyed with x
 \end{description}
+
+\item You can't apply this idea into the copy ctor, otherwise it will cause dead recursive.
+\begin{lstlisting}[frame=single, language=c++]
+Class A{
+	A(A a){..} //Can't declare in this way.
+}
+\end{lstlisting}
+
 
 \item Two good articles about this topic are:"Want Speed? Pass by Value." and "WANT SPEED? DON'T (ALWAYS) PASS BY VALUE."
 
@@ -6947,7 +6962,7 @@ Fraction // by-value return
 reduceAndCopy(T&& frac) // universal reference param
 {
 	frac.reduce();
-	return std::forward<T>(frac); // move rvalue into return
+	return std::forward<T>(frac); 
 } 
 \end{lstlisting}
 
@@ -6961,7 +6976,7 @@ reduceAndCopy(T&& frac) // universal reference param
 		\item For RVO, we implicit pass the result by reference.
 	\end{enumerate}
 	
-	\item \textbf{Three basic knowledges about function return when no RVO:}
+	\item Three basic knowledges about function return when no RVO:
 	\begin{enumerate}
 		\item It's very important understand there are two phrases when you return from function. The first step  is from inside fun fauto to outside of function ftemp(unname tempory), then fauto disappear(call destructor for value).  Then in second step, \textbf{Move} from ftemp to flast. because ftemp is rvalue.
 \begin{lstlisting}[numbers=none]
@@ -6973,7 +6988,7 @@ Foo flast = (ftemp created here)fun();
 \end{lstlisting}
 		\item ftemp is not on the stack, so you can use const ref or rref to prolong its life.
 		
-		\item ftemp is same with fauto, but maybe not same with flast
+		\item ftemp is same with fauto, but maybe not same with flast(Will happen implicit conversion sometimes)
 \begin{lstlisting}[frame=single, language=c++]
 Foo fun(){
 	return fauto;
@@ -6983,7 +6998,7 @@ const Foo& flast = (ftemp created here)fun();
 Foo&& flast = fun();
 \end{lstlisting}
 \begin{description}
-	\item[Line 6:] fun return Value, if run return reference, it's dangerous.
+	\item[Line 6:] fun return Value, When you use reference ref to a stack variable, it's dangerous.
 \end{description}
 
 	\end{enumerate}
@@ -6995,13 +7010,16 @@ X bar(){
 	return xx;
 }
 	
+X result = bar();
 void bar(x &__result){
 	__result.X::X() // default ctor call
 	....
 	return
 }
 \end{lstlisting}
-	
+\begin{description}
+	\item[Line 6:] When compiler see \texttt{X result = bar()}, it change it to Line 7 to Line 11.
+\end{description}
 \end{itemize}
 
 \subsection{return plain reference} 
@@ -7014,7 +7032,7 @@ void bar(x &__result){
 		\item member function return some member data, such as copy ctor and overload \verb=[]= inside a class
 	\end{enumerate}
 	
-	\item About return reference, by now, I only know three functions which return reference. = and << are for support cascading syntactic usage: such as cout<<a<<b, a=b=c.  [] is for support assignment obj[3]= 12.  That is all.
+	\item About return reference, by now, I only know three functions which return reference. = and \verb=<<= are for support cascading syntactic usage: such as \texttt{cout<<a<<b}, a=b=c.  [] is for support assignment obj[3]= 12.  That is all.
 \begin{lstlisting}[numbers=none]
 operator =
 operator []
@@ -7044,7 +7062,7 @@ FindAddr( /* pass emps and name by reference */ ){
 	}
 	static const string empty;
 	return empty;
-	}
+}
 \end{lstlisting}
 	
 	\item Why \textbf{don't} we usually return plain reference?
@@ -7090,7 +7108,7 @@ A a;
 A&& b = rrfun(a);
 \end{lstlisting}
 \begin{description}
-	\item[Line 6:] after this a is invalid, and b refer a ftemp.
+	\item[Line 6:] after this \texttt{a} is valid, and b refer a ftemp.
 \end{description}
 	
 
@@ -7142,16 +7160,16 @@ struct Beta {
 	Beta_ab ab;
 	Beta_ab const& getAB() const& { return ab; }
 	Beta_ab && getAB() && { return move(ab); }
-	// return && is not Good interface design.
+	Beta_ab getAB() && { return move(ab); }
 	
-	Beta_ab ab = Beta().getAB();
-	// It will call move version.
-	//Beta_ab && ab = Beta().getAB(); ab is dangling rref
-	
-	2) Beta_ab getAB() && { return move(ab); }
-	//Good interface design.
 };
+
+Beta_ab ab = Beta().getAB();
 \end{lstlisting}
+\begin{description}
+	\item[Line 4:] return \&\& is not correct interface design. It will call move version. Beta_ab \&\& ab = Beta().getAB(); ab is dangling rref.
+	\item[Line 5:] return value is correct interface.
+\end{description}
 
 \item the same idea just like previous example, but this time I use auto.
 \begin{lstlisting}[frame=single, language=c++]
@@ -7188,9 +7206,14 @@ auto&& values = makeWidget().data();
 		\item The type of the \textbf{local} object is the same as that returned by the function.
 		\item the local object is what's being returned.
 		\item parameter is not eligible for RVO. 
+		\begin{enumerate}
+			\item value parameter will use move in the implicitly, you don't need explicit call std::move)
+			\item lvalue reference parameter usually should not be move, just copy.
+			\item for rvalue reference, you can use std::move to move the resource to the return value.
+		\end{enumerate}
 	\end{enumerate}
 	
-	\item Three common cases are:
+	\item Four common cases of copy-elision are:
 	\begin{enumerate}
 		\item Name RVO, \texttt{t} has a name. It's called NRVO.
 \begin{lstlisting}[numbers=none]
@@ -7442,9 +7465,9 @@ Matrix operator+(Matrix&& lhs, const Matrix& rhs){
 } 
 \end{lstlisting}
 \begin{description}
-	\item[Line 1:] by-value return , by rvalue parameter.
-	\item[Line 3:] move lhs into return value.
-	\item[line 4:] will copy lhs into return value.
+	\item[Line 1:] by-value return , by rvalue reference parameter \texttt{lhs}.
+	\item[Line 3:] move \texttt{lhs} into return value.
+	\item[line 4:] will copy \texttt{lhs} into return value.
 \end{description}
 
 \subsubsection{RVO summary}
@@ -7455,10 +7478,9 @@ Matrix operator+(Matrix&& lhs, const Matrix& rhs){
 \item Apply std::move to rvalue references and std::forward to universal references
 the last time each is used.
 
-\item Never apply std::move or std::forward to local objects if they would otherwise
+\item Never apply std::move or std::forward to local value objects if they would otherwise
 be eligible for the return value optimization.
 \end{enumerate}
-
 
 \end{itemize}
 
@@ -7481,7 +7503,7 @@ be eligible for the return value optimization.
 		\begin{enumerate}
 			\item Has a destructor that is public and virtual, But for some trait class, destructor can be protected, such as std::unary\_function
 			\item Establish interface.
-			\item Usually instantiated on heap, and used via a (smart) pointer or reference to support polymorphism.
+			\item \textbf{Usually instantiated on heap, and used via a (smart) pointer or reference to support polymorphism.}
 		\end{enumerate}
 		
 		\item Trait class.
@@ -7494,7 +7516,8 @@ be eligible for the return value optimization.
 	
 	\item Policies are classes (or class templates) to \textbf{inject behavior} into a parent class, typically through inheritance. Through decomposing a parent interface into orthogonal (independent) dimensions, policy classes form the building blocks of more complex interfaces. An often seen pattern is to supply policies as user-definable template (or template-template) parameters with a library-supplied default. An example from the Standard Library are the Allocators, which are policy template parameters of all STL containers
 \begin{lstlisting}[numbers=none]
-template<class T,class Allocator=std::allocator<T> > class vector;
+template<class T,class Allocator=
+			std::allocator<T> > class vector;
 \end{lstlisting}
 	
 	\item Traits are class templates to \textbf{extract properties} from a generic type. There are two kind of traits: single-valued traits and multiple-valued traits. Examples of single-valued traits are the ones from the header <type\_traits>. Single-valued traits are often used in template-metaprogramming and SFINAE tricks to overload a function template based on a type condition.
@@ -7623,7 +7646,7 @@ namespace MAT{
 	\item Prefer writing nonmember nonfriend functions
 	\begin{enumerate}
 		\item operator =, ->, [], () must be members
-		\item needs a different type as its left-hand arguent, such as operator <<, use nonmember
+		\item needs a different type as its left-hand arguent, such as operator \verb=<<=, use nonmember
 		\item leftmost argument needs type conversion, use non-member
 		\item can be implement using the class public interface alone, use nonmember.
 	\end{enumerate}
@@ -7907,44 +7930,103 @@ public:
 
 
 \subsection{Basic pattern}
-\subsubsection{constructor and destructor}
+\subsubsection{named ctor idiom and virtual ctor idiom}
 \begin{itemize}
+	\item First, let take a look common pattern of constructor, constructor is different, you have to use the same name. But it can't express semantic behind the function interface.
+\begin{lstlisting}
+class Point {
+public:
+	Point(float x, float y);     
+	// Rectangular coordinates
+	Point(float r, float a);     
+	// Polar coordinates (radius and angle)
+};
+\end{lstlisting}
+\begin{description}
+	\item[Source code:] ERROR: Overload is Ambiguous: Point::Point(float,float)
+\end{description}
 
-	\item Normally, ctor , destructor and assignment should be public. \textbf{In inheritance context, all the base class desctructor should be virtual. }
+\item In order to resolve this problem, we can use "named constructor". 
+\begin{lstlisting}
+class Point {
+public:
+	static Point rectangular(float x, float y);
+	static Point polar(float radius, float angle);
 	
-	\item A constructor shall not be virtual or static. If you need something like this, you can look up the virtual constructor idiom. This idiom uses virtual clone() member function (for copy constructing), or a virtual create() member function (for the default constructor).
+Point p1 = Point::rectangular(5.7, 1.2);
+Point p2 = Point::polar(5.7, 1.2);
+\end{lstlisting}
+
+	\item Let's introduce "virtual constructor idiom". That's sub-topic of big topic "make Non-leaf class abstract".
+
+	\item A problem with inheriting from a concrete type is that it creates some ambiguity as to whether code which specifies a certain type really wants an object of the specific concrete type, or wants an object of a type which behaves in the fashion that the concrete type behaves. This distinction is vital in C++, since there are many cases where operations which will work correctly on objects of a certain type will fail badly on objects of derived types. The problem can be illustrated by the assignment of pointer to base.class. The problem has been introduced in "More effective C++ item 33"
+	
+	\item But sometimes, we really need to copy or assignment by base class pointer. For example, If the class "owns" the object pointed to by the (abstract) base class pointer, use the Virtual Constructor Idiom in the (abstract) base class. As usual with this idiom, we declare a pure virtual clone() method in the base class:
 	
 \begin{lstlisting}
-class Shape {
+class Fred {
 public:
+	Fred(const Fred& f)
+	: p_(f.p_->clone()) { }
+	Fred& operator= (const Fred& f){
+		if (this != &f) {              
+			Shape* p2 = f.p_->clone();   
+			delete p_;                   
+			p_ = p2;
+		}
+		return *this;
+	}
+	// ...
+	private:
+	Shape* p_;
+};
+\end{lstlisting}
+\begin{description}
+	\item[Line 6 to 8:] Check for self-assignment; Create the new one FIRST; THEN delete the old one.
+\end{description}
+
+	\item A constructor shall not be virtual or static. If you need something like this, you can look up the virtual constructor idiom. This idiom uses virtual clone() member function (for copy constructing), or a virtual create() member function (for the default constructor).
+	
+	\begin{lstlisting}
+	class Shape {
+	public:
 	virtual ~Shape() { }                 
 	virtual void draw() = 0;           
 	virtual void move() = 0;
 	// ...
 	virtual Shape* clone()  const = 0;   
 	virtual Shape* create() const = 0; 
-};
-
-class Circle : public Shape {
-public:
+	};
+	
+	class Circle : public Shape {
+	public:
 	Circle* clone()  const;  
 	Circle* create() const;   
-};
-Circle* Circle::clone()  const{
-	 return new Circle(*this); }
-	 
-Circle* Circle::create() const{
-	 return new Circle();      }
+	};
+	Circle* Circle::clone()  const{
+	return new Circle(*this); }
+	
+	Circle* Circle::create() const{
+	return new Circle();      }
+	
+	Shape* s2 = s.clone();
+	Shape* s3 = s.create();
+	
+	delete s2;    // You need a virtual destructor here
+	delete s3;
+	\end{lstlisting}
+	\begin{description}
+		\item[Line 13 and 15:] Covariant Return Types; 
+	\end{description}
 
-Shape* s2 = s.clone();
-Shape* s3 = s.create();
 
-delete s2;    // You need a virtual destructor here
-delete s3;
-\end{lstlisting}
-\begin{description}
-	\item[Line 13 and 15:] Covariant Return Types; 
-\end{description}
+\end{itemize}
+\subsubsection{constructor and destructor}
+\begin{itemize}
+
+	\item Normally, ctor , destructor and assignment should be public. \textbf{In inheritance context, all the base class desctructor should be virtual. }
+	
+
 	
 	\item Avoid calling virtual functions in ctor and dtor. Detail can be found in "C++ Coding Standards" item 49.
 	
@@ -8082,7 +8164,7 @@ friend void swap(dumb_array& first, dumb_array& second) {
 	
 \subsubsection{Big zero, three and five}
 \begin{itemize}
-	\item The Rule of the Big Three states that if you have implemented either
+	\item The Rule of Big Three states that if you have implemented either
 	\begin{enumerate}
 		\item A destructor
 		\item An assignment operator
@@ -8218,7 +8300,7 @@ class A & operator=(const class A& rhs){
 \end{itemize}
 
 
-\section{inheritance}
+\section{Inheritance}
 \begin{itemize}
 	\item OO just kick in when you use reference and pointer to base class
 \begin{lstlisting}[numbers=none]
