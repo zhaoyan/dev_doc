@@ -8301,24 +8301,54 @@ class A & operator=(const class A& rhs){
 
 
 \section{Inheritance}
+\subsubsection{Polymorphism by inheritance}
+
 \begin{itemize}
-	\item OO just kick in when you use reference and pointer to base class
+	\item polymorphism is a powerful design mechanism that allows for the encapsulation of related types behind an abstract public interface, The cost is an additional level of indirection, both in terms of memory acquisition and type resolution. C++ supports polymorphismthrough class pointers and references. This style of programming is called
+	object-oriented 
+	
+	\item Only reference and pointer support polymorphism, see source code below:
+
 \begin{lstlisting}[numbers=none]
 class A{
-		public:
-		virtual void fun(){ cout<<"A";}
+public:
+	virtual void fun(){ cout<<"A";}
 };
 	
 class B: public A{
-		public:
-		void fun(){cout<<"B";}
+public:
+	void fun(){cout<<"B";}
+	int m_b = 100;
 };
+\end{lstlisting}
+	\item Base pointer can't access class member derived class directly.
 	
-int main(){
-		B b;
-		A a = b;
-		a.fun(); //output A
-		
+\begin{lstlisting}
+B b;
+A* pa = &b;
+cout<<b.m_b;       //OK
+//cout<<pa->m_b;   //ERROR 
+//cout<<(*pa).m_b; //ERROR
+cout<<static_cast<B*>(pa)->m_b; //OK
+\end{lstlisting}
+\begin{description}
+	\item[Line 3:] You can access class member by object directly.
+	\item[Line 4:] Error, it doesn't work. Pointer has type. The pointer type alter the interpretation of the size and composition of the memory. Pointer type is A, so the size of memory which pointer address is sizeof(A), that's why you can't see the \texttt{m\_b}.at all.
+	\item[Line 6:] OK, when you change the pointer type from A to B, then the memory which pointer address is sizeof(B), interpretation also support (->m\_b) 
+\end{description}
+
+\item Base object can't doesn't support polymorphism.
+\begin{lstlisting}
+B b;
+A a = b;
+a.fun(); //output A
+\end{lstlisting}
+\begin{description}
+	\item[Line 3:] When a base class object is directly initialized or assigned with a derived class object, the derived object is sliced to fit into the available memory resources of the base type. There is nothing of the derived typeremaining. Polymorphism is not present, and an observant compiler can resolve an invocation of a virtualfunction through the object at compile time, thus by-passing the virtual mechanism.
+\end{description}
+
+\item A pointer and areference support polymorphism because in derived class, we build Virtual table,(adding indirect level.)
+\begin{lstlisting}
 		A& ra = b;
 		ra.fun(); //output B
 		A* pa = &b;
@@ -8335,11 +8365,10 @@ int main(){
 
 \subsubsection{ctor}
 \begin{itemize}
-	
 	\item  \textbf{Subclass ctor will always call base class ctor.}
 	
 	\begin{enumerate}
-		\item Constructor should NOT be virtual
+		\item Constructor should NOT be virtual.
 		
 		\item If subclass doesn't define any ctor, compiler will implicitly define a default ctor, and this ctor will call base class default ctor.
 		
@@ -8381,41 +8410,37 @@ subclass sc3;   // implicit call base default ctor
 \end{description}
 	\item If you don't use  explicitly initialization list syntax to call base specify ctor, You will get uninitialized value or you can't initialize base member, Neither are good.
 \begin{lstlisting}[frame=single, language=c++]
-//method 2:
 DeriveClass::DeriveClass(int base_a, b){
-	
 	Derive_b = b
 }	
-	/////////////////////
-//method 3:
+
 DeriveClass::DeriveClass(int base_a, b) {
 	base_a = a  //It can be thought as a bad design.
 	Derive_b = b
 }
 \end{lstlisting}
 \begin{description}
-	\item[Line 2:] it will call base\_class default constructor. in this case, base\_a is not assigned at all.
-	\item[Line 9:] You can't  access private base member data. base\_a need to be public member data,
+	\item[Line 1:] it will call base\_class default constructor. in this case, base\_a is not assigned at all.
+	\item[Line 6:] You can't  access private base member data. base\_a need to be public member data,
 \end{description}
 	\item Idea behind rules: Do best to make sure a obj can be built.	
 \end{itemize}
-
 
 
 \subsubsection{destructor}
 \begin{itemize}
 	\item For destructor:
 	\begin{enumerate}
-		\item If a base class has a destuctor, but sub class doesn't have,  compiler will produce an implicit default destructor, and this implicit default destructor will call base class destuctor.
+		\item If a base class has a destuctor, but sub class doesn't have,  compiler will produce an implicit default destructor, and this implicit default destructor will call base class destructor.
 		
 		\item If you define a subclass destructor, It will call base destructor automatically, you don't need to call it explicitly.
 		
 		\item The question is, How can you make sure you sub class destructor will be called if you use a base class pointer or reference, answer is below:
 	\end{enumerate}
 	
-	\item Don't call base desctructor explicitly, It will called automatically in the reverse order of construction.  And you should give a base desctructor a definition, Or linker will report error it even you don't call it in your source code.
+	\item Don't call base destructor explicitly, It will called automatically in the reverse order of construction.  And you should give a base destructor a definition, Or linker will report error it even you don't call it in your source code.
 	
-	\item Make base class destructor public and virtual (polymorphic deletion by base class pointer or reference), or protect and nonvirtual, base classes need not always allow polymorphic deletion. For example, consider class templates such as std::unary\_function. This time, you should make destructor protected and nonvirtual.
+	\item Make base class destructor public and virtual (polymorphic deletion by base class pointer or reference), or protect and non-virtual, base classes need not always allow polymorphic deletion. For example, consider class templates such as std::unary\_function. This time, you should make destructor protected and non-virtual.
 \begin{lstlisting}[numbers=none]
 template <class Arg, class Result>
 struct unary_function{
@@ -8423,25 +8448,26 @@ struct unary_function{
 	typedef Result result_type;
 };
 	
-Illegal code that you can assume will never exist.
 void f( std::unary_function* f ){
 	delete f; // error, illegal
 }
 \end{lstlisting}
+\begin{description}
+	\item[Line 8:] Make destructor protected and non-virtual, then this line will compile with failure, it's good design. 
+\end{description}
 	
 	\item If base class still need to build itself, You can change it back public virtual,  Even without polymorphic deletion by now, you still need to declare it as virtual for the future safety(Even with a little dynamic-binding efficiency penalty. ) At same time, If a base class is not abstract class, usually, it's BAD design.
 	
-	\item Never throw exception from dtor, if exception A is thrown, then stack-unwindling, when a obj is destructed, then dtor is called, when another exception B is thrown by the dtor, application will call terminat function immediately.  If you have exception, catch it inside of the dtor.
+	\item Never throw exception from dtor, if exception A is thrown, then stack-unwindling, when a obj is destructed, then dtor is called, when another exception B is thrown by the dtor, application will call terminate function immediately.  If you have exception, catch it inside of the dtor.
 	
 \end{itemize}
-
 
 
 
 \subsubsection{copy ctor in inheritance}
 
 \begin{itemize}
-	\item copy ctor(assignment ctor) in inheritance will cause slicing problem.  and slicing. Below four are all SLICING.  number 5 and number 4 is not very obvious. They are call base class ctor.  No matter what you input a reference to a derived class or not.
+	\item copy ctor(assignment ctor) in inheritance will cause slicing problem.  and slicing. Below four are all SLICING.  number 4 and number 5 is not very obvious. They are call base class ctor.  No matter what you input a reference to a derived class or not.
 \begin{lstlisting}[numbers=none]
 class Base{};
 class Derived1 : Base{};
@@ -8521,9 +8547,9 @@ Base* p = Bref.Clone();
 	
 	\item \textbf{Assignment operator and copy ctor in inheritance summary:}
 	\begin{enumerate}
-		\item \textbf{Default Assignment  operator and  copy constructor in derived class which are implicitly produced by compiler will call default base assignment  operator and  copy constructor.}
+		\item Default Assignment  operator and  copy constructor in derived class which are implicitly produced by compiler will call default base assignment operator and  copy constructor.
 		
-		\item \textbf{If derived class has no new operation. Don't need to define derived class Assignment  operator and  copy constructor, implicit one will call base one automatically}
+		\item If derived class has no new operation. Don't need to define derived class Assignment  operator and  copy constructor, implicit one will call base one automatically.
 		
 		\item \textbf{If derived class has new operation. You have to define derived class Assignment  operator and  copy constructor, it will not invoke assignment  operator and  copy constructor in base class any more.  Inside, manually invoke base class Assignment operator and copy ctor } Detail can be found in C++ primer p760. Syntax looks like below: see effective C++ Item 16.
 		
@@ -8535,13 +8561,12 @@ DerivedClass::DerivedClass(const DerivedClass &dc): \
 		
 DerivedClass & DerivedClass::operator=(const DerivedClass &dc){
 		BaseClass::operator=(dc);
-		// base class declare explicitly operator
-		
 		( (BaseClass&) *this ) = dc
 }
 	\end{lstlisting}
 \begin{description}
-	\item[Line 8:] base class no explicitly operator, change *this to BaseClass reference, if you change to BaseClass, It will call copy ctor.
+	\item[Line 5:] If base class declare explicitly operator, we can call it explicitly.
+	\item[Line 6:] base class no explicitly operator, change *this to BaseClass reference, if you change to BaseClass, It will call copy ctor.
 \end{description}
 		
 	\end{enumerate}
@@ -9132,6 +9157,17 @@ public:
 \item There are some advantages. use interface will separate client and implement, make addition and modification implement easier. (But it need good design at the beginning). If you inherit from concrete base class, It will cause Slicing problem, Detail can be seen in "ctor in inheritance" section.
 
 \item NVI is making virtual functions nonpublic, and public function nonvirtual. This is similar with Template Method design pattern.  
+
+\item NVI rules:
+\begin{enumerate}
+	\item Prefer to make interfaces nonvirtual, using Template Method.
+	
+	\item Prefer to make virtual functions private.
+	
+	\item Only if derived classes need to invoke the base implementation of a virtual function, make the virtual function protected. For the special case of the destructor only:
+	
+	\item A base class destructor should be either public and virtual, or protected and nonvirtual.
+\end{enumerate}
 
 \item About NVI, more detail can be found in "C++ coding standards Item 39" and "Virtuality herb sutter"
 
