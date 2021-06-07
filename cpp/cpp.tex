@@ -919,6 +919,114 @@ int b = static_cast<int>(f);  //explicit C++ style
 \end{itemize}
 
 
+\section{complex declaration}
+
+\begin{itemize}	
+	\item pointer to pointer
+\begin{lstlisting}
+int** p = new int* [2];
+p[0] = new int[2];
+p[1] = new int[3];
+p[0][1] = 0;
+p[1][2] = 3;
+
+int* &rp = p[0];
+
+delete [] p[0];
+delete [] p[1];
+delete [] p;
+
+\end{lstlisting}
+\begin{description}
+	\item[line 1] pointer to pointer is used mostly in ragged array, array of list. 
+	\item[Source code] If you want to modify pointer parameter, you can use int* \&p; 
+	\item[Source code] char** p has null character in the end, int** usually need size or informaiton to tell where the last element is.
+\end{description}	
+	
+	\item pointer to array
+\begin{lstlisting}
+int a [2] = {1, 3};
+int b [3] = {1, 2, 3};
+
+int (*p)[] ;
+p = &b;
+//p = &a is OK, (*p)[1] is ok, but ++p error
+
+int (*p)[3] ;
+p = &b;
+//p = &a is error, (*p)[1] is ok, but ++p is OK.
+
+//C/C++ both support int(*p)[] and int(*p)[3]
+\end{lstlisting}
+\begin{description}
+	\item[line 4] When you declare pointer to array, you can omit the dimension.but can you can not increment it.
+\end{description}
+
+\item pointer to function
+\begin{lstlisting}
+int (*foo_ptr)( int )
+
+typedef int (*FOO_PTR_T)( int );
+FOO_PTR_T foo_ptr;
+
+struct Block{
+	int i;
+	int j;
+} bb;  //define varaible, bb is varaible.
+
+typedef struct Block{
+	int i;
+	int j;
+} bb;  //define type, bb is type 
+
+\end{lstlisting}
+\begin{description}
+	\item[3] When you use typedef, the basic sytax is the same, but the identifier has become a type, not varaible.Usually, we use capital letter to denote that it's a type.
+\end{description}
+
+\item A array of pointer to function
+\begin{lstlisting}
+int (*foo_ptr_array[2])( int )
+
+//A better way is
+typedef int (*foo_ptr_t)( int );
+foo_ptr_t foo_ptr_array[2];
+\end{lstlisting}
+\begin{description}
+	\item[1] The first step, get the variable name, look right, found that it's array. what types are in the array?
+	\item[2] Then look left, found that pointer, then that is an array pointer.
+	\item[3] Then look right, found that this is parentheses, that is function. so pointer to function, what type of function?
+	\item[4] then look left, paramter is int, and return type is int too.
+\end{description}
+
+
+\item pointer to function which return complex type
+\begin{lstlisting}
+int * (* (*fp1) (int) ) [10];
+
+//Start from the variable name -------------------------- fp1
+//Nothing to right but ) so go left to find * -------------- is a pointer
+//Jump out of parentheses and encounter (int) --------- to a function that takes an int as argument
+//Go left, find * ---------------------------------------- and returns a pointer
+//Jump put of parentheses, go right and hit [10] -------- to an array of 10
+//Go left find * ----------------------------------------- pointers to
+//Go left again, find int -------------------------------- ints.
+\end{lstlisting}
+\begin{description}
+	\item[1] This is a function pointer
+	\item[2] The function return a pointer 
+	\item[3] The pointer point to an array. 
+	\item[4] The array's element type is int *; 
+\end{description}
+
+	\item Any complex declaration is either a pointer to array or a pointer to a function.  
+	
+	\item a good reference is here: How to interpret complex C/C++ declarations
+	 
+
+
+
+\end{itemize}
 
 \section{type}
 
@@ -2432,6 +2540,45 @@ int* operator+( T , unsigned ) {/* do something */}
 \end{lstlisting}
 \end{itemize}
 
+\section{implicit conversions}
+\begin{itemize}
+	\item Implicit conversions are performed whenever an expression of some type T1 is used in context that does not accept that type, but accepts some other type T2; in particular:
+	\begin{enumerate}
+		\item when the expression is used as the argument when calling a function that is declared with T2 as parameter;
+		\item when the expression is used as an operand with an operator that expects T2;
+		\item when initializing a new object of type T2, including return statement in a function returning T2;
+		\item when the expression is used in a switch statement (T2 is integral type);
+		\item when the expression is used in an if statement or a loop (T2 is bool).
+	\end{enumerate}
+
+	\item Implicit conversion sequence consists of the following, in this order:
+	\begin{enumerate}
+		\item zero or one standard conversion sequence;
+		\item zero or one user-defined conversion;
+		\item zero or one standard conversion sequence.
+	\end{enumerate}
+	\item user-defined conversion is A user-defined conversion consists of zero or one non-explicit single-argument converting constructor or non-explicit conversion function call
+	
+	\item An example and explanation.
+\begin{lstlisting}[]
+template<typename T>
+void functest(T a){
+	++a;
+}
+int main(){
+	int a = 1;
+	functest(a);
+	cout<< a<<endl;   // a is still 1
+	functest(ref(a));
+	cout<< a<<endl;  // a is 2 now. 
+	
+}
+\end{lstlisting}
+\begin{description}
+	\item[9] ref(a) return a reference\_wrapper type object. so in line 3, ++a is ++reference\_wrapper. Right now a(type is reference\_wrapper) is used in context "used as an operand with an operator that expects T2", so compiler can perform implicit conversion. Then it looks for "zero or one non-explicit single-argument converting constructor or non-explicit conversion function call", In the reference\_wrapper, we define \texttt{operator T\& () const}, so it changes it to int, then int\& support ++. That is the whole idea. 
+\end{description}	
+
+\end{itemize}
 
 \section{operator overload}
 \begin{itemize}
@@ -13035,9 +13182,9 @@ fvc.reserve(50);
 \item \textbf{Anytime you want to write new [..] just for allocate dynamic array, using a vector or string instead, and using reserve() to allocate enough space.}
 
 
-\item Copy in and copy out can cause efficient problem. Furthermore, when you inserting a derived class object into a container of base class objects is always error(slicing error). In order to fight this problem, you can use container of pointer. But it will cause resource leaking problem if you forget or an exception is thrown. So a better choice is use smart pointer. But don't use \texttt{auto\_ptr} in any container, It's prohibited in c++, and produce a compiler error, see effective stl item 8.
+\item Copy in and copy out can cause efficient problem. Furthermore, when you inserting a derived class object into a container of base class objects is always error (slicing error). In order to fight this problem, you can use container of pointer. But it will cause resource leaking problem if you forget or an exception is thrown. So a better choice is use smart pointer. But don't use \texttt{auto\_ptr} in any container, It's prohibited in c++, and produce a compiler error, see effective stl item 8.
 
-\item All container is not thread-safe. It's your duty to make thread-safe, and thread-safe is OS depended. Detail can be seen effective STL item 12.
+\item All container is not thread-safe. It's your duty to make it thread-safe, and thread-safe is OS depended. Detail can be seen effective STL item 12.
 \begin{lstlisting}[numbers=none]
 getMutexFor(v);
 // do something on v.
@@ -13074,9 +13221,9 @@ for(auto & e : con){
 
 \item STL container: sequence container, associative container and container adapter:
 \begin{enumerate}
-\item sequence: vector, list, forward\_list, string,  deque
-\item associative: map , multiset , set, multimap and unordered\_map.
-\item adapter: stack, queue and priority\_queue.
+\item sequence: \texttt{vector, list, forward\_list, string,  deque}
+\item associative: \texttt{map , multiset , set, multimap, unordered\_map unordered\_set}
+\item adapter: \texttt{stack, queue and priority\_queue}.
 \end{enumerate}
 
 \begin{figure}[ht]
@@ -13098,19 +13245,17 @@ bool result = alice > bob;
 bool result = alice < bob;
 \end{lstlisting}	
 
-\item  If you can find same name member functions in container, prefer to use member function than generic algorithm. Such as \texttt{sort, merge, remove, reverse, unique} in list, and \texttt{find, count, low\_bound} in set and map. 
-
 
 \item all container support \texttt{empty()}, \texttt{size()}, \texttt{max\_size()}, and \texttt{swap()}. \texttt{max\_size() }is just theoretic value. (4  functions)
 
-\item First class container includes \texttt{begin()}, \texttt{end()}, \texttt{rbegin()}, \texttt{rend()}. \texttt{insert()} and \texttt{erase()}. (6 functions)
+\item First class container includes \texttt{begin()}, \texttt{end()}, \texttt{rbegin()}, \texttt{rend()}. \texttt{insert()} and \texttt{erase()}. (6 functions) \textbf{There is no these six functions in adaptor and insert and erase are in very high level.}
 
 \item sequence container support \texttt{pop\_back()}, \texttt{push\_back()},\texttt{front()} and \texttt{back()} (4 functions)
  while associative don't.
  
 \item vector supports \texttt{operator[]}, list support \texttt{push\_front} and \texttt{pop\_front}. and deque support both. (3 function.)  By now deque support (4+6+4+3 = 17 functons)\textbf{container(4)--> first container(6)-->sequence container(4)-->deque(3)}
 
-\item \textbf{Associate container doesn't support \texttt{push\_back} and \texttt{pop\_back}, we can only use \texttt{insert} and \texttt{erase} to add or delete element.} Although we can't \texttt{push\_back}, but we can use \texttt{begin} and \texttt{end} on assocaite container.
+\item \textbf{Associate container doesn't support \texttt{push\_back} and \texttt{pop\_back}, we can only use \texttt{insert} and \texttt{erase} to add or delete element.} Although we can't \texttt{push\_back}, but we can use \texttt{begin} and \texttt{end} on assocaite container to get iterator.
 
 \item vector supports \texttt{reserve()}, list has \texttt{reverse()}(\textbf{not reserve}) and \texttt{splice()}.  deque supports nothing.
 
@@ -13119,13 +13264,14 @@ bool result = alice < bob;
 \item All first class container support \texttt{begin()} and \texttt{end()}. Only sequence containers support \texttt{push\_front()} or \texttt{push\_back()}. \textbf{begin is not equal front, begin can be used for all first class container, but front only be used for sequence container.}
 
 \begin{enumerate}
-\item \texttt{begin()} and \texttt{end()} return iterator, and all first container support them.
+\item \texttt{begin()} and \texttt{end()} return iterator, and all first container support them, beside adaptor.
 
-\item \texttt{front()} and \texttt{back()} return reference, and all sequenced container support them.
+\item \texttt{front()} and \texttt{back()} return reference, and all sequenced container support them, \textbf{not associative container.}
 
 \item \texttt{push\_front()} and \texttt{push\_back()} add element, and vector only support \texttt{push\_back()}. deque and list support both.
 \end{enumerate}
 
+\item  If you can find same name member functions in container, prefer to use member function than generic algorithm. Such as \texttt{sort, merge, remove, reverse, unique} in \texttt{list}, and \texttt{find, count, low\_bound} in \texttt{set} and \texttt{map}. 
 
 \item Associative containers support their own \texttt{find()}, \texttt{count()},  \texttt{lower\_bound()}, \texttt{upper\_bound()} , \texttt{equal\_range()}. They share the same name with generic algorithm, Don't confuse them. When you deal with associative container, just use container member function, don't use generic algorithm. \textbf{Associative offer log-time lower\_bound, upper\_bound and equal\_range, but generic algorithm just linear time.}
 
@@ -13157,21 +13303,6 @@ bool result = alice < bob;
 
 \item Using a vector for small list is almost always superior to using list. Even though insertion in the middle of the sequence is a linear-time operation for vector and a constant-time operation for list. Vector usually outperforms list because of its better constant factor. \textbf{list's Big-Oh advantage doesn't kick in until data sizes get larger}
 
-\item Store only values and smart pointers(\texttt{unique\_ptr} or \texttt{shared\_ptr}) in container.
-
-\begin{enumerate}
-\item To contain objects even though they are
-not copyable or otherwise not value-like (e.g., DatabaseLocks and
-TcpConnections), prefer containing them indirectly via smart pointers. Such as
-\texttt{container<shared\_ptr<DatabaseLock > >} and \\
-\texttt{container<shared\_ptr<TcpConnection> >}.
-
-\item Optional values. When you want a\texttt{ map<Thing, Widget>}, but some
-Things have no associated Widget, prefer \texttt{map<Thing, shared\_ptr<Widget> >}.
-\item Index containers. To have a main container hold the objects and access them using different sort orders without resorting the main container, you can set up secondary containers that "point into" the main one and sort the secondary containers in different ways using dereferenced compare predicates. But prefer a container of MainContainer::iterators (which are value-like) instead of a container of pointers.
-
-\item To have a container store and own objects of different but related types, such as types derived from a common Base class, prefer \texttt{container< shared\_ptr<Base> >}. An alternative is to store proxy objects whose nonvirtual functions pass through to corresponding virtual functions of the actual object.
-\end{enumerate}
 
 \end{enumerate}
 
@@ -13194,7 +13325,7 @@ Things have no associated Widget, prefer \texttt{map<Thing, shared\_ptr<Widget> 
 
 \item \textbf{All the node-base containers only support bidirectional iterators. }
 
-\item \textbf{All the node-base containers don't have reserve() function and need NOT to worry allocation problem. \texttt{deque} doesn't have \texttt{reserve()} function either }
+\item \textbf{All the node-base containers don't have reserve() function and need NOT to worry reallocation problem. \texttt{deque} doesn't have \texttt{reserve()} function either }
 \end{enumerate}
 
 \item About the iterator invalidation problem,  First, you need to know the invalidation rules below: 
@@ -13267,6 +13398,64 @@ no \texttt{swap()} function invalidates any references, pointers, or iterators r
 \end{itemize}
 
 \subsection{Container Practical Usage}
+
+\subsubsection{Sizes and Capacity}
+\begin{itemize}
+	\item For container, Call \texttt{empty()} instead of of checking \texttt{size()} against zero. it's very easy to understand it.
+	
+	\item for vector, \texttt{size()}, \texttt{capacity()} and \texttt{max\_size()} can be seen below: capacity is equal or bigger than size. So if you want to avoid allocate the unnecessary space.  LLVM give a \texttt{SmallVecotr<type, N>} example, you can use \texttt{N} to specify a smaller vector to avoid waste.
+\begin{lstlisting}[frame=single, language=c++]
+	std::vector<int> myvector;
+	for (int i=0; i<100; i++) myvector.push_back(i);
+	
+	std::cout << (int) myvector.size() << '\n'; // 100
+	std::cout  << (int) myvector.capacity() << '\n';//128
+	std::cout << (int) myvector.max_size() << '\n';//1073741823
+\end{lstlisting}	
+	
+	
+	\item Four confused conceptions:
+\begin{lstlisting}[frame=single, language=c++]
+	capacity() //how many CAN hold
+	size()   //how many are in NOW
+	resize(n) //initial or fill with default constructor.
+	
+	reserve(n) //cause the container's capacity() to at lease n.
+\end{lstlisting}	
+	\begin{description}
+		\item[Line 3:] \texttt{resize()} forces the container to change to n, if n is less than size(),  object in the end will be lost. if n is greater than size(),  default constructor of element will be called. after resize(n), size will return n. but resize don't change capacity. Pay attention to here. resize will call default ctor, so maybe there is performance issue here. 
+	\end{description}
+	
+	\item You want to avoid allocation, 1), if you know the number, then use \texttt{reserve}, 2) if you don't know the number, you can reserve maximum space, then you can trim off any excess capacity.  you can use \texttt{shrink\_to\_fit()} function too. 
+\begin{lstlisting}[frame=single, language=c++]
+	vector<class> v1;
+	v1.reserve(1000); v1.size(); // only 5
+	
+	vector<class>(v1).swap(v1);
+	
+	string(s).swap(s) // the same idea behind.
+\end{lstlisting}
+	\begin{description}
+		\item[Line 4:] \texttt{vector<class>(v1)} copy ctor create a temp vector. temp just copy real object, so it's capacity (maybe 8)is small. temp.swap(v1) then temp has 1000 space,  v1 capacity is 8 now. in the end of statement, temp is destroyed.
+	\end{description}
+	
+	\item \texttt{clear} only change size to 0, but will not change capacity
+
+	\item \texttt{resize} and \texttt{reserve} difference.
+\begin{lstlisting}[frame=single, language=c++]
+	vector<Foo> vcFoo;
+	vcFoo.reserve(10); //just allocate space, don't build object.
+	vcFoo.resize(10);  // beside alloate space, also build object.
+	vcFoo[2] = foo; 
+\end{lstlisting}	
+	\begin{description}
+		\item[Line 3:] will call Foo constructor 10 times.
+		\item[Line 4:] will call Foo constructor and assignment 1 times. if we don't call \texttt{resize()} before, \texttt{vcFoo[2] = foo} will fail.
+	\end{description}
+	
+\end{itemize}
+
+
 \subsubsection{Search in Container}
 \begin{itemize}
 \item Distinguish among \texttt{count}, \texttt{find}, \texttt{binary\_search}, \texttt{lower\_bound}, \texttt{upper\_bound}, and \texttt{equal\_range}.
@@ -13276,11 +13465,11 @@ no \texttt{swap()} function invalidates any references, pointers, or iterators r
 \end{center}
 
 \begin{enumerate}
-\item \textbf{For unsorted range, just generic find() or find\_if() algorithm or  count. return last if no find element.}
+\item \textbf{For unsorted range, just generic find() or find\_if() algorithm or count. return end() iterator if no find element.}
 
 \item \textbf{For sorted range, Only four algorithms: binary\_search, lower\_bound, upper\_bound, and equal\_range. are used on a sorted range.}
 
-\item \textbf{For set or map, It has own version, find(),count() and lower\_bound, upper\_bound, and equal\_range}
+\item \textbf{For set or map, It has own version, find(), count() and lower\_bound, upper\_bound, and equal\_range}
 
 \item Don't use generic \texttt{find()} algorithm on a sorted range,  use \texttt{binary\_search()}. binary\_search just return bool, not position.
 
@@ -13373,14 +13562,63 @@ container::assign(inputIterator1, inputIterator2);
 
 \end{itemize}
 
-\subsubsection{Erasure}
+\subsubsection{Insert and Erasure}
 \begin{itemize}
+\item Both associate and sequence container support insert and erase. They are very common interface for STL container. For sequence container, they are not important API because we usually use push and pop. But for associate container, they are very import API to modify associate container. 
+
+\item For a associate container, \textbf{before insert, you don't need use find.} insert has three versions:
+\begin{lstlisting}[numbers=none]
+std::pair<iterator, bool> insert( P& value ); 
+iterator insert( iterator hint, const value_type& value );
+void insert( InputIt first, InputIt last );
+\end{lstlisting}
+\begin{description}
+	\item[Line 1:] insert value directly, it will return a pair, the second is bool to denote if we inserted.
+	\item[Line 2:] insert value with hint iterator, return succeed one or existed one iterator. does not return a boolean in order to be signature-compatible with positional insert on sequential containers, such as std::vector::insert. This makes it possible to create generic inserters such as std::inserter. One way to check success of a hinted insert is to compare size() before and after.
+	\item[Line 3:] insert range.
+\end{description}
+
+\item Because we want to use std::inserter, so all insert member function in all sequence container and associate conatainer has the same API format. Adaptor container doesn't support insert at all. 
+\begin{lstlisting}[numbers=none]
+std::multiset<int> s {1, 2, 3};
+std::fill_n(std::inserter(s, s.end()), 5, 2);	
+
+std::vector<int> d {100, 200, 300};
+std::vector<int> v {1, 2, 3, 4, 5};
+std::copy(d.begin(), d.end(), std::inserter(v, std::next(v.begin())));
+//output 1 100 200 300 2 3 4 5
+\end{lstlisting}
+
+\item About insert point:
+\begin{enumerate}
+	\item \texttt{lower\_bound} always return a iterator, which point to the element which equal or greater than the value? why, because you can use this iterator with insert function directly.
+	
+	\item \texttt{insert()} member function in a container inserts a value before the iterator. 
+	
+	\item For \texttt{std::forward\_list()}, insert member funciton will be low efficiency, that is why it provides \texttt{insert\_after()} function.
+\end{enumerate}
+
+
+\item For a associate container, \textbf{before erase, you don't need use find.} erase has three versions:
+\begin{lstlisting}[numbers=none]
+size_t erase( P& value ); 
+iterator erase ( iterator pos );
+void erase( InputIt first, InputIt last );
+\end{lstlisting}
+\begin{description}
+	\item[Line 1:] return number of you have deleted.
+	\item[Line 2:] return the next iterator. Why? because it supports using erase in a loop, demonstrated below.
+	\item[Line 3:] erase range.
+\end{description}
+
+
+
 
 \item Generally speaking, you should not delete the items from the list while iterating through it, because the deletion may invalidate the iterator (and the program will possibly crash). If you are however completely sure that the items which you delete are not the values referenced by any of the iterators which you use at the moment of deletion, you may delete.
 
 \item Beware that for the other STL containers (e.g. \texttt{vectors}) the constraint is even more strict: deleting from the container invalidates not only iterators pointing to the deleted item, but possibly other iterators, too! So deleting from that containers while iterating through them is even more problematic.
 
-\item  To do something inside the loop (in addition to erasing objects);  You can't use \texttt{remove}, just write a loop,
+\item To do something inside the loop (in addition to erasing objects);  You can't use \texttt{remove}, just write a loop,
 \begin{lstlisting}[numbers=none]
 bool badValue(int x);
 for(vect<int>::iterator i = vect.begin();i!=vect.end(); ){
@@ -13427,7 +13665,6 @@ for(auto i = map.begin();i!=map.end(); /* no ++i here*/) {
 	else  ++i;
 }
 \end{lstlisting}
-
 
 
 \end{itemize}
@@ -13497,72 +13734,29 @@ int find_it(std::string value, Record_t const& stuff){
 \end{itemize}
 
 
-\subsubsection{Sizes and Capacity}
+
+\subsubsection{Other Usage Tips}
 \begin{itemize}
-\item For container, Call \texttt{empty()} instead of of checking \texttt{size()} against zero. it's very easy to understand it.
+	
+	
+\item multiset and multimap are defined in set and map head files.
 
-\item for vector, \texttt{size()}, \texttt{capacity()} and \texttt{max\_size()} can be seen below: capacity is equal or bigger than size. So if you want to avoid allocate the unnecessary space.  LLVM give a \texttt{SmallVecotr<type, N>} example, you can use \texttt{N} to specify a smaller vector to avoid waste.
-\begin{lstlisting}[frame=single, language=c++]
-std::vector<int> myvector;
-for (int i=0; i<100; i++) myvector.push_back(i);
+\item Store only values and smart pointers(\texttt{unique\_ptr} or \texttt{shared\_ptr}) in container.
 
-std::cout << (int) myvector.size() << '\n'; // 100
-std::cout  << (int) myvector.capacity() << '\n';//128
-std::cout << (int) myvector.max_size() << '\n';//1073741823
-\end{lstlisting}
-
-
-\item Four confused conceptions:
-\begin{lstlisting}[frame=single, language=c++]
-capacity() //how many CAN hold
-size()   //how many are in NOW
-resize(n) 
-
-reserve(n) //cause the container's capacity() to at lease n.
-\end{lstlisting}
-\begin{description}
-	\item[Line 3:] \texttt{resize()} forces the container to change to n, if n is less than size(),  object in the end will be lost. if n is greater than size(),  default constructor of element will be called. after resize(n), size will return n. but resize don't change capacity
-\end{description}
-
-\item You want to avoid allocation, 1), if you know the number, then use \texttt{reserve}, 2) if you don't know the number, you can reserve maximum space, then you can trim off any excess capacity.  you can use \texttt{shrink\_to\_fit()} function too. 
-\begin{lstlisting}[frame=single, language=c++]
-vector<class> v1;
-v1.reserve(1000); v1.size(); // only 5
-
-vector<class>(v1).swap(v1);
-
-string(s).swap(s) // the same idea behind.
-\end{lstlisting}
-\begin{description}
-	\item[Line 4:] \texttt{vector<class>(v1)} copy ctor create a temp vector. temp just copy real object, so it's capacity (maybe 8)is small. temp.swap(v1) then temp has 1000 space,  v1 capacity is 8 now. in the end of statement, temp is destroyed.
-\end{description}
-
-\item \texttt{clear} only change size to 0, but will not change capacity
-\begin{lstlisting}[numbers=none]
-std::vector<int> v
-for(){ ...
- v.clear
-}  //good smell.
-
-for(){vector<int> v ...} //bad smell
-\end{lstlisting}
-\item \texttt{resize} and \texttt{reserve} difference.
-\begin{lstlisting}[frame=single, language=c++]
-vector<Foo> vcFoo;
-vcFoo.reserve(10); //just allocate space, don't build object.
-vcFoo.resize(10);  // beside alloate space, also build object.
-vcFoo[2] = foo; 
-\end{lstlisting}
-\begin{description}
-	\item[Line 3:] will call Foo constructor 10 times.
-	\item[Line 4:] will call Foo constructor and assignment 1 times. if we don't call \texttt{resize()} before, \texttt{vcFoo[2] = foo} will fail.
-\end{description}
+\begin{enumerate}
+	\item To contain objects even though they are not copyable or otherwise not value-like (e.g., DatabaseLocks and
+	TcpConnections), prefer containing them indirectly via smart pointers. Such as
+	\texttt{container<shared\_ptr<DatabaseLock > >} and \\
+	\texttt{container<shared\_ptr<TcpConnection> >}.
+	
+	\item Optional values. When you want a\texttt{ map<Thing, Widget>}, but some Things have no associated Widget, prefer \texttt{map<Thing, shared\_ptr<Widget> >}.
+	
+	\item Index containers. To have a main container hold the objects and access them using different sort orders without resorting the main container, you can set up secondary containers that "point into" the main one and sort the secondary containers in different ways using dereferenced compare predicates. But prefer a container of MainContainer::iterators (which are value-like) instead of a container of pointers.
+	
+	\item To have a container store and own objects of different but related types, such as types derived from a common Base class, prefer \texttt{container< shared\_ptr<Base> >}. An alternative is to store proxy objects whose nonvirtual functions pass through to corresponding virtual functions of the actual object.
+\end{enumerate}
 
 
-\end{itemize}
-
-\subsubsection{Usage Tips}
-\begin{itemize}
 
 \item \textbf{When you use STL Container, you should realize that typedef are your best friends.}
 \begin{lstlisting}[numbers=none]
@@ -13640,14 +13834,6 @@ struct stringLess: binary_fucntion<const string* ,const string * , bool>{
 
   \end{enumerate}
 
-\item About insert point:
-\begin{enumerate}
-\item \texttt{lower\_bound} always return a iterator, which point to the element which equal or greater than the value? why, because you can use this iterator with insert function directly.
-
-\item \texttt{insert()} member function in a container inserts a value before the iterator. 
-
-\item For slist(std::forward\_list()), insert member funciton will be low efficiency, that is why \texttt{slist} provide \texttt{insert\_afteJ()}r function.
-\end{enumerate}
 
 
 \end{itemize}
@@ -14808,6 +14994,7 @@ sort\_heap(r,r,bpred)   } & Sort a heap.  &  \\
 \subsubsection{Mutating Algorithms}
 \begin{itemize}
 	\item Some common used mutating algorithms.
+	\item remove just keep good one, partition put good one in front, bad one in back. nth\_element is strong version of partition.
 	\begin{center}
 		\includegraphics[width=0.85\linewidth]{pics/stl2.png}
 	\end{center}
@@ -15889,6 +16076,10 @@ fun(int* pi, int j){
 \end{itemize}
 
 
+
+
+
+
 \chapter{I/O}
 \section{I/O basic}
 \subsection{I/O basic knowledge}
@@ -16494,7 +16685,8 @@ const Function *getFunction() const;
 \begin{itemize}
 	
 	\item Pointer and reference symbol is near to data type, not near to a variable name.
-	
+
+
 	
 	\item Declare variables as locally as possible and minimize usage of global variables.
 	
@@ -16678,6 +16870,831 @@ while(*p++ != '\0')
 	\item Detail can be seen in "More Effective C++". Usually, implementation will be  more complex with lazy evaluation.
 \end{itemize}
 
+
+\section{code snippet}
+\subsection{bit}
+\begin{itemize}
+	\item change the last 1 to zeor
+\begin{lstlisting}[frame=single, language=c++]	
+n&(n-1);
+//110100-> 110000
+\end{lstlisting}
+
+	\item is it power of 2. There is only one 1 in the binary formation.
+\begin{lstlisting}[frame=single, language=c++]	
+	bool isPowerOfTwo(int n) {
+		if (n <= 0) return false;
+		return (n & (n - 1)) == 0;
+	}
+\end{lstlisting}
+
+
+	\item Hamming weight
+\begin{lstlisting}[frame=single, language=c++]	
+int hammingWeight(uint32_t n) {
+	int res = 0;
+	while (n != 0) {
+		n = n & (n - 1);
+		res++;
+	}
+	return res;
+}
+\end{lstlisting}
+\begin{description}
+	\item[line 4] if you want to change n, you need to assign new value back to n. 
+\end{description}
+
+	
+	\item single number. When use exclusive or, the pair number will become zero.
+\begin{lstlisting}[frame=single, language=c++]	
+int singleNumber(vector<int>& nums) {
+	int res = 0;
+	for (int n : nums) {
+		res ^= n;
+	}
+	return res;
+}
+//a^a = 0;   a^0 = a;
+\end{lstlisting}
+
+	\item change number to bit
+\begin{lstlisting}[frame=single, language=c++]	
+	int temp = i;
+	int base = 10;
+	while (temp) {
+		int b = temp % base;
+		temp = temp / base;
+		cout << b << endl;
+	}
+\end{lstlisting}	
+\begin{description}
+	\item[Line 2] can use different base, 10 or 2;	
+\end{description}	
+	
+	\item change bit to num
+\begin{lstlisting}[frame=single, language=c++]	
+	int i = 1001011;
+	string str = to_string(i);
+	
+	int base = 1;
+	int result = accumulate(rbegin(str), rend(str), 0, [&](int result, char a) {
+		if (a == '1')
+		result += base;
+		base = base << 1;
+		return result;
+	});
+\end{lstlisting}	
+\begin{description}
+	\item[Line 5] accumulate can be used in "folding" way, not "accumulatint" way. 
+	
+\end{description}	
+	
+	
+\end{itemize}
+
+\subsection{partition and rotate}
+\begin{itemize}
+		\item partition 1
+\begin{lstlisting}[frame=single, language=c++]	
+int partition(int nums[], int lo, int hi) {
+	if (lo == hi) return lo;
+	// 将 nums[lo] 作为默认分界点 pivot
+	int pivot = nums[lo];
+	// j = hi + 1 因为 while 中会先执行 --
+	int i = lo, j = hi + 1;
+	while (true) {
+		// 保证 nums[lo..i] 都小于 pivot
+		while (nums[++i] < pivot) {
+			if (i == hi) break;
+		}
+		// 保证 nums[j..hi] 都大于 pivot
+		while (nums[--j] > pivot) {
+			if (j == lo) break;
+		}
+		if (i >= j) break;
+		// 如果走到这里，一定有：
+		// nums[i] > pivot && nums[j] < pivot
+		// 所以需要交换 nums[i] 和 nums[j]，
+		// 保证 nums[lo..i] < pivot < nums[j..hi]
+		swap(nums, i, j);
+	}
+	// 将 pivot 值交换到正确的位置
+	swap(nums, j, lo);
+	// 现在 nums[lo..j-1] < nums[j] < nums[j+1..hi]
+	return j;
+}
+\end{lstlisting}
+
+		\item partition 2
+\begin{lstlisting}[frame=single, language=c++]	
+auto pivot = *next(first, distance(first, end1) / 2);
+cout << pivot << endl;
+auto m1 = partition(first, end1, [pivot](const auto& em) { return em < pivot; });
+auto m2 = std::partition(m1, end1,
+[pivot](const auto& em) { return !(pivot < em); });	
+
+return m2;
+\end{lstlisting}
+
+
+	\item Kth element. 
+\begin{lstlisting}[frame=single, language=c++]	
+int findKthLargest(int[] nums, int k) {
+	int lo = 0, hi = nums.length - 1;
+	// 索引转化
+	k = nums.length - k;
+	while (lo <= hi) {
+		// 在 nums[lo..hi] 中选一个分界点
+		int p = partition(nums, lo, hi);
+		if (p < k) {
+			// 第 k 大的元素在 nums[p+1..hi] 中
+			lo = p + 1;
+		} else if (p > k) {
+			// 第 k 大的元素在 nums[lo..p-1] 中
+			hi = p - 1;
+		} else {
+			// 找到第 k 大元素
+			return nums[p];
+		}
+	}
+	return -1;
+}
+\end{lstlisting}	
+
+	\item pay attention to difference between nth\_element, partition and remove. \textbf{we can build quick\_sort from nth\_element and build quick_select(kth element) from partition.} 
+
+
+	\item quick sort
+\begin{lstlisting}[frame=single, language=c++]	
+template<class FwdIt, class Compare = std::less<>>
+void quickSort(FwdIt first, FwdIt last, Compare cmp = Compare{}){
+	auto const N = std::distance(first, last);
+	if (N <= 1) return; 
+	auto const pivot = std::next(first, N / 2);
+	std::nth_element(first, pivot, last, cmp);
+	quickSort(first, pivot, cmp); 
+	quickSort(pivot, last, cmp); 
+}	
+\end{lstlisting}	
+	
+	
+	\item insert sort
+\begin{lstlisting}[frame=single, language=c++]	
+for (auto i = start; i != end; ++i)
+	std::rotate(std::upper_bound(start, i, *i), i, std::next(i) );	
+\end{lstlisting}
+\begin{description}
+	\item[line 2] rotate use left close, right open interval.
+\end{description}	
+
+	\item slide. Pay attention here: rotate returns iterator to the new location of the element pointed by first. Equal to first + (last - n\_first)
+\begin{lstlisting}[frame=single, language=c++]
+template <typename It> 
+auto slide(It f, It l, randIter p) -> std::pair<It, It>{
+	if (p < f) return { p, std::rotate(p, f, l) };
+	if (l < p) return { std::rotate(f, l, p), p };
+	return { f, l };
+}
+\end{lstlisting}
+
+	\item gather
+\begin{lstlisting}[frame=single, language=c++]
+template <typename BiIt, typename UnPred> 
+auto gather(BiIt f, BiIt l, BiIt p, UnPred s) -> std::pair <BiIt, BiIt>
+{
+	return { stable_partition(f, p, not1(s)), 
+		stable_partition(p, l, s) };
+}
+\end{lstlisting}
+	
+	
+	
+\end{itemize}
+
+\subsection{mathic}
+\begin{itemize}
+	\item 
+\end{itemize}
+
+\subsection{other}
+\begin{itemize}
+
+\item use \texttt{adjacent\_difference} to generate Pascal triangle. 	
+	
+\item Move zeros to end.
+\begin{lstlisting}[frame=single, language=c++]	
+void moveZeroes(vector<int>& nums) {
+	auto i = remove(begin(nums),end(nums), 0);
+	fill(i, end(nums), 0);
+	
+	for(auto e: nums){
+		cout<<e<<" "<<endl;
+	}
+}	
+\end{lstlisting}
+\begin{description}
+	\item[Line 2] remove will move none zero forward. but latter part are not zero
+	\item[Line 3] then use fill to "fill" it. This "fill" idea is very useful strategy. For example, Just given a current node, then ask you delete this node. we can fill the current node with next code. then delete next node. 
+	
+\end{description}
+
+\item usage of \texttt{hash\_map}; 
+\begin{lstlisting}[frame=single, language=c++]	
+int firstUniqChar(string s) {
+	unordered_map<char, pair<int, int> > dic;
+	for(int i = 0;i<s.length();++i){
+		if(dic.find(s[i]) != dic.end()){
+			dic[s[i]].second++;
+		}
+		else{
+			dic[s[i]] = {i, 1};
+		}
+	}
+	
+	int pos = INT_MAX;
+	for(auto &e :dic){
+		if(e.second.second == 1 && e.second.first <pos){
+			pos = e.second.first;
+		}
+	}
+	
+	return pos ==INT_MAX? -1: pos;
+}
+\end{lstlisting}
+\begin{description}
+	\item[Line 2] Use pair here, remember occurrence and position. It's also very common pattern here.	
+\end{description}	
+
+
+\item usage of \texttt{hash\_map}; the biggest occurrence. 
+\begin{lstlisting}[frame=single, language=c++]	
+for(auto e : nums){
+	dic[e]++;
+}
+auto i = max_element(begin(dic),end(dic), [](auto &e, auto &e1){ return e.second< e1.second;});
+return i->first;	
+\end{lstlisting}
+\begin{description}
+	\item[Line 2] Don't need hash\_map.find function here.
+	\item[Line 2] Use max\_element with customized comparison function.
+	
+\end{description}	
+	
+\item single number 
+\begin{lstlisting}[frame=single, language=c++]	
+int first = nums[0];
+int result = accumulate(next(begin(nums)), end(nums), first, [](auto e, auto e1){ return e^e1; });
+return result;	
+\end{lstlisting}
+
+
+
+\item reverse link list,recursive
+\begin{lstlisting}[frame=single, language=c++]	
+void rev(Node* pre, Node* head, Node* & new_head ){
+	if(head == NULL){
+		new_head = pre;
+		return;
+	}
+	
+	cout<<head->data<<" "<<endl;
+	
+	Node* next = head->next;
+	head->next = pre;
+	rev(head, next, new_head);
+}	
+\end{lstlisting}
+\begin{description}
+	\item[Line 4] don't forget return.
+	\item[Line 1] reference to pointer is OK, pointer to reference is illegal. use here to set new\_head value
+\end{description}
+
+
+\item fast and slow pointer in linklist.	
+\begin{lstlisting}[frame=single, language=c++]	
+while (fast_ptr != NULL && fast_ptr->next != NULL) {
+	fast_ptr = fast_ptr->next->next;
+	
+	/*We need previous of the slow_ptr for
+	linked lists with odd elements */
+	prev_of_slow_ptr = slow_ptr;
+	slow_ptr = slow_ptr->next;
+}
+
+/* fast_ptr would become NULL when there are even elements in list.
+And not NULL for odd elements. We need to skip the middle node
+for odd case and store it somewhere so that we can restore the
+original list*/
+if (fast_ptr != NULL) {
+	midnode = slow_ptr;
+	slow_ptr = slow_ptr->next;
+}
+\end{lstlisting}	
+
+
+	\item useful code to print variable. 
+\begin{lstlisting}[frame=single, language=c++]
+	#define watch(x) cout << (#x) << " is " << (x) << endl
+\end{lstlisting}
+	
+	\item  how to generate permutation. 
+\begin{lstlisting}[frame=single, language=c++]
+sort(str.begin(), str.end());
+
+do {
+	cout << str << endl;
+} while (next_permutation(str.begin(), str.end()));	
+\end{lstlisting}	
+
+	\item two methods to trim string.
+
+\begin{lstlisting}[numbers=none]
+	const std::string WHITESPACE = " \n\r\t\f\v";
+	string ltrim(const string& str){
+		size_t pos = str.find_first_not_of(WHITESPACE);
+		if (pos == string::npos){
+			return "";
+		}
+		else{
+			return str.substr(pos);
+		}
+	}
+	
+	string rtrim(string& str){
+		auto pos = find_if(str.rbegin(),str.rend(), [](char c){ 
+			return !isspace(c, locale::classic());}
+		);
+		
+		str.erase(pos.base(), str.end());
+		return str;
+	}
+\end{lstlisting}
+\begin{description}
+	\item[Line 2] ltrim uses \texttt{find\_first\_not\_of}, then return a position. The first parameter of substr is beginning position and second parameter of substr is length. 
+	
+	\item[Line 12] rtrim uses generic stl algorithm \texttt{find\_if}. It return a iterator. \textbf{Using auto type when it will be assigned by iterator.}. Learn how to write lambda function.  Erase function does modification in place. 
+\end{description}
+
+\item token
+\begin{lstlisting}[numbers=none]
+str1="zhao,yao,c++";
+stringstream s1(str1);
+unordered_set<string> sv2;
+
+string str_part;
+while(getline(s1, str_part, ',')){
+	sv2.insert(str_part)
+}	
+\end{lstlisting}
+
+\begin{description}
+	\item[Source code] stringstream+getline can make token much easier.
+\end{description}
+
+\item That is usage of unique\_ptr in vector. 
+
+\begin{lstlisting}[numbers=none]
+	template <typename T>
+	void vector<T>::push_back(const T& value){
+		cout<<"call push_back"<<endl;
+		
+		if(index_>=capacity_){
+			capacity_ *=2;
+			cout<<"new capacity"<<endl;
+			unique_ptr<int[]> temp = make_unique<T[]>(capacity_);
+			T* ps = data.get();
+			copy(ps, ps+capacity_, temp.get());
+			data = move(temp);
+		}
+		
+		data[index_] = value;
+		index_++;
+	}
+\end{lstlisting}
+
+
+\item Useful function of str.
+\begin{lstlisting}[numbers=none]
+	str=to_string(123);
+	str.erase(0,1) //delete the first letter
+	str.pop_back() //delete the last letter
+\end{lstlisting}
+
+\item random number program
+\begin{lstlisting}[numbers=none]
+std::mt19937 rng; // default constructed, seeded with fixed seed
+std::generate_n(std::ostream_iterator<std::mt19937::result_type>(std::cout, " "),
+5, std::ref(rng));
+std::cout << '\n';
+\end{lstlisting}
+\begin{description}
+	\item[Line 1:] This is random number generator. 
+	\item[Line 2:] Need to know generate\_n and generate difference. generate and fill use a pair of input iterators. generate use functor, fill use value. generate\_n and fill\_n use one outiterator. That is main differences. 
+	\item[Line 2:] Why we use ref? because \texttt{rng} is not empty object, so we should avoid copying it. 
+	
+\end{description}
+
+\item Find all occurrences in a collection
+\begin{lstlisting}[numbers=none]
+void All(const string& str){
+	
+	auto ll = [](char c){
+		return isdigit(c);
+	};
+	
+	auto p = find_if(str.begin(), str.end(), ll);
+	while(p != str.end()){
+		cout<<distance(str.begin(),p)<<endl;
+		p = find_if(p+1, str.end(), ll);
+	}
+}	
+\end{lstlisting}
+\begin{description}
+	\item[line 2] define lambda and give it a name. Because we will reuse it.
+	\item[line 6] \textbf{For string, there are two ways to index a position: index(size\_t) and iterator(auto)}. If you use find\_if, then later you have to use \texttt{str.end()}, you can't use \texttt{string::npos}.
+	\item[line 8] distance is calculated by the second parameter - the first parameter.
+	\item[Source code] First get initialize p, the while(p != end), last p+1. That is very useful source code pattern. 
+\end{description}
+
+
+\item use of generate
+\begin{lstlisting}[numbers=none]
+srand(time(NULL));
+vector<int> v1;
+
+generate_n(back_inserter(v1, begin(v1)) , 5,
+[](){return rand()%10;} 
+	);	
+		
+for(auto i: v1){
+	cout<<i<<endl;
+}		
+\end{lstlisting}
+	\begin{description}
+		\item[line 1] \#include ctime and cstdlib. srand(time(NULL)) is normal routine before you use rand.
+		\item[line 4] You can use begin(v1) function, it's better version. please use back\_inserter(v1, begin(v1)) here. it will change assignment into push\_back. The similar two options are inserter and front\_inserter. 
+		
+	\end{description}
+	
+	
+	
+\item two matrix multiply
+	\begin{lstlisting}[numbers=none]
+		int inner_product(int row, int col, int num, const vector<vector<int>> &v1, 
+		const vector<vector<int>> &v2){
+			int sum = 0;
+			for (int i =0 ;i<num ;i++){
+				sum += v1[row][i]*v2[i][col];
+			}
+			return sum;
+		}
+		
+		int main(){
+			vector<vector<int> > m1 = {{1,2,3}, {4, 5, 6}};
+			vector<vector<int> >m2 = { {1,2}, {3,4}, {5,6}};
+			int m1_row = m1.size();
+			int m1_col = m1[0].size();
+			int m2_row = m2.size();
+			int m2_col = m2[0].size();
+			vector<vector<int> > result = {{0,0}, {0,0}};
+			
+			for(int i = 0;i<m1_row;i++){
+				for(int j= 0;j<m2_col;j++){
+					int element = inner_product(i, j,3, m1, m2); 
+					result[i][j] = element;
+				}
+			}
+			
+			for(auto i: result){
+				for(auto j: i){
+					cout<<j<<endl;
+				}
+			}
+			return 0;
+		}
+	\end{lstlisting}
+	
+	\begin{description}
+		\item[line ] matrix support list initialization.
+		
+		\item[line ] \textbf{In this questions, inner\_product is key point to resolve. First, get atomic operation and change it into a function. Then, design this function parameter and in the end, design outside enviroment to call this automic function. This is very an important strategy} 
+		
+		\item[line ] two for(auto.. ) can be use to print out matrix very easily.
+	\end{description}
+	
+\end{itemize}
+
+
+
+\chapter{functional programming}
+\section{Basic}
+\begin{itemize}
+	\item Functional programming goes hand-in-han with generic programming, especiallyin C++. They both inspire programmers not to think at the hardware level, but to move higher. Technically, don't use mutable state(stack or global variables) and loops statement. Use STL algorithm directly.
+	
+	
+	\begin{lstlisting}[frame=single, language=c++]
+		std::vector<int>
+		count_line_in_files(const vector<string> file_names){
+			return file_names|transform(open_file)|transform(count_lines)
+		}
+	\end{lstlisting}	
+	\begin{description}
+		\item[Source code:] \texttt{open\_file} and \texttt{count\_lines} are two function. 
+	\end{description}
+	
+	
+\end{itemize}
+\section{higher order function}
+\begin{itemize}
+	\item Functions that take other function as arguments or that return new functions are called higher-order functions. Thye are the most important concept in functional programming.
+	\begin{lstlisting}[frame=single, language=c++]
+		double average_score(vector<int> & scores){
+			return accumulate(begin(scores), end(scores), 0)/double(scores.size())
+		}
+	\end{lstlisting} 
+	
+	\subsubsection{fold}
+	
+	\item In general, folding doesn't require that the arguments and the result of the binary function passed to it have the same type. 
+	
+	\begin{lstlisting}[frame=single, language=c++]
+		int f(int previous_count, char c){
+			return c!='\n'? previous_count: previous_count+1;
+		}
+		
+		int count_lines(const string &s){
+			return accmulate(begin(s), end(s), 0, f);
+		}
+		//f: (R, T) -->R R is int, T is char here.
+	\end{lstlisting} 
+	
+	\item \textbf{std::reduce support parallel, and fold expression input parameter, not iterator}
+	
+	
+	
+	\subsubsection{filter}
+	\item erase+remove
+	\item erase+if
+	\item partition
+	\item copy\_if
+	
+	\item  Both remove_if and partition put the "good" elements first. partition puts the "bad" elements after that, whereas remove_if does not specify what comes after it -- it might be the bad elements, but it might also be copies of any (either good or bad) elements.
+	
+	For example, if you partition 1 2 3 4 5 on even, you might get 2 4 5 3 1 (note that each element occurs exactly once), whereas if you remove_if the odd elements, you might get 2 4 3 4 5 (note the duplicates).
+	
+	\subsubsection{map}
+	\item transform return a value for each element in the input container. for\_each is just a kind of range for. We don't reccommend to use lambda in for\_each.  range for looks better.  But if we have a function, then for\_each give some syntatic simplicity. 
+	
+	
+	
+\end{itemize}
+
+\section{title}
+
+\chapter{concurrent}
+
+\section{thread managerment}
+\begin{itemize}
+	\item You can pass different callable object. 
+\begin{lstlisting}[frame=single, language=c++]
+int main(){
+	auto l1 = [](){cout << "hello c world" << endl; };
+	thread t(l1);
+	thread t1(s1{});
+	thread t2(f1);
+	t.join();
+	t1.join();
+	t2.join();
+}
+\end{lstlisting}
+
+	\item thread can't deal with exception, jthread which is introduced in C++20 is for this problem. 
+	\item joinable is false if there is no corresponding execution. 
+\begin{lstlisting}[frame=single, language=c++]
+void foo(){
+	std::this_thread::sleep_for(std::chrono::seconds(1));
+}
+
+int main(){
+	std::thread t;
+	std::cout << "before starting, joinable: " << std::boolalpha << t.joinable()
+	<< '\n';
+	
+	t = std::thread(foo);
+	std::cout << "after starting, joinable: " << t.joinable() 
+	<< '\n';
+	
+	t.join();
+	std::cout << "after joining, joinable: " << t.joinable() 
+	<< '\n';
+}
+\end{lstlisting}
+
+	\item When pass reference parameter to thread, you need to use std::ref. Detail can be found below:
+\begin{lstlisting}[frame=single, language=c++]
+void bar(const ComplexObject& co){
+	co.doCalculations();
+}
+
+ComplexObject object;
+std::thread thread{ bar, std::cref(object) }; //'object' is passed as const&
+
+thread.join();
+std::cout << object.getResult() << '\n'; //Outputs the result
+\end{lstlisting}
+\begin{description}
+	\item[line 6] The basic idea is just like std::bind. 
+\end{description}
+
+	\item just like ifstream and unique\_ptr, thread is movable but not copyable. 
+\begin{lstlisting}[frame=single, language=c++]
+int main()
+{
+	auto l1 = [](){cout << "hello c world" << endl; };
+	thread t(l1);   
+	thread t3;
+	t3 = std::move(t);
+	cout <<boolalpha<< t.joinable();  //false
+	t = thread(f1);  //you can assign new value here,
+					// you can't do it if don't move it away.
+	cout << t.joinable(); //true here.
+	t.join();
+	t3.join();
+}
+\end{lstlisting}
+
+\item A good example, single thread cost 15 seconds. if you use 16 threads, the time is 2 seconds.
+\begin{lstlisting}[frame=single, language=c++]
+template<typename Iterator, typename T>
+struct accumulate_block
+{
+	void operator()(Iterator first, Iterator last, T& result)
+	{
+		result = std::accumulate(first, last, result);
+	}
+};
+
+template<typename Iterator, typename T>
+T parallel_accumulate(Iterator first, Iterator last, T init)
+{
+	unsigned long const length = std::distance(first, last);
+	
+	if (!length)
+	return init;
+	
+	unsigned long const min_per_thread = 25;
+	unsigned long const max_threads =
+	(length + min_per_thread - 1) / min_per_thread;
+	
+	unsigned long const hardware_threads =
+	std::thread::hardware_concurrency();
+	
+	unsigned long const num_threads =
+	std::min(hardware_threads != 0 ? hardware_threads : 2, max_threads);
+	
+	unsigned long const block_size = length / num_threads;
+	
+	std::vector<T> results(num_threads);
+	std::vector<std::thread>  threads(num_threads - 1);
+	
+	Iterator block_start = first;
+	for (unsigned long i = 0; i < (num_threads - 1); ++i)
+	{
+		Iterator block_end = block_start;
+		std::advance(block_end, block_size);
+		threads[i] = std::thread(
+		accumulate_block<Iterator, T>(),
+		block_start, block_end, std::ref(results[i]));
+		block_start = block_end;
+	}
+	accumulate_block<Iterator, T>()(block_start, last, results[num_threads - 1]);
+	
+	std::for_each(threads.begin(), threads.end(),
+	std::mem_fn(&std::thread::join));
+	
+	return std::accumulate(results.begin(), results.end(), init);
+}
+
+int main(){
+	std::vector<int> vi;
+	for (int i = 0; i < 1000000; ++i)
+	{
+		vi.push_back(10);
+	}
+	int sum = 0;
+	auto start = std::chrono::high_resolution_clock::now();
+	
+	for (int i = 0; i < 1000; i++) {
+		sum = parallel_accumulate(vi.begin(), vi.end(), i);
+		
+	}
+	/*
+	for (int i = 0; i < 1000; i++) {
+		sum = std::accumulate(vi.begin(), vi.end(), i);
+		
+	}*/
+	auto finish = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> elapsed = finish - start;
+	std::cout <<"time is "<< elapsed.count() << std::endl;
+	std::cout << sum << std::endl;
+	
+	//std::cout << "sum=" << sum << std::endl;
+}
+\end{lstlisting}	
+\begin{description}
+	\item[] \textbf{limit thread number!} std::thread::hardware\_concurrency is ceiling. Every thread has overhead price to pay. hardware\_concurrency is true multi thread, so we should make full use of it. 
+\end{description}
+
+\item pay attention to the this_thread namespace, there are a few functions, such as \texttt{get\_id} and \texttt{sleep\_for}. 
+\begin{lstlisting}[frame=single, language=c++]
+std::mutex g_display_mutex;
+
+void foo(){
+	std::thread::id this_id = std::this_thread::get_id();
+	
+	g_display_mutex.lock();
+	std::cout << "thread " << this_id << " sleeping...\n";
+	g_display_mutex.unlock();
+	
+	std::this_thread::sleep_for(std::chrono::seconds(1));
+}
+
+int main(){
+	std::thread t1(foo);
+	std::thread t2(foo);
+	
+	t1.join();
+	t2.join();
+}
+\end{lstlisting}
+
+\end{itemize}
+
+
+\section{data race}
+
+\subsection{mutex}
+\begin{itemize}
+	\item You can not omit the need to specify std::mutex here a second time
+\begin{lstlisting}[frame=single, language=c++]
+std::mutex mx
+std::lock_guard<std::mutex> lg(mx);
+\end{lstlisting}
+
+\item The basic usage guideline:
+\begin{enumerate}
+	\item lock\_guard if you need to lock exactly 1 mutex for an entire scope.
+	\item scoped\_lock if you need to lock a number of mutexes that is not exactly 1.
+	\item \textbf{unique\_lock if you need to unlock within the scope of the block (which includes use with a condition\_variable) or transfer mutex ownership between scopes.}
+\end{enumerate}
+
+\item compare below three codes, they do the same thing to avoid deadlock. So we should use scoped\_lock more. 
+\begin{lstlisting}[frame=single, language=c++]
+std::unique_lock<std::mutex> lk1(mutex1, std::defer_lock);
+std::unique_lock<std::mutex> lk2(mutex2, std::defer_lock);
+std::lock(lk1, lk2);	
+swap(lhs.some_detail, rhs.some_detail);
+\end{lstlisting}
+
+\begin{lstlisting}[frame=single, language=c++]
+std::lock(lhs.m, rhs.m);
+std::lock_guard<std::mutex> lock_a(lhs.m, std::adopt_lock);
+std::lock_guard<std::mutex> lock_b(rhs.m, std::adopt_lock);
+swap(lhs.some_detail, rhs.some_detail);
+\end{lstlisting}
+
+\begin{lstlisting}[frame=single, language=c++]
+std::scoped_lock guard(lhs.m, rhs.m);
+swap(lhs.some_detail, rhs.some_detail);
+\end{lstlisting}
+
+
+\item 
+	
+
+\end{itemize}
+\subsection{lock}
+\begin{itemize}
+	\item data race and race condition, you can see a good reference page: "Race Condition vs. Data Race", you can google it.
+	
+	\item Even one thread read, another thread write, It will cause data race. A good reference page is "Benign data races: what could possibly go wrong?". 
+	
+	\item Another good paper about data race is "Fun with Concurrency Problems".
+	
+	\item Even increment is not atomic operation. It will change it to three assemble statements. So If there are two threads, thread 1 just move to reg, then another thread 2 finish ++, next, thread1 change back, The value will be overwrite mem. The result is: op is incremented 1 although two thread call op++.
+\begin{lstlisting}[frame=single, language=c++]
+	op++;
+	
+	move mem reg
+	// Thread1 change to thread 2 here. 
+	add reg 1
+	move reg mem
+\end{lstlisting}	
+	
+	\item In visual studio. You can use debug view assemble language produced by compiler. 
+\end{itemize}
+
+\section{synchronization}
 
 
 
@@ -17351,6 +18368,14 @@ auto foldSum(T... args){
 \subsection{library feature}
 
 \section{C++20}
+\begin{itemize}
+	\item three-way comparsion operator
+\begin{lstlisting}
+operator<=>(lhs, rhs){
+	...
+}
+\end{lstlisting}	
+\end{itemize}
 
 \section{To be continue...}
 In 2020, when I am writing this book,  C++ standard just issue newest C++ standard: \textbf{C++20}. So next edition(Fifth edition) of this book will cover more features in C++20: Concept, Range, Modules, concurrent....
