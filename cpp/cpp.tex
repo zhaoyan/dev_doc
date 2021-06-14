@@ -4413,7 +4413,7 @@ vector v1{1, 2}; //use braces fill vector
 \begin{itemize}
 	\item That is a long story. In C language, if you forget a header file, what will happen? In one word, It will(c99) or will not produce(c89) warning, and compiler will assume a "implicit int" rule. That is to say, It presumes that the function without prototype (declaring in the header file) just return int type.
 	
-	\item Continue: if you have code below: you comment stdlib.h. Then compiler will assume that \texttt{malloc} return a \texttt{int}.  This code will run on 32 bit computer, because \texttt{int} and \texttt{int*} have same length. but on a 64 bit computer, \texttt{int*} is 64 bit and int is 32 bit.  so half data will be lost, and you code will crash. The worst is: if you add \texttt{(int*)} cast, it will suppress the warning message.(You kill the only clue, it's bad).
+	\item Continue: if you have code below: you comment \texttt{stdlib.h}. Then compiler will assume that \texttt{malloc} return a \texttt{int}.  This code will run on 32 bit computer, because \texttt{int} and \texttt{int*} have same length. but on a 64 bit computer, \texttt{int*} is 64 bit and int is 32 bit.  so half data will be lost, and you code will crash. The worst is: if you add \texttt{(int*)} cast, it will suppress the warning message.(You kill the only clue, it's bad).
 \begin{lstlisting}[frame=single, language=c++]
 // include "stdlib.h"
 int *sieve = (int *)malloc(sizeof(int)*length);
@@ -4436,6 +4436,14 @@ FILE * f = NULL;  //legal
 	
 	\item continue: In C++, \texttt{int *p = (void *) 0} is not legal any more.(C++ is type safe language).  So in C++ NULL is literal 0. But It produce another ambiguity problem.  So In C++11, we define \texttt{nullptr} to resolve this problem.
 \begin{lstlisting}[numbers=none]
+cout<<is_integral<decltype(nullptr)>::value; //false
+cout<<is_integral<decltype(NULL)>::value; //true
+
+int *p = NULL; //illegal in C++
+\end{lstlisting}
+
+	
+\begin{lstlisting}[numbers=none]
 int *p = NULL; //illegal in C++
 --------------------------------------
 f(int i)
@@ -4455,8 +4463,24 @@ f(nullptr) //will call f(int *p)
 	
 	\item Reallocates the given area of memory. It must be previously allocated by \texttt{malloc()}, \texttt{calloc()} or \texttt{realloc()} and not yet freed with a call to free or \texttt{realloc}. Otherwise, the results are undefined.
 	
+	\item realloc may or may not change the original address. 
+\begin{lstlisting}[numbers=none]
+str = (char *) malloc(15);
+strcpy(str, "tutorialspoint");
+printf("String = %s,  Address = %p\n", str, str);
+
+/* Reallocating memory */
+str = (char *) realloc(str, 25);
+strcat(str, ".");
+printf("String = %s,  Address = %p\n", str, str);
+\end{lstlisting}
+\begin{description}
+	\item[Line 6:] Change 25 to 16, address of \texttt{str} doesn't change.
+\end{description}
+
 	
-	\item Don't return value assign to input \texttt{ptr}, use another local pointer, such as \texttt{new\_ptr;}.
+	
+	\item Don't return value assign to input \texttt{ptr}, use another local pointer, such as \texttt{new\_ptr;}. Because if realloc fails, it will not overwrite original \texttt{ptr}.
 \begin{lstlisting}[numbers=none]
 void *new_ptr = realloc(ptr, new_size);
 if (!new_ptr) {
@@ -4470,7 +4494,6 @@ ptr = new_ptr
 \section{new operator}
 \subsection{Basic}
 \begin{itemize}
-	
 	\item There are four sub-topics about new operator:
 	\begin{enumerate}
 		\item new\_handler
@@ -4479,6 +4502,15 @@ ptr = new_ptr
 		\item operator new (just allocate, no ctor)
 	\end{enumerate}
 	
+	\item new operator(new expression) and operator new are two different thins. \textbf{new operator call operator new.} 
+	
+	\item there is three kind of operator new.
+\begin{lstlisting}[frame=single, language=c++]
+void* operator new (std::size_t size);
+void* operator new (std::size_t size, const std::nothrow_t& nothrow_value) noexcept;
+void* operator new (std::size_t size, void* ptr) noexcept;
+\end{lstlisting}
+	
 \begin{lstlisting}[frame=single, language=c++]
 std::set_new_handler(noMem);
 MyClass * p1 = new MyClass;  
@@ -4486,20 +4518,26 @@ MyClass * p1 = new MyClass;
 MyClass * p2 = new (std::nothrow) MyClass; 
 
 new (p2) MyClass;  
-
 MyClass * p3 = (MyClass*)::operator new (sizeof(MyClass));
 \end{lstlisting}
 \begin{description}
-	\item[Line 2:] if fail, call noMem.
-	\item[Line 4:] no throw
+	\item[Line 2:] If fail, call noMem. If noMem is \texttt{nullptr}, throw \texttt{bad\_alloc} exception.
+	\item[Line 4:] no throw, remember this constant \texttt{std::nothrow}.
 	\item[Line 6:] placement new
 	\item[Line 8:] operator new, allocates memory by calling: \texttt{operator new}. but does not call MyClass's ctor
 \end{description}	
-	\item \texttt{new} will call constructor function of a class, but \texttt{malloc} will not call constructor function.  \textbf{So in C++, you should use new instead of \texttt{malloc}.}
+
+\item nothrow new just make sure that operator new inside will not throw exception, but return nullptr if allocation fails. but it will not assure that MyClass construtor will not throw exception. So it's not fullly mature design. \textbf{In other word, we don't recommend using this kind of nothrow new operator in the production code.}
+
+\begin{lstlisting}[frame=single, language=c++]
+MyClass * p2 = new (std::nothrow) MyClass; 
+\end{lstlisting}
+
+
+	\item \texttt{new operator} will call constructor function of a class, but \texttt{malloc} will not call constructor function.  \textbf{So in C++, you should use new instead of \texttt{malloc}.}
 	
 	\item For default new operator, you can use \texttt{set\_new\_handler} to adjust the behavior when you can't allocate enough memory. Detail can be found in the next section.
 	
-	\item When you should provide your own operator new?  You want to add log function; You want to add some cookie before and after allocated memory(Visual Studio use this way to detect overflow in debug mode). You want to have quicker speed(memory pool). You want to have better alignment and so on..
 	
 	\item If you use\texttt{ new int[100]}, don't forget \texttt{delete []};  \textbf{Any time you want to use new to allocate an array, ask yourself if you can replace it with vector or string.}
 \end{itemize}
@@ -4569,12 +4607,13 @@ using namespace std;
 }
 	\end{lstlisting}
 \begin{description}
-	\item[Line 1:] Your operator new might take additional params
+	\item[Line 1:] This is throw version operator new, non-throw and placement operator new are alike. 
 	
-	\item[Line 3:] handle 0-byte requests by treating them as 1-byte request. If size is 0, change it to 1.
+	\item[Line 3:] handle 0-byte requests by treating them as 1-byte request. If size is 0, change it to 1. C++ standard requires it.
 	
-	\item[Line 11:] allocation was unsuccessful; find out what the current new-handling function is, then call it.
+	\item[Line 11:] allocation was unsuccessful; find out what the current new-handling function and call it.
 \end{description}
+
 \item Basic logic of operator delete.
 \begin{lstlisting}[numbers=none]
 operator delete (void *ptr){
@@ -4587,11 +4626,10 @@ operator delete (void *ptr){
 		\item Why we need to call \texttt{set\_new\_handler} twice, The first one get the current handler, and the second one changes it back. That is only way we can get the current handler.
 		
 		\item This idiom is also used in \texttt{set\_terminate} and \texttt{set\_unexpect}. 
-		
-		
-		
+				
 		\item Most of time, we use malloc and free to allocate and free physical memory.
 	\end{enumerate}
+
 \end{itemize}
 
 \subsection{new\_handler}
@@ -4623,12 +4661,27 @@ set_new_handler(failNew);
 	
 	\item At program startup, \texttt{new\_handler} is a null pointer. When allocation fail inside of operator new, operator new finds that \texttt{std::get\_new\_handler} returns a null pointer value, it will throw \texttt{std::bad\_alloc}.
 	
-	\item  As shown by the previous section, The \texttt{new\_handler} function is the function called by allocation functions whenever a memory allocation attempt fails. Its intended purpose is one of three things:
+	\item What can we do inside new handler function? Below choices give you considerable flexibility in implementing new-handler functions.
+\begin{enumerate}
+	
+	\item Make more memory available. This may allow the next memory allocation attempt inside operator new to succeed. One way to implement this strategy is to allocate a large block of memory at program start-up, then release it for use in the program the first time the new-handler is invoked.
+	
+	\item Install a different new-handler. If the current new-handler can't make any more memory available, perhaps it knows of a different new-handler that can. If so, the current new-handler can install the other new-handler in its place (by calling \texttt{set\_new\_handler}). The next time operator new calls the new-handler function, it will get the one most recently installed. (A variation on this theme is for a new-handler to modify its own behavior, so the next time it's invoked, it does something different. One way to achieve this is to have the new-handler modify static, namespace-specific, or global data that affects the new-handler's behavior.)
+	
+	\item Deinstall the new-handler, i.e., pass the null pointer to \texttt{set\_new\_handler}. With no new-handler installed, operator new will throw an exception when memory allocation is unsuccessful.
+	
+	\item Throw an exception of type \texttt{bad\_alloc} or some type derived from \texttt{bad\_alloc}. Such exceptions will not be caught by operator new, so they will propagate to the site originating the request for memory.
+	
+	\item Not return, typically by calling abort or exit to terminate the whole program.
+\end{enumerate}
+
+	
+	\item  As shown by the previous item, The \texttt{new\_handler} function is the function called by allocation functions whenever a memory allocation attempt fails. Its intended purpose is one of three things:
 	
 	\begin{enumerate}
 		\item make more memory available. \textbf{resolve the problem by myself.}
 		
-		\item throw exception of type \texttt{std::bad\_alloc} or derived from \texttt{std::bad\_alloc}. \textbf{resolve the problem by a user.}
+		\item throw exception of type \texttt{std::bad\_alloc} or derived from \texttt{std::bad\_alloc}. \textbf{resolve the problem by a caller.}
 		
 		\item terminate the program. e.g. by calling \texttt{std::terminate}. \textbf{(No resolve)}
 	\end{enumerate}
@@ -4644,29 +4697,16 @@ set_new_handler(noMemory)
 \end{lstlisting}
 \begin{description}
 	\item[Line 2: ] method 1: release mem by close some current applications.
-	\item[Line 3: ] method 2: throw bad\_alloc exception. If we set new\_handler \texttt{nullptr}, then operator new will throw \texttt{bad\_alloc} later.
+	\item[Line 3: ] method 2: throw \texttt{bad\_alloc} exception. If we set \texttt{new\_handler} \texttt{nullptr}, then operator new will throw \texttt{bad\_alloc} later.
 	\item[Line 4: ] method 3: end application.
 \end{description}
 	
-	\item What can we do inside new handler function? Below choices give you considerable flexibility in implementing new-handler functions.
-	\begin{enumerate}
-		
-		\item Make more memory available. This may allow the next memory allocation attempt inside operator new to succeed. One way to implement this strategy is to allocate a large block of memory at program start-up, then release it for use in the program the first time the new-handler is invoked.
-		
-		\item Install a different new-handler. If the current new-handler can't make any more memory available, perhaps it knows of a different new-handler that can. If so, the current new-handler can install the other new-handler in its place (by calling \texttt{set\_new\_handler}). The next time operator new calls the new-handler function, it will get the one most recently installed. (A variation on this theme is for a new-handler to modify its own behavior, so the next time it's invoked, it does something different. One way to achieve this is to have the new-handler modify static, namespace-specific, or global data that affects the new-handler's behavior.)
-		
-		\item Deinstall the new-handler, i.e., pass the null pointer to \texttt{set\_new\_handler}. With no new-handler installed, operator new will throw an exception when memory allocation is unsuccessful.
-		
-		\item Throw an exception of type \texttt{bad\_alloc} or some type derived from \texttt{bad\_alloc}. Such exceptions will not be caught by operator new, so they will propagate to the site originating the request for memory.
-		
-		\item Not return, typically by calling abort or exit to terminate the whole program.
-	\end{enumerate}
-	\item If you want to have customized new\_handler for specific class, "effective C++ item 49" gives a good example. It use Mixin idiom. Detail can be found in generic programming section in this book.
-	
+
+	\item If you want to have customized \texttt{new\_handler} for specific class, "effective C++ item 49" gives a good example. It use Mixin idiom. Detail can be found in generic programming section in this book.
 \end{itemize}
 
-\subsection{Placement new}
-\subsubsection{How to use placement new operator}
+\section{Placement new}
+\subsection{How to use placement new operator}
 \begin{itemize}
 	\item Construct an object in memory you've already got a pointer to, use placement new. If you use placement new to create an object in some memory, you should avoid using the delete operator on that memory.  Detail can be seen in the book "C++ primer"
 \begin{lstlisting}[frame=single, language=c++]
@@ -4688,7 +4728,8 @@ p1->~Foo(); //call dtor directly,
 operator delete(buffer);  //don't call delete [] raw or delete raw.
 \end{lstlisting}
 \begin{description}
-	\item[Line 2:] Don't catch exceptions thrown by the allocator itself. Return a void type pointer
+	\item[Line 2:] Don't catch exceptions thrown by the allocator itself. Return a void type pointer. \textbf{When you just want to allocate memory, operator new is better than \texttt{malloc}, because it offers you more more options: you can use \texttt{set\_handler}, or you can choose if you want to throw exception}
+		
 	\item[Line 4:] Call the ctor with raw as this.
 	\item[Line 13-14:] The is one chance you should call destructor directly. In fact, you usually don't call destructor directly in C++.
 	 \item[Line 15:] When you use \texttt{operator new} to allocate memory, use \texttt{operator delete} to free it. 
@@ -4728,54 +4769,64 @@ int main() {
 
 \end{itemize}
 
-\subsubsection{placement operator new}
+\subsection{placement operator new}
 
 \begin{itemize}
 	
-	\item If operator new receive another parameter beside that size\_t, that is placement new.
-	\begin{enumerate}
-		\item There is special version with void* pMemeory. \textbf{You are not allowed to customize \texttt{void*} version}.it actually does nothing inside. For example, in Visual C++ the default implementation just returns the address passed into the call.
-\begin{lstlisting}[numbers=none]
-void* operator new (std::size_t size, void* pMemeory){
-	return pMemeory;
-}
-\end{lstlisting}
-		\item If you define your own placement operator new(non-pMemeory version). You must provide your own placement operator delete. Because when the constructor throw exception, it will call the corresponding customized placement operator delete. Detail can be found in "effective C++ item 52"
-\begin{lstlisting}[frame=single, language=c++]
-	void* operator new (std::size_t size, void* pMemeory) throw();
-	void* operator new (std::size_t size, ostream& logStream) throw();
-	Widget* pw = new(std::cerr) Widget
+	\item If operator new receive another parameter beside that \texttt{size\_t}, that is called placement new.
 	
-	void operator delete(void* pM, ostream& logStream). 
+	\item If you define your own placement operator new(non-pMemeory version). You must provide your own placement operator delete. Because when the constructor throw exception, it will call the corresponding customized placement operator delete. Detail can be found in "effective C++ item 52"
+\begin{lstlisting}[frame=single, language=c++]
+void* operator new (std::size_t size, ostream& logStream) throw();
+Widget* pw = new(std::cerr) Widget
+	
+void operator delete(void* pM, ostream& logStream). 
 \end{lstlisting}
 \begin{description}
-	\item[Line 5:] When Widget ctor throw exception, it will call operator delete. if no such function, placement new do nothing and memory leak.
+	\item[Line 4:] When Widget ctor throw exception, it will call operator delete. if no such function, placement new do nothing and memory leak.
+\end{description}
+
+		\item But when no exception is thrown,  you still need to use "normal" delete to free the memory which allocated by placement operator new if you need to.(For memory pool application, maybe you don't need to do it, just call destructor.)
+
+\begin{lstlisting}[frame=single, language=c++]
+void* operator new (std::size_t size, ostream& logStream) throw();
+{
+	p1 = malloc(); // allocate extra memory for some house keeping work.
+	return malloc();
+}
+Widget* pw = new(std::cerr) Widget
+	
+delete pw;
+\end{lstlisting}		
+\begin{description}
+	\item[Line 8] Here, you have to use "normal" delete if you allocate memory in your own placement operator new, but "normal" delete will not take care of \texttt{p1}. Usually, you means that you should not allocate any resource in your own placement operator new.
 \end{description}
 
 		\item In C++, after you define a name in a scope (e.g., in a class scope), it will hide the same name in all enclosing scopes (e.g., in base classes or enclosing namespaces), and overloading never happens across scopes. And when said name is operator new, If you provide any class-specific placement new, provide all of the standard forms(plain, placement, and nothrow). Otherwise, it will placement new will hide plain new and nothrow new. Detail can be found in "effective C++ item 52".
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
-		class C {
-			static void* operator new(size_t, MemoryPool&);
-			// hides three normal forms
-		};
-		void* operator new(std::size_t);
-		void* operator new(std::size_t, std::nothrow_t) throw();
-		void* operator new(std::size_t, void*);
-	\end{lstlisting}
+class C {
+	static void* operator new(size_t, MemoryPool&);
+	// hides three normal forms
+};
+void* operator new(std::size_t);
+void* operator new(std::size_t, std::nothrow_t) throw();
+void* operator new(std::size_t, void*);		
+\end{lstlisting}
 	\begin{description}
 		\item[Line 5:] plain new.
 		\item[Line 6:] nothrow new.
 		\item[Line 7:] placement new.
 	\end{description} 
-	
-	\end{enumerate}
 
-	\item A good article is "The many faces of operator new in C++", It give  detail information about operator new and how to rewrite it. I have added it to my ref.
+
+	\item A good article is "The many faces of operator new in C++", It give  detail information about operator new and how to rewrite it. You can google it.
 \end{itemize}
 
 
-\subsection{array new}
+\section{array new}
 \begin{itemize}
+	\item \textbf{Any time you want to use array new, think that if vector can do what you want? if it's, don't use array new.}
+	
 	\item \textbf{When you use array new to allocate an array, must use the array delete.} If you don't use array delete, maybe you just delete the frist object in array. If you use array delete to single new, it's undefined. 
 \begin{lstlisting}[frame=single, language=c++]
 Foo pa* = new Foo[10];
@@ -4783,7 +4834,7 @@ delete [] pa;
 \end{lstlisting}
 
 \begin{description}
-	\item[Line 2:] system will remember the size corresponding with pa,  with [], it will iterate with size.  When you forget [], it will just free the first object.
+	\item[Line 2:] system will remember the size corresponding with pa,  with [], it will iterate with size.  When you forget [], it will just free the first object, cause memeory leak.
 \end{description}
 
 	\item Basic logic of array new. An basic implementation can be found in"Inside the C++ Object Model" 6.2 chapter
@@ -4810,23 +4861,47 @@ delete [] bp;
 	\item[Line 1:] always use derived *dp = new derived[10];
 	\item[Line 2:] dangerous, undefined. size is wrong: bp+sizeof(base)*2
 	\item[Line 4:] dangerous, 1)size is wrong, 2)it will call base::~base() destructor. 
+	
 	\item[Source code:] Why it's dangerous? When you use delete [] bp, it will think that is a base array, and each element in it is just base object, so virtual function doesn't play a role here. Please refer the section "inheritance" in this book for more detail.
 \end{description}
 
 \end{itemize}
 
-\subsection{Customize operator new}
+\section{Customize operator new}
 \begin{itemize}
-	\item The operator new and nothrow version are replaceable: A program may provide its own definition that replaces the one provided by default to produce the result described above, or can overload it for specific types. 
+	\item When you should provide your own operator new?  You want to add log function; You want to add some cookie before and after allocated memory(Visual Studio use this way to detect overflow in debug mode). You want to have quicker speed(memory pool). You want to have better alignment and so on..
 	
-	\item For placement new, You can't replace it. There is no "operator new array", it use operator new to allocate memory. 
+	\item Why do I need my own operator new?
+	\begin{enumerate}
+		\item Performance: the default memory allocator is designed to be general purpose. Sometimes you have very specific objects you want to allocate, chapter 4 in "Modern C++ Design" presents a very well designed and implemented custom allocator for small objects.
+		
+		\item Debugging \& statistics: having full control of the way memory is allocated and released provides great flexibility for debugging, statistics and performance analysis.
+		
+		\item Customization to cluster related object together, and reduce size. put guard block to avoid overrun and underrun. More detail can be seen in effective c++( third edition) Item 50
+	\end{enumerate}
+	
+	\item Usually, The operator new and nothrow version are replaceable: A program may provide its own definition that replaces the one provided by default to produce the result described above, or can overload it for specific types. 
 \begin{lstlisting}[numbers=none]
-void* operator new (std::size_t size) throw (std::bad_alloc);
-void* operator new (std::size_t size, 
-const std::nothrow_t& nothrow_value) throw();
-
-void* operator new (std::size_t size, void* ptr) throw();
+	void* operator new (std::size_t size) throw (std::bad_alloc);
+	void* operator new (std::size_t size, 
+	const std::nothrow_t& nothrow_value) throw();
 \end{lstlisting}
+
+\item Why do we need operator array new? You can google the article "Why is ::operator new[] necessary when ::operator new is enough?" in the stack overflow. The basic idea is the same, I think that it just make you can have fine grain control. If you customize operator array new, it will only affect array new expression.  
+\begin{lstlisting}[numbers=none]
+void* operator new(size_t);
+void* operator new[](size_t); //operator array new
+
+int* p = new int[5]; // call operator array new.
+\end{lstlisting}
+
+	\item There is a special version with \texttt{void* pMemeory}. \textbf{You are not allowed to customize \texttt{void*} version}.it actually does nothing inside. For example, in Visual C++ the default implementation just returns the address passed into the call.
+\begin{lstlisting}[numbers=none]
+void* operator new (std::size_t size, void* pMemeory){
+			return pMemeory;
+		}
+\end{lstlisting}
+
 	
 	\item You can't change "new operator" behavior, but you can override global "operator new" and overload class its own "operator new". Pay attention its argument and return void*. 
 	
@@ -4855,26 +4930,24 @@ int *p = new int[100]; //output Yan's own operator new
 Foo* fp = new Foo();  //output Foo's own operator new
 \end{lstlisting}
 	
-	\item Above code is just a simple demo, In the new\_handler section, you can see a better operator new demo with support of call your own new\_handler. You need to combine above code and code in new\_handler section together. 
+	\item Above code is just a simple demo, In the \texttt{new\_handler} section, you can see a better operator new demo with support of call your own \texttt{new\_handler}. You need to combine above code and code in \texttt{new\_handler} section together. 
 	
 	\item operator new usually call \texttt{malloc} function. \texttt{malloc} usually call \texttt{brk} for small chunk and \texttt{mmap} for big chunk. So in the end, C language does low level memory allocation and release.
 	
-	\item Why do I need my own operator new?
-	\begin{enumerate}
-		\item Performance: the default memory allocator is designed to be general purpose. Sometimes you have very specific objects you want to allocate, chapter 4 in "Modern C++ Design" presents a very well designed and implemented custom allocator for small objects.
-		
-		\item Debugging \& statistics: having full control of the way memory is allocated and released provides great flexibility for debugging, statistics and performance analysis.
-		
-		\item Customization to cluster related object together, and reduce size. put guard block to avoid overrun and underrun. More detail can be seen in effective c++( third edition) Item 50
-	\end{enumerate}
-	
-	\item \textbf{Don't rewrite operator new unless you have to.} There are not as easy as you think. such as alignment. First consider some library, such as \textbf{Boost Pool library} for large number small object allocations. 
+
 	
 	\item If you have to rewrite operator new, You need to read  effective c++( third edition) Item 51 in detail. For example, All operator new should contain a loop calling a new-handling function.  You also need to deal with request of zero size. you can see the pseudo-code in Item 51.
 	
-	\item Always provide new and delete together, see "C++ coding standards" item 45 and 46.
+	\item In one word, \textbf{Don't rewrite operator new unless you have to.} There are not as easy as you think. such as alignment. How to deal with size 0 object? how to cooperator with \texttt{set\_handler} etc. If you overload global operator new, both library and user application have to use your overload version, it is very aggresive and will cause problem.  If you have to do it for some very specific reason: there are two options:
+	
+	\begin{enumerate}
+		\item consider some library, such as \textbf{Boost Pool library} for large number small object allocations. 
+		\item rewrite malloc and use LD\_PRELOAD trip to load your own malloc first.
+	\end{enumerate}
+	
 \end{itemize}
-\subsection{Summary}
+
+\section{Summary}
 
 \begin{figure}[ht]
 	\centering
@@ -4890,6 +4963,7 @@ Foo* fp = new Foo();  //output Foo's own operator new
 
 \subsection{When to use new?}
 \begin{itemize}
+	
 
 \item When do you use smart pointer? Here I change this questions to another question, When do you use pointer?
 \begin{enumerate}
@@ -4929,8 +5003,26 @@ Yan.buyNewBrush("Philip");
 
 \end{itemize}
 
-\section{Basic smart pointer knowledge}
+\subsection{Problem of raw pointer}
+\begin{itemize}
+	\item The problem of raw pointer:
+	\begin{enumerate}
+		\item buffer overrun
+		\item wild pointer
+		\item double delete
+		\item memory leak
+		\item no matching new and delete
+		\item fragmentation of memory.
+	\end{enumerate}
 
+	\item for buffer overrun and no matching new and delete, we can use vector/string to resolve this problem.
+	
+	\item for wild pointer, double delete and memory leak, we can use smart pointer to resolve. 
+	
+	\item With help of smart pointer, the memory can be free immediately, It's very import for performance. For example, if memory looks like this: XXXOXXX, once we free O, then we will have seven continuous memory. Not only free one byte memory, it will produce a bigger chunk of memory for the future allocation, this is very import in memory management. 
+\end{itemize}
+
+\section{Basic smart pointer knowledge}
 
 \subsection{implementation smart pointer?}
 \begin{itemize}
@@ -4947,15 +5039,77 @@ public:
 };
 
 auto_ptr<int> aupr;
-
 \end{lstlisting}
+
 \begin{description}
+	\item[line 6-7:] Pay attention to the operator * and operator ->. operator-> can be overloaded to return another object or pointer. which is then used with operator-> recursively.
+	
 	\item[Line 11:] \texttt{auto\_ptr} is \texttt{nullptr} even you don't initialize it. Smart pointer is \texttt{nullptr} default if you don't initialize. You avoid wild pointer problem.
 \end{description}
+
+	\item For \texttt{shared\_ptr, }, we need to pay attention to its reference number. 
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+class shared_count {
+public:
+	shared_count();
+	void add_count();
+	long reduce_count();
+	long get_count() const;
+};
+\end{lstlisting}
+
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+template <typename T>
+class smart_ptr {
+public:  
+	...
+private:  
+	T* ptr_;  
+	shared_count* shared_count_;
+};
+\end{lstlisting}
+\begin{description}
+	\item[line 7] We can't use \texttt{shared\_count} here. Otherwise, two \texttt{shared\_ptr} will have two separate copy. 
+	\item[line 7] We can't use \texttt{satic shared\_count} here either. Otherwise, all objects will share the same count.
+	\item[line 7] The only piratically usage is pointer, this is object semantic, not a value semantic.  
+\end{description}
+
+	\item Four points when you want to implement smart pointer: All these design idea can be used in other context, so you should know it. 
+	\begin{enumerate}
+		\item operator * and operator -> overload
+		\item disable copy and support move constructor
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+smart_ptr(const smart_ptr&)    = delete;  
+smart_ptr& operator=(const smart_ptr&)    = delete;
+\end{lstlisting}
+
+		\item reference number. 
+		
+		\item template constructor. it is used to support assignment between child class smart pointer and parent class smart pointer.
+		
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+template <typename T>
+class unique_ptr{
+	.....
+	
+	template <typename U>  
+	unique_ptr(unique_ptr<U>&& other)  {
+		ptr_ = other.release();  
+	}
+}
+
+unique_ptr<parent> pc{new Child};
+unique_ptr<parent> pp{std::move(pc)};
+\end{lstlisting}
+
+	\end{enumerate}
+
 \end{itemize}
 
 \subsection{Why need smart pointer?}
 \begin{itemize}
+
+
 
 \item Why do we need smart pointer?
 \begin{enumerate}
@@ -5518,6 +5672,80 @@ std::shared_ptr<const Widget> fastLoadWidget(WidgetID id){
 \item For above requirement, you also can use raw pointer, But for raw pointer, you can't detect if original one has been delete. 
 
 \item A truly smart pointer would deal with this problem by tracking when it dangles, i.e., when the object it is supposed to point to no longer exists. That's precisely the kind of smart pointer \texttt{std::weak\_ptr} is. \textbf{You can't test if a raw pointer is dangle or not.}
+\end{itemize}
+
+\subsection{value and reference semantic}
+\begin{itemize}
+	\item A type has value semantics if the object's observable state is functionally distinct from all other objects of that type. This means that if you copy an object, you have a new object, and modifications of the new object will not be in any way visible from the old object.
+	
+	\item in C++, all primitive type are value semantic. such as \texttt{bool/int/double/char}. The container in STL, such as (pair, vector, string, map)are also value semantic.
+	
+	\item If a type wishes to have value semantics, and it needs to store objects that are dynamically allocated, then on copy operations, the type will need to allocate new copies of those objects. It must also do this for copy assignment.This kind of copying is called a "deep copy".
+	
+	\item reference semantic should not copy a object, such as a people object, it's not right to copy a people object from other people object. 
+	
+	\item A type is said to have reference semantics if an instance of that type can share its observable state with another object (external to it), such that manipulating one object will cause the state to change within another object.
+	
+	\item C++ pointers have value semantics with regard to which object they point to, but they have reference semantics with regard to the state of the object they point to.
+	
+	\item Usually, for reference semnatic class, we should delete its copy constructor. 
+	
+
+	
+	\item Advantage of value semantic is easier lifetime management. They must be stack object, A member of other object or element in a container. On the contrary, reference semantic can't be copy, only use pointer or reference to refer to it. lifetime is different to manage for reference semantic. 
+	
+	\item All smart pointers are value semantic, not object semantic. We should never define a smart pointer like below:
+	\begin{lstlisting}[numbers=none]
+		shared_ptr<Foo>* pFoo = new shared_ptr<Foo>(new Foo); //Wrong semantic.
+	\end{lstlisting}
+
+	\item vector of raw pointer is not good design, there are two problems. The first question is that you don't know if raw pointer is still valid? The second is that when you use remove algorithm on vector or raw pointer, it will cause memory leak. If we use vector of smart pointer, we can resolve both of these questions. 
+	
+	\item Use smart pointer, we can change reference semantic to value semantic, then make it easier to manage the lifetime. Below code illustrate this kind of usage. 
+	
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+typedef shared_ptr<Parent> ParentPtr;
+
+class Child : boost::noncopyable{
+	explicit Child(const ParentPtr& myMom_,
+					const ParentPtr& myDad_)
+		:myParent(myParent_){}
+		
+private:
+	weak_ptr<Parent> myParent;
+} 
+
+typedef shared_ptr<Child> ChildPtr;
+
+class Parent: public boot::enable_shared_from_this<Parent>,
+              private boost::noncopyable{
+  
+  	void addChild(){
+  		myChild.reset(new Child(shared_from_this()));
+  		//Child is created by parent.
+  	}
+		
+private:
+	ChildPtr myChild;
+}
+
+--------------------------------
+ParentPtr p(new parent);
+p->addChild();
+\end{lstlisting}
+\begin{enumerate}
+	\item First, we should not use raw pointer to refer to each other, it's reference semantic, you can't know if the object which you refer is still valid.
+	
+	\item Then, you can't use two shared\_ptrs here. otherwise, it will cause syclic reference.
+	
+	\item Then, you have to use one shared\_ptr and one weak\_ptr. Usually, owner(parent) has shared\_ptr, the counter part(child) has weak\_ptr. 
+	
+	\item weak\_ptr must use shared\_ptr to initialize. 
+	
+	\item Then we have problem here, you can't use this here, because it is raw pointer, a trick here is use \texttt{shared\_from\_this}.
+\end{enumerate}
+
+	
 \end{itemize}
 
 \subsection{make function}
@@ -8095,11 +8323,7 @@ the last time each is used.
 	\item Basic class categories:
 	\begin{enumerate}
  
-		
-	
-		
-		
-		
+			
 		\item Value-like types, such as int or vector<widget>. These represent values, and should naturally be copyable. In C++11, generally you should think of move as an optimization of copy, and so all copyable types should naturally be moveable... moving is just an efficient way of doing a copy in the often-common case that you don't need the original object any more and are just going to destroy it anyway. such as std::pair, std::vector, std::string.
 		
 		\begin{enumerate}
@@ -13212,6 +13436,15 @@ for(auto & e : con){
 \item[Line 8:] gives the best style.
 \end{description}
 
+
+\end{itemize}
+\subsubsection{allocator}
+\begin{itemize}
+	\item With help of allocator, container can use this to do some optimization. For example, for POD, you don't need to all constructor. For small object, you can put them in the memory pool etc.  More detail can be found "source code of STL". 
+	
+	\item In fact, allocator can be customized, two examples can be found in "effective STL". 
+	
+	\item In one word, we don't need to replace default allocator. allocator is not good design from beginning. It will cause vector<int, allocA> and vector<int, allocB> two different types. 
 \end{itemize}
 
 
@@ -16958,29 +17191,35 @@ int singleNumber(vector<int>& nums) {
 \begin{lstlisting}[frame=single, language=c++]	
 int partition(int nums[], int lo, int hi) {
 	if (lo == hi) return lo;
-	// 将 nums[lo] 作为默认分界点 pivot
+	// nums[lo] as default pivot
 	int pivot = nums[lo];
-	// j = hi + 1 因为 while 中会先执行 --
+	// j = hi + 1, because -- will be run in while first.
 	int i = lo, j = hi + 1;
 	while (true) {
-		// 保证 nums[lo..i] 都小于 pivot
+
+		//assert nums[lo..i] less than pivot
 		while (nums[++i] < pivot) {
 			if (i == hi) break;
 		}
-		// 保证 nums[j..hi] 都大于 pivot
+
+		assert nums[j..hi] greater than pivot.
 		while (nums[--j] > pivot) {
 			if (j == lo) break;
 		}
 		if (i >= j) break;
-		// 如果走到这里，一定有：
+
+		//when we reach here, we must have:
 		// nums[i] > pivot && nums[j] < pivot
-		// 所以需要交换 nums[i] 和 nums[j]，
-		// 保证 nums[lo..i] < pivot < nums[j..hi]
+
+		//so need swap nums[i] and nums[j]
+
+		// assert nums[lo..i]<pivot< nums[j..hi]
 		swap(nums, i, j);
 	}
-	// 将 pivot 值交换到正确的位置
+
+	//put pivot swap to right position
 	swap(nums, j, lo);
-	// 现在 nums[lo..j-1] < nums[j] < nums[j+1..hi]
+	//now, nums[lo..j-1] < nums[j] < nums[j+1..hi]
 	return j;
 }
 \end{lstlisting}
@@ -17001,19 +17240,20 @@ return m2;
 \begin{lstlisting}[frame=single, language=c++]	
 int findKthLargest(int[] nums, int k) {
 	int lo = 0, hi = nums.length - 1;
-	// 索引转化
+
+	//index transition.
 	k = nums.length - k;
 	while (lo <= hi) {
-		// 在 nums[lo..hi] 中选一个分界点
+		// select a pivot from nums[lo..hi] 
 		int p = partition(nums, lo, hi);
 		if (p < k) {
-			// 第 k 大的元素在 nums[p+1..hi] 中
+			// kth element is in nums[p+1..hi].
 			lo = p + 1;
 		} else if (p > k) {
-			// 第 k 大的元素在 nums[lo..p-1] 中
+			// kth element is in nums[lo..p-1]
 			hi = p - 1;
 		} else {
-			// 找到第 k 大元素
+			// found the kth element.
 			return nums[p];
 		}
 	}
@@ -17021,7 +17261,7 @@ int findKthLargest(int[] nums, int k) {
 }
 \end{lstlisting}	
 
-	\item pay attention to difference between nth\_element, partition and remove. \textbf{we can build quick\_sort from nth\_element and build quick_select(kth element) from partition.} 
+	\item pay attention to difference between nth\_element, partition and remove. \textbf{we can build quick\_sort from nth\_element and build quick\_select(kth element) from partition.} 
 
 
 	\item quick sort
@@ -17438,9 +17678,9 @@ for(auto i: v1){
 	\item partition
 	\item copy\_if
 	
-	\item  Both remove_if and partition put the "good" elements first. partition puts the "bad" elements after that, whereas remove_if does not specify what comes after it -- it might be the bad elements, but it might also be copies of any (either good or bad) elements.
+	\item  Both remove\_if and partition put the "good" elements first. partition puts the "bad" elements after that, whereas remove\_if does not specify what comes after it -- it might be the bad elements, but it might also be copies of any (either good or bad) elements.
 	
-	For example, if you partition 1 2 3 4 5 on even, you might get 2 4 5 3 1 (note that each element occurs exactly once), whereas if you remove_if the odd elements, you might get 2 4 3 4 5 (note the duplicates).
+	For example, if you partition 1 2 3 4 5 on even, you might get 2 4 5 3 1 (note that each element occurs exactly once), whereas if you remove\_if the odd elements, you might get 2 4 3 4 5 (note the duplicates).
 	
 	\subsubsection{map}
 	\item transform return a value for each element in the input container. for\_each is just a kind of range for. We don't reccommend to use lambda in for\_each.  range for looks better.  But if we have a function, then for\_each give some syntatic simplicity. 
@@ -17605,7 +17845,7 @@ int main(){
 	\item[] \textbf{limit thread number!} std::thread::hardware\_concurrency is ceiling. Every thread has overhead price to pay. hardware\_concurrency is true multi thread, so we should make full use of it. 
 \end{description}
 
-\item pay attention to the this_thread namespace, there are a few functions, such as \texttt{get\_id} and \texttt{sleep\_for}. 
+\item pay attention to the this\_thread namespace, there are a few functions, such as \texttt{get\_id} and \texttt{sleep\_for}. 
 \begin{lstlisting}[frame=single, language=c++]
 std::mutex g_display_mutex;
 
