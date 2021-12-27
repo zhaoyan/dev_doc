@@ -18657,13 +18657,13 @@ auto l1 = [](){cout << "hello c world" << endl; };
 thread t(l1);           //lambda
 thread t1(Callable{});  //callable object
 thread t2(f1);          //funciton
-t.join();       //put join in the end.
+t.join();           //put three joins in the end.
 t1.join();
 t2.join();
 \end{lstlisting}
 
 \begin{description}
-	\item[Line 10:] Pay attention to the most vexing problem, so we should use bracket parenthesizes here, not parentheses.
+	\item[Line 9:] Pay attention to the most vexing problem, so we should use bracket parenthesizes here, not parentheses.
 \end{description}
 
 	\item Once you've started your thread, you need to explicitly decide whether to wait for it to finish (by joining) or leave it to run on its own (by detaching.). \textbf{Usually, Detaching is not good style.}
@@ -18688,10 +18688,10 @@ int main(){
 	std::cout << "before starting, joinable: " << std::boolalpha << t.joinable()
 	
 	t = std::thread(foo);
-	std::cout << "after starting, joinable: " << t.joinable() 
+	std::cout << "after starting, joinable: " << t.joinable() //return ture 
 	
 	t.join();
-	std::cout << "after joining, joinable: " << t.joinable() 
+	std::cout << "after joining, joinable: " << t.joinable() //return false
 }
 \end{lstlisting}
 
@@ -18706,18 +18706,14 @@ void foo(){
 int main(){
 	std::thread t;
 	std::cout << "before starting, joinable: " << std::boolalpha << t.joinable()
-	<< '\n';
 	
 	t = std::thread(foo);
 	std::cout << "after starting, joinable: " << t.joinable() 
-	<< '\n';
 	
 	std::this_thread::sleep_for(std::chrono::seconds(5));
 	std::cout << "after joining, joinable: " << t.joinable() 
-	<< '\n';
 }
 \end{lstlisting}
-
 
 \item thread is not exception safe, you have to use catch to make sure to call join.
 
@@ -18733,11 +18729,21 @@ void f(){
 	t.join;
 }
 \end{lstlisting}
+
 \begin{description}
 	\item[Source code] You can see the source code is a little ugly, there are two join here. That is why we add jthread in C++ 20.
 \end{description}
 
 \item jthread in c++20 is RAII style thread, it can resolve this problem. At the same time, it also support interrupt. You can see the detail about interruption in the following chapters. 
+\begin{lstlisting}
+int main(){
+    std::jthread thr{[]{ std::cout << "Joinable std::thread" << std::endl; }};
+    std::cout << "thr.joinable(): " << thr.joinable() << std::endl;
+    std::cout << std::endl;
+	//we don't need call thr.join() here
+	//jthread destructor will call join automatically.
+}
+\end{lstlisting}
 
 \item \textbf{prefer to use jthread if your compiler support it.} 
 
@@ -18746,9 +18752,7 @@ void f(){
 \subsection{detach}
 
 \begin{itemize}
-	\item When to use detach? CCIA(C++ concurrency in Action) give a good word example in 2.1.4.
-	
-	\item For example, we’ve done the initial part of the calculation and we have enough results to do the report. We might want to do that reporting concurrently with the rest of the calculation, so we “send the email” in a new thread.
+	\item When to use detach? CCIA(C++ concurrency in Action) give a good word example in 2.1.4. For example, we’ve done the initial part of the calculation and we have enough results to do the report. We might want to do that reporting concurrently with the rest of the calculation, so we “send the email” in a new thread.
 \begin{lstlisting}[frame=single, language=c++]
 void calculateAndReport()
 {
@@ -18771,6 +18775,7 @@ void calculateAndReport(){
 	const auto topLevelResult = TopLeve();
 	std::thread t(sendEmail, topLevelResult);
 	t.join()  //option 1, we don't have concurrent at all. 
+	          //because thread will wait here.
 	continuteCalculation(topLevelResult);
 	
 }		
@@ -18785,6 +18790,7 @@ void calculateAndReport(){
 	
 }			
 \end{lstlisting}
+
 		\item join in the end.
 \begin{lstlisting}[frame=single, language=c++]
 void calculateAndReport(){
@@ -18794,20 +18800,20 @@ void calculateAndReport(){
 	t.join()  //option 3, safe and concurrent, 
 }			
 \end{lstlisting}			
+
 		\item use jthread in C++ 20
 \begin{lstlisting}[frame=single, language=c++]
-	void calculateAndReport(){
-		const auto topLevelResult = TopLeve();
-		std::jthread t(sendEmail, topLevelResult); 
-		//a little different option 3, it will call join 
-		//before the function finishes.
-		continuteCalculation(topLevelResult);
-	}			
+void calculateAndReport(){
+	const auto topLevelResult = TopLeve();
+	std::jthread t(sendEmail, topLevelResult); 
+	//a little different option 3, it will call join 
+	//before the function finishes.
+	continuteCalculation(topLevelResult);
+}			
 \end{lstlisting}		
 	\end{enumerate} 
 
 		\item Detaching is not a no-no. It’s legal, a lot of high-quality production code have it, it just might be dangerous. So, think carefully when choosing between join and detach.
-
 \end{itemize}
 
 \subsection{pass parameter}
@@ -18815,18 +18821,17 @@ void calculateAndReport(){
 \begin{itemize}
 	\item \texttt{std::thread} does not provide an easy way to return a value from a thread.
 	
-	\item We could get the return value of the tasks | functions via references, variable pointers or global variables but these approaches share data between multiple threads and look a bit cumbersome.
+	\item We could get the return value of the tasks/functions via references, variable pointers or global variables but these approaches share data between multiple threads and look a bit cumbersome.
 	
 	\item The arguments are copied into internal storage, where they can be accessed by the newly created thread of execution, and then passed to the callable object or function as rvalues as if they were temporaries.
 	
-	\item std::decay used to finish copy. it is used mainly in thread context and isn't used very often in other places in STL.
+	\item \texttt{std::decay} used to finish copy. it is used mainly in thread context and isn't used very often in other places in STL.
 	
 \begin{lstlisting}[frame=single, language=c++]
 thread(Function&& f, Arg&& arg) {
 	// something happening
 	std::invoke(decay_copy(std::forward<Function>(f)),
-	decay_copy(std::forward<Arg>(arg)));
-	// something else happening
+	                  decay_copy(std::forward<Arg>(arg)));
 }
 	
 template <class T> 
@@ -18836,6 +18841,7 @@ typename decay<T>::type decay_copy(T&& v){
 \end{lstlisting}
 
 	\item  If you study \texttt{decay\_copy} closely, you will find that it returns by value (because its return type is \texttt{std::decay} of something). So the function f is called with rvalue arguments (prvalue arguments, in fact).
+
 \begin{lstlisting}[frame=single, language=c++]
 void f(int& a) {  //this will fail
 void f(int&& a) {  //this suceed.
@@ -18861,13 +18867,13 @@ void oop{
     t.detach();
 }
 \end{lstlisting}	
+
 \begin{description}
-		\item[Source code] if we pass buffer, this is pointer to local value, once oop finish, the buffer will be invalid. That is why we need to change it to string, then copy a string value in thread context. About detail inside thread constructor, you can see the below section. A little hint, decay\_copy.
+		\item[Source code] if we pass buffer, this is pointer to local value, once oop finish, the buffer will be invalid. That is why we need to change it to string, then copy a string value in thread context. About detail inside thread constructor, you can see the below section. A little hint, \texttt{decay\_copy.}
 \end{description}
 
 
-
-	\item When pass reference parameter to thread, you need to use std::ref. Detail can be found below:
+	\item When pass reference parameter to thread, you need to use \texttt{std::ref.} Detail can be found below:
 \begin{lstlisting}[frame=single, language=c++]
 void bar(const ComplexObject& co){
 	co.doCalculations();
@@ -18896,14 +18902,14 @@ thread(f1, move(p));
 \end{description}
 \item summary:
 \begin{enumerate}
-		\item can't copy, use move, such as unique\_ptr.
-		\item want to change, use std::ref.
-		\item other time, they use decay\_copy.Pay more attention to avoid dangling pointer.  
+		\item When you can't copy, use move, such as \texttt{unique\_ptr.}
+		\item want to change, use \texttt{std::ref.}
+		\item other time, they use \texttt{decay\_copy}. Pay more attention to avoid dangling pointer.  
 \end{enumerate}
 
 \end{itemize}
 	
-\subsection{detai about thread ctor}
+\subsection{detail about thread ctor}
 
 \begin{itemize}
 		\item The interface looks like this:
@@ -18911,8 +18917,7 @@ thread(f1, move(p));
 thread(Function&& f, Arg&& arg) {
 	// something happening
 	std::invoke(decay_copy(std::forward<Function>(f)),
-	decay_copy(std::forward<Arg>(arg)));
-	// something else happening
+            	decay_copy(std::forward<Arg>(arg)));
 }
 	
 template <class T> 
@@ -18921,15 +18926,16 @@ typename decay<T>::type decay_copy(T&& v){
 }
 \end{lstlisting}
 		\item It's long story, so please buckle up.
+
 		\begin{enumerate}
-			\item arg is forward reference, for lvalue, T is lvalue reference, arg is also lvalue reference.For rvalue, T is lvalue, arg is rvalue reference. 
+			\item \texttt{arg} is forward reference, for lvalue, T is lvalue reference, arg is also lvalue reference. For rvalue, T is lvalue, arg is rvalue reference. 
 \begin{lstlisting}
 f(T&& para)
 int x = 27;
 f(x)  //x is lvalue, so T is int& and para is also int&;
 f(move(x)) move(x) is rvalue, so T is int, para is int&&
 \end{lstlisting}
-		\item inside thread, arg is always lvalue, forward<Arg> can return lvalue or rvalue according to the outside parameter. 
+		\item Inside thread, arg is always lvalue, forward<Arg> can return lvalue or rvalue according to the outside parameter. 
 \begin{lstlisting}
 f(T&& para){
   forward<T>(para)
@@ -18967,13 +18973,13 @@ public:
 };
 \end{lstlisting}
 	
-		\item Why do we need decay, a good usage is make\_pair.
+		\item Why do we need decay, a good usage is \texttt{make\_pair.}
 \begin{lstlisting}
 template <class T1, class T2> 
-inline pair<typename decay<T1>::type ,typename decay<T2>::type> make_y(T1&& x, T2&& y)
-{ 
+inline pair<typename decay<T1>::type ,typename decay<T2>::type> make_y(T1&& x, T2&& y) { 
     return pair<typename decay<T1>::type ,typename decay<T2>::type>(std::forward<T1>(x), std::forward<T2>(y)); 
 }
+
 template <class T1, class T2> 
 inline pair<T1,T2> make_pair(T1&& x, T2&& y)
 { 
@@ -18985,6 +18991,7 @@ std::pair<std::string,int> p = std::make_pair(move(arr), 42);
 //for right value, T1 is char [10], that is array lvalue type.
 //pair<char [10], int> array can't be build directly, so compile fail.
 \end{lstlisting}
+
 		\item we need to add decay below:
 \begin{lstlisting}
 template <class T1, class T2>
@@ -19008,8 +19015,8 @@ inline std::pair<char *, int> make_y<char [10], int>(char (&&x)[10], int && y)
 \end{itemize}
 
 
-\subsection{management of thread}
-\subsubsection{ownership and identification of a thread}
+\subsection{Management of thread}
+\subsubsection{Ownership and identification of a thread}
 
 \begin{itemize}
 	\item What is thread id and how to get id? Pay attention, return type is \texttt{std::thread::id}.
@@ -19022,6 +19029,7 @@ void foo(){
 	g_display_mutex.lock();
 	std::cout << "thread " << this_id << " sleeping...\n";
 	g_display_mutex.unlock();
+	//to avoid overlapped output contents.
 	
 	std::this_thread::sleep_for(std::chrono::seconds(1));
 }
@@ -19036,6 +19044,10 @@ int main(){
 \end{lstlisting}		
 	
 	\item thread IDs could be used as keys into associative containers where specific data needs to be associated with a thread and alternative mechanism.
+
+    \item \texttt{sleep()} causes the thread to definitely stop executing for a given amount of time; if no other thread or process needs to be run, the CPU will be idle (and probably enter a power saving mode).
+	
+	\item \texttt{yield()} basically means that the thread is not doing anything particularly important and if any other threads or processes need to be run, they should. Otherwise, the current thread will continue to run.
 	
 	\item just like \texttt{ifstream} and \texttt{unique\_ptr}, thread is movable but not copyable. 
 \begin{lstlisting}[frame=single, language=c++]
@@ -19135,35 +19147,7 @@ int main(){
 		\item[] \textbf{limit thread number!} \texttt{std::thread::hardware\_concurrency} is ceiling. Every thread has overhead price to pay. hardware\_concurrency is true multi thread, so we should make full use of it. 
 	\end{description}
 	
-	\item pay attention to the this\_thread namespace, there are a few functions, such as \texttt{get\_id} and \texttt{sleep\_for}. 
-\begin{lstlisting}[frame=single, language=c++]
-	std::mutex g_display_mutex;
-	
-	void foo(){
-		std::thread::id this_id = std::this_thread::get_id();
-		
-		g_display_mutex.lock();
-		std::cout << "thread " << this_id << " sleeping...\n";
-		g_display_mutex.unlock();
-		
-		std::this_thread::sleep_for(std::chrono::seconds(1));
-	}
-	
-	int main(){
-		std::thread t1(foo);
-		std::thread t2(foo);
-		
-		t1.join();
-		t2.join();
-	}
-\end{lstlisting}	
-	
-	
-	\item \texttt{sleep()} causes the thread to definitely stop executing for a given amount of time; if no other thread or process needs to be run, the CPU will be idle (and probably enter a power saving mode).
-	
-	\item \texttt{yield()} basically means that the thread is not doing anything particularly important and if any other threads or processes need to be run, they should. Otherwise, the current thread will continue to run.
-	
-\end{itemize}
+	\end{itemize}
 
 \subsubsection{cooperative interruption}
 
@@ -19171,6 +19155,7 @@ int main(){
 	\item A typical question in my C++ seminars is: Can a thread be killed?. Before C++20, my answer is no. With C++20, you can ask a thread politely for its interruption.
 	
 	\item First of all. Why is it no good idea to kill a thread? The answer is quite easy. You don't know in which state the thread is when you kill it. Here are two possible malicious outcomes.
+
 	\begin{enumerate}
 		\item 	The thread is only half-done with its job. Consequently, you don't know the state of that job and, hence, the state of your program. You end with undefined behaviour, and all bets are open.
 		
@@ -19183,8 +19168,7 @@ int main(){
 	\item basic usage of stop source and stop token. Usually, \textbf{the thread include while loop. }
 \begin{lstlisting}[frame=single, language=c++]	
 void data_processors() {
-	//Create a stop source
-	std::stop_source source;
+	std::stop_source ssource;
 	
 	// gets a stop token from the stop source.
 	std::thread processor1([stoken=ssource.get_token()]() {
@@ -19193,20 +19177,17 @@ void data_processors() {
 		}     
 	});    
 
-	// gets a stop token from the stop source.
 	std::thread processor2([stoken=ssource.get_token()]() {
 		while(!stoken.stop_requested()) {
 			//Process data...
 		}     
 	});
 	
-	//Sleep for few seconds
 	std::this_thread::sleep_for(5s);
 	
 	//Request stop. This would stop both data processors.
 	ssource.request_stop();
 	
-	//Join the data processor threads
 	processor1.join();
 	processor2.join();
 }
@@ -19215,8 +19196,6 @@ void data_processors() {
 \item However, threads cannot always actively monitor a stop token. For instance, a thread waiting on a condition variable cannot check a stop condition unless it is signaled. For that reason, a callback mechanism is provided through \texttt{std::stop\_callback}. A \texttt{std::stop\_callback} instance registers a callback function for a given stop token. The callback is invoked when the token receives a stop request.
 
 \begin{lstlisting}[frame=single, language=c++]
-using namespace std::literals::chrono_literals;
-
 std::queue<int> jobs;
 std::mutex mut;
 std::condition_variable cv;
@@ -19232,9 +19211,7 @@ void worker(std::stop_token stoken) {
 		{ //Aquire a jobId in lock
 			std::unique_lock lck(mut);
 			cv.wait(lck, [stoken]() {
-				//Condition for wake up
-				return jobs.size() > 0 ||
-				stoken.stop_requested();
+				return jobs.size() > 0 || stoken.stop_requested();
 			});
 			
 			if (stoken.stop_requested()) { //Stop if requested to stop
@@ -19243,22 +19220,14 @@ void worker(std::stop_token stoken) {
 			jobId = jobs.front(); //There is jobId. Grab it.
 			jobs.pop();
 		} //End of locked block
-		
-		//Do job here outside the lock
-		std::cout << std::this_thread::get_id() << " "
-		<< "Doing job " << jobId << "\n";
 	} //End of while loop
 }
 
-
 void manager() {
-	
 	std::stop_source ssource; //Create a stop source
 	
-	//Create 2 workers and pass stop tokens
 	std::thread worker1(worker, ssource.get_token());
 	std::thread worker2(worker, ssource.get_token());
-	//Enqueue some jobs
 	for (int i = 0; i < 5; i++) {
 		{ //Locked block
 			std::unique_lock lck(mut);
@@ -19297,19 +19266,14 @@ void worker_cv_any(std::stop_token stoken) {
 				Therefore woke up because of a stop request. */
 				break; //Leave
 			}
-			//Grab jobId
 			jobId = jobs.front();
 			jobs.pop();
 		}
-		
-		//Do job here outside the lock
-		std::cout << std::this_thread::get_id() << " "
-		<< "Doing job " << jobId << "\n";
 	} //End of while loop
 }	
 \end{lstlisting}
 
-\item jthread has stop state inside already, so you only need to pass the first argument as \texttt{stop\_token} to jthread constructor.  Detail can be found in jthread constructor in cppreference.com.  If initialized with a function that accepts a std::stop\_token, std::jthread gets a stop token from its stop source and passes it to the function.
+\item jthread has stop state inside already, so you only need to pass the first argument as \texttt{stop\_token} to jthread constructor.  Detail can be found in jthread constructor in cppreference.com.  If initialized with a function that accepts a \texttt{std::stop\_token,} std::jthread gets a stop token from its stop source and passes it to the function.
 
 \begin{lstlisting}[frame=single, language=c++]
 int main(){
@@ -19342,19 +19306,18 @@ int main(){
 	std::cout << "Requesting stop of sleepy worker\n";
 	sleepy_worker.request_stop();
 	sleepy_worker.join();
-	std::cout << "Sleepy worker joined\n";
 	
-	// Or automatically using RAII:
 	// waiting_worker's destructor will call request_stop()
 	// and join the thread automatically.
 }
 \end{lstlisting}
-
-
+\begin{description}
+		\item[Source code] In jthread constructor, new jthread object and associates it with a thread of execution. The new thread of execution starts executing std::invoke(std::move(f\_copy), get\_stop\_token(), std::move(args\_copy)...), if the expression is valid; otherwise, it starts executing std::invoke(std::move(f\_copy), std::move(args\_copy)...)
+\end{description}
+ 
 \item A good paper about it is "std::jthread and cooperative cancellation with stop token"
 		
 \includegraphics[width=0.85\linewidth]{pics/stop_token.jpg}
-	
 	
 \end{itemize}
 
@@ -19409,7 +19372,6 @@ move reg mem
 	
 	\item data race and race condition, you can see a good reference page: "Race Condition vs. Data Race", you can google it.
 	\item Another good paper about data race is "Fun with Concurrency Problems".
-	
 \end{itemize}
 
 \subsection{shared date protection}
@@ -19417,7 +19379,6 @@ move reg mem
 
 \begin{itemize}
 	\item \texttt{std::mutex} is usually not accessed directly: \texttt{std::unique\_lock}, \texttt{std::lock\_guard}, or \texttt{std::scoped\_lock} (since C++17) manage locking in a more exception-safe manner.
-	
 	
 	\item It's common to group the mutex and the protected data together in a class rather than use global variables. this is a standard application of OO design rule.
 	
@@ -19569,11 +19530,41 @@ void do_once(bool do_throw)
 \end{lstlisting}
 \end{itemize}
 
-\subsubsection{read copy update idiom}
+\subsubsection{read and write mutex}
 
 \begin{itemize}
+\item In C++, read and write mutex is \texttt{shared\_mutex}. If one thread has acquired the exclusive lock (through lock, try\_lock), no other threads can acquire the lock (including the shared). If one thread has acquired the shared lock (through lock\_shared, try\_lock\_shared), no other thread can acquire the exclusive lock, but can acquire the shared lock.
+\begin{lstlisting}[frame=single, language=c++]	
+class ThreadSafeCounter {
+	public:
+	ThreadSafeCounter() = default;
+	
+	// Multiple threads/readers can read the counter's value at the same time.
+	unsigned int get() const {
+		std::shared_lock lock(mutex_);
+		return value_;
+	}
+	
+	// Only one thread/writer can increment/write the counter's value.
+	unsigned int increment() {
+		std::unique_lock lock(mutex_);
+		return ++value_;
+	}
+	
+	// Only one thread/writer can reset/write the counter's value.
+	void reset() {
+		std::unique_lock lock(mutex_);
+		value_ = 0;
+	}
+	
+	private:
+	mutable std::shared_mutex mutex_;
+	unsigned int value_ = 0;
+};	
+\end{lstlisting}
 
-\item common mutex + \texttt{shared\_ptr.}
+
+\item shared\_mutex has some performance concern, another option is to use common mutex + \texttt{shared\_ptr.}
 \begin{lstlisting}[frame=single, language=c++]	
 class CustomerData : boost::noncopyable{
 public:
@@ -19627,37 +19618,9 @@ void CustomerData::update(const string& customer, const EntryList& entries){
 	assert(data_.unique());
 	(*data_)[customer] = entries;
 \end{lstlisting}
-
-
-\item If one thread has acquired the exclusive lock (through lock, try\_lock), no other threads can acquire the lock (including the shared). If one thread has acquired the shared lock (through lock\_shared, try\_lock\_shared), no other thread can acquire the exclusive lock, but can acquire the shared lock.
-\begin{lstlisting}[frame=single, language=c++]	
-class ThreadSafeCounter {
-	public:
-	ThreadSafeCounter() = default;
-	
-	// Multiple threads/readers can read the counter's value at the same time.
-	unsigned int get() const {
-		std::shared_lock lock(mutex_);
-		return value_;
-	}
-	
-	// Only one thread/writer can increment/write the counter's value.
-	unsigned int increment() {
-		std::unique_lock lock(mutex_);
-		return ++value_;
-	}
-	
-	// Only one thread/writer can reset/write the counter's value.
-	void reset() {
-		std::unique_lock lock(mutex_);
-		value_ = 0;
-	}
-	
-	private:
-	mutable std::shared_mutex mutex_;
-	unsigned int value_ = 0;
-};	
-\end{lstlisting}
+\begin{center}
+		\includegraphics[width=0.65\linewidth]{pics/read_copy.png}
+		\end{center}
 
 \item a good candidate for shared\_mutex is read-copy-update method. 
 
@@ -20415,11 +20378,11 @@ while(!a_x.compare_exchange_strong(oldx, newx));
 		\item cas is mother of all RMW. If shared matches expected, we write desired to shared and return true. if not, it load the shared back into the expected. Despite its name, expected is in/out parameter. 
 
 \begin{center}
-	\includegraphics[width=0.85\linewidth]{pics/cas.png}
+	\includegraphics[width=0.65\linewidth]{pics/cas.png}
 \end{center}
 
 \begin{center}
-	\includegraphics[width=0.85\linewidth]{pics/cas1.png}
+	\includegraphics[width=0.65\linewidth]{pics/cas1.png}
 \end{center}
 
 
@@ -20454,7 +20417,7 @@ public:
 
 
 \begin{center}
-	\includegraphics[width=0.85\linewidth]{pics/atomic_operator.png}
+	\includegraphics[width=0.90\linewidth]{pics/atomic_operator.png}
 \end{center}
 
 \end{itemize}
@@ -20843,7 +20806,9 @@ void testShortLifeFactory()
   // stock destructs here
 }
 \end{lstlisting}
-		
+	\begin{center}	
+		\includegraphics[width=0.95\linewidth]{pics/weak_ptr.png}
+		\end{center}
 
 \end{itemize}
 
@@ -22052,10 +22017,6 @@ const std::string_view value_desc = "value"){
 \end{itemize}
 
 \section{C++20}
-\subsection{range}
-\begin{itemize}
-		\item
-\end{itemize}
 
 \subsection{concept}
 
