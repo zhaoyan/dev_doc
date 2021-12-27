@@ -20653,8 +20653,7 @@ t1.join(); t2.join();
 std::atomic<bool> flag(false);
 int a;
 
-void func1()
-{
+void func1(){
     a = 100;
     atomic_thread_fence(std::memory_order_release);
     flag.store(true, std::memory_order_relaxed);
@@ -20682,20 +20681,173 @@ int main()
 
 
 
-\section{lock-based data structure}
-\begin{itemize}
-	\item 
-\end{itemize}
-
-\section{lock-free data structure}
-\begin{itemize}
-	\item 
-\end{itemize}
-
 \section{practical suggestion}
 \begin{itemize}
-	\item 
+	\item don't register any call back or give this pointer to any another thread object.
+\begin{lstlisting}
+class Foo : public Observer{
+public:
+  Foo(Observable* s){
+    s->register(this) //don't do this, error
+  }
+}
+\end{lstlisting}
+instead, use two phrase methods, construc+ initilize() mehtods.
+
+    \item share\_ptr is not thread safe. Because it includes ptr and reference count, so you can't read and write the same share\_ptr at the same time. 
+
+\begin{lstlisting}
+shared_ptr<int> p(new int(42));
+//--- Example 1 ---
+// thread A
+shared_ptr<int> p2(p); // reads p
+// thread B
+shared_ptr<int> p3(p); // OK, multiple reads are safe
+
+//--- Example 2 ---
+// thread A
+p.reset(new int(1912)); // writes p
+// thread B
+p2.reset(); // OK, writes p2
+
+//--- Example 3 ---
+// thread A
+p = p3; // reads p3, writes p
+// thread B
+p3.reset(); // writes p3; undefined, simultaneous read/write
+
+//--- Example 4 ---
+// thread A
+p3 = p2; // reads p2, writes p3
+// thread B
+// p2 goes out of scope: undefined, the destructor is considered a "write access"
+
+//--- Example 5 ---
+// thread A
+p3.reset(new int(1));
+// thread B
+p3.reset(new int(2)); // undefined, multiple write
+\end{lstlisting}
+
+		\item A common method to make shared\_ptr thread safe. when copy it add lock, then use local copy.
+\begin{lstlisting}
+std::shared_ptr<T> global_ptr;
+std::mutex mu;
+
+void ThreadOpSharedPtr() {
+    std::shared_ptr<T> local_ptr;
+    {
+        MutexLockGuard lock(mu);
+        local_ptr = global_ptr;
+    }
+    // use local_ptr do whatever you want, it's thread-safe now
+}
+
+void write(){
+  shared_ptr<Foo> new Ptr(new Foo);
+  {
+    MutexLockGuard lock(mutex);
+	globalPtr = newPtr;
+  }
+  doit(newPtr);
+}
+\end{lstlisting}
+
+		\item For weak pointers, the safety guarantee is hidden in the documentation for weak\_ptr::lock: Effectively returns expired() ? shared\_ptr<T>() : shared\_ptr<T>(*this), executed atomically.  You can use weak\_ptr::lock() to get a shared\_ptr from other threads without further synchronization. 
+
+		\item Why share pointer is important, because it can help you to make sure destructor and other operation thread safe. We can't use mutex in object destructor, in order to make sure destructor and other operations can be synchronized properly, 
+
+		\item Why share pointer is important, because it can help you to make sure destructor and other operation thread safe. We can't use mutex in object destructor, in order to make sure destructor and other operations can be synchronized properly. The detail can be found in chenshuo 's book. A famous example is observer. 
+
+\begin{lstlisting}
+class StockFactory : public boost::enable_shared_from_this<StockFactory>, boost::noncopyable
+{
+ public:
+  boost::shared_ptr<Stock> get(const string& key)
+  {
+    boost::shared_ptr<Stock> pStock;
+    muduo::MutexLockGuard lock(mutex_);
+    boost::weak_ptr<Stock>& wkStock = stocks_[key];
+    pStock = wkStock.lock();
+    if (!pStock)
+    {
+      pStock.reset(new Stock(key),
+                   boost::bind(&StockFactory::weakDeleteCallback,
+                               boost::weak_ptr<StockFactory>(shared_from_this()),
+                               _1));
+      wkStock = pStock;
+    }
+    return pStock;
+  }
+
+ private:
+  static void weakDeleteCallback(const boost::weak_ptr<StockFactory>& wkFactory,
+                                 Stock* stock)
+  {
+    printf("weakDeleteStock[%p]\n", stock);
+    boost::shared_ptr<StockFactory> factory(wkFactory.lock());
+    if (factory)
+    {
+      factory->removeStock(stock);
+    }
+    else
+    {
+      printf("factory died.\n");
+    }
+    delete stock;  // sorry, I lied
+  }
+
+  void removeStock(Stock* stock)
+  {
+    if (stock)
+    {
+      muduo::MutexLockGuard lock(mutex_);
+      auto it = stocks_.find(stock->key());
+      if (it != stocks_.end() && it->second.expired())
+      {
+        stocks_.erase(stock->key());
+      }
+    }
+  }
+
+ private:
+  mutable muduo::MutexLock mutex_;
+  std::map<string, boost::weak_ptr<Stock> > stocks_;
+};
+\end{lstlisting}
+
+		\item test long life and short life Factory.
+\begin{lstlisting}
+void testLongLifeFactory()
+{
+  boost::shared_ptr<StockFactory> factory(new StockFactory);
+  {
+    boost::shared_ptr<Stock> stock = factory->get("NYSE:IBM");
+    boost::shared_ptr<Stock> stock2 = factory->get("NYSE:IBM");
+    assert(stock == stock2);
+    // stock destructs here
+  }
+  // factory destructs here
+}
+
+void testShortLifeFactory()
+{
+  boost::shared_ptr<Stock> stock;
+  {
+    boost::shared_ptr<StockFactory> factory(new StockFactory);
+    stock = factory->get("NYSE:IBM");
+    boost::shared_ptr<Stock> stock2 = factory->get("NYSE:IBM");
+    assert(stock == stock2);
+    // factory destructs here
+  }
+  // stock destructs here
+}
+\end{lstlisting}
+		
+
 \end{itemize}
+
+
 
 
 %\chapter{Internet}
