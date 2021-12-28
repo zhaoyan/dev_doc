@@ -18299,12 +18299,14 @@ count_line_in_files(const vector<string> file_names){
 	
 \end{itemize}
 
-\section{higher order function}
+\section{Higher order function}
 \begin{itemize}
-	\item Functions that take other function as arguments or that return new functions are called higher-order functions. Thye are the most important concept in functional programming.
+		
+	\item Functions that take other function as arguments or that return new functions are called higher-order functions. They are the most important concept in functional programming.
+
 	\item There are four kinds of usual higher order functions: \textbf{fold, map, filter, lift}.
 	
-\subsubsection{fold}
+\subsubsection{Fold}
 	
 	\item In general, folding doesn't require that the arguments and the result of the binary function passed to it have the same type. 
 	
@@ -18332,12 +18334,14 @@ people.erase(std::remove_if(people.begin(), people.end(), is_not_female), people
 std::string trim_left{std::string s){
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), is_not_space));
   return s;
+}
 \end{lstlisting}
+
 \begin{description}
 		\item[source code] erase is container function, and \texttt{find\_if} and \texttt{remove\_if} are STL algorithms. 
 \end{description}
 
-	\item copy\_if
+	\item \texttt{copy\_if}
 \begin{lstlisting}
 std::copy_if(to_vector.begin(), to_vector.end(),
                  std::ostream_iterator<int>(std::cout, " "),
@@ -18352,40 +18356,129 @@ std::copy_if(to_vector.begin(), to_vector.end(),
 	\item \texttt{transform} return a value for each element in the input container. \texttt{for\_each} is just a kind of range for. We don't reccommend to use lambda in for\_each.  range for looks better.  But if we have a function, then for\_each give some syntatic simplicity. 
 \begin{lstlisting}
 int op_increase (int i) { return ++i; }
-
   std::vector<int> foo;
   std::vector<int> bar;
 
-  // set some values:
   for (int i=1; i<6; i++)
     foo.push_back (i*10);                         // foo: 10 20 30 40 50
 
   bar.resize(foo.size());                         // allocate space
-
   std::transform (foo.begin(), foo.end(), bar.begin(), op_increase);
                                                   // bar: 11 21 31 41 51
-
-  // std::plus adds together its two arguments:
+// std::plus adds together its two arguments: foo: 21 41 61 81 101
   std::transform (foo.begin(), foo.end(), bar.begin(), foo.begin(), std::plus<int>());
-                                                  // foo: 21 41 61 81 101
 \end{lstlisting}
+
 \item How to understand "lifting", Just like mapping. For a container, we can map a function to each item. In another word, we can lift the function from the item level to container level. So they are the two sides of the same coin. 	
 \end{itemize}
 
 \section{lambda}
-\subsection{generic lambda}
+\subsection{lambda basic}
+
+\begin{itemize}
+\item lambda basic syntax and an example.
+\begin{lstlisting}
+[ captures ] (parameters) -> returnTypesDeclaration { ..; }
+\end{lstlisting}
+
+\begin{lstlisting}
+int sum = 0, divisor = 3;
+vector<int> vc { 1, 2, 3, 4, 5, 10, 15, 20, 25, 35, 45 };
+for_each(vc.begin(), vc.end(), [divisor, &sum] (int y){
+		if (y % divisor == 0){
+			cout << y << endl;
+			sum += y;
+		}
+	});
+ cout << sum << endl;
+\end{lstlisting}
+
+\item Lambda is used on complex type container. You can use typedef.
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+typedef std::vector< std::pair<int,std::string> > Record_t;
+Record_t k1;
+
+int find_it(std::string value, Record_t const& stuff){
+  auto fit = std::find_if(stuff.begin(), stuff.end(),
+            [value](Record_t::value_type const& vt) -> bool
+                 { return vt.second == value; });
+  if (fit != stuff.end())
+           return fit->first;
+}
+\end{lstlisting}
+\begin{description}
+	\item[Line 1:] typedef is your good friend, reuse it on line 4 and line 6.
+	\item[Line 6 to 7:] we define a lambda function.
+\end{description}
+\item This auto-declaration defines a closure type named factorial that you can call later instead of typing the entire lambda expression (a closure type is in fact a compiler-generated function class):
+\begin{lstlisting}[numbers=none]
+auto factorial = [](int i, int j) {return i * j;};
+
+int arr{1,2,3,4,5,6,7,8,9,10,11,12};
+long res = std::accumulate(arr, arr+12, 1, factorial);
+cout<<"12!="<<res<<endl; // 479001600
+\end{lstlisting}
+
+\item Under the final C++11 spec, if you have a lambda with an empty capture specification, then it can be treated like a regular function and assigned to a function pointer. Here's an example of using a function pointer with a capture-less lambda:
+\begin{lstlisting}[numbers=none]
+typedef int (*func)();
+func f = [] () -> int { return 2; };
+f();
+\end{lstlisting}
+\begin{description}
+	\item[Line 2:] An empty [] means empty capture specification.
+\end{description}
+
+\item A delegate. When you call a normal function, all you need is the function itself. When you call a method on an object, you need two things: the function and the object itself. It's the difference between func() and obj.method(). Starting with some code that again expects a function as an argument, into which we'll pass a delegate. \textbf{lambda is like a glue to combine for\_each and class MessageSizeStore.}
+
+\begin{lstlisting}[numbers=none]
+class MessageSizeStore{
+public:
+    MessageSizeStore () : _max_size( 0 ) {}
+    void checkMaxMessage (const std::string& message ) {...}
+    int getSize (){...}
+private:
+    int _max_size;
+};
+
+MessageSizeStore size_store;
+for_each(s.begin(),s.end(), [&] (const std::string& message){
+	size_store.checkMessage( message );
+});
+\end{lstlisting}
+
+\item Why functor is better than function pointer? because functor can be inline. 
+
+\item Why lambda is better than functor? 
+\begin{enumerate}
+\item lambda will produce a unnamed functor class. Not pollute name space.Frequently (not in this example, though) the name of the functor class is much less expressive than its actual code.
+\item It can be inline too.
+\item It can access all the automatic variable.
+\item It's much less verbose.
+\item Placing the code closer to where it's called improves code clarity.
+\begin{lstlisting}[numbers=none]
+int count3 = 0;
+std::count_if(v.begin(), v.end(), 
+        [&count3](int x){count3 += (x%3 == 0)} 
+           );
+\end{lstlisting}
+\end{enumerate}
+\end{itemize}
+
+\subsection{Generic lambda}
+	
 \begin{itemize}
 		\item generic lambda was introduced in C++ 14. 
 \begin{lstlisting}
 auto glambda = [] (auto a) { return a; };
 
-class /* unnamed */
-{
+class /* unnamed */ {
 public:
     template<typename T>
     T operator () (T a) const { return a; }
 };
 \end{lstlisting}
+
 		\item An example:
 
 \begin{lstlisting}
@@ -18393,20 +18486,20 @@ public:
 for_each( begin(v), end(v), [](decltype(*cbegin(v)) x) { cout << x; } );
 sort( begin(w), end(w), [](const shared_ptr<some_type>& a, 
                            const shared_ptr<some_type>& b) { return *a<*b; } );
-auto size = [](const unordered_map<wstring, vector<string>>& m) { return m.size(); };
 
+auto size = [](const unordered_map<wstring, vector<string>>& m) { return m.size(); };
 
 // C++14: just deduce the type
 for_each( begin(v), end(v), [](const auto& x) { cout << x; } );
 sort( begin(w), end(w), [](const auto& a, const auto& b) { return *a<*b; } );
 \end{lstlisting}
 
-		\item Another example.  Note that this new version of size is not limited to \/texttt{unordered\_map<wstring, vector<string>>s}, but can be invoked with any type that has a .size() member function. Furthermore, because it also implicitly deduces the return type, the return type will be whatever m.size() returns, which can be different for different types.
+		\item Another example.  Note that this new version of size is not limited to \/texttt{unordered\_map<wstring, vector<string> >s}, but can be invoked with any type that has a .size() member function. Furthermore, because it also implicitly deduces the return type, the return type will be whatever m.size() returns, which can be different for different types.
 
 \begin{lstlisting}
 // C++14: new expressive power
 auto size = [](const auto& m) { return m.size(); };
-\end{lstlsting}
+\end{lstlisting}
 
 \end{itemize}
 
@@ -18417,17 +18510,18 @@ auto size = [](const auto& m) { return m.size(); };
 
 \begin{lstlisting}
 // C++14
-auto f()              { return foo() * 42; } // ok, deduces "-> some_type"
+auto f() { return foo() * 42; } // ok, deduces "-> some_type"
 
-auto g() {                                // ok, deduces "-> some_type"
+auto g() {         // ok, deduces "-> some_type"
     while( something() ) {
         if( expr ) {
-            return foo() * 42;            // with arbitrary control flow
+            return foo() * 42;   // with arbitrary control flow
         }
     }
-    return bar.baz(84);                   // & multiple returns
+    return bar.baz(84);        // & multiple returns
 }              
 \end{lstlisting}
+
 		\item In C++14, we also support auto return type deduction lambda. \textbf{The restriction is: All returned values must be of the same type.}
 
 \begin{lstlisting}
@@ -18445,6 +18539,7 @@ auto do_something(const A& a, const B& b)
   return a.do_something(b);
 }// We don't need to follow trailing type.
 \end{lstlisting}
+
 		\item decltype(auto) is primarily useful for deducing the return type of forwarding functions and similar wrappers, where you want the type to exactly “track” some expression you’re invoking.
 \begin{lstlisting}
 string  lookup1();
@@ -18532,23 +18627,71 @@ void do_sth(const char* str)
 \begin{itemize}
 \item The basic idea of range adaptor is inline instance of functor. The functor operator() return the view. 
 
+\item There is good paper how to implement view and view adaptor. please google "An Introduction to the Range-v3 Library". It introduces the basic adaptor and view conceptions. | is operator overload behind the scene. 
+
 \begin{lstlisting}
 std::ranges::views::transform // this is adaptor.
 std::ranges::transform_view // this is a view.
 \end{lstlisting}
 
+\item The view supported by C++ 20
+\begin{lstlisting}
+std::all_view, std::views::all               
+// takes all elements
+
+std::ref_view                                
+// takes all elements of another view
+
+std::filter_view, std::views::filter         
+// takes the elements which satisfies the predicate
+
+std::transform_view, std::views::transform   
+// transforms each element
+
+std::take_view, std::views::take             
+// takes the first N elements of another view
+
+std::take_while_view, std::views::take_while 
+// takes the elements of another view as long as the predicate returns true
+
+std::drop_view, std::views::drop             
+// skips the first N elements of another view
+
+std::drop_while_view, std::views::drop_while 
+// skips the initial elements of another view until the predicate returns false
+
+std::join_view, std::views::join             
+// joins a view of ranges
+
+std::split_view, std::views::split           
+// splits a view by using a delimiter
+
+std::common_view, std::views::common         
+// converts a view into a std::common_range
+
+std::reverse_view, std::views::reverse       
+// iterates in reverse order
+
+std::basic_istream_view, std::istream_view   
+// applies operator>> on the view
+
+std::elements_view, std::views::elements     
+// creates a view on the N-th element of tuples
+
+std::keys_view, std::views::keys             
+// creates a view on the first element of a pair-like values
+
+std::values_view, std::views::values         
+// creates a view on the second elements of a pair-like values
+\end{lstlisting}
+
+
 \item An example. g++ a.cpp -std=c++20
 
 \begin{lstlisting}
-#include <iostream>
-#include <vector>
-#include <ranges> 
-
 using namespace std;
-int main()
-{
+int main() {
     std::vector<uint64_t> in{1, 2, 3,4, 5};
-
 
     // combine it with other views:
     for (auto && i : in | views::drop(2) | views::transform([]( auto &e ){ e+=2; return e*2;}))
@@ -18556,8 +18699,7 @@ int main()
     std::cout << '\n'; // should print: 6, 8, 10
 	for(auto e :in){
 			std::cout<<e << ' ';
-	}
-	//should print 1,2,5,6,7
+	} //should print 1,2,5,6,7
 }
 \end{lstlisting}
 \begin{description}
@@ -18566,8 +18708,7 @@ int main()
 
 	\item A interesting examples;
 \begin{lstlisting}
-int main()
-{
+int main() {
 	std::vector<int> v{0,1,2,3,4,5,6,7,8};
 	for(int n : v   
 	| std::views::take(6)
@@ -18581,6 +18722,7 @@ int main()
 		// use gcc 11.2 with -std=c++20
 }
 \end{lstlisting}	
+
 \begin{description}
 	\item[source code] view::take is adapter, it input a number, then return a anonymous view.
 	\item[source code] | operator has been overload, std::filter(range, lambda) equals range | std::filter(lambda)
@@ -18609,16 +18751,102 @@ std::ranges::sort(ints);
 	\item[Source code] Pay more attention to the format of lambda.
 \end{description}
 
-\item There is good paper how to implement view and view adaptor. please google "An Introduction to the Range-v3 Library"
-
-
 
 \end{itemize}
 
 \section{pratical usage}
 \begin{itemize}
 \item filter and transform. A container, filter some items and get the name of it.
+\begin{lstlisting}
+std::string name(const person_t &person) {
+    return person.name();
+}
+bool is_female(const person_t &person) {
+    return person.gender() == person_t::female;
+}
+bool is_not_female(const person_t &person) {
+    return !is_female(person);
+}
+int main(int argc, char *argv[]) {
+    std::vector<person_t> people {
+        { "David"  , person_t::male   },
+        { "Jane"   , person_t::female },
+        { "Martha" , person_t::female },
+    };
+    // Filtering the collection by copying (see section 2.2.5)
+    std::vector<person_t> females;
+    // The std::copy_if algorithm copies items that satisfy the
+    // is_female predicate into the destination collection
+
+    std::copy_if(people.cbegin(), people.cend(),
+                 std::back_inserter(females),
+                 is_female);
+
+    // Transforming to get the names
+    std::vector<std::string> names(females.size());
+    std::transform(females.cbegin(), females.cend(),
+                   names.begin(),
+                   name);
+
+    for (const auto& name: names) {
+        std::cout << name << '\n';
+    }
+    return 0;
+}
+\end{lstlisting}
+
 \item count word frequence. 
+\begin{lstlisting}
+#include <range/v3/view.hpp>
+#include <range/v3/action.hpp>
+#include <range/v3/istream_range.hpp>
+#include <range/v3/to_container.hpp>
+
+using namespace ranges::v3;
+using namespace std::placeholders;
+std::string string_to_lower(const std::string &s) {
+    return s | view::transform(tolower);
+}
+std::string string_only_alnum(const std::string &s) {
+    return s | view::filter(isalnum);
+}
+int main(int argc, char *argv[]) {
+    const int n = argc <= 1 ? 10 : atoi(argv[1]);
+    const auto words =
+               // Getting a range of words (tokens) from cin
+               istream_range<std::string>(std::cin)
+               // Converting all words to lower-case
+               | view::transform(string_to_lower)
+               // Removing non alphanumeric characters from the words
+               | view::transform(string_only_alnum)
+               // Some words could have only contained non alphanumeric characters
+               | view::remove_if(&std::string::empty)
+               // For sorting, we need a random-access collection
+               | to_vector | action::sort;
+
+    const auto results =
+               words
+               // Grouping the same words
+               | view::group_by(std::equal_to<>())
+               // Creating a pair that consists of a word and its
+               // frequency
+               | view::transform([] (const auto &group) {
+                         const auto begin       = std::begin(group);
+                         const auto end         = std::end(group);
+                         const int  count       = distance(begin, end);
+                         const std::string word = *begin;
+                         return std::make_pair(count, word);
+                     })
+               // Sorting the resulting range by word frequencies
+               | to_vector | action::sort;
+    for (auto value: results | view::reverse // Most frequent words first
+                             | view::take(n) // Taking the top `n` results
+            ) {
+        std::cout << value.first << " " << value.second << std::endl;
+    }
+    return 0;
+}
+\end{lstlisting}
 \end{itemize}
 
 
@@ -19329,14 +19557,14 @@ int main(){
 	
 	\item An invariant (in common sense) means some conditions that must be true at some point in time or even always while your program is executing. e.g. PreConditions and PostConditions can be used to assert some conditions that must be true when a function is called and when it returns. Object invariants can be used to assert that a object must have a valid state throughout the time it exists. This is the design by contract principle.
 	
-	\item understand invariant. 1) only one thread can see broken invariant(loc base) 2) design of your data structure and its invariants so that modification are done as a series of indivisible changes, each of which preserves the invariants. 
+	\item Understand invariant. 1) only one thread can see broken invariant(loc base) 2) design of your data structure and its invariants so that modification are done as a series of indivisible changes, each of which preserves the invariants. 
 	
 	
 	\item For example, For a shared pointer, The invariant it holds is that the underlying object only exists as long as the reference count to it is greater than zero.
 	
 	\item In languages such as C++, a constructor-destructor pair becomes the best tool for introducing invariants. The proverbial life cycle of an object, begins when the class’ constructor returns and it ends only when the destructor is called.
 	
-	\item It is okay if the invariants are destroyed while the method is executing, only that they need to be restored before the method returns. Also, this restriction does not apply to private methods that are inaccessible from outside the class.externally accessible object fields that take part in the object’s invariants are an absolute no-no.
+	\item It is okay if the invariants are destroyed while the method is executing, only that they need to be restored before the method returns. Also, this restriction does not apply to private methods that are inaccessible from outside the class. Externally accessible object fields that take part in the object’s invariants are an absolute no-no.
 	
 	\item Thread-Safety is just the ability to maintain an object’s invariants in a multi-threaded environment.
 	
@@ -19400,10 +19628,12 @@ scoped_lock
 shared_lock	
 \end{lstlisting}
 
+		\item There are three main kinds of mutex: \texttt{mutex,} \texttt{recursive\_mutex} and \texttt{shared\_mutex.}
+
 	\item The basic usage guideline:
 \begin{enumerate}
 	\item \texttt{lock\_guard} if you need to lock exactly 1 mutex for an entire scope.
-	\item \texttt{scoped\_lock} if you need to lock a number of mutexes that is not exactly 1.
+	\item \texttt{scoped\_lock} if you need to lock a number of mutexes that is not exactly 1. It will avoid dead lock problem.
 	\item \textbf{unique\_lock if you need to unlock within the scope of the block (which includes use with a condition\_variable) or transfer mutex ownership between scopes.}
 \end{enumerate}
 
@@ -19412,20 +19642,22 @@ shared_lock
 	\item usage of \texttt{std::lock}. 
 \begin{lstlisting}[frame=single, language=c++]	
 class X{
-	private:
+private:
 	some_big_object some_detail;
 	std::mutex m;
-	public:
+public:
 	X(some_big_object const& sd):some_detail(sd){}
 	friend void swap(X& lhs, X& rhs){
 		if(&lhs==&rhs){return;}
 		std::lock(lhs.m,rhs.m);
 		std::lock_guard<std::mutex> lock_a(lhs.m,std::adopt_lock);
 		std::lock_guard<std::mutex> lock_b(rhs.m,std::adopt_lock);
+		//use lock_guard here is to give mutex RAII semantic.
 		swap(lhs.some_detail,rhs.some_detail);
 	}
 };
 \end{lstlisting}
+
 \begin{description}
 	\item[Source code] \texttt{std::lock} use deadlock avoidance algorithm. 
 	\item[Source code] Pay attention to the \texttt{std::adopt\_lock.} There are three constant instances. \texttt{std::defer\_lock,} \texttt{std::try\_to\_lock} and \texttt{std::adopt\_lock} are instances of empty struct tag types \texttt{std::defer\_lock\_t,} \texttt{std::try\_to\_lock\_t} and \texttt{std::adopt\_lock\_t} respectively. They are used in overload lock\_guard, scoped\_guard, shared\_guard and unique\_guard
@@ -19436,7 +19668,6 @@ class X{
 \begin{lstlisting}[frame=single, language=c++]	
 struct Box {
 	explicit Box(int num) : num_things{num} {}
-	
 	int num_things;
 	std::mutex m;
 };
@@ -19465,7 +19696,7 @@ int main(){
 }
 \end{lstlisting}			
 
-    \item The difference is that you can lock and unlock a \texttt{std::unique\_lock.} \texttt{std::lock\_guard} will be locked only once on construction and unlocked on destruction.
+    \item The difference is that you can lock and unlock a \texttt{std::unique\_lock.} \texttt{std::lock\_guard} will be locked only once on construction and unlocked on destruction. \textbf{That is the RAII semantic in C++}.
 	
 	\item The \texttt{scoped\_lock} class template is a variadic template supporting any number of mutexes:
 \begin{lstlisting}[frame=single, language=c++]	
@@ -19618,17 +19849,16 @@ void CustomerData::update(const string& customer, const EntryList& entries){
 	assert(data_.unique());
 	(*data_)[customer] = entries;
 \end{lstlisting}
+
 \begin{center}
 		\includegraphics[width=0.65\linewidth]{pics/read_copy.png}
-		\end{center}
-
-\item a good candidate for shared\_mutex is read-copy-update method. 
+\end{center}
 
 \item know additional knowledge, lock convey,  false sharing.
 
 \item don't use mutex across process, just use TCP socket between processes. 
 
-\item Only use non-recursive mutex.
+\item Only use non-recursive mutex. If you have to use recursive mutex, you'd bettern redesign your framework.framework
 
 \item First spin for a while, If still can not get the mutex, then suspend.
 
@@ -19642,7 +19872,7 @@ void CustomerData::update(const string& customer, const EntryList& entries){
 	\begin{enumerate}
 		\item Avoid nested locks, don't try to acquire a lock when you already hold one
 		\item Avoid calling user-supplied code while hodling a lock, maybe this function has hold a lock already.
-		\item Acquire locks in a fixed order, use scoped\_lock.
+		\item Acquire locks in a fixed order, use \texttt{scoped\_lock.}
 		\item extending these guidelines beyond locks. 
 		\item deadlock doesn't only occur whith locks, it can occur with any synchronization construct that can lead to a wait cycle. For example, it's bad idea to wait for a thread while holding a lock, because that thread might need to acquire the lock in order to proceed. 
 	\end{enumerate}	
@@ -19685,24 +19915,24 @@ void CustomerData::update(const string& customer, const EntryList& entries){
 \subsection{interface design}
 \begin{itemize}
 	
-	\item we can't have top function for stack, because we can't make two interface function atomic at the same time. The solution is use \texttt{shared\_ptr} or use reference.
+	\item We can't have top function for stack, because we can't make two interface function atomic at the same time. The solution is use \texttt{shared\_ptr} or use reference. It's worth pointing out that in order to make exception safe, we have two interfaces: top and pop. If we can only use one function, at the same time, want to keep exception safe, we can't return value(because copy value when return maybe thrwo exception. When you return smart pointer, it will not throw any exceptions.
 	
-	\begin{lstlisting}[frame=single, language=c++]
-		std::shared_ptr<T> pop(){
-			std::lock_guard<std::mutex> lock(m);
-			if(data.empty()) throw empty_stack();
-			std::shared_ptr<T> const res(std::make_shared<T>(data.top()));
-			data.pop();
-			return res;
-		}
-		
-		void pop(T& value){
-			std::lock_guard<std::mutex> lock(m);
-			if(data.empty()) throw empty_stack();
-			value=data.top();
-			data.pop();
-		}	
-	\end{lstlisting}	
+\begin{lstlisting}[frame=single, language=c++]
+	std::shared_ptr<T> pop(){
+		std::lock_guard<std::mutex> lock(m);
+		if(data.empty()) throw empty_stack();
+		std::shared_ptr<T> const res(std::make_shared<T>(data.top()));
+		data.pop();
+		return res;
+	}
+	
+	void pop(T& value){
+		std::lock_guard<std::mutex> lock(m);
+		if(data.empty()) throw empty_stack();
+		value=data.top();
+		data.pop();
+	}	
+\end{lstlisting}	
 	
 \end{itemize}
 
@@ -19710,11 +19940,11 @@ void CustomerData::update(const string& customer, const EntryList& entries){
 \section{synchronization}
 \subsection{conditional variable}
 \begin{itemize}
-	\item basic usage of conditional variable:
+	\item Basic usage of conditional variable:
 \begin{enumerate}
-	\item use with mutex with \texttt{unique\_lock} 
-	\item call wait, pass unique\_lock and lambda with bool check condition.(that is for spurious wakeup)
-	\item other side, use lock\_guard or scoped\_guard to lock the same mutex.
+	\item Use with mutex with \texttt{unique\_lock} 
+	\item Call wait, pass \texttt{unique\_lock} and lambda with bool check condition.(that is for spurious wakeup)
+	\item Other side, use \texttt{lock\_guard} or \texttt{scoped\_guard} to lock the same mutex.
 \end{enumerate}
 
 \item An example of synchronization between main and worker thread.
@@ -19725,8 +19955,7 @@ std::string data;
 bool ready = false;
 bool processed = false;
 
-void worker_thread()
-{
+void worker_thread(){
 	// Wait until main() sends data
 	std::unique_lock<std::mutex> lk(m);
 	cv.wait(lk, []{return ready;});
@@ -19735,8 +19964,7 @@ void worker_thread()
 	std::cout << "Worker thread is processing data\n";
 	data += " after processing";
 	
-	// Send data back to main()
-	processed = true;
+	processed = true; // Send data back to main()
 	std::cout << "Worker thread signals data processing completed\n";
 	
 	// Manual unlocking is done before notifying, to avoid waking up
@@ -19749,29 +19977,20 @@ int main(){
 	std::thread worker(worker_thread);
 	
 	data = "Example data";
-	// send data to the worker thread
-	{
+	{ // send data to the worker thread
 		std::lock_guard<std::mutex> lk(m);
 		ready = true;
 		std::cout << "main() signals data ready for processing\n";
 	}
 	cv.notify_one();
 	
-	// wait for the worker
-	{
+	{ // wait for the worker
 		std::unique_lock<std::mutex> lk(m);
 		cv.wait(lk, []{return processed;});
 	}
 	std::cout << "Back in main(), data = " << data << '\n';
-	
 	worker.join();
 }
-/* output
-main() signals data ready for processing
-Worker thread is processing data
-Worker thread signals data processing completed
-Back in main(), data = Example data after processing
-*/	
 \end{lstlisting}
 \begin{description}
 		\item[Source code] \texttt{lock\_guard} must be put inside a pair of curly braces. 
@@ -19818,7 +20037,9 @@ int main(){
 	t3.join();
 	t4.join();
 }
-/* output
+\end{lstlisting}
+
+\begin{lstlisting}
 Waiting...
 Waiting...
 Waiting...
@@ -19827,19 +20048,15 @@ Notifying again...
 ...finished waiting. i == 1
 ...finished waiting. i == 1
 ...finished waiting. i == 1
-*/
 \end{lstlisting}
 
-\item wait\_for and std::cv\_status
+\item \texttt{wait\_for} and \texttt{std::cv\_status}. \textbf{Different with wait, wait\_for will return after the certain time. }
 \begin{lstlisting}[frame=single, language=c++]
-using namespace std::chrono_literals;
-
 std::condition_variable cv;
 std::mutex cv_m;
 int i;
 
-void waits(int idx)
-{
+void waits(int idx) {
 	std::unique_lock<std::mutex> lk(cv_m);
 	if(cv.wait_for(lk, idx*100ms, []{return i == 1;})) 
 		std::cerr << "Thread " << idx << " finished waiting. i == " << i << '\n';
@@ -19847,8 +20064,7 @@ void waits(int idx)
 		std::cerr << "Thread " << idx << " timed out. i == " << i << '\n';
 }
 
-void signals()
-{
+void signals() {
 	std::this_thread::sleep_for(120ms);
 	std::cerr << "Notifying...\n";
 	cv.notify_all();
@@ -19861,21 +20077,22 @@ void signals()
 	cv.notify_all();
 }
 
-int main()
-{
+int main() {
 	std::thread t1(waits, 1), t2(waits, 2), t3(waits, 3), t4(signals);
 	t1.join();
 	t2.join();
 	t3.join();
 	t4.join();
 }
-/*
+
+\end{lstlisting}
+
+\begin{lstlisting}
 Thread 1 timed out. i == 0
 Notifying...
 Thread 2 timed out. i == 0
 Notifying again...
 Thread 3 finished waiting. i == 1
-*/	
 \end{lstlisting}
 
 \end{itemize}
@@ -19883,24 +20100,10 @@ Thread 3 finished waiting. i == 1
 \subsection{future}
 
 \begin{itemize}
-	\item std::async and future
+	\item std::async and future. Behind the future is conditional varaible, with help of std::async and std::future, progamming is very easy right now, see below example:
 	
 \begin{lstlisting}[frame=single, language=c++]
 using namespace std::chrono;
-std::string fetchDataFromDB(std::string recvdData){
-	// Make sure that function takes 5 seconds to complete
-	std::this_thread::sleep_for(seconds(5));
-	//Do stuff like creating DB Connection and fetching Data
-	return "DB_" + recvdData;
-}
-
-std::string fetchDataFromFile(std::string recvdData){
-	// Make sure that function takes 5 seconds to complete
-	std::this_thread::sleep_for(seconds(5));
-	//Do stuff like fetching Data File
-	return "File_" + recvdData;
-}
-
 int main(){
 	// Get Start Time
 	system_clock::time_point start = system_clock::now();
@@ -19908,7 +20111,6 @@ int main(){
 	//Fetch Data from File
 	std::string fileData = fetchDataFromFile("Data");
 	
-	//Fetch Data from DB
 	// Will block till data is available in future<std::string> object.
 	std::string dbData = resultFromDB.get();
 	
@@ -19916,19 +20118,12 @@ int main(){
 	auto end = system_clock::now();
 	auto diff = duration_cast < std::chrono::seconds > (end - start).count();
 	std::cout << "Total Time Taken = " << diff << " Seconds" << std::endl;
-	
-	//Combine The Data
-	std::string data = dbData + " :: " + fileData;
-	
-	//Printing the combined Data
-	std::cout << "Data = " << data << std::endl;
-	return 0;
 }
 \end{lstlisting}	
 
 \item packaged\_task and future. 
 \begin{enumerate}
-	\item By using std::async you cannot run your task on a specific thread anymore, where std::packaged\_task can be moved to other threads.
+	\item By using \texttt{std::async} you cannot run your task on a specific thread anymore, where \texttt{std::packaged\_task} can be moved to other threads.
 	
 	\item Also, a packaged\_task needs to be invoked before you call f.get(), otherwise you program will freeze as the future will never become ready:
 	
@@ -19944,28 +20139,22 @@ void task_lambda(){
 		return std::pow(a, b); 
 	});
 	std::future<int> result = task.get_future();
-	
 	task(2, 9);
-	
 	std::cout << "task_lambda:\t" << result.get() << '\n';
 }
 
 void task_bind(){
 	std::packaged_task<int()> task(std::bind(f, 2, 11));
 	std::future<int> result = task.get_future();
-	
 	task();
-	
 	std::cout << "task_bind:\t" << result.get() << '\n';
 }
 
 void task_thread(){
 	std::packaged_task<int(int,int)> task(f);
 	std::future<int> result = task.get_future();
-	
 	std::thread task_td(std::move(task), 2, 10);
 	task_td.join();
-	
 	std::cout << "task_thread:\t" << result.get() << '\n';
 }
 
@@ -19982,16 +20171,14 @@ int main(){
 
 \item Currently, \texttt{std::async} is probably best suited to handling either \textbf{very long running computations or long running IO} for fairly simple programs. It doesn't guarantee low overhead though (and in fact the way it is specified makes it difficult to implement with a thread pool behind the scenes), so it's not well suited for finer grained workloads. For that you either need to roll your own thread pools using std::thread or use something like Microsoft's PPL or Intel's TBB. 
 
-
-
 \item The benefit of the packaged task over std::async is to decouple the creation of the future with the execution of the task.
 
 \item The benefit of the promise over \texttt{std::async} and \texttt{std::packaged\_task} is that the promise can communicate a value to the future at a different time than at the end of a function call. Let me explain what I mean with this.
 
-
 \item Use std::async if you want some things done and don't really care when they're done, and std::packaged\_task if you want to wrap up things in order to move them to other threads or call them later.
 
 \item When we execute the program, we will get a full concurrent result because we used std::thread. Also, because packaged\_task returns a future object, we can use it to retrieve the return value of tasks without any issues. The typical usage of a packaged task is:
+
 \begin{enumerate}
 	\item creating the packaged task with a function,
 	\item retrieving the future from the packaged task,
@@ -20028,7 +20215,6 @@ int main(){
 	int b= 10;
 	
 	std::cout << std::endl;
-	
 	// define the promises
 	std::promise<int> prodPromise;
 	std::promise<int> divPromise;
@@ -20052,7 +20238,8 @@ int main(){
 }	
 \end{lstlisting}
 
-\item shared\_future example. future and shared\_future just like unique\_ptr and shared\_ptr. A shared\_future may be used to signal multiple threads simultaneously, similar to std::condition\_variable::notify\_all()
+\item shared\_future example. future and shared\_future just like unique\_ptr and shared\_ptr. A shared\_future may be used to signal multiple threads simultaneously, similar to 
+std::condition\_variable::notify\_all()
 
 \begin{lstlisting}[numbers=none]
 int main(){   
@@ -20061,16 +20248,14 @@ int main(){
 	
 	std::chrono::time_point<std::chrono::high_resolution_clock> start;
 	
-	auto fun1 = [&, ready_future]() -> std::chrono::duration<double, std::milli> 
-	{
+	auto fun1 = [&, ready_future]() -> std::chrono::duration<double, std::milli> {
 		t1_ready_promise.set_value();
 		ready_future.wait(); // waits for the signal from main()
 		return std::chrono::high_resolution_clock::now() - start;
 	};
 	
 	
-	auto fun2 = [&, ready_future]() -> std::chrono::duration<double, std::milli> 
-	{
+	auto fun2 = [&, ready_future]() -> std::chrono::duration<double, std::milli> {
 		t2_ready_promise.set_value();
 		ready_future.wait(); // waits for the signal from main()
 		return std::chrono::high_resolution_clock::now() - start;
@@ -20100,6 +20285,7 @@ int main(){
 \end{lstlisting}
 \begin{description}
 	\item[Source code] ready\_promise is main switch. t1\_ready\_promise is void, just like a conditional variable.
+	The main thread wait all other threads are ready, then trigger a start singal(ready\_promise.set\_value).
 \end{description}
 
 \item The benefit of a condition variable to a promise and future is, that you can use condition variables to synchronize threads multiple times. In opposite to that, a promise can send its notification only once. So you have to use more promise and future pairs to get the functionality of a condition variable. But in case you use the condition variable only for one synchronization, the condition variable is a lot more difficult to use in the right way. So a promise and future pair needs no shared variable and therefore no lock, they are not prone to spurious wakeups or lost wakeups. In addition to that, they can handle exceptions. So there are a lot of reasons to prefer tasks to condition variables.
@@ -20110,12 +20296,10 @@ void doTheWork(){
 }
 
 void waitingForWork(std::future<void>&& fut){
-	
 	std::cout << "Worker: Waiting for work." << std::endl;
 	fut.wait();
 	doTheWork();
 	std::cout << "Work done." << std::endl;
-	
 }
 
 void setDataReady(std::promise<void>&& prom){
@@ -20124,28 +20308,21 @@ void setDataReady(std::promise<void>&& prom){
 }
 
 int main(){
-	std::cout << std::endl;
-	
 	std::promise<void> sendReady;
 	auto fut= sendReady.get_future();
 	
 	std::thread t1(waitingForWork,std::move(fut));
 	std::thread t2(setDataReady,std::move(sendReady));
-	
-	t1.join();
-	t2.join();
-	
-	std::cout << std::endl;
-	
+	t1.join(); t2.join();
 }
-
 https://www.modernescpp.com/index.php/thread-synchronization-with-condition-variables-or-tasks
 \end{lstlisting}
+\begin{description}
+		\item[Source code] Give promise to one thread and give share to another thread.
+\end{description}
 
-		\item We know three ways of associating a task with a \texttt{std::future.} They are \texttt{std::async,} \texttt{std::packaged\_task} and \texttt{std::promise.} The benefit of the packaged task over std::async is to decouple the creation of the future with the execution of the task. The benefit of the promise over std::async and std::packaged\_task is that the promise can communicate a value to the future at a different time than at the end of a function call. Let me explain what I mean with this.
-
+		\item We know three ways of associating a task with a \texttt{std::future.} They are \texttt{std::async,} \texttt{std::packaged\_task} and \texttt{std::promise.} The benefit of the packaged task over std::async is to decouple the creation of the future with the execution of the task. The benefit of the promise over std::async and std::packaged\_task is that the promise can communicate a value to the future at a different time than at the end of a function call. 
 \end{itemize}
-
 
 
 \subsection{time}
@@ -20194,9 +20371,7 @@ int main (){
 	using namespace std::chrono;
 	
 	system_clock::time_point tp_epoch;	// epoch value
-	
 	time_point <system_clock,duration<int>> tp_seconds (duration<int>(1));
-	
 	system_clock::time_point tp (tp_seconds);
 	
 	std::cout << "1 second since system_clock epoch = ";
@@ -20327,8 +20502,10 @@ int main() {
 \section{atomic and memory order}
 \subsection{atomic type}
 \begin{itemize}
+
 	\item built-in atomic; bool, integral type, floating point, pointers and smart pointers(C++20)
-	\item you can call is\_lock\_free to determine whether operations on a given type are done directly with atomic instructions or done by using a lock internal to the compiler. That is important to know in many cases. If the atomic operatons use an internal mutex, then the aotmic performance gains will probably not good. On the contray, will be bad. So \textbf{if you have many atomic together, better not use atomic, use one mutex includes them all}.
+
+	\item you can call \texttt{is\_lock\_free} to determine whether operations on a given type are done directly with atomic instructions or done by using a lock internal to the compiler. That is important to know in many cases. If the atomic operatons use an internal mutex, then the aotmic performance gains will probably not good. On the contray, will be bad. So \textbf{if you have many atomic together, better not use atomic, use one mutex includes them all}.
 	
 	\item user-defined atomics(trivially copyable)
 
@@ -20381,10 +20558,6 @@ while(!a_x.compare_exchange_strong(oldx, newx));
 	\includegraphics[width=0.65\linewidth]{pics/cas.png}
 \end{center}
 
-\begin{center}
-	\includegraphics[width=0.65\linewidth]{pics/cas1.png}
-\end{center}
-
 
 		\item A common usage is comare-and-swap. Why do we need to read into expected? \textbf{we first read, then compare it with the memory. because at this time,the memory can be modified by another thread. so we need to compare, if they are equal, then, we can update and return the preceding oldValue.} That is the famous cas loop. 
 
@@ -20400,6 +20573,11 @@ uint32_t fetch_multiply(std::atomic<uint32_t>& shared, uint32_t multiplier) {
     return oldValue;
 }
 \end{lstlisting}
+
+\begin{center}
+	\includegraphics[width=0.65\linewidth]{pics/cas1.png}
+\end{center}
+
 \item Another example is spinlock which is implemented by test\_and\_set.
 \begin{lstlisting}
 class spinlock_mutex{
@@ -20424,6 +20602,8 @@ public:
 
 \subsection{memory ordering}
 \begin{itemize}
+    \item The C++ memory model defines a contract. This contract is established between the programmer and the system. The system consists of the compiler, which compiles the program into assembler instructions, the processor, which performs the assembler instructions and the different caches, which stores the state of the program. The contract requires from the programmer to obey certain rules and gives the system the full power to optimise the program as far as no rules are broken. 
+
     \item The first of first, why do we need memory reordering? There are two kinds of reordering, cpu reordering and compiler reorderings. There are reorder happen both in compiler and CPU, for example, below examples, the compiler can reorder payload and ready execution because for thread 1, they have the same meaning. That is why we need a memory model and memory order to guaranty the right semantic order. 
 
 \begin{lstlisting}
@@ -20521,7 +20701,6 @@ r2 = x.load(memory_order_relaxed); // C
 y.store(42, memory_order_relaxed); // D
 \end{lstlisting}
 
-\item how to 
 
 \item Default is memory\_order\_seq\_cst order.it means that there is global certain order. in another word, For any thread, they see other threads has the same order.  
 
@@ -20557,7 +20736,7 @@ a.join(); b.join(); c.join(); d.join();
 assert(z.load() != 0);			// C
 \end{lstlisting}
 
-\item if we change it to release and aquire, it can give you same varaible synchronize-with relationship, but it will not give you global order guaranty.  
+\item If we change it to release and aquire, it can give you same varaible synchronize-with relationship, but it will not give you global order guaranty.  
 
 \begin{lstlisting}
  void write_x(){
@@ -20622,17 +20801,14 @@ void func1(){
     flag.store(true, std::memory_order_relaxed);
 }
 
-void func2()
-{
-    while(!flag.load(std::memory_order_relaxed))
-        ;
+void func2() {
+    while(!flag.load(std::memory_order_relaxed)) ;
 
     atomic_thread_fence(std::memory_order_acquire);
     std::cout << a << '\n'; // guaranteed to print 100
 }
 
-int main()
-{
+int main() {
     std::thread t1 (func1);
     std::thread t2 (func2);
 
@@ -20644,9 +20820,10 @@ int main()
 
 
 
-\section{practical suggestion}
+\section{Practical suggestion}
 \begin{itemize}
-	\item don't register any call back or give this pointer to any another thread object.
+
+	\item Don't register any call back or give this pointer to any another thread object.
 \begin{lstlisting}
 class Foo : public Observer{
 public:
@@ -20657,7 +20834,7 @@ public:
 \end{lstlisting}
 instead, use two phrase methods, construc+ initilize() mehtods.
 
-    \item share\_ptr is not thread safe. Because it includes ptr and reference count, so you can't read and write the same share\_ptr at the same time. 
+    \item \texttt{share\_ptr} is not thread safe. Because it includes ptr and reference count, so you can't read and write the same \texttt{share\_ptr} at the same time. 
 
 \begin{lstlisting}
 shared_ptr<int> p(new int(42));
@@ -20723,51 +20900,40 @@ void write(){
 		\item Why share pointer is important, because it can help you to make sure destructor and other operation thread safe. We can't use mutex in object destructor, in order to make sure destructor and other operations can be synchronized properly. The detail can be found in chenshuo 's book. A famous example is observer. 
 
 \begin{lstlisting}
-class StockFactory : public boost::enable_shared_from_this<StockFactory>, boost::noncopyable
-{
- public:
-  boost::shared_ptr<Stock> get(const string& key)
-  {
+class StockFactory : public boost::enable_shared_from_this<StockFactory>, boost::noncopyable{
+public:
+  boost::shared_ptr<Stock> get(const string& key) {
     boost::shared_ptr<Stock> pStock;
     muduo::MutexLockGuard lock(mutex_);
     boost::weak_ptr<Stock>& wkStock = stocks_[key];
     pStock = wkStock.lock();
-    if (!pStock)
-    {
+    if (!pStock) {
       pStock.reset(new Stock(key),
                    boost::bind(&StockFactory::weakDeleteCallback,
-                               boost::weak_ptr<StockFactory>(shared_from_this()),
-                               _1));
+                      boost::weak_ptr<StockFactory>(shared_from_this()), _1));
       wkStock = pStock;
     }
     return pStock;
   }
 
- private:
-  static void weakDeleteCallback(const boost::weak_ptr<StockFactory>& wkFactory,
-                                 Stock* stock)
-  {
+private:
+static void weakDeleteCallback(const boost::weak_ptr<StockFactory>& wkFactory, Stock* stock) {
     printf("weakDeleteStock[%p]\n", stock);
     boost::shared_ptr<StockFactory> factory(wkFactory.lock());
-    if (factory)
-    {
+    if (factory) {
       factory->removeStock(stock);
     }
-    else
-    {
+    else {
       printf("factory died.\n");
     }
     delete stock;  // sorry, I lied
   }
 
-  void removeStock(Stock* stock)
-  {
-    if (stock)
-    {
+  void removeStock(Stock* stock) {
+    if (stock) {
       muduo::MutexLockGuard lock(mutex_);
       auto it = stocks_.find(stock->key());
-      if (it != stocks_.end() && it->second.expired())
-      {
+      if (it != stocks_.end() && it->second.expired()) {
         stocks_.erase(stock->key());
       }
     }
@@ -20781,8 +20947,7 @@ class StockFactory : public boost::enable_shared_from_this<StockFactory>, boost:
 
 		\item test long life and short life Factory.
 \begin{lstlisting}
-void testLongLifeFactory()
-{
+void testLongLifeFactory() {
   boost::shared_ptr<StockFactory> factory(new StockFactory);
   {
     boost::shared_ptr<Stock> stock = factory->get("NYSE:IBM");
@@ -20793,8 +20958,7 @@ void testLongLifeFactory()
   // factory destructs here
 }
 
-void testShortLifeFactory()
-{
+void testShortLifeFactory() {
   boost::shared_ptr<Stock> stock;
   {
     boost::shared_ptr<StockFactory> factory(new StockFactory);
@@ -20807,7 +20971,7 @@ void testShortLifeFactory()
 }
 \end{lstlisting}
 	\begin{center}	
-		\includegraphics[width=0.95\linewidth]{pics/weak_ptr.png}
+		\includegraphics[width=0.90\linewidth]{pics/weak_ptr.png}
 		\end{center}
 
 \end{itemize}
@@ -21051,98 +21215,6 @@ for (auto&& elem : container)
 		\item For any associate container, only visit each element. If you want to change a key, delete it first, then modify, in the end insert new key again. 
 	\end{enumerate}
 	
-\end{itemize}
-
-\section{lambda}
-
-\begin{itemize}
-\item lambda basic syntax and an example.
-\begin{lstlisting}
-[ captures ] (parameters) -> returnTypesDeclaration { ..; }
-\end{lstlisting}
-
-\begin{lstlisting}
-int sum = 0, divisor = 3;
-vector<int> vc { 1, 2, 3, 4, 5, 10, 15, 20, 25, 35, 45 };
-for_each(vc.begin(), vc.end(), [divisor, &sum] (int y){
-		if (y % divisor == 0){
-			cout << y << endl;
-			sum += y;
-		}
-	});
- cout << sum << endl;
-\end{lstlisting}
-
-\item Lambda is used on complex type container. You can use typedef.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-typedef std::vector< std::pair<int,std::string> > Record_t;
-Record_t k1;
-
-int find_it(std::string value, Record_t const& stuff){
-  auto fit = std::find_if(stuff.begin(), stuff.end(),
-            [value](Record_t::value_type const& vt) -> bool
-                 { return vt.second == value; });
-  if (fit != stuff.end())
-           return fit->first;
-}
-\end{lstlisting}
-\begin{description}
-	\item[Line 1:] typedef is your good friend, reuse it on line 4 and line 6.
-	\item[Line 6 to 7:] we define a lambda function.
-\end{description}
-\item This auto-declaration defines a closure type named factorial that you can call later instead of typing the entire lambda expression (a closure type is in fact a compiler-generated function class):
-\begin{lstlisting}[numbers=none]
-auto factorial = [](int i, int j) {return i * j;};
-
-int arr{1,2,3,4,5,6,7,8,9,10,11,12};
-long res = std::accumulate(arr, arr+12, 1, factorial);
-cout<<"12!="<<res<<endl; // 479001600
-\end{lstlisting}
-
-\item Under the final C++11 spec, if you have a lambda with an empty capture specification, then it can be treated like a regular function and assigned to a function pointer. Here's an example of using a function pointer with a capture-less lambda:
-\begin{lstlisting}[numbers=none]
-typedef int (*func)();
-func f = [] () -> int { return 2; };
-f();
-\end{lstlisting}
-\begin{description}
-	\item[Line 2:] An empty [] means empty capture specification.
-\end{description}
-
-\item A delegate. When you call a normal function, all you need is the function itself. When you call a method on an object, you need two things: the function and the object itself. It's the difference between func() and obj.method(). Starting with some code that again expects a function as an argument, into which we'll pass a delegate. \textbf{lambda is like a glue to combine for\_each and class MessageSizeStore.}
-
-\begin{lstlisting}[numbers=none]
-class MessageSizeStore{
-public:
-    MessageSizeStore () : _max_size( 0 ) {}
-    void checkMaxMessage (const std::string& message ) {...}
-    int getSize (){...}
-private:
-    int _max_size;
-};
-
-MessageSizeStore size_store;
-for_each(s.begin(),s.end(), [&] (const std::string& message){
-	size_store.checkMessage( message );
-});
-\end{lstlisting}
-
-\item Why functor is better than function pointer? because functor can be inline. 
-
-\item Why lambda is better than functor? 
-\begin{enumerate}
-\item lambda will produce a unnamed functor class. Not pollute name space.Frequently (not in this example, though) the name of the functor class is much less expressive than its actual code.
-\item It can be inline too.
-\item It can access all the automatic variable.
-\item It's much less verbose.
-\item Placing the code closer to where it's called improves code clarity.
-\begin{lstlisting}[numbers=none]
-int count3 = 0;
-std::count_if(v.begin(), v.end(), 
-        [&count3](int x){count3 += (x%3 == 0)} 
-           );
-\end{lstlisting}
-\end{enumerate}
 \end{itemize}
 
 
@@ -22187,10 +22259,10 @@ int main() {
 	
 \end{itemize}
 
-\subsection{coroutine}
-\begin{itemize}
-	\item 
-\end{itemize}
+%\subsection{coroutine}
+%\begin{itemize}
+	%\item 
+%\end{itemize}
 
 
 \subsection{others}
