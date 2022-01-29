@@ -19080,15 +19080,7 @@ int main(int argc, char *argv[]) {
 \begin{itemize}
 	\item If we have only one single processor, we get task switching. In fact, we can just improve responsiveness, but can't reduce the execution time. On the contrary, it will prolong the execution time due to the context switch. For multiple processors or multiple cores within a processor, we call it hardware concurrency. 
 	
-	\item Why use concurrency? 
-
-	\begin{enumerate}
-		\item Using concurrency for separation of concerns, for example, GUI thread and working thread can give good responsiveness.
-
-		\item Good performance: task and data parallelism. You must have true multiple cores to improve performance. 
-	\end{enumerate}
-
-	\item Don't use concurrent aggressive, use in performance-critical parts of the application where there is the potential for measurable gain. Accuracy is more important than speed. 
+	\item Why use concurrency?  Using concurrency for separation of concerns, for example, GUI thread and working thread can give good responsiveness.  Good performance: task and data parallelism. You must have true multiple cores to improve performance.  At the same time,  Don't use concurrent aggressive, use in performance-critical parts of the application where there is the potential for measurable gain. Accuracy is more important than speed. 
 	
 	\item Concurrent execution can improve performance in three fundamental ways: it can reduce latency (that is, make a unit of work execute faster); it can hide latency (that is, allow the system to continue doing work during a long-latency operation); or it can increase throughput (that is, make the system able to perform more work). 
 \end{itemize}
@@ -19109,18 +19101,14 @@ auto l1 = [](){cout << "hello c world" << endl; };
 thread t(l1);           //lambda
 thread t1(Callable{});  //callable object
 thread t2(f1);          //funciton
-t.join();           //put three joins in the end.
-t1.join();
-t2.join();
+t.join(); t1.join(); t2.join();
 \end{lstlisting}
 
 \begin{description}
-	\item[Line 9:] Pay attention to the most vexing problem, so we should use bracket parenthesizes here, not parentheses.
+	\item[Line 9:] Pay attention to the most vexing problem, so we should use bracket parenthesizes here, not parentheses. Don't forget to put three joins in the end.
 \end{description}
 
-	\item Once you've started your thread, you need to explicitly decide whether to wait for it to finish (by joining) or leave it to run on its own (by detaching.). \textbf{Usually, Detaching is not good style.}
-	
-	\item This is the non-intuitive behavior of \texttt{std::thread.} If a \texttt{std::thread} is still joinable, \texttt{std::terminate} is called in its destructor. \textbf{A thread is joinable if neither join() nor detach() was called.}
+	\item Once you've started your thread, you need to explicitly decide whether to wait for it to finish (by joining) or leave it to run on its own (by detaching.). \textbf{Usually, Detaching is not good style.} This is the non-intuitive behavior of \texttt{std::thread.} If a \texttt{std::thread} is still joinable, \texttt{std::terminate} is called in its destructor. \textbf{A thread is joinable if neither join() nor detach() was called.}
 	
 \begin{lstlisting}[frame=single, language=c++]
 std::cout << std::boolalpha;
@@ -19156,12 +19144,7 @@ void foo(){
 }
 
 int main(){
-	std::thread t;
-	std::cout << "before starting, joinable: " << std::boolalpha << t.joinable()
-	
 	t = std::thread(foo);
-	std::cout << "after starting, joinable: " << t.joinable() 
-	
 	std::this_thread::sleep_for(std::chrono::seconds(5));
 	std::cout << "after joining, joinable: " << t.joinable() 
 }
@@ -19186,7 +19169,7 @@ void f(){
 	\item[Source code] You can see the source code is a little ugly, there are two join here. That is why we add jthread in C++ 20.
 \end{description}
 
-\item jthread in c++20 is RAII style thread, it can resolve this problem. At the same time, it also support interrupt. You can see the detail about interruption in the following chapters. 
+\item jthread in c++20 is RAII style thread, it can resolve this problem. At the same time, it also support interrupt. You can see the detail about interruption in the following chapters.  \textbf{prefer to use jthread if your compiler support it.} 
 \begin{lstlisting}
 int main(){
     std::jthread thr{[]{ std::cout << "Joinable std::thread" << std::endl; }};
@@ -19197,17 +19180,16 @@ int main(){
 }
 \end{lstlisting}
 
-\item \textbf{prefer to use jthread if your compiler support it.} 
-
 \end{itemize}
 
 \subsection{detach}
 
 \begin{itemize}
+
 	\item When to use detach? CCIA(C++ concurrency in Action) give a good word example in 2.1.4. For example, we’ve done the initial part of the calculation and we have enough results to do the report. We might want to do that reporting concurrently with the rest of the calculation, so we “send the email” in a new thread.
+
 \begin{lstlisting}[frame=single, language=c++]
-void calculateAndReport()
-{
+void calculateAndReport() {
 	const auto topLevelResult = TopLeve();
 	std::thread t(sendEmail, topLevelResult);
 	continuteCalculation(topLevelResult);
@@ -19239,7 +19221,6 @@ void calculateAndReport(){
 	std::thread t(sendEmail, topLevelResult);
 	t.detach()  //option 2, concurrent, but not safe 
 	continuteCalculation(topLevelResult);
-	
 }			
 \end{lstlisting}
 
@@ -19271,13 +19252,9 @@ void calculateAndReport(){
 \subsection{pass parameter}
 
 \begin{itemize}
-	\item \texttt{std::thread} does not provide an easy way to return a value from a thread.
+	\item \texttt{std::thread} does not provide an easy way to return a value from a thread. We could get the return value of the tasks/functions via references, variable pointers or global variables but these approaches share data between multiple threads and look a bit cumbersome.
 	
-	\item We could get the return value of the tasks/functions via references, variable pointers or global variables but these approaches share data between multiple threads and look a bit cumbersome.
-	
-	\item The arguments are copied into internal storage, where they can be accessed by the newly created thread of execution, and then passed to the callable object or function as rvalues as if they were temporaries.
-	
-	\item \texttt{std::decay} used to finish copy. it is used mainly in thread context and isn't used very often in other places in STL.
+	\item The arguments are copied into internal storage, where they can be accessed by the newly created thread of execution, and then passed to the callable object or function as rvalues as if they were temporaries. \texttt{std::decay\_copy} used to finish copy. it is used mainly in thread context and isn't used very often in other places in STL.
 	
 \begin{lstlisting}[frame=single, language=c++]
 thread(Function&& f, Arg&& arg) {
@@ -19324,7 +19301,6 @@ void oop{
 		\item[Source code] if we pass buffer, this is pointer to local value, once oop finish, the buffer will be invalid. That is why we need to change it to string, then copy a string value in thread context. About detail inside thread constructor, you can see the below section. A little hint, \texttt{decay\_copy.}
 \end{description}
 
-
 	\item When pass reference parameter to thread, you need to use \texttt{std::ref.} Detail can be found below:
 \begin{lstlisting}[frame=single, language=c++]
 void bar(const ComplexObject& co){
@@ -19342,7 +19318,7 @@ std::cout << object.getResult() << '\n'; //Outputs the result
 	\item[line 6] The basic idea is just like std::bind. 
 \end{description}
 
-\item use move if the argument is only movable
+    \item use move if the argument is only movable
 \begin{lstlisting}[frame=single, language=c++]
 void f1(unique_ptr<obj>);
 unique_ptr<obj> p(new obj);
@@ -19352,10 +19328,16 @@ thread(f1, move(p));
 \begin{description}
 	\item[Source] thread interface use forward reference. 
 \end{description}
-\item summary:
+
+    \item How to understand \texttt{std::ref}? 
+\begin{lstlisting}
+
+\end{lstlisting}
+
+    \item summary:
 \begin{enumerate}
 		\item When you can't copy, use move, such as \texttt{unique\_ptr.}
-		\item want to change, use \texttt{std::ref.}
+		\item want to change, use \texttt{std::ref}.
 		\item other time, they use \texttt{decay\_copy}. Pay more attention to avoid dangling pointer.  
 \end{enumerate}
 
@@ -19364,7 +19346,8 @@ thread(f1, move(p));
 \subsection{detail about thread constructor}
 
 \begin{itemize}
-		\item The interface looks like this:
+
+    \item The interface looks like this:
 \begin{lstlisting}[frame=single, language=c++]
 thread(Function&& f, Arg&& arg) {
 	// something happening
@@ -19377,6 +19360,7 @@ typename decay<T>::type decay_copy(T&& v){
 	return std::forward<T>(v); 
 }
 \end{lstlisting}
+
 		\item It's long story, so please buckle up.
 
 		\begin{enumerate}
@@ -19387,6 +19371,7 @@ int x = 27;
 f(x)  //x is lvalue, so T is int& and para is also int&;
 f(move(x)) move(x) is rvalue, so T is int, para is int&&
 \end{lstlisting}
+
 		\item Inside thread, arg is always lvalue, forward<Arg> can return lvalue or rvalue according to the outside parameter. 
 \begin{lstlisting}
 f(T&& para){
@@ -19425,43 +19410,50 @@ public:
 };
 \end{lstlisting}
 	
-		\item Why do we need decay, a good usage is \texttt{make\_pair.}
+		\item Why do we need decay? a good usage is \texttt{make\_pair.} Below, I will implement similar \texttt{make\_pair} function, in order to avoid conflict with std library, I change it name to \texttt{make\_y}. At the same time, I use C++ insights website to generate template instantiation. First example is don't use decay. 
+\begin{lstlisting}
+pair<char [10], int> pa; //fail, because char [10] doesn't support default construct
+
+char a[10] = {'a', 'b'};
+pair<char [10], int> pa{a, 2} //fail too, doesn't support copy construct.
+pair<char*, int> pb{a, 2} //This time, OK. 
+//We need a a kind of decay fomr char [10] to char* 
+\end{lstlisting}
+
 \begin{lstlisting}
 template <class T1, class T2> 
-inline pair<typename decay<T1>::type ,typename decay<T2>::type> make_y(T1&& x, T2&& y) { 
-    return pair<typename decay<T1>::type ,typename decay<T2>::type>(std::forward<T1>(x), std::forward<T2>(y)); 
-}
-
-template <class T1, class T2> 
-inline pair<T1,T2> make_pair(T1&& x, T2&& y)
-{ 
+inline pair<T1,T2> make_pair(T1&& x, T2&& y) { 
     return pair<T1, T2>(std::forward<T1>(x), std::forward<T2>(y)); 
 }
+
 //the code will fail here for.  
 char arr[10]{'a','b'};
 std::pair<std::string,int> p = std::make_pair(move(arr), 42);
 //for right value, T1 is char [10], that is array lvalue type.
 //pair<char [10], int> array can't be build directly, so compile fail.
+
+template<> //C++ insight generate instantiate
+inline std::pair<char [10], int> make_y<char [10], int>(char (&&x)[10], int && y) {
+  return std::pair<char [10], int>(std::forward<char [10]>(x), std::forward<int>(y));
+}
 \end{lstlisting}
 
 		\item we need to add decay below:
 \begin{lstlisting}
 template <class T1, class T2>
-inline pair<typename decay<T1>::type ,typename decay<T2>::type> make_y(T1&& x, T2&& y)
-{
+inline pair<typename decay<T1>::type ,typename decay<T2>::type> make_y(T1&& x, T2&& y) {
     return pair<typename decay<T1>::type ,typename decay<T2>::type>(std::forward<T1>(x), std::forward<T2>(y));
 }
 
 template<>
-inline std::pair<char *, int> make_y<char [10], int>(char (&&x)[10], int && y)
-{
+inline std::pair<char *, int> make_y<char [10], int>(char (&&x)[10], int && y) {
   return std::pair<char *, int>(std::forward<char [10]>(x), std::forward<int>(y));
 }
+char arr[10]{'a','b'};
+std::pair<std::string,int> p = std::make_pair(move(arr), 42); //work now.
 // para is rvalue reference for array type. T1 is array type. forward return also return rvalue reference for array type.
 // In this way, we can use reference of array to initilizae pointer, above code work.
 \end{lstlisting}
-
-		\item above code use cppinsight to investigate. 
 		\end{enumerate}
 
 \end{itemize}
@@ -21918,7 +21910,8 @@ void print(const First& firstarg, const Args&... args){
 \subsubsection{class template argument deduction}
 \begin{itemize}
 
-	\item class template Argument deduction is a big improvement in C++ 17. 
+	\item class template Argument deduction is a big improvement in C++ 17. You can omit explicit definition of the template arguments if the constructor is able to deduce all template parameters. 
+
 \begin{lstlisting}
 //C++ 11
 std::vector<int> vi{1, 2, 3, 4, 5};
@@ -21967,6 +21960,10 @@ shared_ptr<int> isp{new int {666}}; //fail
 wrap_ptr sptr{isp};
 \end{lstlisting}
 
+\begin{description}
+    \item[source code] CTAD only use primary class constructor to deduct template argument, in our code, primary class is empty, so no primary class constructor to use.
+\end{description}
+
     \item In order to resolve this problem, we can add below deduction guide.
 
 \begin{lstlisting}
@@ -21977,9 +21974,8 @@ template<typename T>
 wrap_ptr(shared_ptr<T>) -> wrap_ptr<shared_ptr<T>>;
 \end{lstlisting}
 
-    \begin{enumerate}
 
-        \item Using deduction guide to Force Decay.
+        \item When CTAD can not deduct argument properly, we also can use deduction guide to help us. In below example, we want to get \textbf{Force Decay}, but when you use reference, it will not decay, in another word, array will not become pointer. So we add deduct guide to tell compiler take its argument by value, not by reference. If we use value to take argument, then decay will happen.
 \begin{lstlisting}
 template<typename T>
 struct C{
@@ -21994,7 +21990,7 @@ C x{"hello"};
 //with the deduction guide, T is const char*
 \end{lstlisting}
 
-        \item From Constructor to deduce the template parameter. 
+    \item Sometimes, constructor can not help us to deduct template argument. In below code, we want to make our \texttt{my\_pair} to accept any type array, then deduct T and U as the array type element type. According to the CTAD, we just use primary class constructor to deduct argument. so we can deduct A type in our \#2 constructor, but we can't deduct type T and type U here. At this time, we can use deduct guide to help us to reach the goal. 
 
 \begin{lstlisting}
 template<typename T, typename U>
@@ -22016,7 +22012,7 @@ my_pair mp2{ca};
 // my_pair<char, char>
 \end{lstlisting}
 
-\item This code has some things to explain, \#1 is deduction guid, because it's a template, so can be specilized. \#2 just it's specilized. You can see the specification is simple, just to say when we input pointer array, change it to \texttt{string}. The third point is we also use explicit. then the specification deduction rule only used in constructor, not used in copy constructor. \textbf{That is a good example, it has demonstrate some common technologies which used in template deduction guide.}
+    \item This code has some things to explain, \#1 is deduction guid, because it's a template, so can be specilized. \#2 just it's specilized. You can see the specification is simple, just to say when we input pointer array, change it to \texttt{string}. The third point is we also use explicit. then the specification deduction rule only used in constructor, not used in copy constructor. \textbf{That is a good example, it has demonstrate some common technologies which used in template deduction guide.}
 
 \begin{lstlisting}
 // Deduction Guide
@@ -22030,29 +22026,9 @@ my_pair mp4{stra}; //use #2, deduct my_pair<string, string>
 
 my_pair mp4copy = stra; //use #1, deduct my_pair<const char*, const char*>
 \end{lstlisting}
-		\end{enumerate}
 
 \end{itemize}
 
-\subsubsection{lambda extension}
-\begin{itemize}
-    \item Lambdas is constexpr implicitly. The compiler will help you to decide it. If it's not constexpr lambdas, when you use in constexpr context, then compiler will report error. 
-\begin{lstlisting}
-auto squared = [](auto val){return val*val;};
-std::array<int, squared(5)> a;
-//You don't need constexpr when you define squared lambda.
-\end{lstlisting}
-
-    \item You can pass copies of this to lambdas.
-\begin{lstlisting}
-Class C{
-  ....
-  void foo(){
-    auto l1 = [*this] {std::cout<<name <<'\n';};
-  }
-};
-\end{lstlisting}
-\end{itemize}
 
 
 \subsubsection{compile-time if}
@@ -22107,6 +22083,35 @@ else if constexpr( std::is_convertible_v<cat, std::bidirectional_access_iterator
 }
 \end{lstlisting}
 
+    \item Compile-Time if Impacts the Return Type.The return type of below function can be \texttt{int} or \texttt{void}. The code never compiles if the runtime if is used here. because both return statement are taken into account and they are conflict, when we use runtime if in the below code. When we use Compile-Time if, the code can compile, but has caveat. 
+\begin{lstlisting}
+quto foo(){
+  if constexpr(sizeof(int)>4){
+    return 42;
+  }
+}
+\end{lstlisting}
+
+\end{itemize}
+
+\subsubsection{lambda extension}
+\begin{itemize}
+    \item Lambdas is constexpr implicitly. The compiler will help you to decide it. If it's not constexpr lambdas, when you use in constexpr context, then compiler will report error. 
+\begin{lstlisting}
+auto squared = [](auto val){return val*val;};
+std::array<int, squared(5)> a;
+//You don't need constexpr when you define squared lambda.
+\end{lstlisting}
+
+    \item You can pass copies of this to lambdas.
+\begin{lstlisting}
+Class C{
+  ....
+  void foo(){
+    auto l1 = [*this] {std::cout<<name <<'\n';};
+  }
+};
+\end{lstlisting}
 \end{itemize}
 
 \subsubsection{other features}
@@ -22145,15 +22150,48 @@ foo(bar()); // use returned temporary to init parameter.
 \end{itemize}
 
 \subsection{library feature}
-\subsubsection{optional}
+\subsubsection{vocabulary type}
 \begin{itemize}
 
-    \item An example of usage of optional.
+    \item A "vocabulary" type is a type that purports to provide a single lingua franca(a common language), for dealing withits domain. Notice that even before C++ existed, the C programming language had already made adecent shot at the vocabulary of some areas, providing standard types or type aliases for integer math (int), floating-point math (double), timepoints expressed in the Unix epoch(time\_t), and byte counts (size\_t).
+
+    \item Beside the "vocabulary type" generic definition, in C++, it includes: (1) algebraic data type, such as (sum type/tagged union/variant) - std::variant, std::optional and (product type/record/tuple) - std::tuple, std::pair.(2) generic type erase type(container). std::function, std::any.(3) generic adaptor, such as smart pointer. (4) std::basic\_string\_view and std::span.
+
+
+    \item Vocabulary types like \texttt{std::string} and \texttt{std::function} allow us to share a lingua francafor dealing with common programming concepts. In C++17, we have a rich set of vocabulary types for dealing with the algebraic data types: std::pair and std::tuple(product types), std::optional and std::variant (sum types), and std::any (the ultimate in sum types--it can store almost anything). However, don't get carried away and start using std::tuple and std::variant return types from every function! Named classtypes are still the most effective way to keep your code readable. Use std::optional to signal the possible lack of a value, or to signal the "not-yet-ness" of a data member. Use std::get\_if<T>(\&v) to query the type of a variant; use std::any\_cast<T>(\&a)to query the type of an any. Remember that the type you provide must be an exact match; if it's not, you'll get nullptr.
+
+    \item Be aware that std::make\_tuple and std::make\_pair do more than construct tuple and pairobjects; they also decay reference\_wrapper objects into native references. Use std::tieand std::forward\_as\_tuple to create tuples of references. std::tie is particularly useful for multiple assignment and for writing comparison operators.std::forward\_as\_tuple is useful for metaprogramming.
+
+    \item Be aware that std::variant always has the possibility of being in a "valueless by exception" state; but know that you don't have to worry about that case unless you write classes with throwing move-constructors. Separately: don't write classes with throwing move-constructors! 
+        
+    \item Be aware that the type-erased types std::any and std::function implicitly use the heap. Third-party libraries provide non-standard inplace\_ versions of these types. Be aware that std::any and std::function require copyability of their contained types. Use "capture by shared\_ptr" to deal with this case if it arises.
+
+    \item All below content of vocabulary type includes 1) create 2) change 3) check 4) access 5) when to use.
+\end{itemize}
+
+\subsubsection{optional}
+
+\begin{itemize}
+    \item It is recommended to use optional<T> in situations where there is exactly one, clear (to all parties) reason for having no value of type T, and where the lack of value is as natural as having any regular value of T
+
+\begin{enumerate}
+    \item  If you want to represent a nullable type nicely.
+Rather than using unique values (like -1, nullptr, NO\_VALUE or something)
+For example, user’s middle name is optional. You could assume that an empty string would work here, but knowing if a user entered something or not might be important. With std::optional<std::string> you get more information.
+
+    \item Return a result of some computation (processing) that fails to produce a value and is not an error.For example finding an element in a dictionary: if there’s no element under a key it’s not an error, but we need to handle the situation.
+
+    \item To perform lazy-loading of resources.
+For example, a resource type has no default constructor, and the construction is substantial. So you can define it as std::optional<Resource> (and you can pass it around the system), and then load only if needed later.
+
+    \item To pass optional parameters into functions.
+\end{enumerate}
+
+    \item Optional can be a member, an argument or a return value. Below two codes demonstrate return value and argument and data member usage. 
 
 \begin{lstlisting}
 // convert string to int if possible:
-std::optional<int> asInt(const std::string& s)
-{
+std::optional<int> asInt(const std::string& s) {
   try {
     return std::stoi(s);
   }
@@ -22162,10 +22200,9 @@ std::optional<int> asInt(const std::string& s)
   }
 }
 \end{lstlisting}
-\item Optional arguments and data members.
+
 \begin{lstlisting}
-class Name
-{
+class Name {
   private:
     std::string first;
     std::optional<std::string> middle;
@@ -22184,15 +22221,95 @@ class Name
       return strm << n.last;
     }
 };
+
+Name n{"Jim", std::nullopt, "Knopf"}; //learn how to use std::nullopt.
 \end{lstlisting}
-\item What is \texttt{std::nullopt}?
-\item What is \texttt{std::in\_place}?
+
+    \item What is \texttt{std::in\_place}? 
+\begin{lstlisting}
+class UserName {
+public:
+    UserName() : mName("Default") { }
+private:
+    std::string mName;
+};
+
+std::optional<UserName> u0; // empty optional
+std::optional<UserName> u1{}; // also empty
+
+// optional with default constructed object:
+std::optional<UserName> u2{UserName()}; //that will create a temp object
+std::optional<UserName> opt{std::in_place}; //that is good styple, no temp object
+\end{lstlisting}
+    \item Another usage of \texttt{std::in\_place} is Constructors with Many Arguments. 
+\begin{lstlisting}
+std::optional<std::vector<int>> opt{std::vector<int>{4, 1}};
+std::optional<std::complex<double>> opt2{std::complex<double>{0, 1}};
+
+std::optional<std::vector<int>> opt{std::in_place_t, 4, 1}; //good style, no temp object
+std::optional<std::complex<double>> opt2{std::in_place_t, 0, 1};
+
+auto opt = std::make_optional<UserName>();
+auto opt = std::make_optional<std::vector<int>>(4, 1);
+\end{lstlisting}
+    \item As summary, You can construct optional in three ways. 1) use temporary obj 2) use in\_place 3) use emplace 4) make\_optional function.
+
+    \item There are several options to access the stored value.
+\begin{enumerate}
+    \item operator* and operator->- similar to iterators. If there’s no value the behaviour is undefined!
+    \item value() - returns the value, or throws std::bad\_optional\_access
+        \item value\_or(defaultVal) - returns the value if available, or defaultVal otherwise.
+\end{enumerate}
+    \item To check if the value is present you can use has\_value() method or just check if (optional) as optional is automatically converted to bool.
+
+\begin{lstlisting}
+// by operator*
+std::optional<int> oint = 10;
+std::cout<< "oint " << *opt1 << '\n';
+
+// by value()
+std::optional<std::string> ostr("hello");
+try {
+    std::cout << "ostr " << ostr.value() << '\n';  
+}
+catch (const std::bad_optional_access& e) {
+    std::cout << e.what() << "\n";
+}
+
+// by value_or()
+std::optional<double> odouble; // empty
+std::cout<< "odouble " << odouble.value_or(10.0) << '\n';
+\end{lstlisting}
 \end{itemize}
 
 \subsubsection{variant}
 
 \begin{itemize}
-		\item Basic implementation uses placement new. Basic use is Finite State machine.
+    \item When to use variant?
+        \begin{enumerate}
+            \item All the places where you might get a few types for a single field: so things like parsing command lines, ini files, language parsers, etc, etc.
+            \item Expressing efficiently several possible outcomes of a computation: like finding roots of equations
+            \item Error handling - for example you can return variant<Object, ErrorCode>. If the value is available, then you return Object otherwise you assign some error code.
+            \item State machines
+            \item Polymorphism without vtables and inheritance (thanks to visiting pattern)
+        \end{enumerate}
+
+    \item How to create and init variant? There are three points you need to know, std::monostate, std::in\_place\_index and std::in\_place\_type. By default, a variant object is initialized with the first type.
+\begin{lstlisting}
+class NotSimple {
+public:
+    NotSimple(int, float) { }
+};
+
+// std::variant<NotSimple, int> cannotInit; // error
+std::variant<std::monostate, NotSimple, int> okInit;
+std::cout << okInit.index() << "\n";
+
+std::variant<long, float, std::string> longFloatString { std::in_place_index<1>, 7.6 }; // double!
+\end{lstlisting}
+
+\item How to access?  You have std::get<Type|Index>(variant) which is a non member function. It returns a reference to the desired type if it’s active (You can pass a Type or Index). If not then you’ll get std::bad\_variant\_access exception. The next option is std::get\_if. This function is also a non-member and won’t throw. It returns a pointer to the active type or nullptr. The most import way to access a value inside a variant is by using visitors.
+
 \item The basic usage is below: 
 
 \begin{lstlisting}
@@ -22270,6 +22387,51 @@ int main() {
 }
 \end{lstlisting}
 
+\item A few usage: 1) Error handling, Roots of an equation, 3) command line and config file parse 4) state machine. 5) polymorphism
+    
+\begin{lstlisting}
+enum class ErrorCode {
+    Ok,
+    SystemError,
+    IoError,
+    NetworkError
+};
+std::variant<std::string, ErrorCode> FetchNameFromNetwork(int i) #1, Error handling
+
+using EquationRoots = std::variant<DoublePair, double, std::monostate>; #2 Roots of an equation
+\end{lstlisting}
+
+\item A state machine example. That is not full list code, but include main idea of how to implement a state machine.
+\begin{lstlisting}
+struct DoorState {
+    struct DoorOpened {};
+    struct DoorClosed {};
+    struct DoorLocked {};
+    using State = std::variant<DoorOpened, DoorClosed, DoorLocked>;
+    void open() {
+        m_state = std::visit(OpenEvent{}, m_state);
+    }
+    void close() {
+        m_state = std::visit(CloseEvent{}, m_state);
+    }
+
+    struct OpenEvent {
+        State operator()(const DoorOpened&){ return DoorOpened(); }
+        State operator()(const DoorClosed&){ return DoorOpened(); }
+        // cannot open locked doors
+        State operator()(const DoorLocked&){ return DoorLocked(); } 
+    };
+
+    struct CloseEvent {
+        State operator()(const DoorOpened&){ return DoorClosed(); }
+        State operator()(const DoorClosed&){ return DoorClosed(); }
+        State operator()(const DoorLocked&){ return DoorLocked(); }
+    };
+    ....
+\end{lstlisting}
+
+\item A good artical is "Everything You Need to Know About std::variant from C++17".
+
 \end{itemize}
 
 \subsubsection{any}
@@ -22294,7 +22456,11 @@ else if (a.type() == typeid(int))
     useInt(std::any_cast<int>(a));
 }
 \end{lstlisting}
+
+    \item When to use Any? some typical context also applies to any, You can think that any is more generic varaint. So you can use any in parse config file if you have more wide types in config file. 
+
 \end{itemize}
+
 \subsubsection{string view}
 \begin{itemize}
 \item An example.Using string view as parameters.
@@ -22319,9 +22485,297 @@ std::optional<int> asInt(std::string_view sv)
 		\item Do not return string views to strings.
 		\item Function templates should use return type auto. 
 \end{enumerate}
+
 \end{itemize}
 
-\subsection{Example}
+\section{C++20}
+
+\subsection{concept}
+
+\subsubsection{define new conception}
+\begin{itemize}
+    \item There are two ways to define concept:
+\begin{lstlisting}
+template < template-parameters>
+concept _conceptName_ = _conceptExpression_;
+
+template < template-parameters>
+concept _conceptName_ = requires(_arguments_) {
+   _conceptExpression_;
+};
+\end{lstlisting}
+
+    \item When you define concept, you use requires expression; When you use concept, you use requires clauses.
+
+	\item Below is a simple example. concept is C++ keyword, mainly used in template.
+
+\begin{lstlisting}
+template<typename T> 
+concept Any = true;
+\end{lstlisting}
+
+    \item We can simply express that we require that a template parameter support a certain operation or operator by wishful writing. If you require that template parameters are addable you can create a concept for that:
+
+\begin{lstlisting}
+template <typename T>
+concept Addable = requires (T a, T b) {
+	a + b; 
+};
+
+concept HasPower = requires (T t, int exponent) {
+	t.power(exponent);
+	t.sqrt();
+};
+\end{lstlisting}
+
+    \item We can also use a requires-expression for other purposes than declaring a concept:
+
+\begin{lstlisting}
+template <typename T>
+void clever_swap(T& a, T& b) {
+  constexpr bool has_member_swap = requires(T a, T b){ 
+    a.swap(b); 
+  };
+  if constexpr (has_member_swap) {
+    a.swap(b);
+  }
+  else {
+    using std::swap;
+    swap(a, b);
+  }
+}
+\end{lstlisting}
+
+    \item In order for these expressions to work, function square() doesn’t have to return precisely int. If it returns short it will work for us too. If you want the type to be convertible to int, the syntax for it is:
+
+\begin{lstlisting}
+template <typename T>
+concept HasSquare = requires (T t) {
+	{t.square()} -> std::convertible_to<int>;
+}; 
+\end{lstlisting}
+
+	\item With concepts, you can require both syntactic and semantic conditions. In terms of syntactic requirements, imagine that you can impose the existence of certain functions in the API of any class. For example, you can create a concept Car that requires the existence of an accelerate function:
+
+    \item Define a new concept from existing concept.
+\begin{lstlisting}
+#include <concepts>
+
+template <typename T>
+concept Number = std::integral<T> || std::floating_point<T>;
+\end{lstlisting}
+
+\end{itemize}
+
+\subsubsection{Use conception}
+\begin{itemize}
+    \item You can use concept as compile-time bool.
+
+\begin{lstlisting}
+#include <concepts>
+
+std::cout << "(in C++11) int is the same as long: " << std::is_same_v<int, long> << std::endl;
+std::cout << "int is the same as long: " << std::same_as<int, long> << std::endl;
+\end{lstlisting}
+
+    \item use new concept: four different ways to use concept.
+\begin{lstlisting}
+#include <concepts>
+
+template <typename T>
+concept Number = std::integral<T> || std::floating_point<T>;
+
+template <typename T>
+requires Number<T>
+auto addRequiresClause(T a, T b) {
+	return a+b;
+}
+
+template <typename T>
+auto addTrailingRequiresClause(T a, T b) requires Number<T> {
+	return a+b;
+}
+
+template <Number T>
+auto addConstrainedTemplate(T a, T b) {
+	return a+b;
+}
+
+auto addAbbreviatedFunctionTemplate(Number auto a, Number auto b) {
+	return a+b;
+} //That is call conception auto variable usage.
+\end{lstlisting}
+
+
+\item class, require clause
+\begin{lstlisting}
+template <typename T>
+requires Number<T>
+class WrappedNumber {
+	public:
+	WrappedNumber(T num) : m_num(num) {}
+	private:
+	T  m_num;
+};
+\end{lstlisting}
+
+\item class, require clause
+\begin{lstlisting}
+template <Number T>  //pay attention here.
+class WrappedNumber {
+	public:
+	WrappedNumber(T num) : m_num(num) {}
+	private:
+	T  m_num;
+};
+\end{lstlisting}
+
+\begin{lstlisting}
+template <typename T>
+requires std::integral<T> || std::floating_point<T>
+class WrappedNumber {
+	// ...
+};
+\end{lstlisting}
+
+\end{itemize}
+
+\subsection{module}
+\begin{itemize}
+	
+	\item The problems of old header file: Precompiled headers can be a very effective way of speeding up compile times. Also, removing implementation details from the interface file (e.g. using the PIMPL idiom) reduces the ‘ripple effect’ and prevents unnecessary recompilation when small changes are introduced.
+	
+	\item Basic knowledge of module.
+	\begin{enumerate}
+		\item No need to write separate files for the interface (.h) and the implementation (.cpp)
+		\item Faster compile / recompile times
+		\item No need for include guards	
+		\item Modules don’t have ‘side-effects’ so the order in which modules are imported is not important
+	\end{enumerate}
+
+	
+	\item A module is a set of source code files that are compiled independently of the translation units that import them. Modules eliminate or greatly reduce many of the problems associated with the use of header files, and also potentially reduce compilation times. 
+	
+	\item We recommend that new projects use modules rather than header files as much as possible. For larger existing projects under active development, we suggest that you experiment with converting legacy headers to modules to see whether you get a meaningful reduction in compilation times.
+	
+	\item To enable support for modules, compile with //experimental:module and //std:c++20 or later (such as //std:c++latest). In a Visual Studio project, right-click the project node in Solution Explorer and choose Properties. Set the Configuration drop-down to All Configurations, then choose Configuration Properties > C/C++ > Language > Enable C++ Modules (experimental).
+    \item The first simple module example
+\begin{lstlisting}
+// func.cxx
+module;
+#include <iostream>
+
+export module mod;
+export void func() {
+    std::cout << "hello, world!\n";
+}
+\end{lstlisting}
+\begin{description}
+    \item[Source code] There are three parts: 1) global module fragment, that is where we include things we need. 2) main module, which we can export type and behaviour. 3) A private fragment. Pay attention, func also need be exported. 
+    \item[Source code], g++ -c -std=c++20 -fmodules-ts func.cxx will generate func.o and a gcm.cache/mod.gcm. 
+\end{description}
+\begin{lstlisting}
+// main.cpp
+import mod;
+int main(){
+    func();
+}
+\end{lstlisting}
+\begin{description}
+    \item[Source code] That is our client code. g++ -c -std=c++20 -fmodules-ts main.cpp, then g++ main.o func.o -o App. You will get App executable application. 
+\end{description}
+
+    \item You can seperate module interface and module implementation. 
+\begin{lstlisting}
+// func.cxx
+export module mod;
+export void fun();
+
+//func_impl.cxx
+module;
+#include <iostream>
+module mod;
+void func() {
+    std::cout << "hello, world!\n";
+}
+
+$ g++ -c -std=c++20 -fmodules-ts func.cxx
+$ g++ -c -std=c++20 -fmodules-ts func_impl.cxx 
+$ g++ main.o func.o func_impl.o -o App
+\end{lstlisting}
+
+    \item Assuming we have multiple functions, we want to export, the standard allows for several options.
+\begin{lstlisting}
+export module mod;
+
+export { //use export block
+    void func();
+    void func(int);
+}
+\end{lstlisting}
+
+    \item Guideline for a module structure
+
+\begin{lstlisting}
+module;                      // global module fragment
+#include <headers for libraries not modularized so far>
+
+export module math;          // module declartion 
+import <importing of other modules> 
+<non-exported declarations>  // names with only visibiliy inside the module
+
+export namespace math {
+    <exported declarations>  // exported names 
+}
+\end{lstlisting}
+	
+	\item An example
+\begin{lstlisting}
+// helloworld.cpp
+export module helloworld;  // module declaration
+import <iostream>;         // import declaration
+
+export void hello() {      // export declaration
+	std::cout << "Hello world!\n";
+}
+\end{lstlisting}	
+
+
+\begin{lstlisting}
+// main.cpp
+import helloworld;  // import declaration
+
+int main() {
+	hello();
+}	
+\end{lstlisting}
+	
+	
+\end{itemize}
+
+%\subsection{coroutine}
+%\begin{itemize}
+	%\item 
+%\end{itemize}
+
+
+\subsection{others}
+
+\begin{itemize}
+	\item Three-way comparsion operator.
+\begin{lstlisting}
+struct MyInt {
+    int value;
+    explicit MyInt(int val): value{val} { }
+    auto operator<=>(const MyInt& rhs) const {     // (1)      
+        return value <=> rhs.value;
+    }
+};
+\end{lstlisting}	
+
+\end{itemize}
+
+\section{Example of Modern C++}
 \begin{itemize}
 	\item An example of implementation before modern C++.
 \begin{lstlisting}
@@ -22392,195 +22846,6 @@ const std::string_view value_desc = "value"){
     \item C++ 17: structured bindings, string\_view, class template argument dedction, Guaranteed copy Elision, Fold Expressions.
     \item C++ 20: format, range, concept. 
 \end{enumerate}
-
-\end{itemize}
-
-\section{C++20}
-
-\subsection{concept}
-
-\subsubsection{define new conception}
-\begin{itemize}
-	\item simple example. concept is C++ keyword.
-\begin{lstlisting}
-template<typename T> 
-concept Any = true;
-\end{lstlisting}
-
-\item We can simply express that we require that a template parameter support a certain operation or operator by wishful writing.If you require that template parameters are addable you can create a concept for that:
-
-\begin{lstlisting}
-template <typename T>
-concept Addable = requires (T a, T b) {
-	a + b; 
-};
-\end{lstlisting}
-
-\item another example of requires.
-
-\begin{lstlisting}
-concept HasPower = requires (T t, int exponent) {
-	t.power(exponent);
-	t.sqrt();
-};
-\end{lstlisting}
-
-\item 
-
-\begin{lstlisting}
-template <typename T>
-concept HasSquare = requires (T t) {
-	{t.square()} -> std::convertible_to<int>;
-}; 
-\end{lstlisting}
-
-\end{itemize}
-
-\subsubsection{use conception}
-\begin{itemize}
-	\item With concepts, you can require both syntactic and semantic conditions. In terms of syntactic requirements, imagine that you can impose the existence of certain functions in the API of any class. For example, you can create a concept Car that requires the existence of an accelerate function:
-\begin{lstlisting}
-#include <concepts>
-
-template <typename C>
-concept Car = requires (C car) {
-	car.accelerate()
-};
-\end{lstlisting}	
-
-\item define a new concept.
-\begin{lstlisting}
-#include <concepts>
-
-template <typename T>
-concept Number = std::integral<T> || std::floating_point<T>;
-\end{lstlisting}
-
-\item use new concept: four different ways to use concept.
-\begin{lstlisting}
-#include <concepts>
-#include <iostream>
-
-template <typename T>
-concept Number = std::integral<T> || std::floating_point<T>;
-
-template <typename T>
-requires Number<T>
-auto addRequiresClause(T a, T b) {
-	return a+b;
-}
-
-template <typename T>
-auto addTrailingRequiresClause(T a, T b) requires Number<T> {
-	return a+b;
-}
-
-template <Number T>
-auto addConstrainedTemplate(T a, T b) {
-	return a+b;
-}
-
-auto addAbbreviatedFunctionTemplate(Number auto a, Number auto b) {
-	return a+b;
-}
-
-\end{lstlisting}
-
-
-\item class, require clause
-\begin{lstlisting}
-template <typename T>
-requires Number<T>
-class WrappedNumber {
-	public:
-	WrappedNumber(T num) : m_num(num) {}
-	private:
-	T  m_num;
-};
-\end{lstlisting}
-
-\item class, require clause
-\begin{lstlisting}
-template <Number T>  //pay attention here.
-class WrappedNumber {
-	public:
-	WrappedNumber(T num) : m_num(num) {}
-	private:
-	T  m_num;
-};
-\end{lstlisting}
-
-\begin{lstlisting}
-template <typename T>
-requires std::integral<T> || std::floating_point<T>
-class WrappedNumber {
-	// ...
-};
-\end{lstlisting}
-
-
-\end{itemize}
-
-\subsection{module}
-\begin{itemize}
-	
-	\item The problems of old header file: Precompiled headers can be a very effective way of speeding up compile times. Also, removing implementation details from the interface file (e.g. using the PIMPL idiom) reduces the ‘ripple effect’ and prevents unnecessary recompilation when small changes are introduced.
-	
-	
-	\item Basic knowledge of module.
-	\begin{enumerate}
-		\item No need to write separate files for the interface (.h) and the implementation (.cpp)
-		\item Faster compile / recompile times
-		\item No need for include guards	
-		\item Modules don’t have ‘side-effects’ so the order in which modules are imported is not important
-	\end{enumerate}
-	
-
-	
-	\item A module is a set of source code files that are compiled independently of the translation units that import them. Modules eliminate or greatly reduce many of the problems associated with the use of header files, and also potentially reduce compilation times. 
-	
-	\item We recommend that new projects use modules rather than header files as much as possible. For larger existing projects under active development, we suggest that you experiment with converting legacy headers to modules to see whether you get a meaningful reduction in compilation times.
-	
-	\item To enable support for modules, compile with //experimental:module and //std:c++20 or later (such as //std:c++latest). In a Visual Studio project, right-click the project node in Solution Explorer and choose Properties. Set the Configuration drop-down to All Configurations, then choose Configuration Properties > C/C++ > Language > Enable C++ Modules (experimental).
-	
-	\item An example
-\begin{lstlisting}
-// helloworld.cpp
-export module helloworld;  // module declaration
-import <iostream>;         // import declaration
-
-export void hello() {      // export declaration
-	std::cout << "Hello world!\n";
-}
-\end{lstlisting}	
-
-\begin{lstlisting}
-// main.cpp
-import helloworld;  // import declaration
-
-int main() {
-	hello();
-}	
-\end{lstlisting}
-	
-	
-\end{itemize}
-
-%\subsection{coroutine}
-%\begin{itemize}
-	%\item 
-%\end{itemize}
-
-
-\subsection{others}
-\begin{itemize}
-	\item three-way comparsion operator
-\begin{lstlisting}
-operator<=>(lhs, rhs){
-	...
-}
-\end{lstlisting}	
-
 
 \end{itemize}
 
