@@ -19251,6 +19251,51 @@ void calculateAndReport(){
 
 	
 \subsection{thread constructor}
+\subsubsection{reference\_wrapper}
+\begin{itemize}
+    \item An std::reference_wrapper is a copyable and assignable object that emulates a reference. Contrary to its name, it does not wrap a reference. It works by encapsulating a pointer (T*) and by implicitly converting to a reference (T\&). It cannot be default constructed or initialized with a temporary; therefore, it cannot be null or invalid:
+    \item used in make\_pair and make\_tuple
+\begin{lstlisting}
+int m=10, n=20;
+std::string s{"Hello"};
+
+std::pair<int&, int> p1(m, n);
+std::tuple<int&, int, std::string&> t1(m, n, s);
+//Vs.
+auto p2 = std::make_pair(std::ref(m), n);
+auto t2 = std::make_tuple(std::ref(m), n, std::ref(s));
+\end{lstlisting}
+
+    \item Unlike a reference, a reference_wrapper is an object and thus satisfies the STL container element requirements (Erasable, to be precise). Therefore, reference_wrapper can be used as a vector element type.  A reference\_wrapper<T> could be a safe alternative to a pointer type (T*) for storing in a vector:
+\begin{lstlisting}
+using namespace std;
+vector<reference_wrapper<int>> v;  //OK
+int a=10;
+v.push_back(std::ref(a));
+\end{lstlisting}
+    \item An std::reference\_wrapper<T> can be invoked like a function as long as the T is a callable. This feature is particularly useful with STL algorithms if we want to avoid copying a large or stateful function object.  Besides, T can be any callable – a regular function, a lambda, or a function object. For example:
+\begin{lstlisting}
+struct Large {
+ bool operator()(int i) const {
+  //Filter and process
+  return true;
+ }
+ //big data
+};
+
+const Large large; //Large immutable data and function object
+std::vector<int> in1; //input vector
+std::vector<int> in2; //input vector
+
+void process() {
+ std::vector<int> out;
+ //Pass Large by-ref to avoid copy 
+ std::copy_if(in1.begin(), in1.end(), std::back_inserter(out), std::ref(large));  
+ std::copy_if(in2.begin(), in2.end(), std::back_inserter(out), std::ref(large)); 
+ //use the filtered 'out' vector
+}
+\end{lstlisting}
+\end{itemize}
 
 \subsubsection{pass parameter}
 
@@ -19470,17 +19515,15 @@ std::pair<std::string,int> p = std::make_pair(move(arr), 42); //work now.
 \subsubsection{Ownership and identification of a thread}
 
 \begin{itemize}
-	\item What is thread id and how to get id? Pay attention, return type is \texttt{std::thread::id}.
+
+	\item Below code demonstrates what is thread id and how to get id. Pay attention, return type is \texttt{std::thread::id}.  mutex is to avoid overlapped output contents.
 \begin{lstlisting}[frame=single, language=c++]
 std::mutex g_display_mutex;
-
 void foo(){
 	std::thread::id this_id = std::this_thread::get_id();
-	
 	g_display_mutex.lock();
 	std::cout << "thread " << this_id << " sleeping...\n";
 	g_display_mutex.unlock();
-	//to avoid overlapped output contents.
 	
 	std::this_thread::sleep_for(std::chrono::seconds(1));
 }
@@ -19489,16 +19532,12 @@ int main(){
 	std::thread t1(foo);
 	std::thread t2(foo);
 	
-	t1.join();
-	t2.join();
+	t1.join(); t2.join();
 }
 \end{lstlisting}		
-	
-	\item thread IDs could be used as keys into associative containers where specific data needs to be associated with a thread and alternative mechanism.
 
-    \item \texttt{sleep()} causes the thread to definitely stop executing for a given amount of time; if no other thread or process needs to be run, the CPU will be idle (and probably enter a power saving mode).
 	
-	\item \texttt{yield()} basically means that the thread is not doing anything particularly important and if any other threads or processes need to be run, they should. Otherwise, the current thread will continue to run.
+	\item thread IDs could be used as keys into associative containers where specific data needs to be associated with a thread and alternative mechanism.  \texttt{sleep()} causes the thread to definitely stop executing for a given amount of time; if no other thread or process needs to be run, the CPU will be idle (and probably enter a power saving mode). \texttt{yield()} basically means that the thread is not doing anything particularly important and if any other threads or processes need to be run, they should. Otherwise, the current thread will continue to run.
 	
 	\item just like \texttt{ifstream} and \texttt{unique\_ptr}, thread is movable but not copyable. 
 \begin{lstlisting}[frame=single, language=c++]
@@ -19519,17 +19558,14 @@ int main(){
 	\item A good example, single thread cost 15 seconds. if you use 16 threads, the time is 2 seconds.
 \begin{lstlisting}[frame=single, language=c++]
 template<typename Iterator, typename T>
-struct accumulate_block
-{
-	void operator()(Iterator first, Iterator last, T& result)
-	{
+struct accumulate_block {
+	void operator()(Iterator first, Iterator last, T& result) {
 		result = std::accumulate(first, last, result);
 	}
 };
 
 template<typename Iterator, typename T>
-T parallel_accumulate(Iterator first, Iterator last, T init)
-{
+T parallel_accumulate(Iterator first, Iterator last, T init) {
 	unsigned long const length = std::distance(first, last);
 	
 	if (!length)
@@ -19551,8 +19587,7 @@ T parallel_accumulate(Iterator first, Iterator last, T init)
 	std::vector<std::thread>  threads(num_threads - 1);
 	
 	Iterator block_start = first;
-	for (unsigned long i = 0; i < (num_threads - 1); ++i)
-	{
+	for (unsigned long i = 0; i < (num_threads - 1); ++i) {
 		Iterator block_end = block_start;
 		std::advance(block_end, block_size);
 		threads[i] = std::thread(
@@ -19570,8 +19605,7 @@ T parallel_accumulate(Iterator first, Iterator last, T init)
 
 int main(){
 	std::vector<int> vi;
-	for (int i = 0; i < 1000000; ++i)
-	{
+	for (int i = 0; i < 1000000; ++i) {
 		vi.push_back(10);
 	}
 	int sum = 0;
@@ -19579,7 +19613,6 @@ int main(){
 	
 	for (int i = 0; i < 1000; i++) {
 		sum = parallel_accumulate(vi.begin(), vi.end(), i);
-		
 	}
 	/*
 	for (int i = 0; i < 1000; i++) {
@@ -19603,9 +19636,7 @@ int main(){
 \subsubsection{cooperative interruption}
 
 \begin{itemize}
-	\item A typical question in my C++ seminars is: Can a thread be killed?. Before C++20, my answer is no. With C++20, you can ask a thread politely for its interruption.
-	
-	\item First of all. Why is it no good idea to kill a thread? The answer is quite easy. You don't know in which state the thread is when you kill it. Here are two possible malicious outcomes.
+	\item A typical question in my C++ seminars is: Can a thread be killed?. Before C++20, my answer is no. With C++20, you can ask a thread politely for its interruption. First of all. Why is it no good idea to kill a thread? The answer is quite easy. You don't know in which state the thread is when you kill it. Here are two possible malicious outcomes.
 
 	\begin{enumerate}
 		\item 	The thread is only half-done with its job. Consequently, you don't know the state of that job and, hence, the state of your program. You end with undefined behaviour, and all bets are open.
@@ -19644,7 +19675,7 @@ void data_processors() {
 }
 \end{lstlisting}
 
-\item However, threads cannot always actively monitor a stop token. For instance, a thread waiting on a condition variable cannot check a stop condition unless it is signaled. For that reason, a callback mechanism is provided through \texttt{std::stop\_callback}. A \texttt{std::stop\_callback} instance registers a callback function for a given stop token. The callback is invoked when the token receives a stop request.
+\item Sometimes, threads cannot always actively monitor a stop token. For instance, a thread waiting on a condition variable cannot check a stop condition unless it is signaled. For that reason, a callback mechanism is provided through \texttt{std::stop\_callback}. A \texttt{std::stop\_callback} instance registers a callback function for a given stop token. The callback is invoked when the token receives a stop request.
 
 \begin{lstlisting}[frame=single, language=c++]
 std::queue<int> jobs;
@@ -19776,18 +19807,11 @@ int main(){
 \subsection{invariant}
 
 \begin{itemize}
-	\item In the context of computer programming, it can be seen as a set of assumptions a piece of code takes before it is able to perform any computation of importance. And if those assumptions aren’t actually true the result of the computation is meaningless, or more appropriately, it cannot be guaranteed that the result is correct. 
+	\item In the context of computer programming, it can be seen as a set of assumptions a piece of code takes before it is able to perform any computation of importance. And if those assumptions aren’t actually true the result of the computation is meaningless, or more appropriately, it cannot be guaranteed that the result is correct. An invariant (in common sense) means some conditions that must be true at some point in time or even always while your program is executing. e.g. PreConditions and PostConditions can be used to assert some conditions that must be true when a function is called and when it returns. Object invariants can be used to assert that a object must have a valid state throughout the time it exists. This is the design by contract principle.
 	
-	\item An invariant (in common sense) means some conditions that must be true at some point in time or even always while your program is executing. e.g. PreConditions and PostConditions can be used to assert some conditions that must be true when a function is called and when it returns. Object invariants can be used to assert that a object must have a valid state throughout the time it exists. This is the design by contract principle.
+	\item Understand invariant. 1) only one thread can see broken invariant(loc base) 2) design of your data structure and its invariants so that modification are done as a series of indivisible changes, each of which preserves the invariants. For example, For a shared pointer, The invariant it holds is that the underlying object only exists as long as the reference count to it is greater than zero.
 	
-	\item Understand invariant. 1) only one thread can see broken invariant(loc base) 2) design of your data structure and its invariants so that modification are done as a series of indivisible changes, each of which preserves the invariants. 
-	
-	
-	\item For example, For a shared pointer, The invariant it holds is that the underlying object only exists as long as the reference count to it is greater than zero.
-	
-	\item In languages such as C++, a constructor-destructor pair becomes the best tool for introducing invariants. The proverbial life cycle of an object, begins when the class’ constructor returns and it ends only when the destructor is called.
-	
-	\item It is okay if the invariants are destroyed while the method is executing, only that they need to be restored before the method returns. Also, this restriction does not apply to private methods that are inaccessible from outside the class. Externally accessible object fields that take part in the object’s invariants are an absolute no-no.
+	\item In languages such as C++, a constructor-destructor pair becomes the best tool for introducing invariants. The proverbial life cycle of an object, begins when the class’ constructor returns and it ends only when the destructor is called.  It is okay if the invariants are destroyed while the method is executing, only that they need to be restored before the method returns. Also, this restriction does not apply to private methods that are inaccessible from outside the class. Externally accessible object fields that take part in the object’s invariants are an absolute no-no.
 	
 	\item Thread-Safety is just the ability to maintain an object’s invariants in a multi-threaded environment.
 	
@@ -19815,35 +19839,14 @@ add reg 1
 move reg mem
 \end{lstlisting}		
 	
-	\item In visual studio. You can use debug view assemble language produced by compiler. 
-	
-	\item Even one thread read, another thread write, It will cause data race. A good reference page is "Benign data races: what could possibly go wrong?". 
-	
-	\item A good article is "Invariants in Code Design" and you can google it.
-	
-	\item data race and race condition, you can see a good reference page: "Race Condition vs. Data Race", you can google it.
-	\item Another good paper about data race is "Fun with Concurrency Problems".
+	\item Even one thread read, another thread write, It will cause data race. A good reference page is "Benign data races: what could possibly go wrong?".   A good article is "Invariants in Code Design" and you can google it. data race and race condition, you can see a good reference page: "Race Condition vs. Data Race", you can google it.  Another good paper about data race is "Fun with Concurrency Problems".
 \end{itemize}
 
 \subsection{shared date protection}
 \subsubsection{lock and mutex}
 
 \begin{itemize}
-	\item \texttt{std::mutex} is usually not accessed directly: \texttt{std::unique\_lock}, \texttt{std::lock\_guard}, or \texttt{std::scoped\_lock} (since C++17) manage locking in a more exception-safe manner.
-	
-	\item It's common to group the mutex and the protected data together in a class rather than use global variables. this is a standard application of OO design rule.
-	
-	\item If one of the member functions return a pointer or reference to the protected data, then it doesn't matter that the member function all logck the mutex, because you open a backdoor, \textbf{Don't do that}. 
-	
-	\item You can not omit the need to specify \texttt{std::mutex} here a second time. In C++17, you can use class template argument deduction. That is another reason we recommend \texttt{scoped\_lock}.
-	
-\begin{lstlisting}[frame=single, language=c++]
-std::mutex mx
-std::lock_guard<std::mutex> lg(mx);
-std::scoped_lock guard(mx);
-\end{lstlisting}
-
-	\item there are four different locks:
+	\item \texttt{std::mutex} is usually not accessed directly: \texttt{std::unique\_lock}, \texttt{std::lock\_guard}, or \texttt{std::scoped\_lock} (since C++17) manage locking in a more exception-safe manner. It's common to group the mutex and the protected data together in a class rather than use global variables. this is a standard application of OO design rule. If one of the member functions return a pointer or reference to the protected data, then it doesn't matter that the member function all logck the mutex, because you open a backdoor, \textbf{Don't do that}.  The difference is that you can lock and unlock a \texttt{std::unique\_lock.} \texttt{std::lock\_guard} will be locked only once on construction and unlocked on destruction. \textbf{That is the RAII semantic in C++}.
 \begin{lstlisting}[frame=single, language=c++]	
 lock_guard
 unique_lock
@@ -19853,6 +19856,16 @@ shared_lock
 
 		\item There are three main kinds of mutex: \texttt{mutex,} \texttt{recursive\_mutex} and \texttt{shared\_mutex.}
 
+	\item You can not omit the need to specify \texttt{std::mutex} here a second time. In C++17, you can use class template argument deduction. That is another reason we recommend \texttt{scoped\_lock}.
+	
+\begin{lstlisting}[frame=single, language=c++]
+std::mutex mx
+std::lock_guard<std::mutex> lg(mx);
+std::scoped_lock guard(mx);
+\end{lstlisting}
+
+
+
 	\item The basic usage guideline:
 \begin{enumerate}
 	\item \texttt{lock\_guard} if you need to lock exactly 1 mutex for an entire scope.
@@ -19860,9 +19873,9 @@ shared_lock
 	\item \textbf{unique\_lock if you need to unlock within the scope of the block (which includes use with a condition\_variable) or transfer mutex ownership between scopes.}
 \end{enumerate}
 
-\item The \texttt{scoped\_lock} is a strictly superior version of \texttt{lock\_guard} that locks an arbitrary number of mutexes all at once (using the same deadlock-avoidance algorithm as std::lock). In new code, you should only ever use \texttt{scoped\_lock}.The only reason \texttt{lock\_guard} still exists is for compatibility. It could not just be deleted, because it is used in current code. Moreover, it proved undesirable to change its definition (from unary to variadic), because that is also an observable, and hence breaking, change (but for somewhat technical reasons). The only reason \texttt{lock\_guard} still exists is for compatibility. 
+    \item The \texttt{scoped\_lock} is a strictly superior version of \texttt{lock\_guard} that locks an arbitrary number of mutexes all at once (using the same deadlock-avoidance algorithm as std::lock). In new code, you should only ever use \texttt{scoped\_lock}.The only reason \texttt{lock\_guard} still exists is for compatibility. It could not just be deleted, because it is used in current code. Moreover, it proved undesirable to change its definition (from unary to variadic), because that is also an observable, and hence breaking, change (but for somewhat technical reasons). The only reason \texttt{lock\_guard} still exists is for compatibility. 
 
-	\item usage of \texttt{std::lock}. 
+	\item usage of \texttt{std::lock}. It can be lock two mutexes together to avoid dead lock. With new \texttt{scoped\_lock}, we don't need this feature any more. 
 \begin{lstlisting}[frame=single, language=c++]	
 class X{
 private:
@@ -19919,9 +19932,8 @@ int main(){
 }
 \end{lstlisting}			
 
-    \item The difference is that you can lock and unlock a \texttt{std::unique\_lock.} \texttt{std::lock\_guard} will be locked only once on construction and unlocked on destruction. \textbf{That is the RAII semantic in C++}.
 	
-	\item The \texttt{scoped\_lock} class template is a variadic template supporting any number of mutexes:
+	\item The \texttt{scoped\_lock} class template is a variadic template supporting any number of mutexes. The declaration of the \texttt{scoped\_lock} can be simplified thanks to C++17 template argument deduction for constructors:
 \begin{lstlisting}[frame=single, language=c++]	
 std::mutex mutex1;
 std::recursive_mutex mutex2;
@@ -19929,18 +19941,10 @@ std::recursive_mutex mutex2;
 std::scoped_lock<std::mutex, std::recursive_mutex> sl(mutex1, mutex2);
 \end{lstlisting}	
 	
-	\item The declaration of the \texttt{scoped\_lock} can be simplified thanks to C++17 template argument deduction for constructors:
-	
-\begin{lstlisting}[frame=single, language=c++]	
-std::mutex mutex1;
-std::recursive_mutex mutex2;
-// ...
-std::scoped_lock sl(mutex1, mutex2);
-\end{lstlisting}
 
-\item google "What's the best way to lock multiple std::mutex'es?" in stackoverflow. 
+    \item google "What's the best way to lock multiple std::mutex'es?" in stackoverflow. 
 
-\item one possible use of \texttt{unique\_lock} is to allow a function to lock a mutex and transfer ownership of that lock to the caller, so the caller can then perform additional actions under the protection of the same lock. 
+    \item one possible use of \texttt{unique\_lock} is to allow a function to lock a mutex and transfer ownership of that lock to the caller, so the caller can then perform additional actions under the protection of the same lock. 
 
 \begin{lstlisting}[frame=single, language=c++]	
 std::unique_lock<std::mutex> get_lock(){
@@ -19956,7 +19960,8 @@ void process_data{
 }
 \end{lstlisting}
 
-\item Usage of \texttt{call\_once} can be found below:
+    \item Usage of \texttt{std::call\_once} can be found below:
+
 \begin{lstlisting}[frame=single, language=c++]	
 std::once_flag flag1, flag2;
 
@@ -19964,8 +19969,7 @@ void simple_do_once(){
 	std::call_once(flag1, [](){ std::cout << "Simple example: called once\n"; });
 }
 
-void may_throw_function(bool do_throw)
-{
+void may_throw_function(bool do_throw) {
 	if (do_throw) {
 		std::cout << "throw: call_once will retry\n"; // this may appear more than once
 		throw std::exception();
@@ -19973,8 +19977,7 @@ void may_throw_function(bool do_throw)
 	std::cout << "Didn't throw, call_once will not attempt again\n"; // guaranteed once
 }
 
-void do_once(bool do_throw)
-{
+void do_once(bool do_throw) {
 	try {
 		std::call_once(flag2, may_throw_function, do_throw);
 	}
@@ -19987,7 +19990,9 @@ void do_once(bool do_throw)
 \subsubsection{read and write mutex}
 
 \begin{itemize}
-\item In C++, read and write mutex is \texttt{shared\_mutex}. If one thread has acquired the exclusive lock (through lock, try\_lock), no other threads can acquire the lock (including the shared). If one thread has acquired the shared lock (through lock\_shared, try\_lock\_shared), no other thread can acquire the exclusive lock, but can acquire the shared lock.
+
+    \item In C++, read and write mutex is \texttt{shared\_mutex}. If one thread has acquired the exclusive lock (through lock, try\_lock), no other threads can acquire the lock (including the shared). If one thread has acquired the shared lock (through lock\_shared, try\_lock\_shared), no other thread can acquire the exclusive lock, but can acquire the shared lock.
+
 \begin{lstlisting}[frame=single, language=c++]	
 class ThreadSafeCounter {
 	public:
@@ -20017,8 +20022,8 @@ class ThreadSafeCounter {
 };	
 \end{lstlisting}
 
+    \item shared\_mutex has some performance concern, another option is to use common mutex + \texttt{shared\_ptr.}
 
-\item shared\_mutex has some performance concern, another option is to use common mutex + \texttt{shared\_ptr.}
 \begin{lstlisting}[frame=single, language=c++]	
 class CustomerData : boost::noncopyable{
 public:
@@ -21838,7 +21843,9 @@ auto[v,n] = std::move(ms) //ms is empty now.
 	\item it support const, reference, and rvalue reference.
     \item The part of knowledge can be illustrated in this figure.
 \end{enumerate}
-
+\begin{center}
+    \includegraphics[width=0.85\linewidth]{pics/Variadic.png}
+\end{center}
 \end{itemize}
 
 \subsubsection{Fold expression}
