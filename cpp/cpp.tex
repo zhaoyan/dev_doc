@@ -19842,7 +19842,197 @@ move reg mem
 	\item Even one thread read, another thread write, It will cause data race. A good reference page is "Benign data races: what could possibly go wrong?".   A good article is "Invariants in Code Design" and you can google it. data race and race condition, you can see a good reference page: "Race Condition vs. Data Race", you can google it.  Another good paper about data race is "Fun with Concurrency Problems".
 \end{itemize}
 
+
 \subsection{shared date protection}
+\subsubsection{data race}
+\begin{itemize}
+    \item An easy example is count++, because count++ is not atomic, it will read count into a register, then add it, then write it back. If two threads performs count++ at the same time, one thread will read count into the register, at this time, another thread will cut in and finish the count++, count in memory will be 1 now.  Then the first thread come back, add 1 into the register, then write it back the memory, it will overwrite the count(1) in memory. After two count++, the count in the memory is still 1,(not 2). that is result of date race.
+
+    \item Even i = 2 is not atomic operation. if i is 64 bits, some CPU will write low 32bit first, and high 32 bits second. If another thread cut in in the middle. then a = i will result a "torn write" result. That is another bad result of data race.
+\begin{listing}[]
+//one thread 
+i = 2;
+
+//another thread
+a = i;
+\end{listing}
+
+    \item share\_ptr causes the data race. Because it also includes two seperate operations. A detail can be seen below:
+
+\begin{center}
+		\includegraphics[width=0.65\linewidth]{pics/shared_ptr_con.png}
+\end{center}
+
+    \item There is a conception of "Benign data race", but right now, all data race is considered bad. because sometimes compiler will change the "Benigh data race" into the "harmful data race". An example can be seen in "How to miscompile programs with “benign” data races". If p->data are all negtive, then count update will never happen. but after compiler optimzation, we have a last statement count = reg.  If at the same time, there is another thread modify count, then modification will "disappear" by the count = reg. That is why a benigh data race is really harmful. So just remember, \textbf{There is no benigh data race in C++ concurrency}.
+\begin{listing}[]
+for (p = x; p != 0; p = p -> next) {
+    if (p -> data < 0) count++;
+} 
+//previous code will be changed into below code by compiler.
+reg = count;
+for (p = x; p != 0; p = p -> next) {
+    if (p -> data < 0) reg++;
+}
+count = reg
+\end{listing}
+
+    \item Another problem in concurrency is "synchronize-with" relationship. I will introduce more in the atomic part. Just give a simple example here. it says that wether a varaible is visible for another threa. (because there are cache and cache coherancy here, so maybe the write memeory will not be visibable by another thread, in source code level, just like two statement has been reordered. and this is often happen in "payload and flag" context.) I will give an example here. that is double check singleton.
+
+    \item The first and simple understand try. We can use a lock to make \textbf{1) atomic access m\_Instance; 2) synchronize-with relationship with the other thread} gurantee at the same time. the only problem is too expensive. Because if we have many threads to run getInstance, only one can get lock, and all the others will be suspended. It cause lock convery problem, Let's consider one possible, if one thread get lock but the time slice has been scheduled by the OS before it release lock, then all the others threads can't get lock, then they will be suspened and all the time slice have been reduced by the OS. then context switch will happen more often, it will cause performace penanity.  From this implementation, you can see lock+mutex is the safest way, because it gurantee aotmic and synchronized at the same time. but you pay performance bill. If you want to improve it, you have to take care of atomic access and synchronize-with by you self, let's introduce in the next item.
+
+\begin{listing}[]
+Singleton* Singleton::m_Instance = nullptr;
+
+ Singleton* Singleton::getInstance () {
+	lock_guard<mutex> lock(m_mutex);
+	if (m_Instance == nullptr) {
+		m_Instance = new Singleton;
+	}
+	return Singleton;
+}   
+\end{listing}
+
+\item In order to resovle performance concern, you can try below code. there are two problems with this code. The first one is reading m\_Instance is not atomic operation,  The second problem is there is no synchronize with relationship with line 7 and line 4. 
+\begin{listing}[]
+Singleton* Singleton::m_Instance = nullptr;
+
+Singleton* Singleton::getInstance () {
+	if (m_Instance == nullptr) {
+		lock_guard<mutex> lock(m_mutex);
+		if (m_Instance == nullptr) {
+			m_Instance = new Singleton;
+		}
+	}
+	return Singleton;
+}
+\end{listing}
+\item this problem can not be resolved by introducing a temp variable, tmp=new Singleton can be divided by two steps: 
+\begin{listing}[]
+Singleton* Singleton::getInstance () {
+	Singleton * tmp = m_Instance;
+	if (m_Instance == nullptr) {
+		lock_guard<mutex> lock(m_mutex);
+		tmp = m_Instance;
+		if (m_Instance == nullptr) {
+			tmp = new Singleton;   //oops
+			m_Instance = tmp;  
+		}
+	}
+	return Singleton;
+}
+1) tmp = operator new(sizeof(Singleton));  
+2) new(tmp) Singleton;  
+3) m_instance = tmp;  
+//The compile can reorder 3) in front of 2). 
+\end{listing}
+    \item no any atomic. if i is accessed by more than one thread, which includes a write, the behavior is undefined. In the absence of synchronization, the compiler is free to assume no other thread can modify i, and may reorder/optimize access to it. For example, it may load i into a register once and never re-read it from memory, or it may hoist writes out of the loop and only write once at the end.
+\begin{listing}[]
+int i = 0; 
+if(i == 10)  {...}  // may actually be optimized away since `i` is clearly 0 now 
+\end{listing}
+    \item By default reads and writes to an atomic are done in std::memory_order_seq_cst (sequentially-consistent) memory order. This means that not only are reads/writes to ai atomic, but they are also visible to other threads in a timely manner, including any other variable's reads/writes before/after it. So reading/writing an atomic acts as a memory fence. This however, is much slower since (1) an SMP system must synchronize caches between processors and (2) the compiler has much less freedom in optimizing code around the atomic access.
+
+\begin{listing}[]
+std::atomic<int> ai{0}; 
+if(ai == 10) {...}  // [2]    
+\end{listing}
+
+    \item This mode allows and guarantees atomicity of ai reads/writes only. So the compiler is again free to reorder access to it, and only guarantees that writes are visible to other threads in a reasonable amount of time. It's applicability is very limited, as it makes it very hard to reason about the order of events in a program. For example This mode is potentially (and often) slower than case 1 since the compiler must ensure each read/write actually goes out to cache/RAM, but is faster than case 2, since it's still possible to optimize other variables around it
+
+\begin{listing}[]
+std::atomic<int> ai{0}, aj{0}; 
+ 
+// thread 1 
+aj.store(1, std::memory_order_relaxed); 
+ai.store(10, std::memory_order_relaxed); 
+ 
+// thread 2 
+if(ai.load(std::memory_order_relaxed) == 10) { 
+  aj.fetch_add(1, std::memory_order_relaxed); 
+  // is aj 1 or 2 now??? no way to tell. 
+} 
+\end{listing}
+    \item The last implementation. The code use atomic varaible to make sure atomic read operation. At the same time,use memory fence to make sure synchronize relationship. 
+
+\begin{listing}[]
+std::atomic<Singleton*> Singleton::m_instance;
+std::mutex Singleton::m_mutex;
+
+Singleton* Singleton::getInstance() {
+    Singleton* tmp = m_instance.load(std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_acquire);
+    if (tmp == nullptr) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        tmp = m_instance.load(std::memory_order_relaxed);
+        if (tmp == nullptr) {
+            tmp = new Singleton;
+            std::atomic_thread_fence(std::memory_order_release);
+            m_instance.store(tmp, std::memory_order_relaxed);
+        }
+    }
+    return tmp;
+}
+\end{listing}
+\begin{description}
+    \item[line 1] We here use atomic to make sure  line 5 read(load) is atomic operation.
+    \item[line 5] Why do we need a tmp here? tmp is not necessary for aotmic and synchronize. because m\_instance is atomic, so it will be easy to load once, if you return m\_instance in the last line, it just like m\_instance.load(seq_cst), it will insert mem fence and a little expensive. 
+    \item think that a group of threads come to the line 7,  only one get lock, the others will be blocked in lock. when the one finish new and release lock, the others get lock and load it again and found it is not nullptr, then returen back again.  You can see the load in line 9 is relaxed. we only need to keep atomic read, synchronize with is gurantee by the mutex. 
+    \item When the one thread just new singletion in line 11, we need to make sure that m\_instance has been constructed. and be visible by other thread. That is why we need line 13 synchronized -with line 7. 
+
+    \item An acquire fence prevents the memory reordering of any read which precedes it in program order with any read or write which follows it in program order.
+
+A release fence prevents the memory reordering of any read or write which precedes it in program order with any write which follows it in program order.
+\end{description}
+
+    \item another implementation is 
+\begin{listing}[]
+std::atomic<Singleton*> Singleton::m_instance;
+std::mutex Singleton::m_mutex;
+
+Singleton* Singleton::getInstance() {
+    Singleton* tmp = m_instance.load(std::memory_order_acquire);
+    if (tmp == nullptr) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        tmp = m_instance.load(std::memory_order_relaxed);
+        if (tmp == nullptr) {
+            tmp = new Singleton;
+            m_instance.store(tmp, std::memory_order_release);
+        }
+    }
+    return tmp;
+}
+\end{listing}
+\begin{description}
+    \item[Source code] The release operation on the left, m_instance.store(tmp, std::memory_order_release), actually places fewer memory ordering constraints on neighboring operations than the release fence on the right. A release operation (such as the one on the left) only needs to prevent preceding memory operations from being reordered past itself, but a release fence (such as the one on the right) must prevent preceding memory operations from being reordered past all subsequent writes. Because of this difference, a release operation can never take the place of a release fence.
+\end{description}
+
+    \item another implementation is 
+\begin{listing}[]
+std::atomic<Singleton*> Singleton::m_instance;
+std::mutex Singleton::m_mutex;
+
+Singleton* Singleton::getInstance() {
+    Singleton* tmp = m_instance.load();
+    if (tmp == nullptr) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        tmp = m_instance.load();
+        if (tmp == nullptr) {
+            tmp = new Singleton;
+            m_instance.store(tmp);
+        }
+    }
+    return tmp;
+}
+\end{listing}
+    \item release>fence> load directly.
+
+    \item summary: what can cause the data race? \textbf{There are multi threads and at lease one thread write the share resource. At the same time,  either read or write is not atomic operation}. in count++ example, write is not atomic, because it read count from memory to register, then add 1, then write it back. In a = i example, maybe we write low 32 bits, then write high 32 bits. in share\_ptr example, we read ptr part, then, read cnt part. All these three example demonstrate non-atomic operation.  
+        
+\end{itemize}
+\subsubsection{spin lock}
+\begin{itemize}
+    \item 
+\end{itemize}
 \subsubsection{lock and mutex}
 
 \begin{itemize}
