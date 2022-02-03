@@ -19803,7 +19803,8 @@ int main(){
 	
 \end{itemize}
 
-\section{data race}
+\section{Sharing data}
+
 \subsection{invariant}
 
 \begin{itemize}
@@ -19823,13 +19824,18 @@ int main(){
 		\item Is performance critical to your system and have you run profilers on your code? And have those profilers pointed at argument checking to be the bottleneck? If no, keep it in.
 		
 		\item Is your automated test suite actually good? Code coverage is a factor but not the only one. If no, keep it in.
-		
 		\item Do you have balls of steel and weekends to spare for prod issues? If yes, do what you gotta do.
 	\end{enumerate}
 	
-	\item A race condition is a situation, in which the result of an operation depends on the interleaving of certain individual operations.
-	
-	\item Even increment is not atomic operation. It will change it to three assemble statements. So If there are two threads, thread 1 just move to reg, then another thread 2 finish ++, next, thread1 change back, The value will be overwrite mem. The result is: op is incremented 1 although two thread call op++.
+	\item A race condition is a situation, in which the result of an operation depends on the interleaving of certain individual operations. If race condition break the invariant, usually we call it as data race. 
+\end{itemize}
+
+
+\subsection{shared date protection}
+\subsubsection{data race}
+\begin{itemize}
+
+	\item Even increment is not atomic operation. It will change it to three assemble statements. So If there are two threads, thread 1 just move to reg, then another thread 2 finish ++, next, thread1 change back, The value will be overwrite mem. The result is: op is incremented 1 although two thread call op++.  After two count++, the count in the memory is still 1,(not 2). that is result of date race.
 \begin{lstlisting}[frame=single, language=c++]
 op++;
 
@@ -19838,17 +19844,9 @@ move mem reg
 add reg 1
 move reg mem
 \end{lstlisting}		
-	
-	\item Even one thread read, another thread write, It will cause data race. A good reference page is "Benign data races: what could possibly go wrong?".   A good article is "Invariants in Code Design" and you can google it. data race and race condition, you can see a good reference page: "Race Condition vs. Data Race", you can google it.  Another good paper about data race is "Fun with Concurrency Problems".
-\end{itemize}
+	\item  A good reference page is "Benign data races: what could possibly go wrong?".   A good article is "Invariants in Code Design" and you can google it. data race and race condition, you can see a good reference page: "Race Condition vs. Data Race", you can google it.  Another good paper about data race is "Fun with Concurrency Problems".
 
-
-\subsection{shared date protection}
-\subsubsection{data race}
-\begin{itemize}
-    \item An easy example is count++, because count++ is not atomic, it will read count into a register, then add it, then write it back. If two threads performs count++ at the same time, one thread will read count into the register, at this time, another thread will cut in and finish the count++, count in memory will be 1 now.  Then the first thread come back, add 1 into the register, then write it back the memory, it will overwrite the count(1) in memory. After two count++, the count in the memory is still 1,(not 2). that is result of date race.
-
-    \item Even i = 2 is not atomic operation. if i is 64 bits, some CPU will write low 32bit first, and high 32 bits second. If another thread cut in in the middle. then a = i will result a "torn write" result. That is another bad result of data race.
+    \item Even one thread read, another thread write, It will cause data.  i = 2 is not atomic operation. if i is 64 bits, some CPU will write low 32bit first, and high 32 bits second. If another thread cut in in the middle. then a = i will result a "torn write" result. That is another bad result of data race.
 \begin{listing}[]
 //one thread 
 i = 2;
@@ -19857,28 +19855,29 @@ i = 2;
 a = i;
 \end{listing}
 
-    \item share\_ptr causes the data race. Because it also includes two seperate operations. A detail can be seen below:
+    \item \texttt{share\_ptr} causes the data race. Because it also includes two seperate operations. A detail can be seen below:
 
 \begin{center}
 		\includegraphics[width=0.65\linewidth]{pics/shared_ptr_con.png}
 \end{center}
 
-    \item There is a conception of "Benign data race", but right now, all data race is considered bad. because sometimes compiler will change the "Benigh data race" into the "harmful data race". An example can be seen in "How to miscompile programs with “benign” data races". If p->data are all negtive, then count update will never happen. but after compiler optimzation, we have a last statement count = reg.  If at the same time, there is another thread modify count, then modification will "disappear" by the count = reg. That is why a benigh data race is really harmful. So just remember, \textbf{There is no benigh data race in C++ concurrency}.
+    \item There is a conception of "Benign data race", but right now, all data race is considered bad. because sometimes compiler will change the "Benigh data race" into the "harmful data race". An example can be seen in "How to miscompile programs with “benign” data races". If p->data are all negtive, then count update will never happen. but after compiler optimzation, we have a last statement count = reg.  If at the same time, there is another thread modify count, then modification will "disappear" by the first thread to perform \texttt{count = reg}. That is why a benigh data race is really harmful. So just remember, \textbf{There is no benigh data race in C++ concurrency}.
 \begin{listing}[]
 for (p = x; p != 0; p = p -> next) {
     if (p -> data < 0) count++;
 } 
+
 //previous code will be changed into below code by compiler.
 reg = count;
 for (p = x; p != 0; p = p -> next) {
     if (p -> data < 0) reg++;
 }
-count = reg
+count = reg //in the end, it will modify the count
 \end{listing}
 
     \item Another problem in concurrency is "synchronize-with" relationship. I will introduce more in the atomic part. Just give a simple example here. it says that wether a varaible is visible for another threa. (because there are cache and cache coherancy here, so maybe the write memeory will not be visibable by another thread, in source code level, just like two statement has been reordered. and this is often happen in "payload and flag" context.) I will give an example here. that is double check singleton.
 
-    \item The first and simple understand try. We can use a lock to make \textbf{1) atomic access m\_Instance; 2) synchronize-with relationship with the other thread} gurantee at the same time. the only problem is too expensive. Because if we have many threads to run getInstance, only one can get lock, and all the others will be suspended. It cause lock convery problem, Let's consider one possible, if one thread get lock but the time slice has been scheduled by the OS before it release lock, then all the others threads can't get lock, then they will be suspened and all the time slice have been reduced by the OS. then context switch will happen more often, it will cause performace penanity.  From this implementation, you can see lock+mutex is the safest way, because it gurantee aotmic and synchronized at the same time. but you pay performance bill. If you want to improve it, you have to take care of atomic access and synchronize-with by you self, let's introduce in the next item.
+    \item The first and simple understand implementation. We can use a lock+mutex to make \textbf{1) atomic access m\_Instance; 2) synchronize-with relationship with the other thread} gurantee at the same time. The only problem is that this lock+mutex implementation is not efficient.  Because if we have many threads to run getInstance, only one can get lock, and all the others will be suspended. It cause lock convery problem, Let's consider one possibility, if one thread get lock but the time slice has been taken away by the OS schedular. Then this mutex is in lock status. Then all the others threads can't get lock,  they will be suspened and all the time slice have been reduced by the OS. then context switch will happen more often, it will cause performace penalty.  From this implementation, you can see lock+mutex is the safest way, because it gurantee aotmic and synchronized-with relationship at the same time. But you pay performance bill. If you want to improve it, you have to take care of atomic access and synchronize-with by you self, let's introduce in the next item.
 
 \begin{listing}[]
 Singleton* Singleton::m_Instance = nullptr;
@@ -19892,7 +19891,7 @@ Singleton* Singleton::m_Instance = nullptr;
 }   
 \end{listing}
 
-\item In order to resovle performance concern, you can try below code. there are two problems with this code. The first one is reading m\_Instance is not atomic operation,  The second problem is there is no synchronize with relationship with line 7 and line 4. 
+    \item In order to resovle performance concern, you can try double check lock patten. there are two problems with this code. The first one is reading \texttt{m\_Instance} is not atomic operation,  The second problem is there is no synchronize with relationship with line 7 and line 4. 
 \begin{listing}[]
 Singleton* Singleton::m_Instance = nullptr;
 
@@ -19906,7 +19905,8 @@ Singleton* Singleton::getInstance () {
 	return Singleton;
 }
 \end{listing}
-\item this problem can not be resolved by introducing a temp variable, tmp=new Singleton can be divided by two steps: 
+
+    \item This problem can NOT be resolved by introducing a temp variable, tmp=new Singleton can be divided by two steps: 
 \begin{listing}[]
 Singleton* Singleton::getInstance () {
 	Singleton * tmp = m_Instance;
@@ -19925,34 +19925,9 @@ Singleton* Singleton::getInstance () {
 3) m_instance = tmp;  
 //The compile can reorder 3) in front of 2). 
 \end{listing}
-    \item no any atomic. if i is accessed by more than one thread, which includes a write, the behavior is undefined. In the absence of synchronization, the compiler is free to assume no other thread can modify i, and may reorder/optimize access to it. For example, it may load i into a register once and never re-read it from memory, or it may hoist writes out of the loop and only write once at the end.
-\begin{listing}[]
-int i = 0; 
-if(i == 10)  {...}  // may actually be optimized away since `i` is clearly 0 now 
-\end{listing}
-    \item By default reads and writes to an atomic are done in std::memory_order_seq_cst (sequentially-consistent) memory order. This means that not only are reads/writes to ai atomic, but they are also visible to other threads in a timely manner, including any other variable's reads/writes before/after it. So reading/writing an atomic acts as a memory fence. This however, is much slower since (1) an SMP system must synchronize caches between processors and (2) the compiler has much less freedom in optimizing code around the atomic access.
 
-\begin{listing}[]
-std::atomic<int> ai{0}; 
-if(ai == 10) {...}  // [2]    
-\end{listing}
 
-    \item This mode allows and guarantees atomicity of ai reads/writes only. So the compiler is again free to reorder access to it, and only guarantees that writes are visible to other threads in a reasonable amount of time. It's applicability is very limited, as it makes it very hard to reason about the order of events in a program. For example This mode is potentially (and often) slower than case 1 since the compiler must ensure each read/write actually goes out to cache/RAM, but is faster than case 2, since it's still possible to optimize other variables around it
-
-\begin{listing}[]
-std::atomic<int> ai{0}, aj{0}; 
- 
-// thread 1 
-aj.store(1, std::memory_order_relaxed); 
-ai.store(10, std::memory_order_relaxed); 
- 
-// thread 2 
-if(ai.load(std::memory_order_relaxed) == 10) { 
-  aj.fetch_add(1, std::memory_order_relaxed); 
-  // is aj 1 or 2 now??? no way to tell. 
-} 
-\end{listing}
-    \item The last implementation. The code use atomic varaible to make sure atomic read operation. At the same time,use memory fence to make sure synchronize relationship. 
+    \item Below is workable implementation. The code use atomic varaible to make sure atomic read operation. At the same time,use memory fence to make sure synchronize relationship. 
 
 \begin{listing}[]
 std::atomic<Singleton*> Singleton::m_instance;
@@ -19974,17 +19949,17 @@ Singleton* Singleton::getInstance() {
 }
 \end{listing}
 \begin{description}
-    \item[line 1] We here use atomic to make sure  line 5 read(load) is atomic operation.
+    \item[line 1] We here use atomic to make sure read(load) and write(store) is atomic operation.
+
     \item[line 5] Why do we need a tmp here? tmp is not necessary for aotmic and synchronize. because m\_instance is atomic, so it will be easy to load once, if you return m\_instance in the last line, it just like m\_instance.load(seq_cst), it will insert mem fence and a little expensive. 
-    \item think that a group of threads come to the line 7,  only one get lock, the others will be blocked in lock. when the one finish new and release lock, the others get lock and load it again and found it is not nullptr, then returen back again.  You can see the load in line 9 is relaxed. we only need to keep atomic read, synchronize with is gurantee by the mutex. 
-    \item When the one thread just new singletion in line 11, we need to make sure that m\_instance has been constructed. and be visible by other thread. That is why we need line 13 synchronized -with line 7. 
 
-    \item An acquire fence prevents the memory reordering of any read which precedes it in program order with any read or write which follows it in program order.
+    \item [Source code] Think that a group of threads come to the line 7,  only one get lock, the others will be blocked in lock. when the one finish new and release lock, the others get lock and load it again and found it is not nullptr, then returen back again.  You can see the load in line 9 is relaxed. we only need to keep atomic read, synchronize with is gurantee by the mutex. 
+    \item [Source code] When the one thread just new singletion in line 11, we need to make sure that m\_instance has been constructed. and be visible by other thread. That is why we need line 13 synchronized-with line 7. 
 
-A release fence prevents the memory reordering of any read or write which precedes it in program order with any write which follows it in program order.
+    \item [Source code] How to understand memory fence? An acquire fence prevents the memory reordering of any read which precedes it in program order with any read or write which follows it in program order. A release fence prevents the memory reordering of any read or write which precedes it in program order with any write which follows it in program order.
 \end{description}
 
-    \item another implementation is 
+    \item another implementation is using release and acquire semantic.
 \begin{listing}[]
 std::atomic<Singleton*> Singleton::m_instance;
 std::mutex Singleton::m_mutex;
@@ -20003,10 +19978,10 @@ Singleton* Singleton::getInstance() {
 }
 \end{listing}
 \begin{description}
-    \item[Source code] The release operation on the left, m_instance.store(tmp, std::memory_order_release), actually places fewer memory ordering constraints on neighboring operations than the release fence on the right. A release operation (such as the one on the left) only needs to prevent preceding memory operations from being reordered past itself, but a release fence (such as the one on the right) must prevent preceding memory operations from being reordered past all subsequent writes. Because of this difference, a release operation can never take the place of a release fence.
+    \item[Source code] The release operation on the left, m\_instance.store(tmp, std::memory\_order\_release), actually places fewer memory ordering constraints on neighboring operations than the release fence on the previous implementation. A release operation only needs to prevent preceding memory operations from being reordered past itself, but a release fence (such as the one on the right) must prevent preceding memory operations from being reordered past all subsequent writes. Because of this difference, a release operation can never take the place of a release fence.
 \end{description}
 
-    \item another implementation is 
+    \item Another implementation is use cst\_seq
 \begin{listing}[]
 std::atomic<Singleton*> Singleton::m_instance;
 std::mutex Singleton::m_mutex;
@@ -20024,14 +19999,43 @@ Singleton* Singleton::getInstance() {
     return tmp;
 }
 \end{listing}
-    \item release>fence> load directly.
+
+    \item Considering the efficiency, release >fence> load with memory\_order\_seq\_cst directly.
 
     \item summary: what can cause the data race? \textbf{There are multi threads and at lease one thread write the share resource. At the same time,  either read or write is not atomic operation}. in count++ example, write is not atomic, because it read count from memory to register, then add 1, then write it back. In a = i example, maybe we write low 32 bits, then write high 32 bits. in share\_ptr example, we read ptr part, then, read cnt part. All these three example demonstrate non-atomic operation.  
         
 \end{itemize}
 \subsubsection{spin lock}
 \begin{itemize}
-    \item 
+    \item Implementation of spin lock is also based the \textbf{atomic and synchronize-with relationship}. 
+\begin{listing}[]
+struct tas_lock {
+  std::atomic<bool> lock_ = {false};
+  void lock() { while(lock_.exchange(true, std::memory_order_acquire)); }
+  void unlock() { lock_.store(false, std::memory_order_release); }
+};
+\end{listing}
+    \item The problem with the above implementation occurs when there is contention on the lock. In order to keep all CPU caches synchronized a cache coherency protocol is used. There are several different cache coherency protocols (MESI, MOESI, MESIF), but they all have in common that only a single CPU core may write to a cache line but multiple CPU cores may simultaneously read from a cache line. The atomic exchange operation requires write access to the cache line where the lock is stored. If more than one thread is spinning trying to acquire the lock a lot of cache coherency traffic is required to continuously change which core has exclusive write access to the lock.
+
+Since the coherency protocol allows for multiple simultaneous readers we can reduce the coherency traffic by instead spinning on an atomic load operation (spin-wait loop). Instead of continuos futile attempts to acquire the held lock we wait for the lock holder to first release the lock. This eliminates cache coherency traffic during spinning:
+\begin{listing}[]
+struct ttas_lock {
+  ...
+  void lock() {
+    for (;;) {
+      if (!lock_.exchange(true, std::memory_order_acquire)) {
+        break;
+      }
+      while (lock_.load(std::memory_order_relaxed));
+    }
+  }
+  ...
+};
+\end{listing}
+\begin{description}
+    \item[Source code] test-and-set (TAS) operation. TAS atomically writes to the memory location and returns its old value in a single indivisible step. Actually, the name test-and-set is a little misleading, because the caller is responsible for testing if the operation has succeeded or not. In C++11 std::atomic_bool::exchange() can be used to perform a TAS operation on an std::atomic_bool synchronization variable. 
+\end{description}
+
 \end{itemize}
 \subsubsection{lock and mutex}
 
@@ -20044,7 +20048,7 @@ scoped_lock
 shared_lock	
 \end{lstlisting}
 
-		\item There are three main kinds of mutex: \texttt{mutex,} \texttt{recursive\_mutex} and \texttt{shared\_mutex.}
+		\item There are three main kinds of mutex: \texttt{mutex}, \texttt{recursive\_mutex} and \texttt{shared\_mutex.}
 
 	\item You can not omit the need to specify \texttt{std::mutex} here a second time. In C++17, you can use class template argument deduction. That is another reason we recommend \texttt{scoped\_lock}.
 	
@@ -20064,63 +20068,6 @@ std::scoped_lock guard(mx);
 \end{enumerate}
 
     \item The \texttt{scoped\_lock} is a strictly superior version of \texttt{lock\_guard} that locks an arbitrary number of mutexes all at once (using the same deadlock-avoidance algorithm as std::lock). In new code, you should only ever use \texttt{scoped\_lock}.The only reason \texttt{lock\_guard} still exists is for compatibility. It could not just be deleted, because it is used in current code. Moreover, it proved undesirable to change its definition (from unary to variadic), because that is also an observable, and hence breaking, change (but for somewhat technical reasons). The only reason \texttt{lock\_guard} still exists is for compatibility. 
-
-	\item usage of \texttt{std::lock}. It can be lock two mutexes together to avoid dead lock. With new \texttt{scoped\_lock}, we don't need this feature any more. 
-\begin{lstlisting}[frame=single, language=c++]	
-class X{
-private:
-	some_big_object some_detail;
-	std::mutex m;
-public:
-	X(some_big_object const& sd):some_detail(sd){}
-	friend void swap(X& lhs, X& rhs){
-		if(&lhs==&rhs){return;}
-		std::lock(lhs.m,rhs.m);
-		std::lock_guard<std::mutex> lock_a(lhs.m,std::adopt_lock);
-		std::lock_guard<std::mutex> lock_b(rhs.m,std::adopt_lock);
-		//use lock_guard here is to give mutex RAII semantic.
-		swap(lhs.some_detail,rhs.some_detail);
-	}
-};
-\end{lstlisting}
-
-\begin{description}
-	\item[Source code] \texttt{std::lock} use deadlock avoidance algorithm. 
-	\item[Source code] Pay attention to the \texttt{std::adopt\_lock.} There are three constant instances. \texttt{std::defer\_lock,} \texttt{std::try\_to\_lock} and \texttt{std::adopt\_lock} are instances of empty struct tag types \texttt{std::defer\_lock\_t,} \texttt{std::try\_to\_lock\_t} and \texttt{std::adopt\_lock\_t} respectively. They are used in overload lock\_guard, scoped\_guard, shared\_guard and unique\_guard
-\end{description}
-
-	\item The same idea can be implemented by using \texttt{unique\_lock}
-
-\begin{lstlisting}[frame=single, language=c++]	
-struct Box {
-	explicit Box(int num) : num_things{num} {}
-	int num_things;
-	std::mutex m;
-};
-
-void transfer(Box &from, Box &to, int num){
-	// don't actually take the locks yet
-	std::unique_lock<std::mutex> lock1(from.m, std::defer_lock);
-	std::unique_lock<std::mutex> lock2(to.m, std::defer_lock);
-	
-	// lock both unique_locks without deadlock
-	std::lock(lock1, lock2);
-	
-	from.num_things -= num;
-	to.num_things += num;
-}
-
-int main(){
-	Box acc1(100);
-	Box acc2(50);
-	
-	std::thread t1(transfer, std::ref(acc1), std::ref(acc2), 10);
-	std::thread t2(transfer, std::ref(acc2), std::ref(acc1), 5);
-	
-	t1.join();
-	t2.join();
-}
-\end{lstlisting}			
 
 	
 	\item The \texttt{scoped\_lock} class template is a variadic template supporting any number of mutexes. The declaration of the \texttt{scoped\_lock} can be simplified thanks to C++17 template argument deduction for constructors:
@@ -20154,11 +20101,9 @@ void process_data{
 
 \begin{lstlisting}[frame=single, language=c++]	
 std::once_flag flag1, flag2;
-
 void simple_do_once(){
 	std::call_once(flag1, [](){ std::cout << "Simple example: called once\n"; });
 }
-
 void may_throw_function(bool do_throw) {
 	if (do_throw) {
 		std::cout << "throw: call_once will retry\n"; // this may appear more than once
@@ -20270,13 +20215,16 @@ void CustomerData::update(const string& customer, const EntryList& entries){
 		\includegraphics[width=0.65\linewidth]{pics/read_copy.png}
 \end{center}
 
-\item know additional knowledge, lock convey,  false sharing.
 
-\item don't use mutex across process, just use TCP socket between processes. 
+    \item some suggestions about using mutex+lock
+\begin{enumerate}
+    \item don't use mutex across process, just use TCP socket between processes. 
 
-\item Only use non-recursive mutex. If you have to use recursive mutex, you'd bettern redesign your framework.
+    \item Only use non-recursive mutex. If you have to use recursive mutex, you'd bettern redesign your framework.
 
-\item First spin for a while, If still can not get the mutex, then suspend.
+    \item Lock will spin for a while, If still can not get the mutex, then suspend.
+
+\end{enumerate}
 
 \end{itemize}
 
@@ -20293,9 +20241,7 @@ void CustomerData::update(const string& customer, const EntryList& entries){
 		\item deadlock doesn't only occur whith locks, it can occur with any synchronization construct that can lead to a wait cycle. For example, it's bad idea to wait for a thread while holding a lock, because that thread might need to acquire the lock in order to proceed. 
 	\end{enumerate}	
 	
-	\item In computer science, a lock convoy is a performance problem that can occur when using locks for concurrency control in a multithreaded application.
-	
-	\item A lock convoy occurs when multiple threads of equal priority contend repeatedly for the same lock.Unlike deadlock and livelock situations, the threads in a lock convoy do progress; however, each time a thread attempts to acquire the lock and fails, it relinquishes the remainder of its scheduling quantum and forces a context switch. The overhead of repeated context switches and underutilization of scheduling quanta degrade overall performance.
+	\item In computer science, a lock convoy is a performance problem that can occur when using locks for concurrency control in a multithreaded application.  A lock convoy occurs when multiple threads of equal priority contend repeatedly for the same lock.Unlike deadlock and livelock situations, the threads in a lock convoy do progress; however, each time a thread attempts to acquire the lock and fails, it relinquishes the remainder of its scheduling quantum and forces a context switch. The overhead of repeated context switches and underutilization of scheduling quanta degrade overall performance.
 	
 	\item Lock convoys often occur when concurrency control primitives such as locks serialize access to a commonly used resource, such as a memory heap or a thread pool. They can sometimes be addressed by using non-locking alternatives such as lock-free algorithms or by altering the relative priorities of the contending threads.
 	
@@ -20313,6 +20259,11 @@ void CustomerData::update(const string& customer, const EntryList& entries){
 	std::lock_guard<std::mutex> lock_b(rhs.m, std::adopt_lock);
 	swap(lhs.some_detail, rhs.some_detail);
 \end{lstlisting}
+\begin{description}
+	\item[Source code] \texttt{std::lock} use deadlock avoidance algorithm. 
+	\item[Source code] Pay attention to the \texttt{std::adopt\_lock.} There are three constant instances. \texttt{std::defer\_lock,} \texttt{std::try\_to\_lock} and \texttt{std::adopt\_lock} are instances of empty struct tag types \texttt{std::defer\_lock\_t,} \texttt{std::try\_to\_lock\_t} and \texttt{std::adopt\_lock\_t} respectively. They are used in overload lock\_guard, scoped\_guard, shared\_guard and unique\_guard
+\end{description}
+
 
 \begin{lstlisting}[frame=single, language=c++]	
 	std::unique_lock<std::mutex> lk1(mutex1, std::defer_lock);
@@ -21014,6 +20965,33 @@ public:
 	\includegraphics[width=0.90\linewidth]{pics/atomic_operator.png}
 \end{center}
 
+    \item no any atomic. if i is accessed by more than one thread, which includes a write, the behavior is undefined. In the absence of synchronization, the compiler is free to assume no other thread can modify i, and may reorder/optimize access to it. For example, it may load i into a register once and never re-read it from memory, or it may hoist writes out of the loop and only write once at the end.
+\begin{listing}[]
+int i = 0; 
+if(i == 10)  {...}  // may actually be optimized away since `i` is clearly 0 now 
+\end{listing}
+
+    \item By default reads and writes to an atomic are done in std::memory_order_seq_cst (sequentially-consistent) memory order. This means that not only are reads/writes to ai atomic, but they are also visible to other threads in a timely manner, including any other variable's reads/writes before/after it. So reading/writing an atomic acts as a memory fence. This however, is much slower since (1) an SMP system must synchronize caches between processors and (2) the compiler has much less freedom in optimizing code around the atomic access.
+
+\begin{listing}[]
+std::atomic<int> ai{0}; 
+if(ai == 10) {...}  // [2]    
+\end{listing}
+
+    \item This mode allows and guarantees atomicity of ai reads/writes only. So the compiler is again free to reorder access to it, and only guarantees that writes are visible to other threads in a reasonable amount of time. It's applicability is very limited, as it makes it very hard to reason about the order of events in a program. For example This mode is potentially (and often) slower than case 1 since the compiler must ensure each read/write actually goes out to cache/RAM, but is faster than case 2, since it's still possible to optimize other variables around it
+\begin{listing}[]
+std::atomic<int> ai{0}, aj{0}; 
+ 
+// thread 1 
+aj.store(1, std::memory_order_relaxed); 
+ai.store(10, std::memory_order_relaxed); 
+ 
+// thread 2 
+if(ai.load(std::memory_order_relaxed) == 10) { 
+  aj.fetch_add(1, std::memory_order_relaxed); 
+  // is aj 1 or 2 now??? no way to tell. 
+} 
+\end{listing}
 \end{itemize}
 
 \subsection{memory ordering}
@@ -22980,7 +22958,9 @@ struct MyInt {
 
 \section{Example of Modern C++}
 \begin{itemize}
-	\item An example of implementation before modern C++.
+    
+	\item We want to build a function to make an array, the basic idea is just like make\_pair. One implementation looks like below:
+
 \begin{lstlisting}
 template<typename VT, typename ... Params>
 std::array<VT, sizeof ... (Params)+1> get_data(const VT &v1, const Params& ... params){
@@ -22989,7 +22969,7 @@ std::array<VT, sizeof ... (Params)+1> get_data(const VT &v1, const Params& ... p
 \end{lstlisting}	
 
 \begin{description}
-	\item[Source code] 1) Array, 2) list initilization(return ) 3) variadic templates.  
+	\item[Source code] We mainly use three features in C++11/14: 1) array, 2) list initilization(return ) 3) variadic templates.  
 \end{description}
 
 \item With help of modern C++, \texttt{get\_data} can become a little easier. That is not make C++ easier to teach, but it does allow for a high level of efficiency. comparing with previous example, VT disappear is not because fold expression substitude recursive variadic template defenition, It is because that we can deduce the array type from params automatically(C++ 17). Params ... args is valid declaration, if you just want to forward it into some function. An example is make\_unique. 
@@ -22998,27 +22978,13 @@ auto get_data(const auto& ...params){
 	return std::array{std::forward<decltype(params)>(params)...};
 }
 \end{lstlisting}
-\begin{enumerate}
-	\item array c++11
-	\item auto template
-	\item auto return deduction
-	\item template parameter deduction
-	\item forward and rvalue reference
-    \item fold expression
-\end{enumerate}	
-
-\item sum implementation based on moder C++. It demonstrate how to use fold expression.
-\begin{lstlisting}
-template<typename ...T>
-auto sum(const T& ...t){
-	return(t+ ...);
-}
-\end{lstlisting}
 \begin{description}
-		\item[Source code] fold expression.
+    \item[Source code] We mainly use: 1) array c++11 2) auto template 3) auto return deduction 4) template parameter deduction 5) forward and rvalue reference 6) fold expression
 \end{description}
 
-	\item print a map. It demonstrates some very useful modern C++ features, Based on these feature, you can find that it make you to write the code much easier. 
+
+
+	\item Print a map. It demonstrates some very useful modern C++ features, Based on these feature, you can find that it make you to write the code much easier. 
 \begin{lstlisting}
 void print_map(const auto& map, const std::string_view key_desc = "key",
 							   const std::string_view value_desc = "value"){
@@ -23040,6 +23006,7 @@ const std::string_view value_desc = "value"){
 }	
 //auto is template function, 
 \end{lstlisting}	
+
     \item Summary, in this section, I mainly demonstrate below C++ language features:
 
 \begin{enumerate}
