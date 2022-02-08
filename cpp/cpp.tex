@@ -16684,15 +16684,10 @@ cout<<str<<endl;
 \begin{itemize}
 	\item In C language, You can call \texttt{abort()}, \texttt{exit()}, \texttt{quick\_exit()} and  \texttt{\_exit()} to end you problem at anytime. they are both declared in \texttt{<cstdlib>} head file.
 	
-	\item \texttt{exit( status )} terminates the process normally. A status value of 0 or EXIT\_SUCCESS indicates success, and any other value or the constant EXIT\_FAILURE is used to indicate an error. \texttt{exit()} performs following operations:
-	\begin{enumerate}
-		\item Flushes unwritten buffered data.
-		\item Closes all open files.
-		\item Removes temporary files.
-	\end{enumerate}
+	\item \texttt{exit( status )} terminates the process normally. A status value of 0 or EXIT\_SUCCESS indicates success, and any other value or the constant EXIT\_FAILURE is used to indicate an error. \texttt{exit()} performs following operations: 1) Flushes unwritten buffered data. 2) Closes all open files. 3) Removes temporary files.
 	
 	\item \texttt{atexit()} registers the function pointed to by func to be called on normal program termination (via \texttt{std::exit()} or returning from the main function)
-\begin{lstlisting}[numbers=none]
+\begin{lstlisting}[]
 void myProgramIsTerminating1(void){
 	cout<<"exit main function"<<endl;
 }
@@ -16703,7 +16698,7 @@ int main(int argc, char**argv){
 }
 \end{lstlisting}
 \begin{description}
-	\item[Line 5:] If you comment it, myProgramIsTerm will not be called.
+	\item[Line 7:] If you uncomment it, myProgramIsTerm will not be called.
 \end{description}
 	
 
@@ -16711,7 +16706,22 @@ int main(int argc, char**argv){
 	
 	\item \texttt{\_exit()} is called without performing any of the regular cleanup tasks for terminating processes
 	
-	\item \texttt{abort()} is called without destroying any object and without calling any of the functions passed to \texttt{atexit} or \texttt{at\_quick\_exit}. But It will dump core, if the user has core dumps enabled. Using abort to debug by analyzing a core dump.
+	\item \texttt{abort()} is called without destroying any object and without calling any of the functions passed to \texttt{atexit} or \texttt{at\_quick\_exit}. But It will dump core, if the user has core dumps enabled. Using abort to debug by analyzing a core dump. Next, I will introduce how to generate and use core dump. When your program has some invalid memeory operation, when you run the programme, you can get below:
+\begin{lstlisting}[]
+*** stack smashing detected ***: terminated
+Aborted (core dumped)
+\end{lstlisting}
+
+If you want to your application generate core dump, you need to run below commands:(In Ubuntu sytem)
+\begin{lstlisting}[]
+ulimit -c unlimited //configure once core file size limited,
+sudo service apport start //run once to start apport.
+./a.out //this will cause core dump
+cat /var/log/apport.log // to see if core dump has been generated. 
+gdb a.out /var/lib/apport/coredump/core.youname  // how to use core dump file
+bt // give bt command in gdb enviroment, then you will know where 
+   // your programme perform invalid memory operation.
+\end{lstlisting}
 	
 	\item \textbf{When you use gdb, abort can list stack frame information for you.} It's very helpful for you to debug.  Exit just end the application. When you use gdb, it show nothing.
 	
@@ -16747,12 +16757,11 @@ catch(end_exception& ex){
 }
 \end{lstlisting}
 \begin{description}
-	\item[Source code:] Just skip the whole catch, \texttt{end\_exception} will reach \texttt{main} function all clean all the local object, when it return from \texttt{main}, it will do the same work as \texttt{exit()};
+	\item[Source code:] Just skip the whole catch, \texttt{end\_exception} will reach \texttt{main} function all clean all the local object, when it return from \texttt{main}, it will do the same flush work as \texttt{exit()} does.
 \end{description}
-	
-\end{itemize}
-\subsection{Difference between different termination}
-\begin{itemize}
+
+    \item In summary, don't use \texttt{exit} in C++, use try and catch(...) and then return EXIT\_FAILURE to make sure stack has been unwinding successfuly.     
+
 	\item Issuing a return statement from the \texttt{main} function is equivalent to calling the \texttt{exit} function with the return value as its argument. However, there are still some subtle differences. When you call return in \texttt{main()}, destructors will be called for my locally scoped objects. If I call \texttt{exit()}, no destructor will be called for my locally scoped objects! Note that static objects will be cleaned up even if you call \texttt{exit()}. 
 	
     \item When you call exit or execute a return statement from main, static objects are destroyed in the reverse order of their initialization.
@@ -16764,10 +16773,11 @@ catch(end_exception& ex){
 
 \section{Bug and assert}
 \subsection{Use assert}
+
 \begin{itemize}
 	\item \textbf{Bugs should be found as early as possible}. There are two basic methods to find bugs early: \texttt{assert} and unit test.
 	
-	\item Idea of \texttt{assert} is to make "an abnormal case" can be spotted immediately; otherwise, this "an abnormal case" will cause error in other place, then It's a little difficult to trace back to the source position.
+	\item Idea of \texttt{assert} is to make "an abnormal case" can be spotted immediately; otherwise, this "an abnormal case" will cause error in other place, then it's a little difficult to trace back to the source position.
 \begin{lstlisting}[frame=single, language=c++]
 fun(char* p){
 	assert(p!=nullptr);
@@ -16781,6 +16791,7 @@ fun(char* p){
 \end{description}
 	
 	\item Although when to use assert depends on context, \textbf{Use \texttt{assert} to its fullest}. \textbf{precondition assertion} to test the validity of the arguments passed to a method. and use \textbf{postcondition assertion} to test the validity of the results produced by the method.  In my whirl2llvm project, I have used them extensively. It really gave me a lot of benefits.
+
 \begin{lstlisting}[frame=single, language=c++]
 #include <cassert>
 assert(I<5 && "I is more than 5");
@@ -16831,12 +16842,7 @@ fprintf(f, %d, age);
 \subsection{errno in C}
 \begin{itemize}
 	
-	\item There are three common error handling methods:
-	\begin{enumerate}
-		\item global error code(C) or error state(C++).
-		\item return value.
-		\item Exception.
-	\end{enumerate}
+	\item There are three common error handling methods: 1) global error code(C) or error state(C++). 2) return value. 3) Exception.
 \begin{lstlisting}[frame=single, language=c++]
 //C language
 errno(), strerror()
@@ -16935,7 +16941,7 @@ Class my_ex :public std::exception{
 	
 	\item \textbf{Catch by using reference:}
 	\begin{enumerate}
-		\item It will support polymorphic exception, and catch exception from specify to generic.
+		\item It will support polymorphic exception, and catch exception from specific to generic.
 		\item It will avoid extra coping.
 	\end{enumerate}
 	
@@ -16993,7 +16999,7 @@ void f(){
 	try {
 		// ...
 	}
-	catch (Base& b) { /* ... */ }
+	catch (Base& b) { /* ... */ }  //The order is WRONG here!
 	catch (Derived& d) { /* ... */ }
 	catch (...) { /* ... */ }
 	catch (std::exception& e) { /* ... */ }
