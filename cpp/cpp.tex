@@ -6694,15 +6694,26 @@ Foo foo1 = foo2+foo3;  //for right value, use move constructor
 Foo foo1 = getFoo();  //for right value, use move constructor
 \end{lstlisting}
 
+\begin{center}
+		\begin{tabular}{|c|c|}
+			\tophline 
+			type & which value category can bind \\ 
+			\tophline 
+			lvalue reference & lvalue(non-const)  \\ 
+			\tophline 
+			rvalue reference &  rvalue(non-const)\\ 
+			\tophline 
+			const lvalue reference & lvalue or rvalue(const or non-const)  \bottomhline 
+		\end{tabular} 
+\end{center}
+
 \end{itemize}
 
 \subsection{ rvalue reference and move constructor}
 
 \subsubsection{rvalue reference basic}
 \begin{itemize}
-	\item If X is any type, then X\&\& is called an rvalue reference to X. For better distinction, the ordinary reference X\& is now also called an lvalue reference.
-	
-	\item rvalue references will implicitly bind to rvalues and to temporaries that are the result of an implicit conversion. i.e. Below is well formed because float is implicitly convertible to int; the reference would be to a temporary that is the result of the conversion.
+	\item If \texttt{X} is any type, then \texttt{X\&\&} is called an rvalue reference to \texttt{X}. For better distinction, the ordinary reference \texttt{X\&} is now also called an lvalue reference. Rvalue references will implicitly bind to rvalues and to temporaries that are the result of an implicit conversion. i.e. Below is well formed because float is implicitly convertible to int; the reference would be to a temporary that is the result of the conversion.
 \begin{lstlisting}
 float f = 0f; 
 int&& i = f; 
@@ -6712,38 +6723,15 @@ int&& i = f;
 	
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 std::string s1 = "Test";
-std::string&& r1 = s1; //ERROR
+std::string&& r1 = s1; //ERROR rvalue reference can't bind to lvalue.
 		
-const std::string& r2 = s1 + s1; 
-r2+="test" //Error
+const std::string& r2 = s1 + s1;//lvalue reference to const extends lifetime. 
+r2+="test" //Error  can't modify through reference to const.
 		
-std::string&& r3 = s1 + s1;      
-r3 += "Test";                    
-
-int && r1 = 13,  
-int && r2= x+y; //x+y is prvalue
-int && r3 = sqrt(2.0);  //sqrt(2.0) is prvalue
-
+std::string&& r3 = s1 + s1; //rvalue reference extends lifetime
+r3 += "Test"; //can modify through reference to non-const.                   
 \end{lstlisting}
-	\begin{description}
-		\item[Line 2:]  error: rvalue reference can't bind to lvalue.
-		
-		\item[Line 4:] okay: lvalue reference to const extends lifetime.
-		
-		\item[Line 5:] error: can't modify through reference to const.
-		\item[Line 6:] okay: rvalue reference extends lifetime
-		\item[Line 7:] okay: can modify through reference to non-const.
-	\end{description}
 	
-	\item given a type T, you can have lvalues of type T as well as rvalues of typeT. It's especially important to remember this when dealing with a parameter of rvalue reference type, because the parameter itself is an lvalue.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-int && i = 2;  
-int && r2= x+y; //x+y is prvalue
-int && r3 = sqrt(2.0);  //sqrt(2.0) is prvalue 
-\end{lstlisting}
-\begin{description}
-	\item[Line 1-3:] r1, r2 and r3 are lvalue
-\end{description}
 
 	\item The most important thing to remember is that value categories are a taxonomy of expressions. They are not categories of objects or variables or types. Getting this wrong is an immediate source of problems. 
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
@@ -6756,35 +6744,20 @@ foo(r); // will call #1, because r is lvalue, although type is rvalue reference.
 
 \item \textbf{Things that are declared as rvalue reference can be lvalues or rvalues. The distinguishing criterion is: if it has a name, then it is an lvalue. Otherwise, it is an rvalue.} Understand this word is very important, In the previous code, r has name, so it is lvalue, When we use \texttt{std::move}, it "erase" the name by a function call, so unname rvalue reference is rvalue.
 	
-\begin{center}
-		\begin{tabular}{|c|c|}
-			\tophline 
-			type & which value category can bind \\ 
-			\tophline 
-			lvalue reference & lvalue(non-const)  \\ 
-			\tophline 
-			rvalue reference &  rvalue(non-const)\\ 
-			\tophline 
-			const lvalue reference & lvalue or rvalue(const or non-const)  \bottomhline 
-		\end{tabular} 
-	\end{center}
-
 \end{itemize}
 
 \subsubsection{move constructor implementation and usage}
 \begin{itemize}
-	\item A example code for move constructor and move assignment.	
+	\item An example code for move constructor and move assignment.	
 \begin{lstlisting}[numbers=none]
 Foo::Foo(const Foo & rhs){
 	while(ptr++;)
 	  ptr[i] = rhs.ptr[i]  //expensive copy
 }
-
 Foo::Foo(Foo && rhs){ //no const here
 	ptr = rhs.ptr;  //efficient move(steal)
 	rhs.ptr = nullptr;
 }
-
 Foo& Foo::operator=(Foo&& rhs){
 	delete[] ptr;
 	ptr = rhs.ptr;  //efficient move(steal)
@@ -6796,17 +6769,9 @@ Foo& Foo::operator=(Foo&& rhs){
 
 	
 	\begin{enumerate}
-		\item Move constructor will not move resource automatically, you need to coding it by your self.
+		\item Move constructor will not move resource automatically, you need to coding it by your self. You can't move in normal constructor. because, It must keep origin obj intact.  You can steal when \texttt{Foo(f1+f2)}, but when you used \texttt{Foo(f1)}.  It will destroy \texttt{f1}. Without  move constructor, normal copy constructor will treat \texttt{Foo f = f1+f2} and \texttt{Foo f = f1} the same way.
 		
-		\item You can't move in normal constructor. because, It must keep origin obj intact.  You can steal when Foo(f1+f2), but when you used Foo(f1).  It will destroy f1.
-		
-		\item Without  move constructor, normal copy ctor will treat Foo f = f1+f2 and Foo f = f1 the same way.
-		
-		\item With move copy constructor, normal copy ctor deal with Foo f = f1, and move copy ctor deal with Foo f = f1+f2, for f1+f2, you can steal resource, because nobody need to use f1+f2 later any more.
-		
-		\item \textbf{In move constructor, always set rhs.ptr = nullptr;}
-		
-		\item No const qualifier in move constructor and move assignment
+		\item With move copy constructor, normal copy constructor deal with \texttt{Foo f = f1}, and move copy constructor deal with \texttt{Foo f = f1+f2}, for \texttt{f1+f2}, you can steal resource, because nobody need to use \texttt{f1+f2} later any more. \item \textbf{In move constructor, always set rhs.ptr = nullptr;} \item No const qualifier in move constructor and move assignment
 		
 	\end{enumerate}
 	
@@ -6826,32 +6791,18 @@ Foo& Foo::operator=(Foo&& rhs){
 %	\item If you have move constructor. In operator + function, a temp objtemp1 is produced,  When return objtemp1, It will not produce objtemp2. (because objtemp1 is rvalue.) then objtemp1 is passed to move ctor. In side move ctor, the resource address has been move to new obj1.  Just one temp objtemp1 and one actual copy happen. ( just new pointer = old pointer; and old pointer = NULL).
 
 
-\item First, Don't declare objects \texttt{const} if you want to be able to move from them. Move requests on \texttt{const} objects are silently transformed into copy operations.
-
-\item Second, std::move not only doesn't actually move anything, it doesn't even guarantee that the object it's casting will be eligible to be moved. The only thing you know for sure about the result of applying std::move to an object is that it return a xvalue.
-
-\begin{lstlisting}[frame=single, language=c++]
-	explicit Annotation(const std::string text)
-	: value(std::move(text)) 
-\end{lstlisting}
-\begin{description}
-	\item[Line 1:] That is constructor, we want to "move" text into value; this code doesn't do what it seems to, because text is const
-\end{description}
+\item Don't declare objects \texttt{const} if you want to be able to move from them. Move requests on \texttt{const} objects are silently transformed into copy operations.
 
 \end{itemize}
-
-
-
 
 \section{xvalue}
 \begin{itemize}
 	\item In this section, there are four important points
 	\begin{enumerate}
-		\item std::move and why do we need a new value type--xvalue?
+		\item \texttt{std::move} and why do we need a new value type--xvalue?
 		\item Academic definition of xvalue.
 		\item Give some practical expressions which are xvalue.
 		\item Relationship between xvalue and rvalue reference.
-		
 	\end{enumerate}
 \end{itemize}
 
@@ -6878,49 +6829,49 @@ void swap(T& a, T& b) {
 		\item If \texttt{std::move} return  rvalue reference? \texttt{std::move(b)} is rvalue. Good! 
 	\end{enumerate} 
 
-	
-\item for this kind of rvalue reference, we can put it on the left side of assignment, so it's not prvalue. At the same time, you can move it, so it's not lvalue.  \textbf{In this way, we have to introduced a new value type--xvalue.}    
+    \item for this kind of rvalue reference, we can put it on the left side of assignment, so it's not prvalue. At the same time, you can move it, so it's not lvalue.  \textbf{In this way, we have to introduced a new value type--xvalue.}    
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
-	string str = "hello"
-	std::move(str)[0] = 'z';  //can modify
-	string str1 = std::move(str) //can move
+string str = "hello"
+std::move(str)[0] = 'z';  //can modify
+string str1 = std::move(str) //can move
 \end{lstlisting}
 \begin{description}
 	\item[Line 2-3:] print "zello" here. Because std::move() return a xvalue, it can persist and move.
 \end{description}
 	
+    \item  \texttt{std::move} not only doesn't actually move anything, it doesn't even guarantee that the object it's casting will be eligible to be moved. The only thing you know for sure about the result of applying \texttt{std::move} to an object is that it return a xvalue.
 
+\begin{lstlisting}[frame=single, language=c++]
+explicit Annotation(const std::string text)
+: value(std::move(text)) 
+\end{lstlisting}
+\begin{description}
+	\item[Line 1:] That is constructor, we want to "move" text into value; this code doesn't do what it seems to, because text is const
+\end{description}
 	
 	\item Summary:
 	\begin{enumerate}
 		\item We have rvalue reference to bind temporary value to move it.
-		\item We want to move a lvalue, such as swap, so we have std::move() function.
-		\item std::move() return neither lvalue nor prvalue, so we have to define a new type of value--xvalue.
+		\item We want to move a lvalue, such as swap, so we have \texttt{std::move()} function.
+		\item \texttt{std::move()} return neither lvalue nor prvalue, so we have to define a new type of value--xvalue.
 	\end{enumerate}
 	
-	
-	\begin{figure}[h]
-		\centering
+\begin{center}	
 		\includegraphics[width=0.7\linewidth]{pics/xvalue.png}
-		\caption{move semantic application}
 		\label{fig:xvalue}
-	\end{figure}	
+    \end{center}
 \end{itemize}
 
 
 \subsection{new value category}
 
 \begin{itemize}
-	\item xvalue definition: a function call or an overloaded operator expression, whose return type is rvalue reference to object
+	\item xvalue definition: a function call or an overloaded operator expression, whose return type is rvalue reference to object. That is to say, an xvalue is the result of certain kinds of expressions involving rvalue references. \textbf{The result of calling a function whose return type is an rvalue reference is an xvalue.} fun return lvalue reference is lvalue, fun return value is pvalue, and fun return rvalue reference is xvalue.
 	
-	\item An xvalue is the result of certain kinds of expressions involving rvalue references. \textbf{The result of calling a function whose return type is an rvalue reference is an xvalue.}
-	
-	\item \textbf{fun return lvalue reference is lvalue, fun return value is pvalue, and fun return rvalue reference is xvalue.}
-	
-	\item In definition,  xvalue is just value with Identity and can be movable. \textbf{In real life, it's  return value of std::move() or static\_cast<A\&\&>}. A better introduction can be seen: " C++11 Tutorial: Explaining the Ever-Elusive Lvalues and Rvalues"
+	\item In definition,  xvalue is just value with identity and can be movable. \textbf{In real life, it's  return value of std::move() or static\_cast<A\&\&>}. A better introduction can be seen: " C++11 Tutorial: Explaining the Ever-Elusive Lvalues and Rvalues"
 	
 	
-	\item First, we can use \textbf{persist and identity} to classify value into lvalue and rvalue, then c++11 introduce \textbf{std::move}. The return value of std::move is unnamed rvalue reference. this unnamed rvalue reference can persist and move at the same time.  So we divide lvalue into lvalue and xvalue and give them new name.  lvalue+xvalue = glvalue(persist)  and xvalue + prvalue = rvalue(move).
+	\item First, we can use \textbf{persist and identity} to classify value into lvalue and rvalue, then c++11 introduce \textbf{std::move}. The return value of \texttt{std::move} is unnamed rvalue reference. this unnamed rvalue reference can persist and move at the same time.  So we divide lvalue into lvalue and xvalue and give them new name.  lvalue+xvalue = glvalue(persist)  and xvalue + prvalue = rvalue(move).
 	
 	\item \textbf{Any value must be one of three value categories: lvalue, xvalue, or prvalue.} These three categories are complementary.  \textbf{lvalue pay attention to  identity and persist, rvalue = (xvalue + prvalue) shout "I can be moved" loudly.  So we call \&\& rvalue reference, don't call it xvalue reference. }
 	
@@ -6951,7 +6902,7 @@ void swap(T& a, T& b) {
 
 
 
-\item A method to judge if a var is lvalue.
+\item Using forward reference to judge if a var is lvalue.
 \begin{lstlisting}[frame=single, language=c++]
 template <typename T>
 constexpr bool is_lvalue(T&&) {
@@ -6964,7 +6915,7 @@ is_lvalue(a); // true
 \end{lstlisting}
 
 \begin{description}
-	\item[Line 8:] in the case you pass a std::string lvalue, then T will deduce to std::string\& or const std::string\&, for rvalues it will deduce to std::string
+    \item[Line 8:] in the case you pass a \texttt{std::string} lvalue, then T will deduce to \texttt{std::string\&} or \texttt{const std::string\&}, for rvalues it will deduce to \texttt{std::string}.
 \end{description}
 
 \item \textbf{How to determine programmatic if an expression is rvalue or lvalue}
@@ -6976,35 +6927,25 @@ if (std::is_lvalue_reference<decltype(var)>::value) {
 }
 
 string&& xvalue_fun();
-std::is_lvalue_reference<decltype(xvalue_fun())>::value
+std::is_rvalue_reference<decltype(xvalue_fun())>::value
 //return true
 \end{lstlisting}
 
 \end{itemize}
 
-\subsection{Example of xvalue}
+\subsection{xvalue and rvalue reference}
 
 \begin{itemize}
-	
 
-\item An example of xvalue.
+    \item An example of xvalue.
 \begin{lstlisting}
 string&& xvalue_fun();
 
-xvalue_fun(); 
-xvalue_fun() = "hello" 
-&xvalue_fun(); //
-string a = xvalue_fun(); 
+xvalue_fun(); //After you call this fun, value still exist. 
+xvalue_fun() = "hello"// You can modify because it persist.
+&xvalue_fun(); //You can get address because it has identity.
+string a = xvalue_fun();// call move constructor, can move.
 \end{lstlisting}
-\begin{description}
-	\item[Line 3:] After you call this fun, value still exist.
-	\item[Line 4:] You can modify because it persist.
-	\item[Line 5:] You can get address because it has identity.
-	\item[Line 6:] call move constructor, can move.
-\end{description}
-
-	
-
 	
 	\item More xvalue examples.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
@@ -7016,38 +6957,26 @@ A&& operator+(A, A); // a+a is xvalue
 A&& f();  //f() is xvalue
 f().m // f().m is also xvluae
 A a;
-A&& ar = static_cast<A&&>(a);
+A&& ar = static_cast<A&&>(a); static_cast<A&&>(a) is xvalue, but ar is lvalue
 \end{lstlisting}
-\begin{description}
-	\item[Line 9:] static\_cast<A\&\&>(a) is xvalue, but ar is lvalue
-\end{description}
 	
 	\item After C++11, we added two new xvalues.
 	\begin{enumerate}
 		\item \texttt{a[n]}, the built-in subscript expression, where one operand is an array rvalue;
 		\item \texttt{a.m}, the member of object expression, where a is an rvalue and m is a non-static data member of non-reference
 	\end{enumerate}
-\end{itemize}
 
-\subsection{xvalue and rvalue reference}
-
-\begin{itemize}
-	\item \textbf{xvalue is defined based on rvalue reference. But you can't think that a rvalue reference is a xvalue. }
-	
-	\item \textbf{A named rvalue reference is lvalue, and unnamed rvalue reference is xvalue};
+	\item \textbf{xvalue is defined based on rvalue reference. But you can't think that a rvalue reference is a xvalue. }  \textbf{A named rvalue reference is lvalue, and unnamed rvalue reference is xvalue};
 	
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 void foo(int&& t) {
-
+//t is initialized with an rvalue expression, but is actually an lvalue expression itself
 }
 	
 std::string a;   //a, b, c are all lvalue.
 std::string& b;
 std::string&& c;
 \end{lstlisting}
-\begin{description}
-	\item[Line 1:] t is initialized with an rvalue expression, but is actually an lvalue expression itself
-\end{description}
 	
 
 	\item Why is there such confusion? Here are the circumstances under which it is safe to move something:\\
@@ -7065,7 +6994,7 @@ cout<<val;
 	\item[Line 6:] what happen if you have forget you have move? it will crash the problem. so standard said that val is lvalue. because it's a named rvalue reference.
 \end{description}
 	
-\item Another deep trap happen when you implement move constructor in derived class
+    \item Another deep trap happen when you implement move constructor in derived class
 \begin{lstlisting}[numbers=none]
 Derived(Derived&& rhs):Base(rhs)//wrong: rhs is an lvalue
 {
@@ -7074,7 +7003,6 @@ Derived(Derived&& rhs):Base(rhs)//wrong: rhs is an lvalue
 	
 Derived(Derived&& rhs) : Base(std::move(rhs)){
 	// good, calls Base(Base&& rhs)
-	// Derived-specific stuff
 }
 \end{lstlisting}
 	
@@ -7082,13 +7010,14 @@ Derived(Derived&& rhs) : Base(std::move(rhs)){
 
 
 
-\section{universal(forwarding) reference }
+\section{Universal(forwarding) reference }
 \subsection{definition}
+
 \begin{itemize}
 \item You need to know two prerequisites before you understand forwarding reference:
 
 \begin{enumerate}
-	\item In pre-11 C++, it was not allowed to take a reference to a reference: something like A\&\& would cause a compile error. C++11, by contrast, introduces the following reference collapsing rules1:
+	\item In pre-11 C++, it was not allowed to take a reference to a reference: something like \texttt{A\&\&} would cause a compile error. C++11, by contrast, introduces the following reference collapsing rules1:
 	
 \begin{lstlisting}[numbers=none]
 A& & becomes A&
@@ -7100,11 +7029,9 @@ A&& && becomes A&&
 	\item forwarding reference type deduction rules: For lvalue and rvalue, we use the different rule to deduct type.
 \end{enumerate}
 
-\item \textbf{Universal reference has been renamed as forwarding reference. It's more descriptive name, It tell you universal reference should always been used with forwarding.}
+    \item \textbf{Universal reference has been renamed as forwarding reference}. It's more descriptive name, It tell you universal reference should always been used with forwarding.
 
-\item  Universal references arise in two contexts. The most common is function template parameters. The second context is auto\&\&\textbf{1)must be constrained T\&\& form, 2) type deduction happen.}
-
-\item If the form of the type declaration isn't precisely type\&\&, or if type deduction does not occur, type\&\& denotes an rvalue reference.
+    \item  Universal references arise in two contexts. The most common is function template parameters. The second context is auto\&\&\textbf{1)must be constrained T\&\& form, 2) type deduction happen.} If the form of the type declaration isn't precisely type\&\&, or if type deduction does not occur, type\&\& denotes an rvalue reference.
 \begin{lstlisting}
 auto&& var2 = var1; // universal reference
 
@@ -7114,7 +7041,7 @@ void f(T&& param); // universal  reference
 template<class T, class Allocator = allocator<T>>
 class vector {
 	template <class... Args>
-	void emplace_back(Args&&... args);  
+	void emplace_back(Args&&... args); //args is forwarding reference. 
 };
 
 //------------below are not universal reference----
@@ -7131,23 +7058,20 @@ public:
 };
 \end{lstlisting}
 \begin{description}
-	\item[Line 9:] args is universal reference.
-	\item[Line 14:] form is quite constrained. It must be precisely "T\&\&".
+	\item[Line 14:] form is quite constrained. It must be precisely \texttt{"T\&\&"}.
 \end{description}
 
 
 \end{itemize}
 
-\subsection{pros and cons}
+\subsection{pros and cons of forwarding reference}
 \begin{itemize}
-\item It can provide the unify interface, and it supports variadic number. That is make\_unique and make\_shared and emplace-kind function possible.
+
+\item It can provide the unify interface, and it supports variadic number. That is \texttt{make\_unique} and \texttt{make\_shared} and emplace-kind function possible.
 
 \item If you have a template class or template fun, universal reference is your only choice. An example can be seen in the last chapter, "decltype deduction" section.
 
-\item For overload method, more source code to write and maintain (two functions instead of a single template). 
-
-\item For overload method, it can be less efficient. For example, consider this use of setName: w.setName("Adela Novak"); With the version of setName taking a universal reference, the string literal "Adela Novak" would be passed to setName, where it would be conveyed to the assignment operator for the std::string inside w. w's name data member would thus be assigned directly from the string literal; no temporary std::string objects would arise. With the overloaded versions of setName, however, a temporary std::string object
-would be created for setName's parameter to bind to, and this temporary std::string would then be moved into w's data member.
+\item For overload method, more source code to write and maintain (two functions instead of a single template). For overload method, it can be less efficient. For example, consider this use of setName: w.setName("Adela Novak"); With the version of setName taking a universal reference, the string literal "Adela Novak" would be passed to setName, where it would be conveyed to the assignment operator for the std::string inside w. w's name data member would thus be assigned directly from the string literal; no temporary std::string objects would arise. With the overloaded versions of setName, however, a temporary std::string object would be created for setName's parameter to bind to, and this temporary std::string would then be moved into w's data member.
 
 \begin{lstlisting}[numbers=none]
 class Widget {
@@ -7160,8 +7084,7 @@ public:
 };
 \end{lstlisting}
 
-
-\item overload has the poor scalability of the design. Widget::setName takes only one parameter, so only two overloads are necessary, but for functions taking more parameters, each of which could be an lvalue or an rvalue, the number of overloads grows geometrically: n parameters necessitates 2n overloads. Such as make\_shared function, It's also support variadic parameter
+    \item overload has the poor scalability of the design. Widget::setName takes only one parameter, so only two overloads are necessary, but for functions taking more parameters, each of which could be an lvalue or an rvalue, the number of overloads grows geometrically: n parameters necessitates 2n overloads. Such as \texttt{make\_shared} function, It's also support variadic parameter
 
 \begin{lstlisting}[numbers=none]
 template<class T, class... Args> 
@@ -7171,9 +7094,9 @@ template<class T, class... Args>
 unique_ptr<T> make_unique(Args&&... args); 
 \end{lstlisting}
 
-\item You can use universal reference,  but inside, you have to use forward function, and implementation is a little difficult.  Detail can be seen "effective modern c++ item 41". As a template, implementation must typically be in a header file. It may yield several functions in object code, because it not only instantiates differently for lvalues and rvalues, it also instantiates differently for std::string and types that are convertible to std::string (see Item 25). 
+    \item You can use universal reference,  but inside, you have to use forward function, and implementation is a little difficult.  Detail can be seen "effective modern c++ item 41". As a template, implementation must typically be in a header file. It may yield several functions in object code, because it not only instantiates differently for lvalues and rvalues, it also instantiates differently for std::string and types that are convertible to std::string (see "effective modern C++ item 25"). 
 
-\item There are argument types that can't be passed by universal reference (see Item 30), and if clients pass improper argument types, compiler error messages can be intimidating (see Item 27).
+    \item There are argument types that can't be passed by universal reference (see Item 30), and if clients pass improper argument types, compiler error messages can be intimidating (see "effective modern C++ item 27").
 
 \begin{lstlisting}[numbers=none]
 template<typename T> // reference
@@ -7183,10 +7106,9 @@ fun(T&& value){
 }
 \end{lstlisting}
 
+    \item Overloading on universal references almost always leads to the universal reference overload being called more frequently than expected.
 
-\item Overloading on universal references almost always leads to the universal reference overload being called more frequently than expected.
-
-\item Perfect-forwarding constructors are especially problematic, because they're typically better matches than copy constructors for non-const lvalues, and they can hijack derived class calls to base class copy and move constructors. detail can be seen in "effective modern c++ item 26"
+    \item Perfect-forwarding constructors are especially problematic, because they're typically better matches than copy constructors for non-const lvalues, and they can hijack derived class calls to base class copy and move constructors. detail can be seen in "effective modern c++ item 26"
 
 \end{itemize}
 
@@ -7198,11 +7120,9 @@ fun(T&& value){
 	\item You have to use reference, means that need refer a existing one, you refer it because you want to copy it inside of your template function. 
 \end{enumerate}
 
-\item there are some points here:
+\item There are some points here:
 	\begin{enumerate}
-		\item \textbf{The first of first, it's only used in a template function.}
-		
-		\item \textbf{Inside the function, A copy will happen, if just read or write, use reference or const reference directly}
+		\item \textbf{The first of first, it's only used in a template function.}  \textbf{Inside the function, A copy will happen, if just read or write, use reference or const reference directly}
 		
 		\item \textbf{When copy, move is cheap, if there is no pointer or contaner, only has POD type value, move is just like copy. You don't need to use universal references.} Most of time, in your universal function, you have a container(string is container too), because move container is much cheaper than copy it.
 		
@@ -7210,9 +7130,7 @@ fun(T&& value){
 		
 		\item \textbf{There are more than 2 parameters, and overload function will cause exponential increase.}
 
-		\item I will accept any initializer regardless of whether it is an lvalue or rvalue expression and I will preserve its constness. 
-
-		\item This is typically used for forwarding (usually with T\&\&). The reason this works is because a "universal reference", auto\&\& or T\&\&, will bind to anything.  
+		\item I will accept any initializer regardless of whether it is an lvalue or rvalue expression and I will preserve its constness.  This is typically used for forwarding (usually with \texttt{T\&\&}). The reason this works is because a "universal reference", \texttt{auto\&\&} or \texttt{T\&\&}, will bind to anything.  
 
 		\item You might say, well why not just use a const auto\& because that will also bind to anything? The problem with using a const reference is that it's const! You won't be able to later bind it to any non-const references or invoke any member functions that are not marked const.
 \begin{lstlisting}[frame=single, language=c++]
@@ -7220,17 +7138,11 @@ auto&& vec=some_expression_that_may_be_rvalue_or_lvalue;
 auto i = std::begin(vec);
 (*i)++;
 
-auto         
-auto&       
-const auto&
-const auto&& 
+auto        // will copy the vector, but we wanted a reference
+auto&       // will only bind to modifiable lvalues
+const auto& // will bind to anything but make it const, giving us const\_iterator
+const auto&& //will bind only to rvalues with const, It's not univerisal reference any more. 
 \end{lstlisting} 
-\begin{description}
-	\item[Line 5:] will copy the vector, but we wanted a reference
-	\item[Line 6:] will only bind to modifiable lvalues
-	\item[Line 7:] will bind to anything but make it const, giving us const\_iterator
-	\item[Line 8:] will bind only to rvalues with const, It's not univerisal reference any more.
-\end{description}
 	\end{enumerate}
 
 \item There are three function \texttt{emplace\_back}, \texttt{make\_shared} and \texttt{make\_unique}. They use:
@@ -7239,14 +7151,14 @@ const auto&&
 
 		\item \textbf{universal reference}, because it's template, and I also want to keep rvalue semantic to improve efficiency. 
 		
-		\item \textbf{Forward}, because I want to forward parameter to corresponding constructor.Forward only used inside a wrapper, that is to say, to receive universal reference from template wrapper, and forward it to the specific function. The specific function has "COPY" semantic. 
+		\item \textbf{Forward}, because I want to forward parameter to corresponding constructor.Forward only used inside a wrapper, that is to say, to receive universal reference from template wrapper, and forward it to the specific function. The specific function has "COPY" semantic. The more you know these three functions, the better you understand forwarding reference.
 	\end{enumerate}
 \end{itemize}
 
 
 \subsection{std::move and std::forward implementation}
 \begin{itemize}
-	\item Basic implementation of move
+	\item Basic implementation of move.
 \begin{lstlisting}[numbers=none]
 template<typename T> // in namespace std
 typename remove_reference<T>::type&&
@@ -7258,7 +7170,7 @@ move(T&& param){
 }
 \end{lstlisting}
 	
-	\item Basic implementation of forward
+	\item Basic implementation of forward.
 \begin{lstlisting}numbers=none]
 template<typename T>
 T&& forward(typename remove_reference<T>::type& param){
@@ -7273,36 +7185,35 @@ T&& forward(typename remove_reference<T>::type& param){
 	\label{fig:rvalueref}
 \end{figure}
 
-	\item basic usage of forward is like this:
-\begin{lstlisting}
-template<class T>
-void wrapper(T&& arg) {
-	foo(std::forward<T>(arg)); 
-}
-\end{lstlisting}
-\begin{description}
-	\item[Line 2:] arg is always lvalue.
-	\item[Line 3:] Forward as lvalue or as rvalue, depending on T.
-	
-	
-\end{description}
-
-
-	\item In forward function, why parameter is std::remove\_reference\_t<T>\& t?
+    \item A few more explanation about previous implementation:
+    \begin{enumerate}
+        \item In forward function, why parameter is \texttt{std::remove\_reference\_t<T>\& t}?
 \begin{lstlisting}
 void fun(int&& r){
-	//int& r1 = r;  //OK
-	int&& r1 = r;  
-	cout<<r1<<endl;
+	int& r1 = r;  //OK
+    forword(int& r1 = r) //Just like this, 
+    //int&& r1 = r;  //error: cannot bind 'int' lvalue to 'int\&\&'
+    //forword(int && r1 = r) //donsn't work, 
+    //That is why we need remove reference on forward function parameter.
+    //forward mainly used inside another funciton, outside function parameter has name
+    //so they are all lvalue. 
 }
 
 int r = 2;
 fun(std::move(r));
 \end{lstlisting}
 \begin{description}
-	\item[Line 3:] error: cannot bind 'int' lvalue to 'int\&\&'
+	\item[Line 3:] 
 \end{description}
 
+    \item Why std::move use foreard reference as parameter. Just for more generic. We have introduced \texttt{vector<bool>} before, it returns a proxy value and it's rvalue. It's a extreme case, and I admit that. But in generic(template) programming, you will meet it too.
+\begin{lstlisting}[]
+std::vector<bool> v{true};
+
+std::move(v[0]); // std::move on rvalue, OK
+\end{lstlisting}
+        \end{enumerate}
+    \item There are two important points to help you understand \texttt{std::move} and \texttt{std::forward}. One is forward reference deduct rule, the other is reference collpase rules.
 \end{itemize}
 
 
@@ -7310,23 +7221,19 @@ fun(std::move(r));
 
 \begin{itemize}
 	
-	\item auto\&\& isn't used very often, If you don't want to dig too deep, you can skip it.
+	\item \texttt{auto\&\&} isn't used very often, If you don't want to dig too deep, you can skip this section.
 	
-	\item For auto\&\&, basic idea just like universal reference, you need to use decltype(var) to get type information when you use forward function on the universal reference. 
 	
-	\item If you then use \textbf{std::forward on your auto\&\& reference} to preserve the fact that it was originally either an lvalue or an rvalue, your code says: Now that I've got your object from either an lvalue or rvalue expression, I want to preserve whichever valueness it originally had so I can use it most efficiently.
-	
-	\begin{lstlisting}[frame=single, language=c++]
-		auto&& var = some_expression_that_may_be_rvalue_or_lvalue;
-		use_it_elsewhere(std::forward<decltype(var)>(var));
-	\end{lstlisting}
+	\item If you then use \textbf{std::forward on your auto\&\& reference} to preserve the fact that it was originally either an lvalue or an rvalue, your code says: Now that I've got your object from either an lvalue or rvalue expression, I want to preserve whichever valueness it originally had so I can use it most efficiently.  For \texttt{auto\&\&}, basic idea just like universal reference, you need to use \texttt{decltype(var)} to get type information when you use forward function on the universal reference. 
+\begin{lstlisting}[frame=single, language=c++]
+auto&& var = some_expression_that_may_be_rvalue_or_lvalue;
+use_it_elsewhere(std::forward<decltype(var)>(var));
+\end{lstlisting}
 	\begin{description}
-		\item[Line 1:] var was initialized with either an lvalue or rvalue, but var itself is an lvalue because named rvalues are lvalues
+		\item[Line 1:] \texttt{var} was initialized with either an lvalue or rvalue, but \texttt{var} itself is an lvalue because named rvalues are lvalues
 	\end{description}
 	
-	\item When to use auto\&\&. I will accept any initializer regardless of whether it is an lvalue or rvalue expression and I will preserve its constness. This is typically used for forwarding (usually with T\&\&). The reason this works is because a "universal reference", auto\&\& or T\&\&, will bind to anything. 
-	
-	\item A good example of "some\_expression\_that\_may\_be\_rvalue\_or\_lvalue;" is illustrated below:
+	\item When to use \texttt{auto\&\&}. I will accept any initializer regardless of whether it is an lvalue or rvalue expression and I will preserve its constness. A good example of "some\_expression\_that\_may\_be\_rvalue\_or\_lvalue;" is illustrated below:
 \begin{lstlisting}[frame=single, language=c++]
 std::vector<int> global_vec{1, 2, 3, 4};
 		
@@ -7350,25 +7257,22 @@ std::cout << global_vec[0] << std::endl;
 \end{lstlisting}
 
 	\begin{description}
-		\item[Line 10:] only auto\&\& work here. auto, auto\& , const auto\&, const auto\&\& all failed.
+		\item[Line 10:] only \texttt{auto\&\&} work here. \texttt{auto}, \texttt{auto\&} , \texttt{const auto\&}, \texttt{const auto\&\&} all failed.
 	\end{description}
 	
 \end{itemize}
 
 
 
-\section{function interface-parameter}
+\section{Function interface-parameter}
 
 \subsection{Generic function parameter design}
 
 \begin{itemize}
 
-\item  By now, you imagine that you have a function with parameters, then you have three main operations inside to operate on the parameters: \textbf{1) only read 2) copy from the parameters 3) write to parameters.}
-
-\item For only read context, "\texttt{const type\&}" is the best, For write, "\texttt{type\&}" is good, because I don't need to write any new thing into prvalue. Based on previous explanation, below code will not compile. 
+\item  By now, you imagine that you have a function with parameters, then you have three main operations inside to operate on the parameters: \textbf{1) only read 2) copy from the parameters 3) write to parameters.} For only read context, "\texttt{const type\&}" is the best, For write, "\texttt{type\&}" is good, because I don't need to write any new thing into prvalue. Based on previous explanation, below code will not compile. 
 \begin{lstlisting}[numbers=none]
 writeFun(Foo &);
-
 writeFun(foo1+foo2) //ERROR
 \end{lstlisting}
 
@@ -7379,37 +7283,37 @@ writeFun(foo1+foo2) //ERROR
 	\item Obviously, in your function, you maybe return value, reference or nothing. But a kind of "copy" does happen inside the function.
 \end{enumerate}
 
-\item For only read build-in type, such as \texttt{int, char, short, double}. You can use value directly, it has the same performance as reference. If you want to change it, you still need to use reference.
+    \item For only read build-in type, such as \texttt{int, char, short, double}. You can use value directly, it has the same performance as reference. If you want to change it, you still need to use reference.
 
-\item If the function \texttt{read} in some object and \textbf{copy} other something based on the object which just read in. You need to consider the parameter design. When I say \textbf{copy}, it could be:
+    \item If the function \texttt{read} in some object and \textbf{copy} other something based on the object which just read in. You need to consider the parameter design. When I say \textbf{copy}, it could be:
 \begin{enumerate}
 	\item call constructor inside fun
 	\item assign these values to other.
 	\item put values into container.
 \end{enumerate} 
-A few examples can be: \texttt{make\_unique,} \texttt{emplace\_back}.
+For examples \texttt{make\_unique,} \texttt{emplace\_back} are this kind of functions.
 \end{itemize}
 
 \subsection{read-copy function parameter design}
 \begin{itemize}
 
-\item For read-copy scenario, thing becomes interesting. Because the move constructor and move assignment operator give us an idea how to improve the function interface design.  For rvalue, we can move directly. Our goal is that we can use move for rvalue, so there are four options: 
+\item The move constructor and move assignment operator give us an idea how to improve the function interface design.  For rvalue, we can move directly. Our goal is that we can use move for rvalue, so there are four options: 
 
 	\begin{enumerate}
-		\item overload fun to support const Foo\& and Foo \&\&. Copy constructor is typical example of this strategy.
-		\item Use pass-value fun(Foo)  
-		\item Use pass-rvalue-reference fun(Foo\&\&)
-		\item Use universal reference fun(T\&\&)
+		\item overload fun to support \texttt{const Foo\&} and \texttt{Foo \&\&}. Copy constructor is typical example of this strategy.
+		\item Use pass-value \texttt{fun(Foo)}
+		\item Use pass-rvalue-reference \texttt{fun(Foo\&\&)}
+		\item Use universal reference \texttt{fun(T\&\&)}
 	\end{enumerate}
 	
 \begin{center}
 
 
-\begin{tabular}{|p{0.3\textwidth}|p{0.3\textwidth}|p{0.3\textwidth}|}
+\begin{tabular}{|p{0.25\textwidth}|p{0.32\textwidth}|p{0.32\textwidth}|}
 \tophline
  & \textbf{lvalue}  & \textbf{rvalue} \\
 \tophline
-copyFun(Foo foo) & \specialcell[t]{copy parameter\\move inside} & \specialcell[t]{move parameter \\ move inside} \\
+copyFun(Foo foo) & \specialcell[t]{copy parameter,move inside} & \specialcell[t]{move parameter, move inside} \\
 \tophline
 copyFun(Foo \&)  & copy inside & (NOT support) \\
 \tophline
@@ -7424,7 +7328,6 @@ copyFun(T \&\&)}  & copy inside & move inside
 
 \end{center}
 
-\subsubsection{overload solution}
 
 \item Use overload function to deal with rvalue only. So usually function which accepts rvalue reference doesn't exist by itself, it just stay with another version to accept lvalue, \texttt{fun(const Foo\& foo);}
 \begin{lstlisting}[frame=single, language=c++]
@@ -7433,13 +7336,10 @@ fun(Foo&& foo); //rvalue reference
 fun(foo1+foo2) 
 fun(f_return_foo()); // call move constructor.
 \end{lstlisting}
-\begin{description}
-	\item[Line 3-4:] Will call move constructor.
-\end{description}
 
 \subsubsection{only value solution}
 
-\item Value parameter example.
+    \item Value parameter example.
 
 \begin{lstlisting}[frame=single, language=c++]
 std::vector<std::string> 
@@ -7459,7 +7359,7 @@ std::vector<std::string> sorted_names2 = sorted( get_names() );
 
 \end{description}
 
-\item If we use reference parameter instead value parameter, we have to copy it inside of function. We can't change because it's const reference, so have to copy it inside first. 
+    \item If we use reference parameter instead value parameter, we have to copy it inside of function. We can't change because it's const reference, so have to copy it inside first. 
 
 \begin{lstlisting}[numbers=none]
 std::vector<std::string> 
@@ -7521,7 +7421,6 @@ sorted2(std::vector<std::string> const& names) {
 
 \item summary:
 \begin{enumerate}
-	\item For c++03, we don't have move semantic, all the move will be decayed to copy. \textbf{So reference WIN!}
 	
 	\item For non-cheap-move, such as all primitive type included class, move is just like copy, \textbf{So reference WIN!}
 	
@@ -7547,7 +7446,7 @@ T& operator=(T x){
 \begin{description}
 	\item[Line 2 to 4:] \texttt{x} is a reference to the source. copy construction of tmp does the hard work. trade our resources for tmp's. our (old) resources get destroyed with tmp 
 	
-	\item[Line 7 to 10:] A better one is below. \texttt{x} is a copy of the source;hard work already done. trade our resources for x's. our (old) resources get destroyed with \texttt{x}.
+	\item[Line 7 to 10:] A better one is below. \texttt{x} is a copy of the source; hard work already done. trade our resources for x's. our (old) resources get destroyed with \texttt{x}.
 \end{description}
 
 \item You can't apply this idea into the copy constructor, otherwise it will cause dead recursive.
@@ -7560,86 +7459,61 @@ Class A{
 \item Two good articles about this topic are:"Want Speed? Pass by Value." and "WANT SPEED? DON'T (ALWAYS) PASS BY VALUE."
 
 \subsubsection{only rvalue  reference solution}
-\item A more academic options is to just pass rvalue  reference to deal with lvalue and rvalue at the same time. This idea can be googled by "Pass By Rvalue Reference Or Pass By Value";
-\begin{lstlisting}[frame=single, language=c++]
-struct S{
-    void initByRef(SomeType&& param);
-};
 
-SomeType t;
-s.initByRef(std::move(t)); 
-s.initByRef(SomeType()); 
-\end{lstlisting}
-\begin{description}
-	\item[Line 6:] this works, and even better (less moves)
-\end{description}
-
-\item But for lvalue, you need a help function here.
+    \item A more academic options is to just pass rvalue reference to deal with lvalue and rvalue at the same time. This idea can be googled by "Pass By Rvalue Reference Or Pass By Value"; But for lvalue, you need a help function here.
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 T copy_to_temp(const T& t) { return t; }
 
 SomeType t; 
-s.initByRef(copy_to_temp(t)); 
-
-s.initByVal(t); 
+s.initByRef(copy_to_temp(t)); //t is lvalue, need copy first.
 \end{lstlisting}
-\begin{description}
-	\item[Line 5:] I'll need t later, so cannot std::move(t), but can copy
-	\item[Line 7:] note that here t is also copied, it just happens implicitly
-\end{description}
 
-\item the same idea can be applied to move-only types (such as unique\_ptr<T>)
+    \item The same idea can be applied to move-only types (such as \texttt{unique\_ptr<T>})
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 T move_to_temp(T& t) { return std::move(t); }
 
 void foo(unique_ptr<SomeType>&& param);
-
 unique_ptr<SomeType> p;
-foo(move_to_temp(p)); 
-foo(std::move(p)); 
+foo(move_to_temp(p));//note: this does move, p will become empty 
+foo(std::move(p));//here, p will not become empty.  
 \end{lstlisting}
-\begin{description}
-	\item[Line 7:] note: this does move, p will become empty
-	\item[Line 8:] here, p will not become empty. 
-\end{description}
 
 
-\item More interesting example:
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T>
-T move_to_temp1(T& t) { return std::move(t); }
+    \item Frankly speaking, it's not mainstream idea, because it's a little difficult to understand and need extra help funciton. keep just for fun.
 
-T&& move_to_temp2(T& t) { return std::move(t);}
+%VMore interesting example:
+%\begin{lstlisting}[frame=single, language=c++]
+%template<typename T>
+%T move_to_temp1(T& t) { return std::move(t); }
+%T&& move_to_temp2(T& t) { return std::move(t);}
 
 
-void foo(unique_ptr<SomeType>&& param);
+%void foo(unique_ptr<SomeType>&& param);
 
-unique_ptr<SomeType> p;
-foo(move_to_temp1(p));  //compile ok, return value is prvalue
-foo(move_to_temp2(p));  //compile ok, return value is xvalue
-\end{lstlisting}
-\begin{description}
-	\item[Line 2:] here move constructor is called when return to a value
-	\item[Line 4:] here no move constructor is called, just reference value assignment.
-\end{description}
+%unique_ptr<SomeType> p;
+%foo(move_to_temp1(p));  //compile ok, return value is prvalue
+%foo(move_to_temp2(p));  //compile ok, return value is xvalue
+%\end{lstlisting}
+%\begin{description}
+	%\item[Line 2:] here move constructor is called when return to a value
+	%\item[Line 4:] here no move constructor is called, just reference value assignment.
+%\end{description}
 
 
 \subsubsection{forwarding reference}
 
-\item The last option is universial reference. At this time, you have to use \texttt{std::forward} 
+    \item The last option is universial reference. At this time, you have to use \texttt{std::forward} 
 \begin{lstlisting}[]
 template<typename T>
-Fraction // by-value return
-reduceAndCopy(T&& frac){ // universal reference param
+Fraction reduceAndCopy(T&& frac){ // universal reference param
 	frac.reduce();
 	return std::forward<T>(frac); 
 } 
 \end{lstlisting}
 \begin{description}
-	\item[Line 5:] Have to use \texttt{std::forward<T>} here.
-	\item[Source] Only used in template function.
+	\item[Line 4:] Have to use \texttt{std::forward<T>} here and only used in template function.
 \end{description}
 
 \end{itemize}
@@ -7649,25 +7523,21 @@ reduceAndCopy(T&& frac){ // universal reference param
 \begin{itemize}
 	\item \textbf{These are two most important knowledge to understand function return.}
 	\begin{enumerate}
-		\item RVO is a kind of copy elision.
 		\item For no RVO, there are two steps when we return value.
-		\item For RVO, we implicit pass the result by reference.
+		\item RVO is a kind of copy elision. In RVO implementation, we implicit pass the result by reference.
 \begin{lstlisting}
 X bar(){
 	X xx;
 	return xx;
 }
 	
-X result = bar();
+X result = bar(); //change bar definition to below:
 void bar(x &__result){
 	__result.X::X() // default constructor call
 	....
 	return
 }
 \end{lstlisting}
-\begin{description}
-	\item[Line 6:] When compiler see \texttt{X result = bar()}, it changes bar definition.  
-\end{description}
 
 	\end{enumerate}
 	
@@ -7681,9 +7551,7 @@ Foo fun(){
 		
 Foo flast = (ftemp created here)fun();
 \end{lstlisting}
-		\item ftemp is not on the stack, so you can use const ref or rref to prolong its life.
-		
-		\item ftemp is same with fauto, but maybe not same with flast(Will happen implicit conversion sometimes)
+		\item ftemp is not on the stack, so you can use const ref or rref to prolong its life. ftemp is same with fauto, but maybe not same with flast(Will happen implicit conversion sometimes)
 \begin{lstlisting}[frame=single, language=c++]
 Foo fun(){
 	return fauto;
@@ -7692,9 +7560,6 @@ Foo fun(){
 const Foo& flast = (ftemp created here)fun();
 Foo&& flast = fun();
 \end{lstlisting}
-\begin{description}
-	\item[Line 6:] fun return Value, When you return reference ref to a stack variable, it's dangerous.
-\end{description}
 
 	\end{enumerate}
 	
@@ -7710,17 +7575,13 @@ Foo&& flast = fun();
 	
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 string& a = FindAddr( emps, "John Doe" );
-emps.clear(); 
-cout << a; 
+emps.clear(); //invlalid a here
+cout << a; //a has been dangling  
 \end{lstlisting}
-	\begin{description}
-		\item[Line 2:] This statement will invalid a.
-		\item[Line 3:] may or may not work, It's difficult to debug.
-	\end{description}
 	
 	\item Why \textbf{don't} we usually return plain reference?
 	\begin{enumerate}
-	\item You want to return a reference to avoid copy of stack obj inside of function, but in fact it's totally wrong. We have RVO and implicit std::move.
+	\item You want to return a reference to avoid copy of stack obj inside of function, but in fact it's totally wrong. We have RVO and implicit \texttt{std::move}.
 	
 	\item If you return non-stack obj, You have to:
 		\begin{enumerate}
@@ -7731,13 +7592,8 @@ cout << a;
 	
 	\end{enumerate}
 	
-	\item As far as I know, return plain reference only happens:
-	\begin{enumerate}
-		\item You input a reference first, such as overload \verb=<<=.
-		\item member function return some member data, such as  assignment operator and overload \verb=[]= inside a class.
-	\end{enumerate}
-	
-	\item About return reference, by now, I only know three functions which return reference. = and \verb=<<= are for support cascading syntactic usage: such as \texttt{cout<<a<<b}, a=b=c.  [] is for support assignment obj[3]= 12.  That is all.
+	\item As far as I know, return plain reference only happens: You input a reference first, such as overload \verb=<<=. Member function return some member data, such as  assignment operator and overload \verb=[]= inside a class. \texttt{=} and \texttt{<<} are for support cascading syntactic usage: such as \texttt{cout<<a<<b}, \texttt{a=b=c}.  \texttt{[]} is for support assignment \texttt{obj[3]= 12}.  That is all.
+
 \begin{lstlisting}[numbers=none]
 operator =
 operator []
@@ -7757,21 +7613,17 @@ FindAddr( /* pass emps and name by reference */ ){
 	return empty;
 }
 \end{lstlisting}
-	
-	
 \end{itemize}
 
 \subsection{return rvalue reference}
 \begin{itemize}
-	\item \textbf{rvalue reference is also reference first, so if we have reason don't return reference from function, all these reason is also valid for rvalue reference.}
-	
-	\item The most common case for returning rvalue reference is \texttt{std::move}. It doesn't involve any move action inside the function, but is just a type cast operation.
+	\item \textbf{rvalue reference is also reference first, so if we have reason don't return reference from function, all these reason is also valid for rvalue reference.} The most common case for returning rvalue reference is \texttt{std::move}. It doesn't involve any move action inside the function, but is just a type cast operation.
 	
 	\item Return rvalue reference 1: If you want to return plain reference, or rvalue reference from a function, you have to input a plain reference or rvalue reference first, because you can't return any reference bound to local stack obj.
 	
 \begin{lstlisting}
 A&& rrfun1(A&& arg){
-	return std::move(arg);	
+	return std::move(arg);//arg is lvalue, so use move	
 }
 	
 A&& rrfun2(A& arg){
@@ -7780,37 +7632,15 @@ A&& rrfun2(A& arg){
 	
 A a;
 A b= rrfun1(std::move(a) );
-A b = rrfun2(a);
+A b = rrfun2(a); // a has been moved to b. 
 A&& c = rrfun2(a);
 \end{lstlisting}
 \begin{description}
-	\item[Line 2:] arg is lvalue, so use move.
-	\item[Line 11:] call move constructor from return value to b.
 	\item[Line 12:] will not call move constructor at all. So you mean that I want to keep watch for a while, and obj a is still intact right now.
 \end{description}
  
-	\item Return rvalue reference 2:   below code will call move constructor once.  1) move ctor from arg to ftemp, 2) rvalue reference b bound to ftemp(rvalue). Only reasonable in syntax, No any practical meaning, and \textbf{It's dangerous,because a has been empty.}.
-\begin{lstlisting}[frame=single, language=c++]
-A rrfun(A& arg){
-	return std::move(arg);
-}
 	
-A a;
-A&& b = rrfun(a);
-\end{lstlisting}
-\begin{description}
-	\item[Line 6:] after this \texttt{a} is valid, and b refer a ftemp.
-\end{description}
-	
-	
-	\item You can understand all these examples by previous three basic function knowledge when no RVO in the beginning of this section. \textbf{And all these examples are just have academic meaning, no any practical sense at all. Why?}, we prefer to return value. 
-
-	
-	\item Return value is better than return rvalue reference.
-	\begin{enumerate}
-		\item more clear semantic 
-		\item when use with auto, it's support RVO.
-	\end{enumerate}
+	\item Return value is better than return rvalue reference.  More clear semantic. When use with auto, it's support RVO.
 	
 	\item Next we talk rvalue reference qualifier. Please see two examples below. More details can be googled  "C++ Gems: ref-qualifiers"
 	\begin{enumerate}
@@ -7828,7 +7658,7 @@ struct Beta {
 Beta_ab ab = Beta().getAB();
 \end{lstlisting}
 \begin{description}
-	\item[Line 4:] return \&\& is not correct interface design. It will call move version. Beta\_ab \&\& ab = Beta().getAB(); ab is dangling rref.
+	\item[Line 4:] return \&\& is not correct interface design. It will call move version. \texttt{Beta\_ab \&\& ab = Beta().getAB();} \texttt{ab} is dangling rref.
 	\item[Line 5:] return value is correct interface.
 \end{description}
 
@@ -7841,7 +7671,6 @@ DataType && data() && { return std::move(values); }
 auto&& values = makeWidget().data();
 \end{lstlisting}
 \begin{description}
-	\item[Line 2:] with ROV, just move once. 
 	\item[Line 5:] values will be dangling because makeWidget() return value disappear.
 \end{description}
 
@@ -7868,7 +7697,7 @@ auto&& values = makeWidget().data();
 		\item the local object is what's being returned.
 		\item parameter is not eligible for RVO. 
 		\begin{enumerate}
-			\item value parameter will use move in the implicitly, you don't need explicit call std::move.
+			\item value parameter will use move in the implicitly, you don't need explicit call \texttt{std::move}.
 			\item lvalue reference parameter usually should not be move, just copy.
 			\item for rvalue reference, you can use std::move to move the resource to the return value.
 		\end{enumerate}
@@ -7896,7 +7725,6 @@ Thing t2 = f();
 		\item temporary is passed by value
 \begin{lstlisting}[numbers=none]
 void foo(Thing t);
-
 foo(Thing());
 \end{lstlisting}
 
@@ -7917,18 +7745,6 @@ int main() {
 \end{lstlisting}
 
 	\end{enumerate}
-
-\item Named RVO (NRVO) is when an object with a name is returned but is nevertheless not copied. A simple example is:
-\begin{lstlisting}[numbers=none]
-Snitch ExampleNRVO() {
-	Snitch snitch;  //Name RVO
-	return snitch;
-}
-
-int main() {
-	ExampleNRVO();
-}
-\end{lstlisting}
 
 \end{itemize}
 
@@ -7982,10 +7798,11 @@ int main() {
 \end{lstlisting}
 
 \end{itemize}
+
 \subsubsection{Some practical demos and analysis}
 \begin{itemize}
 	
-	\item given below code as experiment code:
+	\item Given below code as experiment code:
 \begin{lstlisting}[frame=single, language=c++]
 class Snitch {   // Note: All methods have side effects
 	Snitch() { cout << "c'tor" << endl; }
@@ -8102,48 +7919,40 @@ int main() {
 \subsubsection{RVO and move}
 \begin{itemize}
 	
-	\item A common error is when there is no RVO, use std::move to avoid copy: but Although parameter is not eligible for RVO, or different path is not eligible, but you don't need to explicit use std::move, the compiler will use them implicitly.
+	\item A common error is when there is no RVO, use \texttt{std::move} to avoid copy: but Although parameter is not eligible for RVO, or different path is not eligible, but you don't need to explicit use \texttt{std::move}, the compiler will use them implicitly.
 	
 \begin{lstlisting}
 Widget makeW(Widget w){
 	.....
 	return w
-	//return std::move(w) 
+	//return std::move(w), don't do it. compiler call move. 
 } 
 \end{lstlisting}
-\begin{description}
-	\item[Line 4:] don't write it, compiler will do it for you.
-\end{description}
 	
 	\item If a function is \textbf{value return}, and you want to return \textbf{a rvalue reference parameter}, you have to use move in the return.
 	\begin{enumerate}
 		\item \textbf{lhs is not local object, but reference, so No RVO}
 		\item you may say: but lhs is rvalue reference, but lhs is name rvalue reference. It's lvalue.
 		
-		\item Just like you pass a lvalue reference, you can't move it unless you want to do it explicitly. That is why we need std::move here.
+		\item Just like you pass a lvalue reference, you can't move it unless you want to do it explicitly. That is why we need \texttt{std::move} here. Frankly speak, this is typical example to demonstrate when you can use \texttt{std::move} when you return value, so I recommend you to remember it.
 	\end{enumerate}
+
 \begin{lstlisting}[frame=single, language=c++]
 Matrix operator+(Matrix&& lhs, const Matrix& rhs){
 	lhs += rhs; 
-	return std::move(lhs); 
-	//return lhs 
+	return std::move(lhs); //move into return value, high efficiency. 
+	//return lhs  //will copy, so low efficiencey
 } 
 \end{lstlisting}
-\begin{description}
-	\item[Line 1:] by-value return , by rvalue reference parameter \texttt{lhs}.
-	\item[Line 3:] move \texttt{lhs} into return value. It's high efficient
-	\item[line 4:] will copy \texttt{lhs} into return value. It has low efficiency.
-\end{description}
 
 \end{itemize}
 
-\subsubsection{return mulit value}
-\begin{itemize}
-	\item You can return pair, tuple and variant. 
-	\item for example, map.insert just return a pair. 
-	\item how to use variant as return value? find a example here
-\end{itemize}
-
+%\subsubsection{return mulit value}
+%\begin{itemize}
+	%\item You can return pair, tuple and variant. 
+	%\item for example, map.insert just return a pair. 
+	%\item how to use variant as return value? find a example here
+%\end{itemize}
 
 \subsection{Function return design summary}
 
@@ -8158,7 +7967,7 @@ Matrix operator+(Matrix& lhs, const Matrix& rhs) {
 }
 	
 Matrix operator+(Matrix&& lhs, const Matrix& rhs) {
-	return move(lhs) //for rvalue reference move it.
+	return move(lhs) //for rvalue reference, move it.
 }
 	
 template<type T>
@@ -8177,7 +7986,7 @@ T operator+(T&& lhs) {
 
 \subsection{Summary of function interface design}
 \begin{itemize}
-		\item The main idea of function interface design.
+		\item The main idea of function interface design can be see in the below figure:
 	\begin{figure}[h]
 	\centering
 	\includegraphics[width=1.0\linewidth]{pics/move.png}
@@ -8189,9 +7998,9 @@ T operator+(T&& lhs) {
 
 \section{Summary of the chapter}
 \begin{enumerate}
-		\item First, we introduce lvalue and rvalue.
+		\item First, we introduce value categories and lvalue and rvalue.
 		\item Second, based on rvalue, we introduce rvalue can pick up const lvalue reference in function overload resolution. 
-		\item Third, we invent rvalue reference to bind value.
+		\item Third, we invent rvalue reference to only bind rvalue.
 		\item With rvalue refence, we also invent name rule, unname rvalue reference is rvalue.( \texttt{std::move} use this rule.) 
 		\item Another problem arise, is \texttt{std::move} return lvalue or rvalue? So we invent a new value category, xvalue, and change rvalue = (prvalue+xvalue).
 
@@ -8220,7 +8029,6 @@ T operator+(T&& lhs) {
 		\item Reference-like types that exist in inheritance hierarchies, such as base classes and classes with virtual or protected member functions. These are normally held by pointer or reference, often a base* or base\&, and so do not provide copy construction to avoid slicing; if you do want to get another object just like an existing one, you usually call a virtual function like clone. These do not need move construction or assignment for two reasons: They're not copyable, and they already have an even more efficient natural "move" operation -- you just copy/move the pointer to the object and the object itself doesn't have to move to a new memory location at all.
 		\begin{enumerate}
 			\item Has a destructor that is public and virtual, But for some trait class, destructor can be protected, such as \texttt{std::unary\_function}
-			\item Establish interface.
             \item Establish interfaces through virtual functions.
 			\item \textbf{Usually instantiated on heap, and used via a (smart) pointer or reference to support polymorphism.} 
         \end{enumerate}
@@ -8276,7 +8084,7 @@ int main() {
 
             \item non-copyable child class. such as thread, employee etc. You should disable the copy constructor when you find it's not fit into the context.
 
-            \item copyable child class. A good example is music note, You can see the clone pattern in design pattern. Here music note is a kind of interface. So it's a ABC, at the same time, client should be able to "copy" to generate new notes. Under such context, you can use virtual copy constructor, in another word, use base* clone() virtual function. Clone pattern is just for this scenario. 
+            \item copyable child class. A good example is music note, You can see the clone pattern in design pattern. Here music note is a kind of interface. So it's a ABC, at the same time, client should be able to "copy" to generate new notes. Under such context, you can use virtual copy constructor, in another word, use \texttt{basePtr->clone()} virtual function. Clone pattern is just for this scenario. 
 
         \end{enumerate}
 \end{itemize}
@@ -8302,7 +8110,7 @@ int main() {
 	
 	\item Nesting a class does not create a class member of another class. Instead, it defines a type that is known just locally to the class that contains the nested class declaration.  A good example is Class queue nest class node,  because node is just used inside the class Queue. Another good example is vector and it's iterator.
 	
-	\item Virtual function must be member, operator\verb=>>= and \verb=<<= are never be members, or It maybe be a friend. Only non-member functions get type conversions on their left-most argument.  In the previous example, If you want to use support 2* obj, You need make operator * to be non member function.  Detail can be seen in effective c++.
+	\item Virtual function must be member, operator\verb=>>= and \verb=<<= are never be members, or It maybe be a friend. Only non-member functions get type conversions on their left-most argument.  In the previous example, If you want to use support \texttt{2*obj}, You need make operator * to be non member function.  Detail can be seen in effective c++.
 	
 	\item Protect keyword don't use very often, it is just used in inheritance context. Child class can access base class protected member. you should use private keyword first if you real want to have good \textbf{Encapsulation} and \textbf{Never return reference or pointer to a private or protected member data.}
 	
@@ -8338,54 +8146,20 @@ namespace Yan{
 	istream& operator>>(istream & is, String &st);
 }
 \end{lstlisting}
-	
-	\begin{enumerate}
-		\item From Line 1 to Line 16: usually, you should have these seven member functions. Or you can follow the Principal Four and Half rule which will be introduced later. 
-		\item Put class definition into a namespace.
-		\item Use \texttt{\#pragma once}
-		\item You need to declare operator \verb=<<= inside of namespace outside of class. In this way, ADL can access it correctly.
-	\end{enumerate}
-	
+\begin{description}
+    \item[Source code:] From Line 1 to Line 16: usually, you should have these seven member functions. Or you can follow the Principal Four and Half rule which will be introduced later.  Put class definition into a namespace. You need to declare operator \verb=<<= inside of namespace outside of class. In this way, ADL can access it correctly.
+\end{description}
+
+        \item \texttt{String\& operator=(const char*a);} is an option, why it make \texttt{str=temp} more efficient? see C++ Primer P652.
 	
 \begin{lstlisting}[numbers=none]
-String s;
-s = "aaa"  //two actions
-String s("aaa");   //one actions
-String s{"aaa"};  // new feature in c++11
-String s={"aaa"}; // same as previous one
-	
 String str; char temp[40];
 str= temp // make it more efficient
 \end{lstlisting}
 	
-        \item \texttt{String\& operator=(const char*a);} is an option, why it make \texttt{str=temp} more efficient? see C++ Primer P652.
 	
-		\item \textbf{Prefer minimal classes to monolithic classes.} Big class is difficult to reach error-safe because it tackle multiple responsibilities. It's also difficult maintain, understand and deploy.
-\begin{lstlisting}[numbers=none]
-Class Matrix{
-	//100 member function.
-} ; //bad design.
-	
-//Good design with small class with
-	nonmember function.
-namespace MAT{
-	Class Matrix{
-	//core data and member function
-	}
-	
-	Cal1(Matrix &);
-	Cal2(Matrix m1, Matrix m2)
-	......
-}
-\end{lstlisting}
+    \item \textbf{Prefer minimal classes to monolithic classes.} Big class is difficult to reach error-safe because it tackle multiple responsibilities. It's also difficult maintain, understand and deploy.
 
-	\item Interface Principle: For a class X, all functions, including free functions, that both:
-	\begin{enumerate}
-		\item "Mention" X.
-		\item "Supplied with" X
-	\end{enumerate}
-	are logically part of X, because they form part of the interface of X.  In this definition, 1) \texttt{Cal1} Mention X,  and 2) \texttt{Cal1} in the namespace MAT, so caller can use ADL(argument depend lookup) to access \texttt{Cal1} in namespace MAT. Based on above evidences, \textbf{\texttt{Cal1} is an interface of class Matrix, even it's not a member function of it.} Detail can be see in "exceptional C++ item 31 to item 34.
-	
 	\item member or non-member function?
 	\begin{enumerate}
 		\item operator =, ->, [], () must be members.
@@ -8410,11 +8184,9 @@ auto i = begin(vi);
 \subsubsection{constructor basic}
 
 \begin{itemize}
-	\item Normally, constructor, destructor and assignment should be public. Unless you have special requirment for special class or in special context.
-
-	\item Avoid calling virtual functions in constructor and destructor. Detail can be found in "C++ Coding Standards" item 49.
+	\item Normally, constructor, destructor and assignment should be public. Unless you have special requirment for special class or in special context. Avoid calling virtual functions in constructor and destructor. Detail can be found in "C++ Coding Standards" item 49.
 	
-	\item Make Constructors Protected to prohibit direct Instantiation. Make constructors Private to stop Derivation. That is an old trick, in C++ 14, you can use \texttt{=delete} to tell compiler directly.
+	\item Make Constructors Protected to prohibit direct instantiation. Make constructors Private to stop Derivation. That is an old trick, in C++ 14, you can use \texttt{=delete} to tell compiler directly.
 	
 	\item Use default arguments to reduce the number of constructor.
 \begin{lstlisting}[numbers=none]
@@ -8444,11 +8216,11 @@ class Brush{
 \subsubsection{default constructor}
 \begin{itemize}
 	
-	\item Avoid gratuitous default constructor. If an object can be generated from "nothing", maybe you can give a default constructor Such as a container, you can generate an empty container without any input. 
+	\item Avoid gratuitous default constructor. If an object can be generated from "nothing", maybe you can give a default constructor, such as a container, you can generate an empty container without any input. 
+
+	\item \textbf{If you define a specific constructor, system will not produce any default ctor for you.} At this time, maybe you need to add default constructor.
 	
-	\item \textbf{If you define a specific constructor, system will not produce any default ctor for you.} At this time, you have two options: 1)adding default constructor, 2)keep the current status.
-	
-	\item For container example, default constructor is reasonable, you can declare your own default constructor and use system implicit generated one. you can use keyword default
+	\item For container example, default constructor is reasonable, you can declare your own converting constructor and use system implicit generated one. you can use keyword default
 \begin{lstlisting}[frame=single, language=c++]
 class Container{
 	Empty() = default;
@@ -8493,7 +8265,7 @@ Array<Worker> a; //error
 \end{description}
 
 	
-\item In this way, you have to use \texttt{Worker*} pointer, or \texttt{vector<Worker>}.  You can also use \texttt{=delete} to disable default constructor. That is C++ spirit, \textbf{You never have the best answer, only have context answer. }
+    \item In this way, you have to use \texttt{Worker*} pointer, or \texttt{vector<Worker>}.  You can also use \texttt{=delete} to disable default constructor. That is C++ spirit, \textbf{You never have the best answer, only have context answer. }
 
 \item summary:
 \begin{enumerate}
@@ -8525,7 +8297,6 @@ public:
 	int i;
 	A(int );
 };
-	
 class B: A {
 public:
 	B(int );
@@ -8550,20 +8321,14 @@ class(string &a, string &b){
 \end{lstlisting}
 	\begin{description}
 		\item[Line 2:] just call string copy constructor, so you don't need string default ctor.
-		\item[Line 5:] two action. call default constructor to build m\_a. then call assignment operator.
+		\item[Line 6:] two action. call default constructor to build \texttt{m\_a.} then call assignment operator.
 	\end{description}
 
 	\end{enumerate}
 
-    \item A very good introduction about this topic can be found below:	
-	\begin{verbatim}
-		http://www.geeksforgeeks.org/when-do-we-use-initializer-list-in-c/
-	\end{verbatim}
 	
 	
-	\item List member in a initialization list in the order in which they are declared in class. see effective c++ item 13. Order is important.
-	
-	\item Member variables are always initialized in the order they are declared in the class definition. The order in which you write them in the constructor initialization list is ignored.  \textbf{So you'd better not have one member's initialization depend on other members}.
+	\item List member in a initialization list in the order in which they are declared in class. see effective c++ item 13. Order is important. Member variables are always initialized in the order they are declared in the class definition. The order in which you write them in the constructor initialization list is ignored.  \textbf{So you'd better not have one member's initialization depend on other members}.
 	
 \begin{lstlisting}[numbers=none]
 class Student{
@@ -8574,8 +8339,7 @@ class Student{
 \end{lstlisting}
 		
 		
-		\item If \texttt{GetType()} is a static member function, or a member function that does not use its this pointer (that is, uses no member data) and does not rely on any side effects of construction (for example, static usage counts), then this is merely poor style, but it will run correctly. Otherwise (mainly, if GetType() is a normal nonstatic member function), we have a problem.
-		\textbf{Nonvirtual base classes are initialized in left-to-right order as they are declared}, so ArrayBase is initialized before Container. Unfortunately, that means we're trying to use a member of the not-yet-initialized Container base subobject.
+		\item If \texttt{GetType()} is a static member function, or a member function that does not use its this pointer (that is, uses no member data) and does not rely on any side effects of construction (for example, static usage counts), then this is merely poor style, but it will run correctly. Otherwise (mainly, if GetType() is a normal nonstatic member function), we have a problem. \textbf{Nonvirtual base classes are initialized in left-to-right order as they are declared}, so ArrayBase is initialized before Container. Unfortunately, that means we're trying to use a member of the not-yet-initialized Container base subobject. Order is important!
 		
 \begin{lstlisting}[numbers=none]
 template<class T>
@@ -8586,6 +8350,11 @@ public:
 		....
 \end{lstlisting}
 		
+    \item A very good introduction about this topic can be found below:	
+	\begin{verbatim}
+		http://www.geeksforgeeks.org/when-do-we-use-initializer-list-in-c/
+	\end{verbatim}
+
 	\end{itemize}
 
 \subsubsection{named constructor idiom}
@@ -8596,13 +8365,10 @@ class Point {
 public:
 	Point(float x, float y);     
 	// Rectangular coordinates
-	Point(float r, float a);     
+	Point(float r, float a);  //error, duplicated definition. 
 	// Polar coordinates (radius and angle)
 };
 \end{lstlisting}
-\begin{description}
-	\item[Source code:] ERROR: Overload is Ambiguous: Point::Point(float,float)
-\end{description}
 
 \item In order to resolve this problem, we can use "named constructor". 
 \begin{lstlisting}
@@ -8641,12 +8407,10 @@ private:
 \begin{description}
 	\item[Line 1:] Graph can contain a shape, this shape can be squre, circle... So we use \texttt{Shape*}. 
 	\item[Line 6 to 8:] Check for self-assignment; Create the new one FIRST; THEN delete the old one.
-	\item[Line 15:]  \textbf{Please note here: Shape here represent value semantic, not action semantic. If we use Shape*->draw, then it's action semantic.}
+	\item[Line 16:]  \textbf{Please note here: Shape here represent value semantic and reference semantic at the same time.} If we use \texttt{Shape*->draw}, then it's reference semantic. It's also a value member inside the graph class, that is why we need to clone function for it.
 \end{description}
 
-	\item A constructor shall not be virtual or static. If you need something like this, you can look up the virtual constructor idiom. The idiom uses virtual clone() member function (for copy constructing), or a virtual create() member function (for the default constructor). The purpose is to resolve the problem of assignment and copy between Graph object.
-	
-	\item As usual with this idiom, we declare a pure virtual clone() method in the base class. It follow 'non-leaf class abstract' rule.
+	\item A constructor shall not be virtual or static. If you need something like this, you can look up the virtual constructor idiom. The idiom uses virtual clone() member function (for copy constructing), or a virtual create() member function (for the default constructor). The purpose is to resolve the problem of assignment and copy between Graph object. As usual with this idiom, we declare a pure virtual clone() method in the base class. It follow 'non-leaf class abstract' rule.
 	
 \begin{lstlisting}
 class Shape {
@@ -8736,7 +8500,7 @@ Base::Destructor
 	
 \end{description}
 
-	\item \textbf{Base class destructor will be called by child class destructor implicitly.}, so please always implement base class destructor, even it's pure virtual. 
+	\item \textbf{Base class destructor will be called by child class destructor implicitly}, so please always implement base class destructor, even it's pure virtual. 
 \begin{lstlisting}[numbers=none]
 class Base {
 	virtual ~Base() = 0;
@@ -8751,15 +8515,9 @@ Base::~Base(){} //Must give implementation, even function is empty.
 	\begin{enumerate}
 		\item When you are declaring a class which is supposed to serve as a base for inheritance involving polymorphism, need a virtual destructor to make sure that the destructor of a Derived class is called upon destroying it through a pointer/reference to Base.
 		
-		\item You need to release resourced required by the class during its lifetime:
-		\begin{enumerate}
-			\item Example 1: The class has a handle of a file, this needs to be closed when the object is destroyed; the destructor is the perfect location.
-			
-			\item Exempel 2: The class owns an object with dynamic-storage duration, since the lifetime of the object can potentially live on long after the class instance has been destroyed you'll need to explicitly destroy it in the destructor.
-		\end{enumerate}
+		\item You need to release resourced required by the class during its lifetime. Example 1: The class has a handle of a file, this needs to be closed when the object is destroyed; the destructor is the perfect location. Exempel 2: The class owns an object with dynamic-storage duration, since the lifetime of the object can potentially live on long after the class instance has been destroyed you'll need to explicitly destroy it in the destructor.
 	\end{enumerate}
 \end{itemize}
-
 
 \subsection{member functions relationship}
 
@@ -8779,7 +8537,7 @@ const Empty* operator&() const ;
 ~Empty();
 \end{lstlisting}
 
-\item Why you need to pay attention to these special member functions?  Given half a chance, the compiler will write them for you. Another reason is that C++ by default treats classes as value-like types, but not all types are value-like. Know when to write and disable them make you get correct code.
+\item Why do you need to pay attention to these special member functions?  Given half a chance, the compiler will write them for you. Another reason is that C++ by default treats classes as \textbf{value-like types}, but not all types are value-like. Know when to write and disable them make you get correct code.
 
 \item A good reference is "Everything You ever wanted to know about move semantics" in slideshare.net.
 
@@ -8788,15 +8546,14 @@ const Empty* operator&() const ;
 \item Compiler implicitly declare one.
 \item Use explicitly declare one.
 \item Once you define one, Compiler maybe Not declare another.
-\item You can ask compiler declare one.
-\item You can ask compiler delete one.
+\item You can ask compiler declare or delete one.
 \end{enumerate}
 
 \item First question is what "declare" mean?  \\
 \includegraphics[scale=0.6]{pics/sm1.png} \newline
 
 \item If you just define a class without any special member function, all six member function will be declared by compiler implicitly. \\
-\includegraphics[scale=0.6]{pics/sm2.png} \newline
+\includegraphics[scale=0.5]{pics/sm2.png} \newline
 
 
 \item Default can mean "deleted", See an example below:
@@ -8805,29 +8562,22 @@ const Empty* operator&() const ;
 class A{
 	A() = delete;
 };
-
 class B{
 	A a;
 };
-
 int main(){
 	B b;
 }
 \end{lstlisting}
 \begin{description}
-	\item[Output:] main.cpp:16:7: note: 'B::B()' is implicitly deleted because the default definition would be ill-formed:
+	\item[Output:] main.cpp:8:7: note: 'B::B()' is implicitly deleted because the default definition would be ill-formed:
 \end{description}
 
-\item Why defaulted move member sometimes "deleted"? Detail can be found in "CWG 1402 is (imho) the most important bug fix to C++11". Another good article is google "Why is the move constructor neither declared nor deleted with clang? " In clang, it support C++11 standard better. 
 
-\item \textbf{There are two differences:}
-\begin{enumerate}
-	\item user define empty and declared default
-	\item not declare and declare delete
-\end{enumerate}
-
-\includegraphics[scale=0.8]{pics/ctor.png} \newline
-
+    \item Steps of generating special member function. 
+\begin{center}
+\includegraphics[scale=0.8]{pics/ctor.png} 
+\end{center}
 \item Next question is what differences are between \verb|=default| and user define empty constructor? problems of below code snippet are:
 \begin{lstlisting}[numbers=none]
 struct noncopyable  {
@@ -8847,29 +8597,6 @@ private:
 	\item Although this is a commonly accepted idiom, the intent is not clear unless you understand all of the rules for automatic generation of the special member functions.
 \end{enumerate}
 
-    \item Prefer deleted functions to private undefined ones. because Any function may be deleted, including non-member functions and template instantiations.
-
-\begin{lstlisting}[frame=single, language=c++]
-template <class charT, class traits = char_traits<charT> >
-class basic_ios : public ios_base {
-public:
-	basic_ios(const basic_ios& ) = delete;
-	basic_ios& operator=(const basic_ios&) = delete;
-};
-
-bool isLucky(int number); // original function
-bool isLucky(char) = delete; // reject chars
-bool isLucky(bool) = delete; // reject bools
-
-template<typename T>
-void processPointer(T* ptr);
-
-template<>
-void processPointer<void>(void*) = delete;
-\end{lstlisting} 
-\begin{description}
-	\item[Line 16:] You can't not use void to instantiate
-\end{description}
 
 \item C++11 new keyword default and delete give below advantages:
 \begin{lstlisting}[numbers=none]
@@ -8905,6 +8632,28 @@ X x
 	\item[Line 7:] If we don't have line 4, The Line 7 will call template function, but if we use = delete, Line 7 stops compiler.  
 \end{description}
 
+    \item Prefer deleted functions to private undefined ones. because Any function may be deleted, including non-member functions and template instantiations.
+
+\begin{lstlisting}[frame=single, language=c++]
+template <class charT, class traits = char_traits<charT> >
+class basic_ios : public ios_base {
+public:
+	basic_ios(const basic_ios& ) = delete;
+	basic_ios& operator=(const basic_ios&) = delete;
+};
+
+bool isLucky(int number); // original function
+bool isLucky(char) = delete; // reject chars
+bool isLucky(bool) = delete; // reject bools
+
+template<typename T>
+void processPointer(T* ptr);
+
+template<>
+void processPointer<void>(void*) = delete; //can't use void to instantiate.
+\end{lstlisting} 
+
+    \item Why defaulted move member sometimes "deleted"? Detail can be found in "CWG 1402 is (imho) the most important bug fix to C++11". Another good article is google "Why is the move constructor neither declared nor deleted with clang? " In clang, it support C++11 standard better. 
 %\includegraphics[scale=0.6]{pics/sm5.png} \newline
 
 \end{itemize}
@@ -8974,12 +8723,12 @@ X x
 \item If you declared a destructor, implicitly defaulted copy member are deprecated.  \\
 
 \begin{center}
-\includegraphics[scale=0.8]{pics/sm4.png} \newline
+\includegraphics[scale=0.6]{pics/sm4.png} \newline
 \end{center}
 
 \item A summary can be seen below: \\
 \begin{center}
-	\includegraphics[scale=0.8]{pics/sm3.png} \newline
+	\includegraphics[scale=0.6]{pics/sm3.png} \newline
 \end{center}
 
 \end{itemize}
@@ -9007,7 +8756,7 @@ reference-like member1;
 
 \subsubsection{Rule of zero}
 \begin{itemize}
-    \item Rule of zero: If you can avoid defining default operations, do. t’s the simplest and gives the cleanest semantics. If all members have all the special functions, no further work is needed.
+    \item Rule of zero: If you can avoid defining default operations, do! It’s the simplest and gives the cleanest semantics. If all members have all the special functions, no further work is needed.
 	
 \begin{lstlisting}
 struct Named_map {
@@ -9064,11 +8813,7 @@ class & class::operator=(class &a){
 }	
 \end{lstlisting}
 	
-	\item The copy-and-swap idiom is a better solution, and elegantly assists the assignment operator in achieving two things: \textbf{avoiding code duplication, and providing a strong exception guarantee.}
-	
-	\item Conceptually, it works by using the copy-constructor's functionality to create a local copy of the data, then takes the copied data with a swap function, swapping the old data with the new data. The temporary copy then destructs, taking the old data with it. We are left with a copy of the new data.
-	
-	\item In order to use the copy-and-swap idiom, we need three things: a working copy-constructor, a working destructor (both are the basis of any wrapper, so should be complete anyway), and a swap function. The swap function can be a member function.
+	\item The copy-and-swap idiom is a better solution, and elegantly assists the assignment operator in achieving two things: \textbf{avoiding code duplication, and providing a strong exception guarantee.}  Conceptually, it works by using the copy-constructor's functionality to create a local copy of the data, then takes the copied data with a swap function, swapping the old data with the new data. The temporary copy then destructs, taking the old data with it. We are left with a copy of the new data. In order to use the copy-and-swap idiom, we need three things: a working copy-constructor, a working destructor (both are the basis of any wrapper, so should be complete anyway), and a swap function. The swap function can be a member function.
     \item A low effeicent implementation with swap. We should not use reference as function parameter. \textbf{No matter lvalue or rvalue, copy always happen inside assignment operator.}
 \begin{lstlisting}[numbers=none]
 dumb_array& operator=(const dumb_array& other){
@@ -9133,7 +8878,7 @@ void swap(dumb_array& first, dumb_array& second) {
 \begin{description}
     \item[Soure code] Why do we need member swap, because it can visit private member of class.
 
-    \item[Sourc code] If dump\_array has it's own namespace, then put swap non-member swap function into the same namespace.In this way, client can use ADL find this version and pick it up.
+    \item[Sourc code] If \texttt{dump\_array} has it's own namespace, then put swap non-member swap function into the same namespace.In this way, client can use ADL find this version and pick it up.
 
 \begin{lstlisting}
 namespace_dr::dumb_array dr1;
@@ -9141,7 +8886,7 @@ namespace_dr::dumb_array dr2;
 swap(dr1, dr2); // will go to namespace_dr to find the correct swap function.
 \end{lstlisting}
 
-    \item [Source code] If dump\_array is in global space, you can put swap into the std namesapce and make it specilaization.
+    \item [Source code] If \texttt{dump\_array} is in global space, you can put swap into the std namesapce and make it specilaization.
 \begin{lstlisting}
 namesapce std{
 template<> 
@@ -9159,7 +8904,8 @@ swap(dr1, dr2);
 \item Summary:
 \begin{enumerate}
 	\item Build swap member function, use global swap to exchange class member and label it noexcept.
-	\item Build global swap function, to hide global swap name to change two dumb\_array. Because global default swap need deep copy and low efficient. 
+
+	\item Build global non-member swap function, to hide global swap name to exchange two \texttt{dumb\_array}. Because global default swap need deep copy and low efficient. If your class has its own namespace, put non-member swap into this namespace, then ADL will find it. If your class doesn't have its namesapce, put non-member swap into the std namespace as template specification. 
 	\item Use swap member function to implement assignment operator, the function parameter is value, and label it noexcept. 
 	\item Build move member funciton, and label it noexcept. \textbf{That is very import, when we use vector<dump\_array>, when vector need expand its size, it will use move if move is noexcept, if move is not noexcept, it will use copy which deep copy happens. }
 \end{enumerate}
@@ -9193,9 +8939,13 @@ dumb_array& operator=(dumb_array other) noexcept{
 	
 \end{itemize}
 
-\subsubsection{other resource management policy}
+\subsubsection{Summary}
 \begin{itemize}
-    \item The common resource management policies are below:
+    \item For non-resource class follow zero rule, for wrapping-resource class, follow four and half rule. Don't use big three rule, it's deprecated after C++ 11.
+
+    \item You can use \texttt{=default} and \texttt{=delete} to explicitly declare some special member functions. For example, if you define destructor for log purpose, it will disable copy constructor generation, at this time, you can add \texttt{Foo Foo(cont Foo\& rhs)=default}.
+        
+    \item The common use resource management policies are below:
 
 \begin{enumerate}
     \item Objects that can be both moved and copied
@@ -9208,8 +8958,6 @@ dumb_array& operator=(dumb_array other) noexcept{
 	
 	\begin{enumerate}
 		\item Use the compiler-provided versions of these functions. In other words, you're not doing any resource management in the class.
-		
-		\item Write your own copy functions to perform deep copy, but don't provide move semantics.(low efficiency)
 		
 		\item Write your own move functions, but don't support copying.(\texttt{std::unique\_ptr})
 		
@@ -9224,7 +8972,7 @@ protected:
 	}
 };
 
-Base *base_ptr = new Base(1);
+Base *base_ptr = new Base{};
 delete base_ptr; //compiler barks here.
 \end{lstlisting}
 	\end{enumerate}
@@ -9235,22 +8983,18 @@ delete base_ptr; //compiler barks here.
 \begin{itemize}
 	\item \textbf{Never overload \&\&, || and comma in C++.  Just remember it!}
 	
-	\item \textbf{You can declare operator as member function. if it's not member function, declare it as a friend function.}
-	
-		\item If you want to overload + operator, and support time t; 3+t;   You need to define a friend function. In order to improve a t+3 efficiency, you also can define a member function time operator+(int i) member function.
+	\item You can declare operator as member function. if it's not member function, declare it as a friend function if it need to visit private member varaible. If you want to overload + operator, and support time t; 3+t;   You need to define a friend function. In order to improve a \texttt{t+3} efficiency, you also can define a member function time \texttt{operator+(int i)} member function.
 \begin{lstlisting}[frame=single, language=c++]
 time operator+(const time &t) const;
-
 friend time operator+(int,  const time &t)
-
 time operator+(int i)
 \end{lstlisting}
 \begin{description}
-	\item[Line 1:] member function. for t = t1+t2. t = t1+t2 will changed to:  t1.operator+(t2);  The last const make the t1 to invoke this operator doesn't change the value in this class. 
+	\item[Line 1:] member function. for \texttt{t = t1+t2}. \texttt{t = t1+t2} will changed to:  \texttt{t1.operator+(t2);}  The last const make the \texttt{t1} to invoke this operator doesn't change the value in this class. 
 	
-	\item[Line 3:] nonmember friend function. for 3+t
+	\item[Line 2:] nonmember friend function. for \texttt{3+t}.
 	
-	\item[Line 5:] member function, for t+3, to avoid implicit conversion from 3 to obj.
+	\item[Line 3:] member function, for \texttt{t+3}, to avoid implicit conversion from 3 to obj.
 \end{description}
 	
 	\item \textbf{For Binary Arithmetic Operators + - *, implement Compound Assignment Operators += -= *= first, then use these Compound Assignment operators}
