@@ -10129,31 +10129,22 @@ auto && ax = 27; // ax is universal(forwarding) ref
 
     \item \texttt{auto\&\&} is a kind of forwarding reference.
 \begin{lstlisting}[frame=single, language=c++]
-auto&& uref1 = x; 
-auto&& uref2 = cx; 
-auto&& uref3 = 27; 
+auto&& uref1 = x;  //x is int and lvalue, so uref1's type is int&
+auto&& uref2 = cx; //cx is const int and lvalue, so uref2's type is const int&
+auto&& uref3 = 27; //27 is int and rvalue, so uref3's type is int&&
 \end{lstlisting}
-\begin{description}
-	\item[Line 1:] x is int and lvalue, so uref1's type is \texttt{int\&.}
-	\item[Line 2:] cx is const int and lvalue, so uref2's type is \texttt{const int\&.}
-	\item[Line 3:] 27 is int and rvalue, so uref3's type is \texttt{int\&\&.}
-\end{description}
 
 	\item \textbf{When combine auto and brace init in assignment, it means \texttt{std::initializer\_list<T>}}
 	
 \begin{lstlisting}[frame=single, language=c++]
-auto x = { 11, 23, 9 }; 
+auto x = { 11, 23, 9 };  //x's type is std::initializer_list<int>
 
-template<typename T> 
+template<typename T>  
 void f(T x);
-f({ 11, 23, 9 }); 
+f({ 11, 23, 9 });  //error! can't deduce type for T
 	
 void f(std::initializer_list<T> initList);//OK
 \end{lstlisting}
-\begin{description}
-	\item[Line 1:] x's type is  \texttt{std::initializer\_list<int>}
-	\item[Line 5:] error! can't deduce type for T
-\end{description}
 
 	\item When use with auto, you need to be careful. The only situation where = is preferred over \verb={}= is when using auto keyword to get the type determined by the initializer.
 \begin{lstlisting}[frame=single, language=c++]
@@ -10161,37 +10152,28 @@ auto x1 = { 1, 2 }; // decltype(x1) is std::initializer_list<int>
 auto x2 = { 1, 2.0 }; // error: cannot deduce element type
 auto x3{ 1, 2 }; // error: not a single element
 auto x4 = { 3 }; // decltype(x4) is std::initializer_list<int>
-auto x5{ 3 }; // decltype(x5) is int
+auto x5{ 3 }; // decltype(x5) is int, not a std::initializer_list
 \end{lstlisting}
-\begin{description}
-	\item[Line 5:] Good -- x5 is a \texttt{int}, not a \texttt{std::initializer\_list.}
-\end{description}
 
 	\item auto in a function return type or a lambda parameter implies template type deduction, not auto type deduction.
 \begin{lstlisting}[frame=single, language=c++]
 auto createInitList(){
-	return { 1, 2, 3 }; 
+	return { 1, 2, 3 }; //error! can't deduce type for { 1, 2, 3 }
 }
 	
 std::vector<int> v;
 auto resetV =
 [&v](const auto& newValue) { v = newValue; }; // C++14
 	
-resetV({ 1, 2, 3 }); 
+resetV({ 1, 2, 3 });  //error! can't deduce type for { 1, 2, 3 }
 \end{lstlisting}
-\begin{description}
-	\item[Line 2 and 9:] error! can't deduce type for { 1, 2, 3 }
-\end{description}
 
 	\begin{center}
-        \includegraphics[scale=0.5]{pics/autotype.png}
+        \includegraphics[scale=0.6]{pics/autotype.png}
     \end{center}
 
 	
-\item The whole template type deduction is illustrated below:
-\begin{center}
-	\includegraphics[scale=0.6]{pics/type_deduct.png}
-\end{center}
+
 
 \end{itemize}
 
@@ -10209,31 +10191,27 @@ void fun1(auto i){
 fun1(23);  //produce two overload fun1 function.
 fun1("abc");
 \end{lstlisting}
-    \item generic lambda( just like template lambda). auto can directly hold closures(lambda), and in C++14, It can be used as lambda parameter
+    \item generic lambda( just like template lambda). auto can directly hold closures(lambda), and in C++14, It can be used as lambda parameter.
 \begin{lstlisting}[frame=single, language=c++]
 auto adder  = [](auto op1, auto op2){ return op1 + op2; };
 \end{lstlisting}
 	
-	\item A good example is like below:
+	\item With help of auto, we can simplify code. 
 \begin{lstlisting}[frame=single, language=c++]
 auto derefUPLess =               
 [](const std::unique_ptr<Widget>& p1,  const std::unique_ptr<Widget>& p2){
 	return *p1 < *p2; 
-};                 
+};  //comparison func. for Widgets pointed to by std::unique_ptrs               
 
-//C++14 version
+//C++14 version, values pointed to by anything pointer-like
 auto derefLess = 
 [](const auto& p1,  const auto& p2){
 	return *p1 < *p2; 
 }; 
 \end{lstlisting}
-	\begin{description}
-		\item[Line 1:] comparison func. for Widgets pointed to by \texttt{std::unique\_ptrs}
-		\item[Line 7:] C++14 comparison. values pointed to by anything pointer-like
-	\end{description}
 	
 
-	\item \texttt{auto \&\&}is forward reference. A good example auto\&\& comes(forward reference) from generic lambda. It can reserve rvalue.
+	\item \texttt{auto \&\&}is forward reference. A good example \texttt{auto\&\&} comes(forward reference) from generic lambda. It can reserve rvalue.
 \begin{lstlisting}[frame=single, language=c++]
 struct Functor{
     void operator ()() const &  { std::cout << "lvalue functor\n"; }
@@ -10265,9 +10243,7 @@ lvalue functor
 rvalue functor
 \end{lstlisting}
 	
-	\begin{description}
-		\item[Line 7 and Line 12:] Define two lambdas, one uses \texttt{auto\&\& func}, the other uses \texttt{auto func}. 
-	\end{description}
+
 \end{itemize}
 
 \subsubsection{return type deduction}
@@ -10278,7 +10254,7 @@ rvalue functor
 [=]  { return foo() * 42; } //ok,deduces "-> some_type"
 \end{lstlisting}
 	
-	\item This has been expanded in two ways. First, it now works even with more complex function bodies containing more than one return statement, as long as all return statements return the same type:
+	\item In C++14, this has been expanded in two ways. First, it now works even with more complex function bodies containing more than one return statement, as long as all return statements return the same type:
 \begin{lstlisting}
 // C++14
 [=] {               // ok, deduces "-> some_type"
@@ -10290,11 +10266,8 @@ rvalue functor
 	return bar.baz(84); 
 }                       
 \end{lstlisting}
-	\begin{description}
-		\item[Source code:] Although there are multiple returns, it will work if types are the same.
-	\end{description}
 	
-	\item Second, it now works with all functions, not just lambdas: Of course, this requires the function body to be visible.
+	\item In C++14, it now works with all functions, not just lambdas. Of course, this requires the function body to be visible.
 \begin{lstlisting}[numbers=none]
 auto fun1(){
     return 12;
@@ -10305,13 +10278,13 @@ auto fun1(){
 \begin{lstlisting}[numbers=none]
 auto f(int i){  // It will cause compile error.
     if ( i < 0 )
-    return -1;
+    	return -1;
     else
-    return 2.0
+    	return 2.0
 }
 \end{lstlisting}
 
-	\item For template function return type, we can use two different ways.
+	\item For template function return type, we can use three different ways.
 	
 	\begin{enumerate}
 		\item C++ 11, use auto + trailing type.
@@ -10330,12 +10303,34 @@ auto addFooAndBar(T const& t) {
 }
 \end{lstlisting}
 
-\item Usage of \texttt{decltype(auto)}, I will introduc this topic in decltype. More detail can be found in Effective Modern C++ item 3.
+		\item Usage of \texttt{decltype(auto)}, I will introduc this topic in decltype. More detail can be found in Effective Modern C++ item 3.
 	\end{enumerate}
 	
 	\item \textbf{prefer to use function return type deduction wherever applicable, avoid trailing return type unless you really need them.} they make your code harder to read
+	
+	\item There are three ways to view deducted type:
+\begin{enumerate}
+	\item Use IDE.
+	\item Use Compiler.
+\begin{lstlisting}[frame=single, language=c++]
+template<typename T> // declaration only for TD;
+class TD; // TD == "Type Displayer"
+
+TD<decltype(x)> xType; 
+TD<decltype(y)> yType; 
+//elicit errors containing x's and y's types
+\end{lstlisting}
+	
+	\item Use \texttt{typeid} and \texttt{std::type\_info::name}
+	
+\begin{lstlisting}[frame=single, language=c++]
+std::cout << typeid(x).name() << '\n'; 
+\end{lstlisting}
+	
+\end{enumerate}
 
 \end{itemize}
+
 
 
 \subsection{decltype deduction}
@@ -10344,7 +10339,7 @@ auto addFooAndBar(T const& t) {
 	\item decltype has two different deducting rules when facing different kinds of expression.
 	
 	\begin{enumerate}
-		\item Expression whose type is to be determined is \textbf{a plain variable} or \textbf{function parameter}, like x, or a class member access, like \texttt{p->m\_x.} In that case, decltype lives up to its name: it determines the type of the expression to be the declared type.
+		\item Expression whose type is to be determined is \textbf{a plain variable} or \textbf{function parameter}, like x, or a class member access, like \texttt{p->m\_x.} In that case, decltype lives up to its name: it determines the type of the expression to be the declared type.  Pay attention to the difference between \texttt{decltype} and \texttt{auto}.
 \begin{lstlisting}[frame=single, language=c++]
 vector<int> v; // decltype(v) is vector<int>
 struct S {
@@ -10364,46 +10359,18 @@ auto b = cx;  //auto ignore const, b is int
 decltype(crx) c;  // c is const int&.
 auto c = crx; //ignore reference and const, c is int
 
-decltype(p->m_x) d; // d is int
+decltype(p->m_x) d; // d is int although p points to const S
 auto d = p->m_x; //auto ignore const, d is int
 \end{lstlisting}
-\begin{description}
-	\item[Line 19:] p is a pointer to const S. But decltype goes by the declared type, which is int.
-	\item[Source code:] Pay attention to the difference between \texttt{decltype} and \texttt{auto}.
-\end{description}
 		
-		\item If expr is not case 1, then it's case 2. Three are three different rules for case 2:
+		\item If expr is not case 1, then it's case 2. There are three different rules for case 2:
 		\begin{enumerate}
-			\item If expr is an lvalue, then decltype(expr) is T\&. 
-			\item If expr is an xvalue, then decltype(expr) is T\&\&. 
-			\item Otherwise, expr is a prvalue, and decltype(expr) is T.
+			\item If expr is an lvalue, then \texttt{decltype(expr)} is \texttt{T\&}. 
+			\item If expr is an xvalue, then \texttt{decltype(expr)} is \texttt{T\&\&}. 
+			\item Otherwise, expr is a prvalue, and \texttt{decltype(expr)} is \texttt{T}.
 		\end{enumerate}
 	\end{enumerate}
 
-	\item For the case 2, if expr is lvalue.
-\begin{lstlisting}[frame=single, language=c++]
-struct S {
-	int m_x;
-};
-int x;
-const int cx = 42;
-const int& crx = x;
-const S* p = new S();
-
-typedef decltype((x)) x_with_parens_type; // int&
-typedef decltype((cx)) cx_with_parens_type; // const int&
-typedef decltype((crx)) crx_with_parens_type; //const int&
-typedef decltype((p->m_x)) m_x_with_parens_type; 
-\end{lstlisting}
-	\begin{description}
-		\item[Line 9:]  (x) has type int, and decltype adds references to lvalues. Therefore, \texttt{x\_with\_parens\_type} is \texttt{int\&.}
-		
-		\item[Line 10:] The type of (cx) is const int. Since (cx) is an lvalue, decltype adds a reference to that: \texttt{cx\_with\_parens\_type} is \texttt{const int\&.}
-		
-		\item[Line 11:]  The type of (crx) is \texttt{const int\&}, and it is an lvalue, decltype adds a reference. By the C++11 reference collapsing rules, that makes no difference. Hence, \texttt{crx\_with\_parens\_type} is \texttt{const int\&.}
-		
-		\item[Line 12:] \texttt{S::m\_x} is declared as int. Since p is a pointer to const, the type of (p->m\_x) is const int. Since (p->m\_x) is an lvalue, decltype adds a reference to that. Therefore, \texttt{m\_x\_with\_parens\_type} is \texttt{const int\&.}
-	\end{description}
 
 \item For case 2, some complex expression examples:
 \begin{lstlisting}[frame=single, language=c++]
@@ -10421,41 +10388,41 @@ typedef decltype(x < d2 ? x : d2) cond_type_mixed;  //double
 \end{lstlisting}
 
 	\begin{description}
-		\item[Line 5:] foo() is declared as returning const S. The type of foo()
-is const S. Since foo() is a prvalue, decltype does not
-add a reference. Therefore, foo\_type is \texttt{const S}.
+		\item[Line 5:] \texttt{foo()} is declared as returning \texttt{const S}. The type of \texttt{foo()}
+is \texttt{const S}. Since \texttt{foo()} is a prvalue, decltype does not add a reference. Therefore, \texttt{foo\_type} is \texttt{const S}.
 		
-		\item[Line 6:] The type of foobar() is \texttt{const int\&}, and it is an lvalue. Therefore, decltype adds a reference. By the C++11 reference collapsing rules, that makes no difference. Therefore, foobar\_type is \texttt{const int\&}
+		\item[Line 6:] The type of \texttt{foobar()} is \texttt{const int\&}, and it is an lvalue. Therefore, decltype adds a reference. By the C++11 reference collapsing rules, that makes no difference. Therefore, \texttt{foobar\_type} is \texttt{const int\&}
 		
-		\item[Line 7:] std::vector<int>'s operator[] is declared to have return type \texttt{int\&}. Therefore, the type of the expression vect[0] is \texttt{int\&}. Since vect[0] is an lvalue, decltype adds a reference. By the C++11 reference collapsing rules, that makes no difference. Therefore, first\_element has type \texttt{int\&}.  
+		\item[Line 7:] \texttt{std::vector<int>}'s operator[] is declared to have return type \texttt{int\&}. Therefore, the type of the expression \texttt{vect[0]} is \texttt{int\&}. Since \texttt{vect[0]} is an lvalue, decltype adds a reference. By the C++11 reference collapsing rules, that makes no difference. Therefore, \texttt{first\_element} has type \texttt{int\&}.  
 		
-		\item[Line 9:]  The type of the expression is double, and the expression is an lvalue. Therefore, a reference is added, and cond\_type is \texttt{double\&}
+		\item[Line 9:]  The type of the expression is double, and the expression is an lvalue. Therefore, a reference is added, and \texttt{cond\_type} is \texttt{double\&}
 		
-		\item[Line 11:] The type of the expression is double. The expressionis a prvalue, because in order to accomodate the promotion of x to a double, a temporary has to be created. Therefore, no reference is added, and cond\_type\_mixed is \texttt{double}.  For a conditional expression (?:) to be an lvalue (again, in broad and simple terms), the second and third operands must be lvalues of the same type. This is because the type and value category of a conditional expression is determined at compile time and must be appropriate whether or not the condition is true. If one of the operands must be converted to a different type to match the other then the conditional expression cannot be an lvalue as the result of this conversion would not be an lvalue.
+		\item[Line 11:] The type of the expression is double. The expressionis a prvalue, because in order to accomodate the promotion of x to a double, a temporary has to be created. Therefore, no reference is added, and \texttt{cond\_type\_mixed} is \texttt{double}.  For a conditional expression (?:) to be an lvalue (again, in broad and simple terms), the second and third operands must be lvalues of the same type. This is because the type and value category of a conditional expression is determined at compile time and must be appropriate whether or not the condition is true. If one of the operands must be converted to a different type to match the other then the conditional expression cannot be an lvalue as the result of this conversion would not be an lvalue.
 	\end{description}
 
 \end{itemize}
 
 \subsubsection{decltype usage}
 \begin{itemize}
-	\item \textbf{decltype can be used in deducting template function return value.}
+	\item decltype case 2 rule mainly used in deducting template function return value.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 template<typename T, typename U>
 auto eff(T t U u) -> decltype(T*U){
 ....
 }
 \end{lstlisting}
-	\item When the function return a lvalue reference, auto will not work here(skip reference), only decltype can keep reference.
+
+	\item When the function return a lvalue reference, auto will not work here(skip reference), only decltype can keep reference properly.
 \begin{lstlisting}
-template<typename Container, typename Index>
+template<typename Container, typename Index>  //C++11 syntax
 auto authAndAccess(Container& c, Index i) -> decltype(c[i]){
 	authenticateUser();
 	return c[i];
 }
 
-template<typename Container, typename Index> // C++14; works,
-decltype(auto) authAndAccess(Container& c, Index i) {
-	authenticateUser();
+template<typename Container, typename Index> // C++14 syntax
+decltype(auto) authAndAccess(Container& c, Index i) { 
+	authenticateUser();                               
 	return c[i];
 }
 \end{lstlisting}
@@ -10463,41 +10430,46 @@ decltype(auto) authAndAccess(Container& c, Index i) {
 	\item[Line 8:] \textbf{Pay attention to decltype(auto), it deducts reference type.}
 \end{description}
 	
-	\item Below is example about using decltype on xvalue. 
+	\item Below is example about using decltype on xvalue. The whole code need extra explanation here:
+	\begin{enumerate}
+		\item Need \texttt{Container\&\& c} to accept both lvalue and rvalue.
+		\item Inside function, \texttt{c} need to be forward. that is common rule for forward reference.
+		\item Forward return xvalue, then when we return this value, we also need keep it as xvalue.
+		\item That is why decltype rule come from: "If expr is an xvalue, then \texttt{decltype(expr)} is \texttt{T\&\&}".
+		\item Outside of function, return is xvalue, so we can move it efficiently. that is the whole story for the below code. 
+	\end{enumerate}
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
+template<typename Container, typename Index> // final c++11
+auto authAndAccess(Container&& c,Index i)
+         ->decltype(std::forward<Container>(c)[i]){
+	authenticateUser();
+	return std::forward<Container>(c)[i];
+}
+
 template<typename Container, typename Index> // final c++14
 decltype(auto) authAndAccess(Container&& c, Index i) {
 	authenticateUser();
 	return std::forward<Container>(c)[i];
 }
-	
-template<typename Container, typename Index> // final c++11
-auto authAndAccess(Container&& c, Index i)
-	-> decltype(std::forward<Container>(c)[i]){
-		authenticateUser();
-		return std::forward<Container>(c)[i];
-	}
 
 auto s = authAndAccess(queue,5);
 auto s = authAndAccess(std::move(queue),5); 
 \end{lstlisting}
 \begin{description}
-	\item[Line 14 and 15:] Both work here. For the firs,t it returns a lvalue reference and for the second, it returns a rvalue reference.
-	\item[Source code:] If container is xvalue, then container[] is also xvalue. 
-\end{description}
+	\item[Line 11:] If \texttt{Container} is xvalue, then \texttt{Container[]} is also xvalue. 
 	
-	\item The use of decltype(auto) is not limited to function return types. It can also be convenient for declaring variables when you want to apply the decltype type deduction rules to the initializing expression.
+	\item[Line 14 and 15:] Both lvalue and rvalue work here, because \texttt{authAndAccess} uses forward reference. 
+\end{description}
+
+	
+	\item The use of \texttt{decltype(auto)} is not limited to function return types. It can also be convenient for declaring variables when you want to apply the decltype type deduction rules to the initializing expression.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 Widget w;
 const Widget& cw = w;
 
-auto myWidget1 = cw; 
-decltype(auto) myWidget2 = cw;
+auto myWidget1 = cw;  //auto type deduction: myWidget1's type is Widget.
+decltype(auto) myWidget2 = cw; myWidget2's type is  const Widget&
 \end{lstlisting}
-\begin{description}
-	\item[Line 4:] auto type deduction: myWidget1's type is Widget.
-	\item[Line 5:] myWidget2's type is  const Widget\&
-\end{description}
 	
 	\item An important property of decltype is that its operand never gets evaluated. For example, you can use an out-of-bounds element access to a vector as the operand of decltype with impunity:
 	
@@ -10505,10 +10477,10 @@ decltype(auto) myWidget2 = cw;
 std::vector<int> vect;
 assert(vect.empty());
 typedef decltype(vect[0]) integer; 
-
 \end{lstlisting}
+
 \begin{description}
-	\item[Line 3:] Although vect is empty now, we still can use vect[0] in decltype.
+	\item[Line 3:] Although vect is empty now, we still can use \texttt{vect[0]} in decltype.
 \end{description}
 	
 	\item Another property of decltype is that when decltype(expr) is the name of a plain user defined type (not a reference or pointer, not a basic or function type), then decltype(expr) is also a class name. This means that you can access nested types directly:
@@ -10524,11 +10496,8 @@ SomeFunctor(){}
 };
 
 SomeFunctor<int> func;
-typedef decltype(func)::result_type integer; 
+typedef decltype(func)::result_type integer;  //You can access nested type
 \end{lstlisting}
-\begin{description}
-	\item[Line 12:] You can access nested type
-\end{description}
 	
 	\item  \textbf{If you're declaring variables inside a class.} Instead of typing out the full name of the type of the iterator, you can use decltype:, you can't use auto.  This works because decltype doesn't actually execute the expression given as its argument-- it is only used by the type checker to determine a type.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
@@ -10541,7 +10510,7 @@ class A {
 	\item[Line 3:] You don't need init expression here. you can't use auto here, because auto need init expression
 \end{description}
 	
-	\item We could have also done the above example with declval. allows you to use decltype without constructing the object. The type doesn't even need a default constructor, and in fact, it can be used with an incomplete type. The above example could be rewritten as:
+	\item We could have also done the above example with \texttt{declval}. It allows you to use decltype without constructing the object. The type doesn't even need a default constructor, and in fact, it can be used with an incomplete type. The above example could be rewritten as:
 	
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 template <typename C>
@@ -10551,7 +10520,7 @@ foo(const C& c){
 }
 \end{lstlisting}
 	
-	\item declval is commonly used in templates where acceptable template parameters may have no constructor in common, but have the same member function whose return type is needed.
+	\item \texttt{declval} is commonly used in templates where acceptable template parameters may have no constructor in common, but have the same member function whose return type is needed.
 	
 \begin{lstlisting}[frame=single, language=c++]
 struct Default {
@@ -10563,26 +10532,14 @@ NonDefault(const NonDefault&) { }
 int foo() const { return 1; }
 };
 	
-decltype(Default().foo()) n1 = 1;   
+decltype(Default().foo()) n1 = 1;    //type of n1 is int
 //decltype(NonDefault().foo()) n2 = n1;  
-decltype(std::declval<NonDefault>().foo()) n2 = n1;
+decltype(std::declval<NonDefault>().foo()) n2 = n1; //It's OK now, n2 is int
 \end{lstlisting}
 \begin{description}
-	\item[Line 10 ]  type of n1 is \texttt{int}, 
 	\item[Line 11:]  error: no default constructor, In order to resolve this problem, we have to use \texttt{declval}
-	\item[Line 12:] with \texttt{declval}, It's OK, n2 is \texttt{int}
 \end{description}
 	
-	\item result\_of usage. result\_of was introduced in Boost, and then included in TR1, and finally in C++0x. Therefore result\_of has an advantage that is backward-compatible (with a suitable library). decltype is an entirely new thing in C++, does not restrict only to return type of a function, and is a language feature.
-\begin{lstlisting}[frame=single, language=c++]
-struct foo {
-	double operator()(char, int);
-};
-//same
-std::result_of<foo(char, int)>::type d1 = 10.0;
-decltype(foo()('c', 1)) d2 = 10.0;
-\end{lstlisting}
-
 \item Why decltype has so complex definition about type deduction?
 \begin{enumerate}
 	\item the final specification of decltype represents a compromise between two different possible points of view. One point of view is that decltype should be a way to retrieve and reuse the type of a variable as declared in the source code: I declared a variable x of type T at some point in my code. Now I want to use that type for some other purpose, like making a typedef, or specify the return type of a function. I don't want to repeat myself, so give me a way to recover the declared type of my variable, exactly the way I originally wrote it. If that declared type has a reference and/or a const or volatile qualifier on it that I don't want, I'll remove that myself, thank you very much. This is what Case 1 of the specification of decltype does.
@@ -10591,8 +10548,7 @@ decltype(foo()('c', 1)) d2 = 10.0;
 \begin{lstlisting}
 auto foo([...]) -> decltype(expr) {
 template <typename T>
-auto array_access(T& array, size_t pos) 
-		-> decltype(array[pos]) {
+auto array_access(T& array, size_t pos) -> decltype(array[pos]) {
 return array[pos];
 }
 
@@ -10603,7 +10559,7 @@ array_access(p, 2) = 46;
 }
 \end{lstlisting}
 \begin{description}
-	\item[Line 11:] Where the pointer p is used to access the element, could not be made to work without having decltype add a reference: the type of p[2] is int, any way you turn it. There is no reference in sight here. But p[2] is an lvalue, and by letting decltype add references to lvalues, we can get the desired effect. 
+	\item[Line 10:] Where the pointer p is used to access the element, could not be made to work without having decltype add a reference: the type of p[2] is int, any way you turn it. There is no reference in sight here. But p[2] is an lvalue, and by letting decltype add references to lvalues, we can get the desired effect. 
 	
 	\item[Source code:] \textbf{Most of expression is rvalue, but array[pos] is lvalue.} This is the key to understand decltype deduct rule for expression.
 \end{description}
@@ -10626,7 +10582,8 @@ typename std::remove_reference<decltype(x<y?x:y)>::type
 	\item[Line 1 to 4:] If x and y are the same type, it will return reference. Return reference of local object is always HORRIBLE!.
 \end{description}
 
-	\item \textbf{Manually add reference to lvalue for some context, for the other scenarios, you can remove reference manually.} 
+	\item In summary: decltype rule 1 is for declaring variable, decltype rule 2 is for \textbf{deducting type for return value from function.} That is very important to know this for you to understand decltype rule 2.  When the return expression is \texttt{a[]}, because it's lvalue, so we need to return lvalue reference. When the return expression is \texttt{std::move()}, because it's xvalue, so we need to return \texttt{T\&\&}. The left 99\% are all expression, such as 1+2, they return prvalue, so we just return the type for the prvalue, for 1+2, we return \texttt{int}, that is all!
+	
 \end{enumerate} 
 \begin{center}
 	\includegraphics[scale=0.65]{pics/decltype.png}
@@ -10634,41 +10591,21 @@ typename std::remove_reference<decltype(x<y?x:y)>::type
 
 
 \item Basic knowledge of decltype detail can be found "How decltype Deduces the Type of an Expression: Case 1"
-\end{itemize}
 
-\subsection{check type}
-
-\begin{itemize}
-	\item There are three ways to view deducted type
-	\begin{enumerate}
-		\item Use IDE.
-		\item Use Compiler.
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T> // declaration only for TD;
-class TD; // TD == "Type Displayer"
-
-TD<decltype(x)> xType; 
-TD<decltype(y)> yType; 
-//elicit errors containing x's and y's types
-\end{lstlisting}
-
-	\item Use typeid and std::type\_info::name
-	
-\begin{lstlisting}[frame=single, language=c++]
-std::cout << typeid(x).name() << '\n'; 
-\end{lstlisting}
-		
-	\end{enumerate}
-	
 \end{itemize}
 
 \subsection{summary}
 \begin{itemize}
-	\item \texttt{auto}, template T and decltype are three kinds of type deduction contexts. \texttt{auto} and template T are almost same, beside when we meet \texttt{initilizaer\_list}. but decltype are quite different with the other two. 
+	\item \texttt{auto}, template T and decltype are three kinds of type deduction contexts. \texttt{auto} and template T are almost same, beside when we meet \texttt{initilizaer\_list}.  
+
+	\begin{center}
+		\includegraphics[scale=0.6]{pics/type_deduct.png}
+	\end{center}
 	
-	\item When you use decltype(auto), \textbf{auto tell compiler to automatically type deduction, but please use decltype rules.} They are most used when we deal with some expression which return back lvalue, such as a[0], in this way, if you use auto, it will ignore reference. but decltype will keep it. 
+	\item decltype are quite different with the other \texttt{auto} and template T. When you use decltype(auto), \textbf{auto tell compiler to automatically type deduction, but please use decltype rules.} They are most used when we deal with some expression which return back lvalue, such as \texttt{a[0]}, in this way, if you use auto, it will ignore reference. but decltype will keep it. 
 	
 	\item decltype can be used in a wider variety of contexts, such as typedefs, function return types, and even in places where a class name is expected. There are two different ways in which decltype(expr) can work, depending on the value of category of expression.
+	
 
 \end{itemize}
 
@@ -10736,7 +10673,7 @@ Storage(T* value){
 	m_value = new T(*value);  //To make deep copy
 }
 
-template <>
+template <>  //See an empty <> for fulll specialization.
 Storage<char*>::Storage(char* value){
 	// Figure out how long the string in value is
 	int length = 0;
@@ -10745,12 +10682,12 @@ Storage<char*>::Storage(char* value){
 }
 \end{lstlisting}
 \begin{description}
-	\item[Source code:] Line 1 is base template, line 9 is partial specialization and line 17 is Full specialization of constructor for type char* 
+	\item[Source code:] Line 1 is base template, line 9 is partial specialization and line 17 is Full specialization of constructor for type \texttt{char*} 
 \end{description}
 
 \end{enumerate}
 
-    \item Keep the design of a template in mind and not use it blindly. When you input pointer as typename, you should be on high alert. If common template can't deal with pointer type very well, you can define a partial specializations.Pay attention the specialization of declaration. it should be after the basic template.
+    \item Keep the design of a template in mind and not use it blindly. When you input pointer as typename, you should be on high alert. If common template can't deal with pointer type very well, you can define a partial specializations. Pay attention the specialization of declaration. it should be after the basic template.
 
 \begin{lstlisting}[frame=single, language=c++]
 template <typename T>
@@ -10766,26 +10703,21 @@ class Foo<T*> //partial specializations.
 \subsubsection{Basic knowledge about function template specification}
 \begin{itemize}
 
-    \item \textbf{For template function, there is overload and full specialization, for template class, there is full and partial specialization. Template function doesn't support partrial specialization, because it can use overload to reach the same result.} 
-
-    \item In another word, If you want to have custom implementation of function with same name, use overload function, if you need  custom implementation of class with same name, use partial specialization.
+    \item For template function, there is overload and full specialization, for template class, there is full and partial specialization. \textbf{Template function doesn't support partial specialization}, because it can use overload to reach the same result. In another word, If you want to have custom implementation of function with same name, use overload function, if you need  custom implementation of class with same name, use partial specialization.
 
     \begin{enumerate}
 	\item You can explicit(full) specialization of template class. 
 	\item You also can explicit(full) specialization of template function. 
 	\item You can explicit(full) specialization of member in template class. 
 \begin{lstlisting}
-template<> int f(int)
-template<> 
+template<> int f(int) //full specialization must have a empty template<>
+template<>   //same as above
 class S<void>
 \end{lstlisting}
-\begin{description}
-	\item[Line 1 and 2:] full specialization must have a empty template<>.
-\end{description}
 	\end{enumerate}
 
 
-    \item Explicit Specialization: Because for \texttt{char *}, you can't use > , but use strcmp.  So you need to build explicit Specialization Version. The prototype and definition of an explicit specialization should be preceded by template<> and should mention the specialized type by name.
+    \item Explicit Specialization: Because for \texttt{char *}, you can't use > , but use \texttt{strcmp}.  So you need to build explicit specialization Version. The prototype and definition of an explicit specialization should be preceded by template<> and should mention the specialized type by name.
 	
 \begin{lstlisting}[numbers=none]
 Template<typename T>
@@ -10802,44 +10734,28 @@ template<> void sortedArray<const char *>(){...}
 template<typename T>
 void foo(T param);
 
-void foo(int param);
+void foo(int param); //regular funciton, not a specialization. it is an overload
 
-void foo<int>(int param);
+void foo<int>(int param); //ill-formed, not recommend, no template keyword at all
 
-template <> void foo<int>(int param){...}
+template <> void foo<int>(int param){...} //normal explicit specialization
+template <> void foo(int param); {...} //save as above
 
-template <> void foo(int param); {...}
-
-template void foo(int param);  
-template void foo<int>(int param); 
-template void foo<>(int param); 
+template void foo(int param);  //explicit instantiation.
+template void foo<int>(int param); //explicit instantiation.
+template void foo<>(int param); //explicit instantiation.
 \end{lstlisting}
-\begin{description}
-	\item[Line 4:] It's a regular funciton, not a specialization. it is an overload
-	
-	\item[Line 6:] ill-formed, not recommend, no template keyword at all.
-	
-	\item[Line 8:] normal explicit specialization, specify T directly. Need to give definition.
-	
-	\item[Line 10:] explicit specialization. Same as line 8, but use template argument deduction.
-	
-	\item[Line 12:] explicit instantiation. but works only if template argument deduction is possible!
-	
-	\item[Line 13 and 14:] both explicit instantiation
-\end{description}
 
 \item There seems to be (a lot) of confusion regarding explicit instantiation and specialization. The code I posted above deals with explicit instantiation. The syntax for specialization is different. Here is syntax for specialization: Note that angle brackets after template!
 
 \begin{lstlisting}
 template <typename T> void func(T param) {} // definition
 
-template void func<int>(int param); 
+template void func<int>(int param);  //explicit instantiation.
 
-template <> void func<int>(int param) {} 
+template <> void func<int>(int param) {}  //explicit specialization
 \end{lstlisting}
 \begin{description}
-	\item[Line 3:] explicit instantiation.
-	\item[Line 5:] explicit specialization
 	\item[Source code:]\textbf{For specialization,there is empty <> after template keyword, for instantiation, there is not empty <> after template keyword.}
 \end{description}
 
@@ -10890,9 +10806,10 @@ int *p;
 f( p ); 
 \end{lstlisting}
 \begin{description}
-	\item[Line 12:] If put specialization at line 4, it will call \#3. Although we have a very match specification, it's not be picked up and it's not what we want.  Why this happen? because specification didn't join the overload processing. The first, we only see two overload template functions: f(T t) and f(T* t). In this way, f(T* t) is picked up. If we put specification in line 4, then it is specification of \#1, that is why it's omitted.
-
-    \item [Line 12:] If put specialization at line 9, it will call \#4.
+	
+	\item[Line 12:] If put specialization at line 4, it will call \#3. Although we have a very match specification, it's not be picked up and it's not what we want.  Why this happen? because specification didn't join the overload processing. The first, we only see two overload template functions: \texttt{f(T t)} and \texttt{f(T* t)}. In this way, \texttt{f(T* t)} is picked up. If we put specification in line 4, then it is specification of \#1, that is why it's omitted. If put specialization at line 9, it will call \#4.
+	
+	\item[Source code:] You need to know two points to understand above code: 1)specification doesn't join the overload processing. 2) Which base to pick up depends on specification location.
 \end{description}
 
 	\item Why we need a overload template function? Because not all type support the same operation. For example, in your template function, you use = operator as assignment, but when you use array for this template function type, array doesn't support assignment with operator =.
@@ -10904,14 +10821,7 @@ template <typename T>
 void swap(T &a, T &b )
 \end{lstlisting}
 
-\item Overload is different with Specializations, Overload means that you have different function signatures. Specialization have the same function signature.
-
-\item Some good articles:\newline
-"Why Not Specialize Function Templates?" .
-\newline
-"Why Argument Dependent Lookup doesn't work with function template dynamic\_pointer\_cast". 
-\newline
-"C++ template function taking template class as parameter".
+	\item Overload is different with Specializations, Overload means that you have different function signatures. Specialization have the same function signature.
 
 	\item Explicit specializations usually need define all the implementation in it. If there is a lot of repetition. There are two helpful options: 
 \begin{enumerate}
@@ -10942,6 +10852,13 @@ A<float> f;
     \item pointer sometimes need to be deal with differently, at that time we need partial specialization of template class. A very good article is:\\ https://www.learncpp.com/cpp-tutorial/13-8-partial-template-specialization-for-pointers/. 
 
     \item A very good article about specialization is chapter 12 in "C++ template: The complete guide". Remember, you should read each sentence in this chapter.
+    
+    \item Some good articles:\newline
+    "Why Not Specialize Function Templates?" .
+    \newline
+    "Why Argument Dependent Lookup doesn't work with function template dynamic\_pointer\_cast". 
+    \newline
+    "C++ template function taking template class as parameter".
 \end{itemize}
 
 
@@ -10957,14 +10874,10 @@ A<float> f;
 template<typename T, int n>
 class ArrayTP...
 	
-ArrayTP<int, 100> stuff //define a variable 
+ArrayTP<int, 100> stuff //define a variable, implicit
 	
-template ArrayTP<string, 100>; //use template keyword and< >
+template ArrayTP<string, 100>; //use template keyword and< >, explicit
 \end{lstlisting}
-\begin{description}
-	\item[Line 4:] Implicit instantiation. you have to declare variable \texttt{stuff}.
-	\item[Line 6:] Generate a specialized class even you don't declare a variable.
-\end{description}
 
 	\item Explicit specialization is defining a different template implementation for certain type. For example, For bool type, we can use optimize array storage method.
 \begin{lstlisting}[frame=single, language=c++]
@@ -10980,19 +10893,15 @@ ArrayTP<bool, 100>{...specific implementation}
 	
 	\item Implicit, explicit instantiation and explicit specialization are all \textbf{specialization}. Because it produces a real function definition that uses specific types, The last result is not template at all 
 	
-	\item Partial specialization is different with explicit(full)specialization . Partial specialization makes generic template a little narrow, but the result is still template. 
+	\item Partial specialization is different with explicit(full)specialization. Partial specialization makes generic template a little narrow, but the result is still template. 
 	 
 	\item For class template, specialization includes explicit(full) specialization and partial specialization.
 \begin{lstlisting}[frame=single, language=c++]
 template<> class Pair<int,int>{...}; // full specialization 
 template<typename T1> class Pair<T1, int>{...}; //partial specialization 
 \end{lstlisting}
-\begin{description}
-	\item[Line 1:] Explicit(full) specialization.
-	\item[Line 2:] Partial specialization.
-\end{description}
 	
-	\item Non type argument and default type argument only define one template body(only one recipe). But Specialization need to define a generic template body(one recipe), For another type, It need to define a different template body(another recipe), because the code will be different with generic one.
+	\item Non type argument and default type argument only define one template body(only one recipe). But specialization need to define a generic template body(one recipe), For another type, It need to define a different template body(another recipe), because the code will be different with generic one.
 	 
 	 \textbf{Instantiation is different with specialization.  For instantiation, it will use template function to produce function body, but for specialization, you have to redefine you own function body }
 	 
@@ -11002,48 +10911,40 @@ void sortedArrary (T t) {...};
 
 template void sortedArray<Person>(Person);
 
-template<> void sortedArray<Person>(Person t){
+template<> void sortedArray<Person>(Person t){  //it is full specialization.
 .... //give you own definition of template fun body.
 };
 .
 \end{lstlisting}
-\begin{description}
-	\item[Line 4:] It is explicit instantiation. you don't need give function parameter name. because it's a function declaration.
-	\item[Line 6:] it is full specialization. \textbf{Pay attention, compared with explicit instantiation, there is empty <> after template in specialization.}
-\end{description}
 
 	\item For function template, there is no partial specialization, So explicit specialization is complete specialization.
 \end{enumerate}
 
 
-\item Instantiation happen in compiling time, not running time. When you declare a variable, It will instantiation. (It will make compiling time longer). So all the template definition must be put in head file. 
+	\item Instantiation happen in compiling time, not running time. When you declare a variable, It will instantiation. (It will make compiling time longer). So all the template definition must be put in head file. 
 	
 \end{itemize}
 
 \subsection{overload resolution rule}
-\subsubsection{name look up}
+\subsubsection{Name look up}
 \begin{itemize}
-    \item A name is a qualified name if the scope to which it belongs is explicitly denoted using a scope-resolution operator (::) or a member access operator (. or ->). For example, this->count is a qualified name, but count is not (even though the plain count might actually refer to a class member).  
+    \item A name is a qualified name if the scope to which it belongs is explicitly denoted using a scope-resolution operator (::) or a member access operator (. or ->). For example, \texttt{this->count} is a qualified name.
 
-    \item  A name is a dependent name if it depends in some way on a template parameter.  For example, std::vector<T>::iterator is usually a dependent name if T is a template parameter, but it is a nondependent name if T is a known type alias (such as the T from using T = int).
+    \item  A name is a dependent name if it depends in some way on a template parameter.  For example, \texttt{std::vector<T>::iterator} is usually a dependent name if \texttt{T} is a template parameter, but it is a nondependent name if \texttt{T} is a known type alias (such as the \texttt{T} from \texttt{using T = int}).
 
-        \item Qualified names are looked up in the scope implied by the qualifying construct. If that scope is a class, then base classes may also be searched. However, enclosing scopes are not considered when looking up qualified names. 
+	\item Qualified names are looked up in the scope implied by the qualifying construct. If that scope is a class, then base classes may also be searched. However, enclosing scopes are not considered when looking up qualified names. 
 
-        \item In contrast, unqualified names are typically looked up in successively more enclosing scopes (al-though in member function definitions, the scope of the class and its base classes is searched before any other enclosing scopes). This is called ordinary lookup. 
-
-        \item A more recent twist to the lookup of unqualified names is that—in addition to ordinary lookup—they may sometimes undergo argument-dependent lookup (ADL).
+	\item In contrast, unqualified names are typically looked up in successively more enclosing scopes (al-though in member function definitions, the scope of the class and its base classes is searched before any other enclosing scopes). This is called ordinary lookup. A more recent twist to the lookup of unqualified names is that—in addition to ordinary lookup—they may sometimes undergo argument-dependent lookup (ADL).
             
     \item \textbf{compiler will parse the template definition before it instantiation.} Why? It's a compiler, not a macro processor. Errors in the template itself won't be detected as long as it is only instantiated with 'friendly' types that don't trigger the errors: for example, if the template assumes that the type always has such-and-such a method.
 
-    \item C++ Coding standards 65 states customization of point. In order to understand it. You need to understand two basic conceptions: \textbf{"two phases lookup"} and \textbf{"dependent name"}.  
-
-    \item two phases lookup can see "Dependent name lookup for C++ templates" and "Two-Phase or Not Two-Phase: The Story of Dependent Names in Templates". Just google them.
+    \item C++ Coding standards 65 states customization of point. In order to understand it. You need to understand two basic conceptions: \textbf{"two phases lookup"} and \textbf{"dependent name"}.  Two phases lookup can see "Dependent name lookup for C++ templates" and "Two-Phase or Not Two-Phase: The Story of Dependent Names in Templates". Just google them.
 \end{itemize}
 
 
 \subsubsection{resolution rule}
 \begin{itemize}
-	\item Given a function name, you can have regular, template and explicit specialization temple. When pick a function, regular> specialization> template. function picking ranking from best to worst is:
+	\item Given a function name, you can have regular, template and explicit specialization template. When pick a function, regular> specialization> template. function picking ranking from best to worst is:
 	\begin{enumerate}
 		\item Exact math, regular function.
 		\item Template if you have define the same template function name.
@@ -11080,11 +10981,9 @@ template<> void sortedArray<Person>(Person t){
 int i = 2;
 
 f(const int& j); //#1
-f(int& j);  //#2, 
+f(int& j);  //#2, #2 will be selected, because i isn't const.
 \end{lstlisting}
-\begin{description}
-	\item[Source code:] \#2 will be selected, because \texttt{i} isn't const.
-\end{description}
+
 		\item If there are exact match, it will pick up before template, even template has EXACT specification.
 \end{enumerate}
 
@@ -11101,7 +11000,7 @@ f<>(2);
 	\item[Line 5] Tell compiler to use \#1, not \#2. Pay attention, there is <> after function name f.
 \end{description}
 
-    \item \textbf{Overload resolution steps are introduced here.} More explanation of below figure can be found below:
+    \item \textbf{Overload resolution steps are introduced here.} More explanation of below figure can be found below from code p1 to code p6:
 
 \begin{figure}[ht]
 	\centering 
@@ -11121,7 +11020,7 @@ template <typename T> struct Base {
 
 template <typename T> struct Derived : Base<T> {
 	void g() {
-		// MyType k = 2;
+		// MyType k = 2;  //error: 'MyType' was not declared in this scope
 		// Base<T>::MyType k = 2;
 		
 		typename Base<T>::MyType k = 2;
@@ -11129,11 +11028,10 @@ template <typename T> struct Derived : Base<T> {
 };
 \end{lstlisting}
 \begin{description}
-	\item[Line 7:]  error: 'MyType' was not declared in this scope
 	
-	\item[Line 8:] error: need 'typename' before 'Base<T>::MyType' because 'Base<T>' is a dependent scope.
+	\item[Line 8:] error: need 'typename' before '\texttt{Base<T>::MyType}' because '\texttt{Base<T>}' is a dependent scope.
 	
-	\item[Line 10:] Work! By now, we are still parse the template code, no any real instantiation visible. So I should tell the compiler that ::MyType is type name not varabile name or any other thing, the we can use this to declare a variable \texttt{k}.
+	\item[Line 10:] Work! By now, we are still parse the template code, no any real instantiation visible. So I should tell the compiler that \texttt{::MyType} is type name not varabile name or any other thing, the we can use this to declare a variable \texttt{k}.
 \end{description}
 
 \begin{lstlisting}[frame=single, language=c++]
@@ -11144,17 +11042,13 @@ struct Foo {
 };
 
 template<typename T> void func(T* p) {
-	// T::foo_method<T>();
+	// T::foo_method<T>(); // error: expected primary-expression before '>' token
 	
-	T::template foo_method<T>();
+	T::template foo_method<T>(); //work!. That is "template qualifier".
 }
 \end{lstlisting}
-\begin{description}
-	\item[Line 8:] error: expected primary-expression before '>' token
-	\item[Line 10:] work!. That is "template qualifier".
-\end{description}
 
-\item p3
+\item p3, change variable into the a dependent name. 
 \begin{lstlisting}[]
 template <typename T> struct Base {
    void f() {...}
@@ -11168,13 +11062,13 @@ template <typename T> struct Derived : Base<T> {
 };
 \end{lstlisting}
 \begin{description}
-	\item[Line 7:] f() is not dependent name, so we begin to look for this name now, but the base class doesn't exit it.(no instantiation yet), so report error.
+	\item[Line 7:] \texttt{f()} is not dependent name, so we begin to look for this name now, but the base class doesn't exit it.(no instantiation yet), so report error.
 	
 	\item[Line 8:] Work, make it become dependent name so we delay the name lookup after instantiation.
 \end{description}
 
 
-\item p4 name look up has two stages. 
+\item p4, name look up has two stages. 
 
 \begin{lstlisting}[]
 namespace framework { // library 1
@@ -11190,7 +11084,7 @@ namespace boost {     // library 2
 	struct optional {};
 }
  
-namespace framework  {     
+namespace framework {//both f and specialization are in frame work namespace
 	template <typename T>
 	void f(boost::optional<T>) { puts("optional<T>"); }
     
@@ -11218,6 +11112,13 @@ int main(){
 
 
 \item p5, In instantiation, with help of ADL, boost namespace is searched and two other functions are added into overload options.
+\begin{enumerate}
+	\item In line 6, we see the \texttt{f(v)}, then we just use \texttt{non-concrete-type} lookup. At this time only a \texttt{f} definition in line 3 is visible.
+	
+	\item In line 28, When you see \texttt{ob}, we can use \texttt{concrete-type} lookup, at this time, first, we extract concrete-type(\texttt{optional} type), then we look for boost namespace which optional type resides in. In this namespace, we found two other functions options(line 15 and line 18). Add them to overload options. 
+	
+	\item In line 29, Once we finish overload resolution, If we select template function, then we use concrete-type specialization look up, looks all the options before line 29. That is why we select specialization in line 18.
+\end{enumerate}	
 
 \begin{lstlisting}[]
 namespace framework{  // library 1
@@ -11252,7 +11153,9 @@ int main(){
 }
 \end{lstlisting}
 
-\item p6 template specification happen in the end and after overload. 
+
+
+\item p6, template specification happen in the end and after overload. 
 \begin{lstlisting}[]
 namespace framework{  // library 1
   template <typename T>
@@ -11282,15 +11185,8 @@ int main() {
 }
 \end{lstlisting}
 
-	\item The whole process is like below:
-	\begin{enumerate}
-		\item In line 6, we see the f(v), then we just use \texttt{non-concrete-type} lookup. At this time only a f definition in line 3 is visible.
-		
-		\item In line 25, When you see ob, we can use \texttt{concrete-type} lookup, at this time, first, we extract concrete-type(optional type), then we look for boost namespace which optional type resides in, if we found another optional name, then add it to overload options. 
-		
-		\item In line 25, Once we finish overload resolution, If we select template function, then we use concrete-type specialization look up, looks all the options before line 25.
-		
-		\item Pay attention, you can't put the specialization after line 25, otherwise it will report error.
+			
+		\item Pay attention, you can't put the specialization after calling points, otherwise it will report error. 
 \begin{lstlisting}
 template <typename T>
 void f(T) { cout<<"master"<<endl; }
@@ -11304,7 +11200,10 @@ template<> void f<int>(int i){ //error
 cout<<"specilization"<<endl;
 }
 \end{lstlisting}
-	\end{enumerate}
+\begin{description}
+	\item[Source code:] In line 6, compiler will generate \texttt{f(int)}, when it processes to line 9 and see another \texttt{f(int)}, it reports a kind of "duplicate" error
+\end{description}
+
 	\item Summary: 1) non-concrete-type lookup 2) concrete-type ADL look up 3) At this time overload finish, then concrete-type specialization look up.
 
 
@@ -11339,11 +11238,11 @@ int main(){
 \end{lstlisting}
 
 \begin{enumerate}
-	\item put line 19 and line 16 two functions before function g, it will call regular exact match function void f(short). 
+	\item put line 19 and line 16 two functions before function g, it will call regular exact match function \texttt{void f(short)}. 
 	
-	\item put void f(short) after function g, it will can full specification version
+	\item put \texttt{void f(short)} after function g, it will can full specification version
 	
-	\item comment line 6(specification declaration). report error:\\
+	\item comment line 6 (specification declaration). report error:\\
 	error: specialization of 'void f(T) [with T = short int]' after instantiation.
 	Because it has instantiation f(short) version from generic template, you can't specialize it any more.
 	 
@@ -11382,7 +11281,7 @@ template <typename T, int n>
 \end{lstlisting}
 
     \item Type parameter can be another template class.  It's different with "template template parameter" which is introduced below.
-\begin{lstlisting}[numbers=none]
+\begin{lstlisting}[]
 template<typename T> // T is int here
 class A
 
@@ -11393,9 +11292,6 @@ B< A<int> > obj;
 
 vector< vector<int> > matrix // 2D matrix
 \end{lstlisting}
-\begin{description}
-	\item[Line 7:] Two T has no any relationship. you can give them any better description name. You can just think it as placeholder.
-\end{description}
 
     \item What is template template parameter? An article is "Correct usage of C++ template template parameters". Another good one is "C++ Common Knowledge: Template Template Parameters". It gives a stack example. Below is bad way to declare stack template.
 \begin{lstlisting}[frame=single, language=c++]
@@ -11431,9 +11327,9 @@ Stack<std::string,std::list> aStack2; // Cont is List
 \begin{description}
 	\item[Line 1:] \textbf{There is another template keyword inside of the out template arrow brackets.} 
 	
-	\item[Line 2:] Why you need std::allocator here? because std::deque is template calss with two template parameter.
+	\item[Line 2:] Why you need \texttt{std::allocator} here? because \texttt{std::deque} is template calss with two template parameter.
 	
-	\item[Line 3:] std::deque is default template parameter.
+	\item[Line 3:] \texttt{std::deque} is default template parameter.
 	
 	\item[Line 7:] You don't need to specify inside template parameter, because \texttt{Cont<T>} will help to deduct it.
 	
@@ -11459,10 +11355,10 @@ public:
 }
 \end{lstlisting}
 	
-	\item First give an interesting example about template class. 
+	\item First give an interesting example about template class. Given a container c, accumulate all the elements in it.
 \begin{lstlisting}
 template<typename T> //function 1
-typename T::value_type sum(T& c){
+typename T::value_type Sum(T& c){
 	typename T::value_type result{};
 	for(auto x : c){
 		result +=x;
@@ -11471,7 +11367,7 @@ typename T::value_type sum(T& c){
 }
 
 template<typename T> //function 2
-T sum(vector<T> & c){
+T Sum(vector<T> & c){
 	T result{};
 	for(auto x :c){
 		result += x;
@@ -11481,26 +11377,24 @@ T sum(vector<T> & c){
 
 vector<int> vi = {1, 3, 5, 7};
 list<int> li = {1, 3, 4, 5};
-cout<< sum(vi)<<endl;
-cout<< sum(li)<<endl;
+cout<< Sum(vi)<<endl;
+cout<< Sum(li)<<endl;
 \end{lstlisting}
 \begin{description}
-	\item[Source code:] Function 1 is more generic than Function 2, because it also support list. Here there are two sum funciton, because we can overload template function. You also need to know, The second template function sum has ZERO relationship with vector template.
+	\item[Source code:] Function 1 is more generic than Function 2, because it also support list. Here there are two \texttt{Sum} funciton, because we can overload template function. You also need to know, The second template function sum has ZERO relationship with vector template.
 \end{description}
 
 	\item Next, based on previous example, we give another example.
 \begin{lstlisting}
 template<T>
-Rational<T> operator*(const Rational<T>& lsh, 
-							const Rational<T>& rhs){
+Rational<T> operator*(const Rational<T>& lsh, const Rational<T>& rhs){
 	....
 }
 
 template<typename T>
 class Rational {
 public:
-	Rational(const T& numerator = 0,
-			 const T& denominator = 1)
+	Rational(const T& numerator = 0, const T& denominator = 1)
 	...
 } 
 
@@ -11514,31 +11408,28 @@ Rational<int> result = oneHalf*2; //Compile error
 	\item Continue the previous example, If we have a function declaration exist, then implicit convert will happen. So let's see the next source code:
 \begin{lstlisting}
 template<T>
-Rational<T> operator*(const Rational<T>& lsh, 
-					const Rational<T>& rhs){
+Rational<T> operator*(const Rational<T>& lsh, const Rational<T>& rhs){
 	....
 }
 
 template<typename T>
 class Rational {
 public:
-	Rational(const T& numerator = 0,
-	const T& denominator = 1){...}
-	friend Rational<T> operator*(const Rational<T>& lsh, 
-	const Rational<T>& rhs)
+	Rational(const T& numerator = 0, const T& denominator = 1){...}
+	friend Rational<T> operator*(const Rational<T>& lsh,  const Rational<T>& rhs)
 } 
 
 Rational<int> oneHalf(1,2);
 Rational<int> result = oneHalf*2; //Compile OK, Link error
 \end{lstlisting}
 \begin{description}
-	\item[Line 12:] Here, you can omit <T> after Rational. Inside class template, class\_name is just class\_name<T>.
+	\item[Line 10:] Here, you can omit <T> after Rational. Inside class template, class\_name is just class\_name<T>.
 	
-	\item[Line 17:] By now, Compile OK. Because when we define Rational<int>, it declare a friend function in line 12, so we can implicit convert 2 to Rational<int> to match this the function in line 12
+	\item[Line 15:] By now, Compile OK. Because when we define Rational<int>, it declare a friend function in line 10, so we can implicit convert 2 to Rational<int> to match this the function in line 10.
 	
-	\item[Source code:] \textbf{The Line 12 and the function which defined in Line 1 has no relationship.}. Most of people will think that they are declaration and definition relationship. it's totally wrong. In fact, the template function is still not a real function.  We need to instantiate this template to a real funciton by either implicit or explicit instantiation.
+	\item[Source code:] \textbf{The Line 10 and the function which defined in Line 1 has no relationship.}. Most of people will think that they are declaration and definition relationship. it's totally wrong. In fact, the template function is still not a real function.  We need to instantiate this template to a real funciton by either implicit or explicit instantiation.
 	
-	\item[Source code:] Why link error? because we still fail to instantiate template operator * in Line 1. That's to say, we don't have any real funciton of operator *. We have introduced why in the the previous example.
+	\item[Source code:] The code still has link error, Why link error? because we still fail to instantiate template operator * in Line 1. That's to say, we don't have any real funciton of operator *. We have introduced why in the the previous example.
 \end{description}
 
 	\item Last, How to resolve this problem, You can give the definition inside the class directly and delete template operator* in the outside. 
@@ -11547,8 +11438,7 @@ template<typename T>
 class Rational {
 public:
 ...
-	friend const Rational operator*(const Rational& lhs, 
-	const Rational& rhs){
+	friend const Rational operator*(const Rational& lhs, const Rational& rhs){
 		return Rational(lhs.numerator() * rhs.numerator(), 
 			lhs.denominator() * rhs.denominator());  
 	} 
@@ -11561,7 +11451,7 @@ public:
 
 \subsection{template feature used in STL}
 \begin{itemize}
-	\item varaible template
+	\item Varaible template
 \begin{lstlisting}[]
 template<class T>
 constexpr T pi = T(3.1415926535897932385L);  // variable template	
@@ -11570,13 +11460,13 @@ template< class T >
 inline constexpr bool is_integral_v = is_integral<T>::value;
 \end{lstlisting}
 
-	\item alias template
+	\item Alias template
 \begin{lstlisting}[]
 template< bool B, class T = void >
 using enable_if_t = typename enable_if<B,T>::type;
 \end{lstlisting}
 	
-	\item specialization template will have default template argument automatically.
+	\item Specialization template will have default template argument automatically.
 \begin{lstlisting}[numbers=none]
 template<bool B, class T = void>
 struct enable_if {};
@@ -11585,15 +11475,15 @@ template<class T>
 struct enable_if<true, T> { typedef T type; }; //T default is void
 \end{lstlisting}
 
-\item An example of usage of \texttt{enable\_if}
+\item An example of usage of \texttt{enable\_if}.
 \begin{lstlisting}
 template<typename T>
 class MyClass{
 public:
-    void f(T const&  x){}
+void f(T const&  x){}
     
-    template<typename T_ = T, typename = std::enable_if_t<!std::is_reference_v<T_>>>
-    void f(T&& x){}
+template<typename T_ = T, typename = std::enable_if_t<!std::is_reference_v<T_>>>
+void f(T&& x){}
 };
 \end{lstlisting}
 \begin{description}
@@ -11605,7 +11495,7 @@ public:
         \end{enumerate}
 \end{description}
 
-    \item texttt{void\_t}. This metafunction is used in template metaprogramming to detect ill-formed types in SFINAE context.
+    \item \texttt{void\_t}. This metafunction is used in template metaprogramming to detect ill-formed types in SFINAE context.
 \begin{lstlisting}
 template< class... >
 using void_t = void;
@@ -11629,12 +11519,58 @@ struct has_toString<T , void_t<decltype(&T::toString)> >
 { };
 \end{lstlisting}
 
-\begin{description}
-    \item[Source code] Why do we need void in the primary template? The default parameters are propagated in the specialisations. So when we use \texttt{has\_toString<OurType>::value}, the default parameter comes into play and we are actually looking for \texttt{has\_toString<OurType, void>::value} both on the primary template and the specialisation. In the meantime, the substitution and the evaluation of decltype are processed and our specialisation has the signature has\_toString<OurType, std::string> if OurType has a serialize method that returns a std::string, otherwise the substitution fails. 
+\begin{enumerate}
+	\item In order to understand previous code, you need to know "the default argument applies to the specialization". If you only give one type in \texttt{test<int>}, implicitly, it changes into \texttt{test<int, void>}. 
+\begin{lstlisting}
+template <class T, typename U = void>
+class test {
+public:
+	test() {
+		std::cout << "base" << std::endl;
+	}
+};
+template <class T>
+class test<T, float> { 
+public:
+	test() {
+		std::cout << "sp" << std::endl;
+	}
+	
+};
+int main() {
+	test<int> t; // actually, you call test<int, void> t, output base
+	test<int, float>; //call specialization
+	test<int, int>; //call base.
+}
+\end{lstlisting}
+	\item If you specify \texttt{void} in specialization, then a type that's specified explicitly is preferred over one that's specified implicitly, so your specialization (which specified \texttt{void} explicitly) is preferred over the base template (which specified \texttt{void} implicitly).
+\begin{lstlisting}
+template <class T, typename U = void>
+class test {
+public:
+	test() {
+		std::cout << "base" << std::endl;
+	}
+};
+template <class T>
+class test<T, void> { 
+public:
+	test() {
+		std::cout << "sp" << std::endl;
+	}
+	
+};
+int main() {
+	test<int> t; //call specialization
+}
+\end{lstlisting}
+	\item Why do we need void in the primary template? The default parameters are propagated in the specialization. So when we use \texttt{has\_toString<OurType>::value}, the default parameter comes into play and we are actually looking for \texttt{has\_toString<OurType, void>::value} both on the primary template and the specialization. In the meantime, the substitution and the evaluation of decltype are processed and our specialization has the signature has\_toString<OurType, std::string> if OurType has a serialize method that returns a std::string, otherwise the substitution fails. 
+	
+	\item The specialization has therefore the precedence in the good cases. \textbf{In another word, need both match primary and specialization, so even when match fail, we can return false\_type}
 
-    \item[Source code] The specialisation has therefore the precedence in the good cases. \textbf{In another word, need both match primary and specialisation, so even when match fail, we can return false\_type}
+\end{enumerate}
 
-\end{description}
+
 
 \item a partial specialisation can indeed have more template parameters than the primary template. A typical example of this use is std::function: 
 \begin{lstlisting}
@@ -11642,34 +11578,24 @@ template <class T>
 struct function;
 
 template <class R, class... A>
-struct function<R (A...)>{
+struct function<R (A...)>{  //R(A...) is specification and it's ONE template parameter.
   // std::function as we know it
 };
 \end{lstlisting}	
-\begin{description}
-    \item[Source code] R(A...) is specification and it's ONE template parameter.
-\end{description}
 
 \end{itemize}
-
 
 \section{type traits}
 
-
 \begin{itemize}
-	\item A type trait is a way for you to get information about the types which are passed in as template arguments at compile time, so you can make static dynamic. 
-	
-	\item A type trait can return any information or customization about a type. A simple example is is\_integer, it just return bool type value information. A complex example is char\_trait. it can return a few functions. In this way, you also can think that char\_trait is a policy. 
+	\item A type trait is a way for you to get information about the types which are passed in as template arguments at compile time, so you can make static dynamic. A type trait can return any information or customization about a type. A simple example is \texttt{is\_integer}, it just return bool type value information. A complex example is \texttt{char\_trait}. it can return a few functions. In this way, you also can think that \texttt{char\_trait} is a policy. 
 	
 \end{itemize}
 
-\subsection{class partial specialization implement trait}
+\subsection{Class partial specialization implement trait}
 \begin{itemize}
 	
-	
-	\item \textbf{The most common way of implementation is template class specialization.} They are very useful for system defined type. 
-	
-	\item Make default template return false, then make template specialization returns true. 
+	\item \textbf{The most common way of implementation is template class specialization.} They are very useful for system defined type. Most of time, make default template return false, then make template specialization returns true. 
 \begin{lstlisting}[frame=single, language=c++]
 template <typename T>
 struct is_swapable {
@@ -11696,7 +11622,7 @@ struct is_swapable {
 };
 \end{lstlisting}
 
-	\item After C+11, we introduced \texttt{std::true\_type} and \texttt{std::false\_type}
+	\item After C+11, we introduced \texttt{std::true\_type} and \texttt{std::false\_type}.
 \begin{lstlisting}[frame=single, language=c++]
 template<class T, T v>
 struct integral_constant {
@@ -11711,62 +11637,49 @@ typedef integral_constant<bool,true> true_type;
 \end{lstlisting}
 
 
-\item \textbf{std::true\_type use inegral\_constant(type generator)to define a new type.} \newline 
-\textbf{is\_arithmetic derived form true\_type or false\_type.}
+\item \texttt{std::true\_type} use \texttt{integral\_constant}(type generator)to define a new type. \newline 
+\texttt{is\_arithmetic} derived form \texttt{true\_type} or \texttt{false\_type}.
 \begin{lstlisting}[numbers=none]
 std::integral_constant<bool, true>
 
 template< class T >
-struct is_arithmetic : std::integral_constant<bool,
-std::is_integral<T>::value ||
-std::is_floating_point<T>::value> { };
+struct is_arithmetic : std::integral_constant<bool, std::is_integral<T>::value ||
+							std::is_floating_point<T>::value> { };
 \end{lstlisting}
-\begin{description}
-	\item[Source code:] \texttt{is\_arithmetic} is a kind of trait, When you input T, it return a unnamed type,but it inherit from \texttt{ture\_type}, Then use overload resolving.
-\end{description}
 
-	\item Rules need to be follow when you build trait.
+	\item Rules need to be follow when you build type trait.
 	
 	\begin{enumerate}
 		\item most common usage of trait is member constants ::value, such as \texttt{is\_integer<T>::value}
 		
-		\item You use a template structure, usually named with the type trait you are after. Eg) \texttt{is\_integer, is\_pointer, is\_void}. The structure contains a static const bool named value which defaults to a sensible state. You use a type trait by querying its value, like: \texttt{my\_type\_trait<T>::value}
-	
-		\item A good article is "A simple introduction to type traits"
+		\item You use a template structure, usually named with the type trait you are after. Eg) \texttt{is\_integer, is\_pointer, is\_void}. The structure contains a static const bool named value which defaults to a sensible state. You use a type trait by querying its value, like: \texttt{my\_type\_trait<T>::value}. A good article is "A simple introduction to type traits"
 	\end{enumerate}
 
-\subsection{Use predefined type}
-
-\item Another kind of implementation is use predefined type. An example can be found in iterator and container.
+	\item Another kind of implementation is to use predefined type. An example can be found in iterator and container.
 
 \begin{lstlisting}[frame=single, language=c++]
-struct random_access_iterator_tag: 
-public bidirectional_iterator_tag {};
+struct random_access_iterator_tag: public bidirectional_iterator_tag {};
 
 template < ... > // template params elided
 class deque {
 	class iterator {
 		public:
-		typedef random_access_iterator_tag 
-						iterator_category;
+		typedef random_access_iterator_tag iterator_category;
 	};		
 \end{lstlisting}
 \begin{description}
-	\item[Line 8:] Insider deque, we define iterator type. Inside iterator type, we define \texttt{iterator\_category}
+	\item[Line 7:] Insider deque, we define iterator class. We define \texttt{iterator\_category} inside iterator class. 
 \end{description}
 
-\item Then we can use iterator\_traits to get iterator\_category defined inside deque.
+	\item Then we can use \texttt{iterator\_traits} to get \texttt{iterator\_category} defined inside deque.
 \begin{lstlisting}[frame=single, language=c++]
 template<typename IterT>
 struct iterator_traits {
-	typedef typename IterT::iterator_category 
-	iterator_category;
+	typedef typename IterT::iterator_category iterator_category;
 };
-
-//the type of iterator_traits<deque>::iterator_category is random_access_iterator_tag
 \end{lstlisting}
 
-\item Why don't we use iterator\_category inside of deque directly. With help of trait, we can build partial specification version for pointer, In this way, iterator\_traits also can deal with pointer.(array in C++)
+	\item Why don't we use \texttt{iterator\_category} inside of deque directly. With help of trait, we can build partial specification version for pointer, In this way, \texttt{iterator\_traits} also can deal with pointer. (array in C++)
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T> // partial template specialization
 struct iterator_traits<T*>{ // for built-in pointer types
@@ -11774,14 +11687,12 @@ struct iterator_traits<T*>{ // for built-in pointer types
 };
 \end{lstlisting}
 
-
-
 \subsection{SFINAE(Type deduct) to build trait}
 \subsubsection{Before C++ 11}
 
-\item You also can understand it SFINAE."Substitution Failure Is Not An Error". Compiler will try type deduct when it instantiate the template function or template class. when it can't deduct properly, compiler will search for another option instead of report error. 
+	\item You also can understand it SFINAE. "Substitution Failure Is Not An Error". Compiler will try type deduct when it instantiate the template function or template class. when it can't deduct properly, compiler will search for another option instead of report error. 
 	
-\item Use \texttt{sizeof} and \texttt{static\_cast}, these two can be executed at compile time. For example, we want to test if a class derived from another class.
+	\item Use \texttt{sizeof} and \texttt{static\_cast}, these two can be executed at compile time. For example, we want to test if a class derived from another class.
 \begin{lstlisting}[frame=single, language=c++]
 template<typename D, typename B>
 class IsDerivedFromHelper{
@@ -11791,9 +11702,7 @@ class IsDerivedFromHelper{
 	static Yes Test( B* );
 	static No Test( ... );
 	public:
-	enum {Is = sizeof(Test(static_cast<D*>(0)))
-	                             == sizeof(Yes) };
-	
+	enum {Is = sizeof(Test(static_cast<D*>(0))) == sizeof(Yes) };
 };
 	
 template <class C, class P> 
@@ -11807,19 +11716,18 @@ bool IsDerivedFrom() {
 	\item After C++11, you can use constexpr instead of sizeof, and \textbf{decltype and declval also get type in the compiling time.}. 
 	
 	
-	\item We test if the type has "serialize" member function by using decltype and declval.
+	\item We test if the type has "serialize" member function by using \texttt{decltype} and \texttt{declval}.
 	
 \begin{lstlisting}[frame=single, language=c++]
 template <class T> 
 struct hasSerialize{
-	
 	template <typename C>
 	static constexpr 
 	decltype(std::declval<C>().serialize(), bool())
 	test(int /* unused */){
 		return true;
 	}
-	
+
 	template <typename C>
 	static constexpr bool test(...){
 		return false;
@@ -11831,46 +11739,38 @@ struct hasSerialize{
 \end{lstlisting}
 	
 	\begin{enumerate}
-		\item template class hasSerialize accepts T, then input it line 17.
+		\item template class \texttt{hasSerialize} accepts \texttt{T}, we usually use \texttt{hasSerialize<Foo>:value}.
 		
-		\item two overload template test functions. One return true, default return false. \textbf{Why do we still need different template member function test?} That is because SFINAE only happens in template type deduction phrase, we build two template member function with typename C
+		\item Two overload template test functions. One return true, default return false. \textbf{Why do we still need different template member function test?} That is because SFINAE only happens in template type deduction phrase, we build two template member function with typename C
 		
 		\item In the funciton which return true, use decltype and declval to simulate call some functions you want to judge. make these type used in function parameter or return. 
 		
 		\item Pay attention to the usage of \texttt{static constexpr bool}. Use test function to initialized \textbf{constexpr value} 
 	\end{enumerate}
 
-	\item Or we can use true\_type directly, it will make source code look simple.
+	\item Or we can use \texttt{true\_type} directly, it will make source code look simple.
 
 \begin{lstlisting}[frame=single, language=c++]
 // Primary template, inherit from std::false_type.
-// ::value will return false. 
-// Note: the second unused template parameter is set to default as std::string!!!
 template <typename T, typename = std::string>
-struct hasSerialize
-: std::false_type { };
+struct hasSerialize : std::false_type { };
 
 // Partial template specialisation, inherit from std::true_type.
-// ::value will return true. 
 template <typename T>
-struct hasSerialize<T, decltype(std::declval<T>().serialize())>
-: std::true_type { };
+struct hasSerialize<T, decltype(std::declval<T>().serialize())> : std::true_type { };
 \end{lstlisting}
 
-	\item Use void\_t
+	\item Use \texttt{void\_t} to judge if has \texttt{reserve()} member function in type \texttt{T}.
 \begin{lstlisting}[frame=single, language=c++]
 template <typename T,
 typename = void_t<>>
 struct has_reserve : false_type {};
 
 template <typename T>
-struct has_reserve<
-T, void_t<decltype(
-declval<T&>().reserve(1U))>>
-: true_type {};
+struct has_reserve<T, void_t<decltype(declval<T&>().reserve(1U))>>: true_type {};
 \end{lstlisting}
 		
-	\item use is\_valid
+	\item use \texttt{is\_valid}
 \begin{lstlisting}[frame=single, language=c++]
 #include <boost/hana.hpp>
 #include <type_traits>
@@ -11888,57 +11788,6 @@ auto foo(T const& t)
 { }
 \end{lstlisting}
 
-	
-	
-\subsubsection{If T is member function type}
-	\item How to deal with member function pointer? Given an example code below, if you want to have member function pointer, its type should be: \texttt{int (A::*)() const \&} 
-\begin{lstlisting}[frame=single, language=c++]
-	struct A {
-		int fun() const&;
-	};
-	typedef int FunSignature() const&;
-	FunSignature A::*p = &A::fun;
-\end{lstlisting}
-\item When we want to use template class to deduct it, it can be used in \textbf{\texttt{U T::*}}.
-\begin{lstlisting}[frame=single, language=c++]
-	struct A {
-		int fun() const&;
-	};
-	
-	template<class T, class U>
-	struct PM_traits<U T::*> {
-		using member_type = U;
-	};
-	
-	int main() {
-		using T = PM_traits<decltype(&A::fun)>::member_type; 
-		// T is int() const&
-	}
-\end{lstlisting}
-
-\item Based on previous knowledge, we can implement 
-\begin{lstlisting}[frame=single, language=c++]
-	template< class T >
-	struct is_member_function_pointer_helper : std::false_type {};
-	
-	template< class T, class U>
-	struct is_member_function_pointer_helper<T U::*> :
-	std::is_function<T> {};
-	
-	template< class T >
-	struct is_member_function_pointer : 
-	is_member_function_pointer_helper<
-	std::remove_cv_t<T>  {};
-	
-	class A {
-		public:
-		void member() { }
-	};
-	// output 0 if A::member is a data member and not a function
-	cout<<std::is_member_function_pointer<
-	decltype(&A::member)>::value
-\end{lstlisting}
-
 \subsubsection{ If T is function type? }
 
 \item This is example to test if T is function.
@@ -11949,12 +11798,12 @@ struct IsFunction{
 	// int *p[1], that is array of pointer .
 	template <typename C> 
 	static constexpr bool test(C (*)[1] ){
-		return true;
+		return false;
 	}
 	
 	template <typename C> 
 	static constexpr bool test(...){
-		return false;
+		return true;
 	}
 	//use 0 as pretend pointer.
 	static constexpr bool value = test<T>(0);
@@ -11964,7 +11813,7 @@ int f();
 IsFunction<decltype(f)>::value; //value is true 
 \end{lstlisting}
 \begin{description}
-		\item[Line 6:] Why we need declare a pointer to array? it will make line 14 easier, we can just use 0 as pretend pointer.
+	\item[Line 6:] Why we need declare a pointer to array? it will make line 14 easier, we can just use 0 as pretend pointer.
 	\item[Source code:] There is three types you can't use to declare array, 1) void, 2) reference and 3) function type.  About function type, I will introduce below. 
 \end{description}
 
@@ -11974,25 +11823,72 @@ IsFunction<decltype(f)>::value; //value is true
 typedef int FT(); //FT is type
 
 int f();  //f is variable
-FT* fp= f; 
+FT* fp= f;  //Usage of FT : fp is variable and type is function pointer
 
 FT fv; 
 void fv(){...} 
 \end{lstlisting}
 	\begin{description}
-		\item[Line 4:] usage of FT : fp is variable and type is function pointer
-		\item[Line 6:] just like int fv(); declare a function. How to define this variable make it linkable? Just like common funciton definition.
+
+		\item[Line 6:] just like \texttt{int fv();} declare a function. How to define this variable make it linkable? Just like common function definition.
 	\end{description}
 	
 	\item You can not define function type array.
 \begin{lstlisting}
 typedef int FT(); //FT is type
-FT fa[3]; 
+FT fa[3]; //compile error, error: declaration of 'fa' as array of functions
 \end{lstlisting}
-	\begin{description}
-		\item[Line 2:] compile error, error: declaration of 'fa' as array of functions
-	\end{description}
+
 \end{enumerate}
+\end{itemize}
+
+\subsubsection{If T is member function type}
+\begin{itemize}
+	\item How to deal with member function pointer? Given an example code below, if you want to have member function pointer, its type should be: \texttt{int (A::*)() const \&} 
+\begin{lstlisting}[frame=single, language=c++]
+struct A {
+	int fun() const&;
+};
+typedef int FunSignature() const&;
+FunSignature A::*p = &A::fun;
+\end{lstlisting}
+\item When we want to use template class to deduct it, it can be used in \textbf{\texttt{U T::*}}.
+\begin{lstlisting}[frame=single, language=c++]
+struct A {
+	int fun() const&;
+};
+
+template<class T, class U>
+struct PM_traits<U T::*> {
+	using member_type = U;
+};
+
+int main() {
+	using T = PM_traits<decltype(&A::fun)>::member_type; 
+	// T is int() const&
+}
+\end{lstlisting}
+
+\item Based on previous knowledge, we can implement 
+\begin{lstlisting}[frame=single, language=c++]
+template< class T >
+struct is_member_function_pointer_helper : std::false_type {};
+
+template< class T, class U>
+struct is_member_function_pointer_helper<T U::*> :std::is_function<T> {};
+
+template< class T >
+struct is_member_function_pointer : is_member_function_pointer_helper<
+                        std::remove_cv_t<T>  {};
+
+class A {
+	public:
+	void member() { }
+};
+// output 0 if A::member is a data member and not a function
+cout<<std::is_member_function_pointer<decltype(&A::member)>::value
+\end{lstlisting}
+\end{itemize}
 
 \subsection{is\_valid}
 
@@ -12010,7 +11906,7 @@ struct l5UnamedType{
 };	
 \end{lstlisting}
 	
-	\item We can use generic lambda to build is\_valid template
+	\item We can use generic lambda to build \texttt{is\_valid} template
 	
 \begin{lstlisting}[numbers=none]
 template <typename UnnamedType> struct container
@@ -12061,30 +11957,25 @@ hasSerialize(foo);
 	\includegraphics[scale=0.59]{pics/is_valid.png}
 \end{center}
 
-
-
 \end{itemize}
 
 
 
-\subsection{summary}
-	
-	\item summary: Common type traits implementation methods which are introduced in previous sections. 
+\subsection{Summary}
+\begin{itemize}
+	\item Common type traits implementation methods which are introduced in previous sections. 
 	\begin{enumerate}
 		\item template specification: \texttt{is\_integer}
 		\item use basic trait: \texttt{is\_swap}
-		\item use template parameter deduciton : std::is\_function and
-		is\_member\_function, is\_array, is\_class(T::*)
+		\item use template parameter deduciton : \texttt{std::is\_function} and
+		\texttt{is\_member\_function}, \texttt{is\_array}, \texttt{is\_class(T::*)}
 		\item define trait in existing class : \texttt{iterator\_trait}.
-		\item overload template function, deduct return or function parameter based on template parameter T's expression:  \texttt{has\_serialize}, isIsFunction
+		\item overload template function, deduct return or function parameter based on template parameter T's expression:  \texttt{has\_serialize}, \texttt{IsFunction}
 	\end{enumerate}
 
 	\item There are two articles which are good.
 "An introduction to C++'s SFINAE concept: compile-time introspection of a class member" and "checking expression validity in-place with C++17"
 \end{itemize}
-
-
-
 
 \section{Usage of type trait}
 
@@ -12092,7 +11983,7 @@ hasSerialize(foo);
 \begin{itemize}
 	\item A famous usage of tag dispatch is iterator 
 	\begin{enumerate}
-		\item Pay attention to iterator\_traits. Why do we use it here? It's a template. With specialization, it can support common pointer type.
+		\item Pay attention to \texttt{iterator\_traits}. Why do we use it here? It's a template. With specialization, it can support common pointer type.
 		
 		\item Client side may or may not be template. For advance, it should be template, because it need template parameter Inputiterator.
 		
@@ -12125,7 +12016,7 @@ void advance(InputIterator& i, Distance n) {
 }	
 \end{lstlisting}	
 
-    \item use true\_type or flase\_type in tag dispatch.
+    \item use \texttt{true\_type} or \texttt{flase\_type} in tag dispatch.
 \begin{lstlisting}[numbers=none]
 template <typename T>
 int foo_impl(T value, std::true_type) {
@@ -12144,10 +12035,10 @@ auto foo(T value) {
 }
 \end{lstlisting}
 \begin{description}
-	\item[Source code] Overload function can return different types. foo's return type is 'int' if it calls the 'std::true\_type' overload and 'double' if it calls the 'std::false\_type' overload. So here we use auto as function return type.
+	\item[Source code] Overload function can return different types. foo's return type is \texttt{int} if it calls the \texttt{std::true\_type} overload and \texttt{double} if it calls the \texttt{std::false\_type} overload. So here we use \texttt{auto} as function return type.
 \end{description}
 
-\item Another example	
+\item Another example to use tag dispatch method.
 	
 \begin{lstlisting}[numbers=none]
 template <typename T>
@@ -12167,7 +12058,6 @@ auto get_value(T t) {
 \end{lstlisting}	
 \end{itemize}
 
-
 \subsection{enable\_if}
 \begin{itemize}
 	
@@ -12183,7 +12073,7 @@ struct enable_if<true, T> {
 };	
 \end{lstlisting}	
 
-\item When we make the call do(25), the compiler selects the first overload: since the condition std::is\_integral<int> is true, the specialization of struct enable\_if for true is used, and its internal type is set to int. The second overload is omitted because without the true specialization (std::is\_class<int> is false) the general form of struct enable\_if is selected, and it doesn't have a type, so the type of the argument results in a substitution failure.
+\item When we make the call do(25), the compiler selects the first overload: since the condition \texttt{std::is\_integral<int>} is true, the specialization of struct \texttt{enable\_if} for true is used, and its internal type is set to int. The second overload is omitted because without the true specialization (\texttt{std::is\_integral<int>} is false) the general form of struct \texttt{enable\_if} is selected, and it doesn't have a type, so the type of the argument results in a substitution failure.
 
 \begin{lstlisting}[numbers=none]
 template <typename T>
@@ -12215,8 +12105,6 @@ serialize(const T& obj){
 	return to_string(obj);
 }	
 \end{lstlisting}	
-	
-	
 	
 	\item This technology has been used widely inside of vector.
 \begin{lstlisting}[frame=single, language=c++]
@@ -12252,8 +12140,8 @@ auto get_value(T t){
 
 		\item We can also use \texttt{enable\_if} to "delete" a function for certain type. There are three points you can learn from below source code:
 		\begin{enumerate}
-			\item enable\_if can be used in template parameter deduction. Neither function paramer nor function return.
-			\item pay attention \_t and \_v.
+			\item \texttt{enable\_if} can be used in template parameter deduction. Neither function paramer nor function return.
+			\item pay attention \texttt{\_t} and \texttt{\_v}.
 			\item Default template parameter \texttt{T\_= T} and unnamed template parameter: \texttt{typename = ...}
 		\end{enumerate}
 \begin{lstlisting}[numbers=none]
@@ -12310,12 +12198,11 @@ void append(C& container, T* ptr, size_t size)
 }
 \end{lstlisting}
 
-    \item You can use enable\_if too. The syntax is little "bloat" compared with true\_type dispatch. But one advantage of enable\_if is that you can use it not only in dispatch to two different implementations, but also filter a valid type to generate valid code, for invalid type, if you don't provide !has\_reserve<C> match, it will generate compiling error directly.
+    \item You can use \texttt{enable\_if} too. The syntax is little "bloat" compared with \texttt{true\_type} dispatch. But one advantage of \texttt{enable\_if} is that you can use it not only in dispatch to two different implementations, but also filter a valid type to generate valid code, for invalid type, if you don't provide \texttt{!has\_reserve<C>} match, it will generate compiling error directly.
 \begin{lstlisting}
 template <typename C, typename T>
 enable_if_t<has_reserve<C>::value>
-append(C& container, T* ptr, size_t size)
-{
+append(C& container, T* ptr, size_t size){
     container.reserve(container.size() + size);
     for (size_t i = 0; i < size; ++i) {
     	container.push_back(ptr[i]);
@@ -12324,8 +12211,7 @@ append(C& container, T* ptr, size_t size)
 
 template <typename C, typename T>
 enable_if_t<!has_reserve<C>::value>
-append(C& container, T* ptr, size_t size)
-{
+append(C& container, T* ptr, size_t size){
 	for (size_t i = 0; i < size;  ++i) {
         container.push_back(ptr[i]); 
     }
@@ -12336,9 +12222,8 @@ append(C& container, T* ptr, size_t size)
 
 \begin{lstlisting}[numbers=none]
 template <typename C, typename T>
-auto append(C& container, T* ptr, size_t size)
--> decltype( declval<C&>().reserve(1U), void()) 
-{
+auto append(C& container, T* ptr, size_t size)-> 
+              =decltype( declval<C&>().reserve(1U), void()){
 	container.reserve( container.size() + size);
 	for (size_t i = 0; i < size; ++i) {
 		container.push_back(ptr[i]);
@@ -12346,7 +12231,7 @@ auto append(C& container, T* ptr, size_t size)
 }
 \end{lstlisting}
 
-\item use if constexpr
+\item use \texttt{if constexpr}
 \begin{lstlisting}
 template <typename C, typename T>
 void append(C& container, T* ptr, size_t size){
@@ -12367,28 +12252,31 @@ concept HasReserve = requires(T a){
 
 template <HasReserve C, typename T>
 void append(C& container, T* ptr, size_t size){
-    if constexpr (has_reserve<C>::value) {
-        container.reserve(container.size() + size);
-    }
+    container.reserve(container.size() + size);
     for (size_t i = 0; i < size; ++i) {
         container.push_back(ptr[i]);
     }
 } 
 \end{lstlisting}
 \begin{description}
-    \item[line 6:] You can see that we use HasReserve here directly. The whole code is very clear, That is why we call concetp as "future of generic programming" 
+    \item[line 6:] You can see that we use \texttt{HasReserve} here directly. The whole code is very clear, That is why we call concetp as "future of generic programming" 
 \end{description}
+
+
 
 \end{itemize}
 
-\subsection{summary}
+\subsection{Summary}
 \begin{itemize}
 	\item \textbf{use a few ways to implement type trait, then use enable\_if or other static dynamic to use type trait to get generic programming(static polymorphism); That is generic programming basic idea.}
+	
 	\item The static dynamic idea is illustrated below:
 
 \begin{center}
 	\includegraphics[scale=0.9]{pics/tag_dispatch.png}
 \end{center}
+
+	\item For type\_trait side, we introduced two main methods. In "SFINAE(Type deduct) to build trait" section, we use these two methods to implement \texttt{hasSerialize}. After C++ 14, we recommend to use \texttt{void\_t} method. But after C++ 20, we strongly recommend to use \textbf{concept}. On the other side, as a client, we mainly use \texttt{enable\_if} and tag dispatch. But after C++17, we strongly recommend use \texttt{if constexpr}.
 	
 \end{itemize}
 
@@ -12448,7 +12336,7 @@ template<typename T> // size-independent base class for
 class SquareMatrixBase { // square matrices
 protected:
 	...
-	void invert(std::size_t matrixSize); 
+	void invert(std::size_t matrixSize); //invert matrix of the given size.
 	...
 };
 	
@@ -12458,13 +12346,11 @@ private:
 	using SquareMatrixBase<T>::invert; 
 public:
 	...
-	void invert() { invert(n); } 
+	void invert() { invert(n); }  //make inline call to base class
 	}; // version of invert
 \end{lstlisting}
 \begin{description}
-	\item[Line 5:] invert matrix of the given size.
 	\item[Line 12:] make base class version of invert visible in this class; see Items 33 and 43
-	\item[Line 15:] make inline call to base class
 \end{description}
 
 	
@@ -12520,27 +12406,16 @@ class WidgetManager : public CreationPolicy{
 typedef WidgetManager< OpNewCreator<Widget> > MyWidgetMgr; 
 \end{lstlisting}
 
-    \item private inheritance is not the first choice, but the last choice For above example, you don't need private inheritance, you can use previous section "Templates Parameterized by independent class". It's much clear. If policy class has protect member function which we want to use, at this time. private inheritance is our last choice. 
+    \item Private inheritance is not the first choice, but the last choice For above example, you don't need private inheritance, you can use previous section "Templates Parameterized by independent class". It's much clear. If policy class has protect member function which we want to use, at this time. private inheritance is our last choice. 
 
 \end{itemize}
 
 \subsection{template and friend}
 \begin{itemize}
-	\item You can have:
-	\begin{enumerate}
-		\item friend class.
-		\item friend function.
-		\item friend template.
-	\end{enumerate}
-
-	At the same time, they can be bound or non-bound. If it's bound, you can find host class parameter T in the friend declaration. 
+	\item You can have: 1) friend class, 2) friend function, 3) friend template. At the same time, they can be bound or non-bound. If it's bound, you can find host class parameter T in the friend declaration. 
 	
-	\item  There are three different kinds for a template class:
-	\begin{enumerate}
-		\item Non-template friend.
-		\item Bound-template.
-		\item Unbound-template.
-	\end{enumerate}
+	\item  There are three different kinds for a template class:1) Non-template friend, 2) Bound-template, 3) Unbound-template.
+
 
 \begin{lstlisting}
 template<typename T>
@@ -12549,7 +12424,7 @@ class HasFriend{
 }
 \end{lstlisting}
 \begin{description}
-	\item[Line 3:] Non-template friend function counts(), The counts is not invoked by an HasFriend obj and has not object parameters.  If counts want to access a HasFriend object, It can access a global one, and use a global pointer to access non-global object.
+	\item[Line 3:] Non-template friend function \texttt{counts()}, The counts is not invoked by an HasFriend obj and has not object parameters.  If counts want to access a HasFriend object, It can access a global one, and use a global pointer to access non-global object.
 \end{description}
 	
 	\item Bound-template friend function. You need to define explicit specialization for the friends you plan to use. Why, because \textbf{1)reports is not template function. 2) reports is not function defintion, 3) report is just function declaration.}
@@ -12589,8 +12464,11 @@ class HasFriend{
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 class ManyFriend{
+private:
+	item;
+	
 	template<typename C, typename D>
-	friend void show(C& , D&);
+	friend void show2(C& , D&);
 };
 	
 template <typename C, typename D> void show2(c& c, D& d){
@@ -12701,7 +12579,7 @@ std::basic_string<char,custom_traits> str ("Test");
 std::cout<< "found at position" <<str.find('t') ;
 \end{lstlisting}
 \begin{description}
-	\item[Line 13:] some (non-conforming) implementations of basic\_string::find call this instead of eq:
+	\item[Line 13:] some (non-conforming) implementations of \texttt{basic\_string::find} call this instead of eq:
 \end{description}
 
 	
@@ -13147,7 +13025,7 @@ class Task: private LogPolicy, TimePolicy{
 
 \subsubsection{summary}
 \begin{itemize}
-	\item Basic idea is illustrated below:
+	\item Basic idea is illustrated below: This figure is very important and worth digging in and understand more. Fox example, for \texttt{Class Foo: T}, we can call it as policy idiom if we focus Foo. We can also call it as Mixin idiom if we focus on T. In Mixin idiom, Foo just want to add some functionality into T. CRTP has the same distinguishing idea. If we focus on parent class, we want to use static dynamic. If we focus on child class, we just want to add some functionality to child class. A typical usage for this idea is \texttt{std::enable\_shared\_from\_this}. 
 
 		\includegraphics[width=0.9\linewidth]{pics/mixin.png}
 
@@ -13168,11 +13046,9 @@ class Task: private LogPolicy, TimePolicy{
 
 \subsubsection{type erasure}
 \begin{itemize}
-\item When you implement type erasure, it always starts with making a list of the things you want to be able to do with your type-erased object - call it, destroy it, copy it, and so on. For example, \textbf{A std::function affords copying and calling}. A std::any affords copying, but not calling. A unique\_function affords calling and moving, but not copying.
+\item When you implement type erasure, it always starts with making a list of the things you want to be able to do with your type-erased object - call it, destroy it, copy it, and so on. For example, \textbf{A std::function affords copying and calling}. A \texttt{std::any} affords copying, but not calling. A \texttt{unique\_function} affords calling and moving, but not copying.
 
-\item Each accordance in your requirement list turns into a virtual member function of AbstractWhatever, which will be overridden by WrappingWhatever<T> appropriately for T. Finally, the top-level Whatever will store a unique\_ptr<AbstractWhatever> ptr\_ (and/or an SBO buffer), and provide a clean non-virtual interface implemented completely in terms of calling virtual member functions on *ptr\_.
-
-\item An implementation design is illustrated by below picture:
+\item Each accordance in your requirement list turns into a virtual member function of\texttt{ AbstractWhatever}, which will be overridden by \texttt{WrappingWhatever<T>} appropriately for T. Finally, the top-level Whatever will store a\texttt{ unique\_ptr<AbstractWhatever> ptr\_} (and/or an SBO buffer), and provide a clean non-virtual interface implemented completely in terms of calling virtual member functions on \texttt{*ptr\_}. An implementation design is illustrated by below picture:
 
 \includegraphics[scale=0.9]{pics/function1.png}
 
