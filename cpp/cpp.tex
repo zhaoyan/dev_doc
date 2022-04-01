@@ -20410,37 +20410,869 @@ counter++;
     \item Using lock free architecture unless absolutely needed. 
 \end{itemize}
 
-%\chapter{Internet}
-%\begin{itemize}
-	%\item muduo::InetAddress wrap sockaddr\_in, it just address, and use INADDR\_ANY on server side. then use port which specified by the user. 
-	
-	%\item TcpServer, need a loop and InetAddress.
-%\begin{lstlisting}[numbers=none]
-%typedef std::map<std::string, TcpConnectionPtr> ConnectionMap;
+\chapter{Internet}
+\section{protocal}
+\begin{itemize}
+	\item level
+	\begin{enumerate}
+		\item application: DHCP, HTTP, RPC
+		\item Transport: UDP, TCP
+		\item Net: ICMP, IP
+		\item link: ARP, VLAN, STP
+		\item Phsics: net cable
+	\end{enumerate}
 
-%EventLoop* loop_;  // the acceptor loop
-%const std::string name_;
-%boost::scoped_ptr<Acceptor> acceptor_; // avoid revealing Acceptor
-%ConnectionCallback connectionCallback_;
-%MessageCallback messageCallback_;
-%bool started_;
-%int nextConnId_;  // always in loop thread
-%ConnectionMap connections_;
-%\end{lstlisting}
+	\item run ifconfig or ip addr
+\begin{lstlisting}
+root@test:~# ip addr
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default
+	link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+	inet 127.0.0.1/8 scope host lo
+	valid_lft forever preferred_lft forever
+	inet6 ::1/128 scope host
+	valid_lft forever preferred_lft forever
+
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+	link/ether fa:16:3e:c7:79:75 brd ff:ff:ff:ff:ff:ff
+	inet 10.100.122.2/24 brd 10.100.122.255 scope global eth0
+	valid_lft forever preferred_lft forever
+	inet6 fe80::f816:3eff:fec7:7975/64 scope link
+	valid_lft forever preferred_lft forever
+\end{lstlisting}
+mtu is maximum transport unit. qdisc is queue discipline.  Pfifo_fast has three queues. scope global can get data from outside. scope host only get data from local, such as lo(loopback).  mac address used inside subnet. and ip used for navigate.  know the 10.100.122.2/24 format. 
+
+\item sudo ifconfig eth0 10.0.0.1/24 
+
+\item  ICMP is internet control Message Protocol. 
+
+\item  For IP, you need to router and NAT 
+
+\item For TCP.
+\begin{enumerate}
+	\item Three shakes. four waves.
+	\item what is RST
+	\item advistise windows. 
+	\item relationship 
+\end{enumerate}
+
+\end{itemize}
+\section{socket}
+\subsection{address}
+\begin{itemize}
+	\item Basic internet ip4 address structure
+\begin{lstlisting}
+struct sockaddr_in {
+	short            sin_family;   // e.g. AF_INET
+	unsigned short   sin_port;     // e.g. htons(3490)
+	struct in_addr   sin_addr;     // see struct in_addr, below
+	char             sin_zero[8];  // zero this if you want to
+};
+
+struct in_addr {
+	unsigned long s_addr;  // load with inet_aton()
+};
+\end{lstlisting}	
+	\item basic address struct. We use PF\_ to init socket, and use AF\_ to initialize  address. When we use this? we use this generic type in bind function, Any specific address( ip4) need to be casted when you pass it into the bind.  
+\begin{lstlisting}
+	typedef unsigned short int sa_family_t;
+	
+	struct sockaddr{
+		sa_family_t sa_family; /* address family. 16-bit*/
+		char sa_data[14]; /* address 112-bit */
+	};
+	
+	//AF_LOCAL, AF_INET , AF_INET6
+\end{lstlisting}
+	
+	\item An example. In Server, you should specify port, but when you use in client, you don't need to specify port.
+\begin{lstlisting}
+int listenfd, connfd;
+socklen_t clilen;
+struct sockaddr_in cliaddr, servaddr;
+
+listenfd = socket(AF_INET, SOCK_STREAM, 0);
+//fcntl(listenfd, F_SETFL, O_NONBLOCK);  //that is for test.
+
+bzero(&servaddr, sizeof(servaddr));
+servaddr.sin_family = AF_INET;
+servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+servaddr.sin_port = htons(12345);
+
+/* bind local and port is 12345 */
+bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
+/* listen's backlog is 1024 */
+listen(listenfd, 1024);
+
+/* loop  */
+for (;;) {
+	clilen = sizeof(cliaddr);
+	connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen);
+	read_data(connfd);   /* read data */
+	close(connfd);          /* close link socket, not listening socket.*/
+}
+\end{lstlisting}
+\begin{description}
+	\item[Source code] descr
+\end{description}
+
+\item  client
+\begin{lstlisting}
+ int sockfd;
+struct sockaddr_in servaddr;
+
+if (argc != 2)
+error(1, 0, "usage: tcpclient <IPaddress>");
+
+sockfd = socket(AF_INET, SOCK_STREAM  , 0);
+
+bzero(&servaddr, sizeof(servaddr));
+servaddr.sin_family = AF_INET;
+servaddr.sin_port = htons(12345);
+inet_pton(AF_INET, argv[1], &servaddr.sin_addr);
+int connect_rt = connect(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
+if (connect_rt < 0) {
+	error(1, errno, "connect failed ");
+}
+fcntl(sockfd, F_SETFL, O_NONBLOCK); 
+send_data(sockfd);
+exit(0);                           
+\end{lstlisting}
+	
+\end{itemize}
+
+\subsection{read and write}
+\begin{itemize}
+	\item 
+\begin{lstlisting}
+//check the system default socket buffer
+int defRcvBufSize = -1;
+socklen_t optlen = sizeof(defRcvBufSize);
+if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &defRcvBufSize, &optlen) < 0)
+{
+	printf("getsockopt error=%d(%s)!!!\n", errno, strerror(errno));
+	goto error;
+}
+printf("OS default udp socket recv buff size is: %d\n", defRcvBufSize);
+
+
+set UDP SOCKET recieving buffer
+int rcvBufSize = atoi(argv[1]);
+if (rcvBufSize <= 0)
+{
+	printf("rcvBufSize(%d) <= 0, error!!!\n", rcvBufSize);
+	goto error;
+}
+printf("you want to set udp socket recv buff size to %d\n", rcvBufSize);
+optlen = sizeof(rcvBufSize);
+if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &rcvBufSize, optlen) < 0)
+{
+	printf("setsockopt error=%d(%s)!!!\n", errno, strerror(errno));
+	goto error;
+}
+printf("set udp socket(%d) recv buff size to %d OK!!!\n", sockfd, rcvBufSize);
+
+
+//check current UDP_SOCKET receiving buffer
+int curRcvBufSize = -1;
+optlen = sizeof(curRcvBufSize);
+if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &curRcvBufSize, &optlen) < 0)
+{
+	printf("getsockopt error=%d(%s)!!!\n", errno, strerror(errno));
+	goto error;
+}
+printf("OS current udp socket(%d) recv buff size is: %d\n", curRcvBufSize);
+\end{lstlisting}
+	
+	\item three output functions. The  only difference between send() and write(2) is the
+	presence of flags.  With a zero flags argument, send() is equivalent to  write(2).   Also,
+	the following call
+	
+\begin{lstlisting}
+ssize_t write (int socketfd, const void *buffer, size_t size)
+ssize_t send (int socketfd, const void *buffer, size_t size, int flags)
+ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags)	
+\end{lstlisting}
+	\item Once connect is built, OS will will build a buffer for this socket, When you use write, just copy data from your application to OS's buffer. then OS will use lower level to send out TCP package.
+	
+	\item In this way, when you write, there three possibles
+	\begin{enumerate}
+		\item OS's buffer is big enough, write return the size equal the data size.
+		\item OS's buffer is not big enough, write will suspend (block)
+	\end{enumerate}
+
+	\item when read, just read the most size, read return the actual number of byte.  if return EOF, it means that otherside send FIN,  if return -1, it means that error.
+\begin{lstlisting}
+ssize_t read (int socketfd, void *buffer, size_t size)	
+\end{lstlisting}	
+
+ \item if you want to specify readn, you need to write function like this.
+ 
+ \begin{lstlisting}
+
+ //from socketfd read "size" char
+ ssize_t readn(int fd, void *vptr, size_t size)
+ {
+ 	size_t nleft;
+ 	ssize_t nread;
+ 	char *ptr;
+ 	ptr = vptr;
+ 	nleft = size;
+ 	while (nleft > 0) {
+ 		if ( (nread = read(fd, ptr, nleft)) < 0) {
+ 			if (errno == EINTR)
+ 			nread = 0; // call read again.
+ 			else
+ 			return(-1);
+ 		} else if (nread == 0)
+ 		break;  //EOF(End of File) means close socket
+ 		nleft -= nread;
+ 		ptr += nread;
+ 	}
+ 	return(n - nleft); //return the actual read byte 
+ }
+ \end{lstlisting}
+
+\item non-block read, when no data, it will return immediate, return  EWOULDBLOCK or EAGAIN
+
+\item non-block write, it also return, but return value indicate how many has been written. In practical, you don't need to distinguish, just use a loop, but when in block, loop just run once.
+
+\begin{lstlisting}[numbers=none]
+# define MESSAGE_SIZE 10240000
+void send_data(FILE *fp, int sockfd)
+{
+	char * query;
+	query = malloc(MESSAGE_SIZE+1);
+	for(int i=0; i< MESSAGE_SIZE; i++){
+		query[i] = 'a';
+	}
+	query[MESSAGE_SIZE] = '\0';
+	const char *cp;
+	cp = query;
+	remaining = strlen(query);
+	while (remaining) {
+		n_written = send(sockfd, cp, remaining, 0);
+		fprintf(stdout, "send into buffer %ld \n", n_written);
+		if (n_written <= 0) {
+			perror("send");
+			return;
+		}
+		remaining -= n_written;
+		cp += n_written;
+		}
+	return;
+}
+\end{lstlisting}
+
+\item 
+\begin{tabular}{|c|c|c|c|}
+	\hline
+	& buffer in OS & block  & non-block  \\
+	\hline
+read	&  has data & return immediate & return immediate, EWOULDBLOCK or EAGAIN  \\
+	\hline
+read	& no data & wait block &  \\
+	\hline
+write	& send buffer avail & all data write to buffer than return & write as many as possible, then return  \\
+	\hline
+write	& send buffer not avail  & wait it avail & return immediate, EWOULDBLOCK or EAGAIN \\
+	\hline
+\end{tabular}
+
+When recieving buffer has data, read return immediately. When receiving buffer is empty, block will wait, non block will return -1 immediately. and has EWOULDBLOCK or  EAGAIN error
+
+
+different with read, block write only return when sending buffer get all app data. In non-block, write as much as possible, then return the actual number. 
+
+
+in block, write will return immediately when oppsite close the socket.  if you write again to such socket, socket will return failue(-1)
+
+
+
+
+
+\end{itemize}
+
+
+\begin{itemize}
+	\item muduo::InetAddress wrap sockaddr\_in, it just address, and use INADDR\_ANY on server side. then use port which specified by the user. 
+	
+	\item TcpServer, need a loop and InetAddress.
+\begin{lstlisting}[numbers=none]
+typedef std::map<std::string, TcpConnectionPtr> ConnectionMap;
+
+EventLoop* loop_;  // the acceptor loop
+const std::string name_;
+boost::scoped_ptr<Acceptor> acceptor_; // avoid revealing Acceptor
+ConnectionCallback connectionCallback_;
+MessageCallback messageCallback_;
+bool started_;
+int nextConnId_;  // always in loop thread
+ConnectionMap connections_;
+\end{lstlisting}
 	
 	%\item When TcpServer construct in test8.cc, it create a new acceptor. The new acceptor includes 
 	
 %\end{itemize}
-\chapter{Common libs}
-\section{gmock}
+
+\chapter{Test}
+\section{TDD}
+\begin{itemize}
+	\item When doing TDD, you write the tests first. You strive to keep the granularity of tests small and consistent. You don't seek to write tests that cover a wide swath of functionality. The responsibility for such end-to-end tests lies elsewhere, perhaps in the realm of acceptance tests/ or system tests. 
+	
+	\item three step
+	\begin{enumerate}
+		\item Write a test(red)
+		\item write the test to pass(green)
+		\item Optimize the design(refactor)
+	\end{enumerate}
+
+	\item explanation of three steps. 
+	\begin{enumerate}
+		\item Write a test(red): describe expected feature. 
+		
+		\item write the test to pass(green): code is logic right and suitable. because we make it pass the test, and the test is our expected feature, so the code is \textbf{both we want and right}.
+		
+		\item Optimize the design(refactor): When the basic code is right, we need to improve it on the whole code base.  Why we have confidence to refactor, because when we finish the refactor, we can use tests to approve it. 
+		
+		\item test behavior, not methods. think of your tests as examples that describe, or document, the behavior of your system. 
+		
+		\item if your code make a test fail and you cann't resolve it within 10mins. maybe you should discard your current effort and start over. Do I need to follow this rule strictly. 
+		
+		\item When you find defect, also follow test fail, write code to pass and refactor.
+		
+	\end{enumerate}
+	
+\end{itemize}
+\section{gtest}
 \subsection{install}
 \begin{itemize}
-    \item download gtest from github.
-    \item cd source\_dir and mkdir build
-    \item cd buil and cmake ..
-    \item make 
-    \item sudo make install. it will copy .h file and lib files to \usr\local\include and \usr\local\lib
+	\item download gtest from github.
+	\item cd source\_dir and mkdir build
+	\item cd buil and cmake ..
+	\item make 
+	\item sudo make install. it will copy .h file and lib files to 
+	\begin{lstlisting}
+		\usr\local\include and \usr\local\lib
+	\end{lstlisting}
 \end{itemize}
+
+\subsection{Basic}
+\begin{itemize}
+	\item build test directory and put cmake there. and put all tests source code parallel with the normal source code.
+	
+	\item  You disable a test by prepending DISABLED\_ to its name.  Don't check in code with disabled tests unless you have a really good reason.
+\begin{lstlisting}
+TEST(ATweet, DISABLED_RequireUserNameToStartWithAnAtSign)
+\end{lstlisting}
+
+	\item Basic usage.
+	
+\begin{lstlisting}
+#include "gtest/gtest.h"
+int Add(int i, int j){
+	return i+j;
+}
+
+TEST(AddTest, Positive){
+	EXPECT_EQ(Add(2,3), 4);
+}
+//Don't need to write main if you don't have specific requirement.
+g++ test.cpp -lgtest_main -lgtest -lpthread
+\end{lstlisting}
+
+\item you can omit the main function in your code.
+\begin{lstlisting}
+int main(int argc, char ** argv){
+	testing::InitGoogleTest(&argc, argv);
+	return RUN_ALL_TESTS();
+}
+
+//If you write you onw main use blow to compile. 
+g++ test.cpp  -lgtest -lpthread
+//Don't put -lpthread in front of -lgtest. because lgtest still use pthread, if put it in front of -lgtest, it will report compiling error.
+\end{lstlisting}
+
+\item That give me a good clue. write TEST case in separate file then use -lgtest\_main to compile it. 
+
+\item You can also use matcher, but you have to include gmock.h and use testing namespace.
+\begin{lstlisting}
+#include "gtest/gtest.h"
+#include "gmock/gmock.h"
+
+using namespace testing;
+
+int Add(int i, int j){
+	return i+j;
+}
+
+TEST(AddTest, Positive){
+	EXPECT_THAT(Add(2,3), Ge(8)) <<"2+3 is bigger than 8";
+}
+
+// use << to output customized message. 
+//g++ test.cpp  -lgtest -lpthread
+\end{lstlisting}
+
+\item Three levels. TestSuiteName and TestName and assert. You can use gtest\_filter to filter them.
+
+\begin{lstlisting}
+TEST(TestSuiteName, TestName) {
+	... test body ...
+}
+//a.out --gtest_list_tests list all tests.
+//a.out --gtest_filter=Test_Case* to filter 
+\end{lstlisting}
+
+\item use filter.
+\begin{lstlisting}
+	./test --gtest_filter=TestSuiteName.*
+	./test --gtest_filter=TestSuiteName1.*:TestSuiteName2.*Construct*
+\end{lstlisting}
+
+
+\item  ASSERT and EXPECT are different, ASSERT will end test once it fails. There are few kinds of assertions: 
+\begin{enumerate}
+	\item EXPECT\_THAT + matcher
+	\item Bool, such as EXPECT\_TRUE(FALSE)
+	\item Binary Comparsion EXPECT\_EQ(NE, LT, LE, GT)
+	\item STring Comparsion
+	\item Floating-Point Comarsion.
+	\item THROW, ANY\_THROW and NO\_THROW
+	\item Predicate Assertions, used for more complex predicates. 
+\begin{lstlisting}
+template <typename T>
+bool IsNegative(T x) {
+	return x < 0;
+}
+...
+EXPECT_PRED1(IsNegative<int>, -5);  // Must specify type for IsNegative
+\end{lstlisting}
+\end{enumerate}
+
+\item test Exception.
+\begin{lstlisting}
+EXPECT_THROW(statement,exception_type)
+ASSERT_THROW(statement,exception_type)
+\end{lstlisting}
+
+\item Most of the time, when you feel compelled to test private behavior, instead move the code to another class or to a new class. 
+
+\item Don't summarize a test with a descriptive comment, Fix its name. 
+
+\item More detail can be found in gtest reference Assertions sections.
+\end{itemize}
+
+
+\subsection{test fixture}
+\begin{itemize}
+	\item The first step, define a fixture, then use TEST\_F. You typically define the fixture at the beginning of your test files.
+\begin{lstlisting}
+//make fixture name describe the context.
+class QueueTest : public ::testing::Test {
+	protected:
+	void SetUp() override {
+		q1_.Enqueue(1);
+	}
+	
+	// void TearDown() override {}
+	
+	Queue<int> q1_;
+};
+
+//The test case name must match the fixture name.
+TEST_F(QueueTest, IsEmptyInitially) {
+	EXPECT_EQ(q0_.size(), 0);
+}
+
+TEST_F(QueueTest, DequeueWorks) {
+	int* n = q0_.Dequeue();
+	EXPECT_EQ(n, nullptr);
+}
+\end{lstlisting}
+
+\item TEST\_F the first name is test fixture name. And each test case are independent. That is to say each test case will run SetUp and call TearDown after finish this test case.
+
+\item When you need to write per-test set-up and tear-down logic, you have the choice between using the test fixture constructor/destructor or SetUp()/TearDown(). The former is usually preferred, as it has the following benefits:
+\begin{enumerate}
+	\item By initializing a member variable in the constructor, we have the option to make it const, which helps prevent accidental changes to its value and makes the tests more obviously correct.
+	
+	\item In case we need to subclass the test fixture class, the subclass' constructor is guaranteed to call the base class' constructor first, and the subclass' destructor is guaranteed to call the base class' destructor afterward. With SetUp()/TearDown(), a subclass may make the mistake of forgetting to call the base class' SetUp()/TearDown() or call them at the wrong time.
+\end{enumerate}
+
+\end{itemize}
+
+\subsection{matcher}
+\item The use of matchers makes EXPECT\_THAT a powerful, extensible assertion.
+\begin{lstlisting}
+EXPECT_THAT(value1, StartsWith("Hello"));
+EXPECT_THAT(value2, MatchesRegex("Line \\d+"));
+ASSERT_THAT(value3, AllOf(Gt(5), Lt(10)));
+\end{lstlisting}
+\item Composite Matchers
+\begin{lstlisting}
+AllOf
+AnyOf
+Not
+\end{lstlisting}
+
+\item Member matcher
+\begin{lstlisting}
+std::tuple<int, std::string> my_tuple{7, "hello world"};
+EXPECT_THAT(my_tuple, FieldsAre(Ge(0), HasSubstr("hello")));
+
+struct MyStruct {
+	int value = 42;
+	std::string greeting = "aloha";
+};
+MyStruct s;
+EXPECT_THAT(s, FieldsAre(42, "aloha"));	
+\end{lstlisting}
+\item matcher can also used in mock. 
+\begin{lstlisting}
+TEST(TestField, Simple) {
+	MockFoo mockFoo;
+	Bar bar;
+	EXPECT_CALL(mockFoo, get(Field(&Bar::num, Ge(0)))).Times(1);
+	mockFoo.get(bar);
+}
+//get must be called once. when you pass bar, bar.num is greater than 0. 
+
+EXPECT_CALL(foo, DoThat(Not(HasSubstr("blah")), NULL));
+//DoThat's first parameter not include "blah" substring.
+\end{lstlisting}
+
+
+
+\subsection{mocker}
+\begin{itemize}
+	\item Basic syntax. EXPECT\_CALL is google mock core function. you must remember all the detail information about it.
+\begin{lstlisting}
+	EXPECT_CALL(mock_object, method(matcher1, matcher2, ...))
+	.With(multi_argument_matcher)
+	.Times(cardinality)
+	.InSequence(sequences)
+	.After(expectations)
+	.WillOnce(action)
+	.WillRepeatedly(action)
+	.RetiresOnSaturation();
+\end{lstlisting}
+	
+\item use more expect
+\begin{lstlisting}
+using ::testing::Return;
+
+EXPECT_CALL(turtle, GetX())		// #1
+.WillOnce(Return(10))
+.RetiresOnSaturation();
+EXPECT_CALL(turtle, GetX())		// #2
+.WillOnce(Return(20))
+.RetiresOnSaturation();
+
+turtle.GetX()					// match #2, return 20, then #2 retire
+turtle.GetX()					// match #1, return 10
+\end{lstlisting}	
+
+\item 
+\begin{lstlisting}
+EXPECT_CALL(turtle, GetX())
+.Times(5)
+.WillOnce(Return(100))
+.WillOnce(Return(150))
+.WillRepeatedly(Return(200));	
+\end{lstlisting}
+
+\item 
+\begin{lstlisting}
+using ::testing::_;
+using ::testing::Ge;
+// only match Forward(100)
+EXPECT_CALL(turtle, Forward(100));
+// match GoTo(x,y) when x>=50
+EXPECT_CALL(turtle, GoTo(Ge(50), _));
+\end{lstlisting}
+
+\end{itemize}
+
+\subsubsection{Sequences}
+\begin{itemize}
+	\item When you use dummy, it will follow EXPECT\_CALL sequence
+\begin{lstlisting}
+	using ::testing::InSequence;
+	using ::testing::Return;
+	
+	int main(int argc, char **argv) {
+		::testing::InitGoogleMock(&argc, argv);
+		
+		InSequence dummy;
+		MockFoo mockFoo;
+		EXPECT_CALL(mockFoo, getSize()).WillOnce(Return(1));
+		EXPECT_CALL(mockFoo, getValue()).WillOnce(Return(string("Hello World")));
+		
+		cout << "First:\t" << mockFoo.getSize() << endl;
+		cout << "Second:\t" << mockFoo.getValue() << endl;
+		
+		return EXIT_SUCCESS;
+	}
+\end{lstlisting}
+
+\end{itemize}
+
+\subsubsection{Cardinalities}
+\begin{itemize}
+	\item below can be used in Times: AnyNumber, AtLeast(n), AtMost(n), Between(m,n)
+\end{itemize}
+
+\subsubsection{Action}
+\begin{itemize}
+	\item Return and other side Effects.
+\begin{lstlisting}
+virtual int getParamter(std::string* name,  std::string* value) = 0
+	
+TEST(SimpleTest, F1) {
+	std::string* a = new std::string("yes");
+	std::string* b = new std::string("hello");
+	MockIParameter mockIParameter;
+	EXPECT_CALL(mockIParameter, getParamter(testing::_, testing::_)).Times(1).\
+	WillOnce(testing::DoAll(testing::Assign(&a, b), testing::Return(1)));
+	mockIParameter.getParamter(a, b);
+}
+\end{lstlisting}
+    \item 
+\begin{lstlisting}
+class MockMutator : public Mutator {
+	public:
+	MOCK_METHOD(void, Mutate, (bool mutate, int* value), (override));
+	...
+}
+...
+MockMutator mutator;
+EXPECT_CALL(mutator, Mutate(true, _))
+.WillOnce(SetArgPointee<1>(5));
+\end{lstlisting}
+
+	
+\item 
+\begin{lstlisting}
+EXPECT_CALL(mockTurtle, getX()).Times(testing::AtLeast(5)).
+WillOnce(testing::Return(100)).WillOnce(testing::Return(150)).
+WillRepeatedly(testing::Return(200))
+\end{lstlisting}
+
+\end{itemize}
+	
+
+
+\section{catch2}
+\begin{itemize}
+	\item Just like gtest, Catch supports two assert, they are REQUIRE and CHECK.
+\begin{lstlisting}
+CHECK( str == "string value" );
+CHECK( thisReturnsTrue() );
+REQUIRE( i == 42 );
+CHECK(i > 10);
+
+REQUIRE_FALSE( expression );
+CHECK_FALSE( expression );
+
+Approx target = Approx(100).epsilon(0.01); //margin, and scale. 
+//see the catch documents.
+100.0 == target; // true
+200.0 == target; // false
+100.5 == target; // true
+\end{lstlisting}
+
+	\item catch support BDD, but gtest has mock. gtest is heavier than catch.
+\begin{lstlisting}
+#define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
+#include "catch.hpp"
+unsigned int Factorial( unsigned int number ) {
+	return number <= 1 ? number : Factorial(number-1)*number;
+}
+
+TEST_CASE( "Factorials are computed", "[factorial]" ) {   
+	REQUIRE( Factorial(0) == 1 );    
+	REQUIRE( Factorial(1) == 1 );    
+	REQUIRE( Factorial(2) == 2 );    
+	REQUIRE( Factorial(3) == 6 );    
+	REQUIRE( Factorial(10) == 3628800 );
+}
+\end{lstlisting}
+
+\item section is just fixture in gtest.
+\begin{lstlisting}
+TEST_CASE( "vectors can be sized and resized", "[vector]" ) {
+	std::vector<int> v( 5 );    
+	REQUIRE( v.size() == 5 );    
+	REQUIRE( v.capacity() >= 5 );    
+	SECTION( "resizing bigger changes size and capacity" ) 
+	v.resize( 10 );        
+	REQUIRE( v.size() == 10 );        
+	REQUIRE( v.capacity() >= 10 );    
+}    
+SECTION( "resizing smaller changes size not capacity" ){
+	v.resize( 0 );        
+	REQUIRE( v.size() == 0 );        
+	REQUIRE( v.capacity() >= 5 );    
+}    
+SECTION( "reserving bigger changes capacity not size" ) { 
+	v.reserve( 10 );        
+	REQUIRE( v.size() == 5 );        
+	REQUIRE( v.capacity() >= 10 );    
+}    
+SECTION( "reserving smaller does not change size" ) {
+	v.reserve( 0 );        
+	REQUIRE( v.size() == 5 );        
+	REQUIRE( v.capacity() >= 5 );    
+}
+}
+\end{lstlisting}
+
+Section can also be nested,
+\begin{lstlisting}
+SECTION( "reserving bigger changes capacity but not size" ) {
+	v.reserve( 10 );
+	
+	REQUIRE( v.size() == 5 );
+	REQUIRE( v.capacity() >= 10 );
+	SECTION( "reserving down unused capacity does not change capacity" ) {
+		v.reserve( 7 );
+		REQUIRE( v.size() == 5 );
+		REQUIRE( v.capacity() >= 10 );
+	}
+}
+\end{lstlisting}
+
+\item catch support tag
+\begin{lstlisting}
+TEST_CASE( "A", "[widget]" ) { /* ... */ }
+TEST_CASE( "B", "[widget]" ) { /* ... */ }
+TEST_CASE( "C", "[gadget]" ) { /* ... */ }
+TEST_CASE( "D", "[widget][gadget]" ) { /* ... */ }
+\end{lstlisting}
+
+\item will compile slowly, you can use below tech. use one main file and only include .hpp file. It will only compile once.
+\begin{lstlisting}
+//catch_main.cpp
+#define CATCH_CONFIG_MAIN
+#define CATCH_CONFIG_FAST_COMPILE
+#include "libraries/Catch/single_include/catch.hpp"
+
+//catch_tests.cpp
+TEST_CASE( "Factorials are computed", "[factorial]" )
+{
+	REQUIRE( Factorial(1) == 1 );
+}
+\end{lstlisting}
+
+\item BDD, Behind, given and when are all sections. 
+
+\begin{lstlisting}
+SCENARIO( "vectors can be sized and resized", "[vector]" ) {
+	
+	GIVEN( "A vector with some items" ) {
+		std::vector<int> v( 5 );
+		
+		REQUIRE( v.size() == 5 );
+		REQUIRE( v.capacity() >= 5 );
+		
+		WHEN( "the size is increased" ) {
+			v.resize( 10 );
+			
+			THEN( "the size and capacity change" ) {
+				REQUIRE( v.size() == 10 );
+				REQUIRE( v.capacity() >= 10 );
+			}
+		}
+		WHEN( "the size is reduced" ) {
+			v.resize( 0 );
+			
+			THEN( "the size changes but not capacity" ) {
+				REQUIRE( v.size() == 0 );
+				REQUIRE( v.capacity() >= 5 );
+			}
+		}
+		WHEN( "more capacity is reserved" ) {
+			v.reserve( 10 );
+			
+			THEN( "the capacity changes but not the size" ) {
+				REQUIRE( v.size() == 5 );
+				REQUIRE( v.capacity() >= 10 );
+			}
+		}
+		WHEN( "less capacity is reserved" ) {
+			v.reserve( 0 );
+			
+			THEN( "neither size nor capacity are changed" ) {
+				REQUIRE( v.size() == 5 );
+				REQUIRE( v.capacity() >= 5 );
+			}
+		}
+	}
+}
+\end{lstlisting}
+
+\end{itemize}
+\section{pytest}
+\subsection{basic}
+\begin{itemize}
+	\item Running pytest without mentioning a filename will run all files of format test\_*.py or *\_test.py in the current directory and subdirectories. Pytest automatically identifies those files as test files. We can make pytest run other filenames by explicitly mentioning them.
+	
+	Pytest requires the test function names to start with test. Function names which are not of format test* are not considered as test functions by pytest. We cannot explicitly make pytest consider any function not starting with test as a test function.
+	
+	\item Pytest provides two ways to run the subset of the test suite.
+	
+	Select tests to run based on substring matching of test names.
+	Select tests groups to run based on the markers applied.
+	
+	\item  we have a fixture function named input\_value, which supplies the input to the tests. To access the fixture function, the tests have to mention the fixture name as input parameter.
+\begin{lstlisting}
+import pytest
+
+@pytest.fixture
+def input_value():
+input = 39
+return input
+
+def test_divisible_by_3(input_value):
+assert input_value % 3 == 0
+
+def test_divisible_by_6(input_value):
+assert input_value % 6 == 0	
+
+pytest -k divisible -v // -k filter test name.
+\end{lstlisting}
+
+\item We can define the fixture functions in this file to make them accessible across multiple test files.
+Create a new file conftest.py and add the below code into it.
+\begin{lstlisting}
+import pytest
+
+@pytest.fixture
+def input_value():
+input = 39
+return input
+\end{lstlisting}
+
+\begin{lstlisting}
+import pytest
+
+def test_divisible_by_13(input_value):
+assert input_value % 13 == 0
+\end{lstlisting}
+
+\item In a real scenario, a test suite will have a number of test files and each file will have a bunch of tests. This will lead to a large execution time. To overcome this, pytest provides us with an option to run tests in parallel.
+
+\begin{lstlisting}
+pip install pytest-xdist
+pytest -n 3
+\end{lstlisting}
+
+
+
+
+\end{itemize}
+
+\chapter{Common libs}
 
 \section{Curl}
 \subsection{install}
@@ -20450,7 +21282,8 @@ counter++;
     \item cd source\_dir and mkdir build
     \item cd buil and cmake ..
     \item make 
-    \item sudo make install. it will copy .h file and lib files to \usr\local\include and \usr\local\lib
+    \item sudo make install. it will copy .h file and lib files to 
+    $backslash$usr$backslash$local$backslash$include and $backslash$usr$backslash$local$backslash$lib
     \item sudo ldconfig, that is to make you exe can find .so file. 
     \item try below code to see if you intall properly.
 \begin{lstlisting}[]
@@ -20533,11 +21366,6 @@ int main(){
 g++ profile.cpp -o profile -ljsoncpp
 ./profile
 \end{lstlisting}
-\end{itemize}
-
-\chpater{Test}
-\begin{itemize}
-    \item 
 \end{itemize}
 
 \chapter{Modern C++}
