@@ -705,7 +705,7 @@ extern "C" {
 		\item zero or one standard conversion sequence.
 	\end{enumerate}
 
-	\item user-defined conversion is an user-defined conversion consists of zero or one non-explicit single-argument converting constructor or non-explicit \textbf{conversion function} call. An example of conversion funciton. 
+	\item user-defined conversion is an user-defined conversion consists of zero or one non-explicit single-argument converting constructor or non-explicit \textbf{conversion operator} call. You can think that conversion operator is the opposite of a one-argument conversion constructor.
 \begin{lstlisting}[numbers=none]	
 struct X {
 	//implicit conversion
@@ -713,6 +713,8 @@ struct X {
 	
 	// explicit conversion
 	explicit operator int*() const { return nullptr; }
+	int* p = static_cast<int*>(x); // OK: sets p to null
+	//  int* q = x; // Error: no implicit conversion
 	
 	//   Error: array operator not allowed in conversion-type-id
 	//   operator int(*)[3]() const { return nullptr; }
@@ -733,11 +735,6 @@ int a = 1;
 functest(a);  //a is still 1
 functest(ref(a)); // a is 2 now.	 
 \end{lstlisting}	
-	
-\end{itemize}
-
-\subsubsection{Class implicit conversion}
-\begin{itemize}
 	
 	\item Class implicit conversion can happen when it has:
 	\begin{enumerate}
@@ -789,49 +786,30 @@ A a1;
 a2 = a1*A(2) // a2 = a1*2 will fail. 
 \end{lstlisting}	
 	
-	\item For a class, assignment operator() can support two different type assignment. But I don't think that it is a conversion. I didn't see any practical usage by now. 
-\begin{lstlisting}[frame=single, language=c++]
-class A {};
-	
-class B {
-public:
-	B& operator= (const A& x) {return *this;}
-};
-	
-B b;
-b = a; 
-\end{lstlisting}
-\begin{description}
-	\item[Line 5:] Operator = receive different type. We don't see this usage very often in practical. Just keep this code for reference for a language lawyer. :) 
-\end{description}
 \end{itemize}
 
-\subsubsection{type cast operator}
+\subsubsection{Type cast operator}
 \begin{itemize}
-	\item Unrestricted explicit type-casting allows to convert any pointer into any other pointer type, independently of the types they point to.  (syntax and compiling is right, but cause run-time error). In order to overcome this problem,  in C++ langauge, we introduce c++ cast operator, There are three cast operators, \texttt{dynamic\_cast}, \texttt{const\_cast} and \texttt{static\_cast}. \textbf{You should always use them in C++.}
+	\item Unrestricted explicit type-casting allows to convert any pointer into any other pointer type, independently of the types they point to.  (syntax and compiling is right, but cause run-time error). In order to overcome this problem,  in C++ langauge, we introduce c++ cast operator, There are five cast operators, \texttt{dynamic\_cast}, \texttt{const\_cast} and \texttt{static\_cast}.\textbf{You should always use them in C++.}. \texttt{reinterpret\_cast} and \texttt{bit\_cast} are not used very often. It mainly used in some specific context.
 \begin{lstlisting}[frame=single, language=c++]
 char c = 10;    
 int *p = (int*)&c;  //compile succeed here
-*p = 5;             //but run time error later.
+*p = 5;             //but run time error later and cause stack corruption.
 	
 int *p = static_cast<int*>(&c); //compile fail here, more safe. 
 \end{lstlisting}
-	\begin{description}
-		\item[Line 2 and 3:] compile ok, but you meet run time error, the assignment statement cause stack corruption.
-		\item[Line 5:] You have compiler error, so you avoid dangerous run time crash in the future.
-	\end{description}
 		
-	\item \texttt{void*} type can be converted to any other type implicitly. You don't need any cast operator when you change any type pointer to \texttt{void*}, But when you want to use dereference void pointer , you'd better use \texttt{static\_cast }to change it back to a certain type pointer.
+	\item \texttt{void*} type can be converted to any other type implicitly. You don't need any cast operator when you change any type pointer to \texttt{void*}, But when you want to use dereference \texttt{void} pointer , you'd better use \texttt{static\_cast }to change it back to a certain type pointer.
 \begin{lstlisting}[frame=single, language=c++]
-	int* p = malloc(sizeof(int));
-	int* p = static_cast<int*>(malloc(sizeof(int)));
+int* p = malloc(sizeof(int));
+int* p = static_cast<int*>(malloc(sizeof(int)));
 \end{lstlisting}		
 		\begin{description}
 			\item[Line 1:] \texttt{malloc} return void*, so you can assign it to \texttt{int *} directly in C language.
 			\item[Line 2:] In C++, you have to use cast operator. A better way is to use \texttt{new} instead.
 		\end{description}
 
-	\item Using \texttt{const\_cast} is not good design. Sometimes for a const member function, you have to use \texttt{const\_cast} to change this pointer to modify a class member. If compiler support, always use "mutable"  keyword.  Only use \texttt{const\_cast} if your compiler doesn't support mutable. Sometimes, For some legacy functions, You have a const object you want to pass to a function taking a non-const parameter, and you know the parameter won't be modified inside the function. The second condition is important, because it is always safe to cast away the constness of an object that will only read, not modify. At this time, you can use \texttt{const\_cast}.
+	\item Using \texttt{const\_cast} is not good design. Sometimes for a const member function, you have to use \texttt{const\_cast} to change this pointer to modify a class member. If compiler support, always use \texttt{mutable}  keyword.  Only use \texttt{const\_cast} if your compiler doesn't support \texttt{mutable}. Sometimes, For some legacy functions, You have a const object you want to pass to a function taking a non-const parameter, and you know the parameter won't be modified inside the function. The second condition is important, because it is always safe to cast away the constness of an object that will only read, not modify. At this time, you can use \texttt{const\_cast}.
 
 \begin{lstlisting}[numbers = none]
 strlen( char* p);
@@ -845,7 +823,7 @@ strlen(const_cast<char*>(cp));
 \begin{lstlisting}[numbers = none]
 const int a = 12;
 int* p = const_cast<int*>(&a); //Bad style
-*p = 66;
+*p = 66;  //UB
 \end{lstlisting}
 
 	\item \texttt{static\_cast<type-name>} expression will be valid only if type-name can be converted implicitly to the same type that expression has.  It will stop you from change a bird class to an apple class which is a totally unrelated class.  Even changing int to double, encourage you to use \texttt{static\_cast<double>(i)}.  It can help you to find cast easily in you source code by search \texttt{static\_cast}.
@@ -860,28 +838,21 @@ int *p = static_cast<int *>i //compile error,
 //That is why static_cast is better then C style const.
 \end{lstlisting}
 
-	\item  \texttt{static\_cast} can't deal with inheritance well in C++. 
-\begin{lstlisting}[numbers = none]
-struct V {
-	virtual void f() {};
-};
-struct A : V {};
-struct B : V {};
-
-A a;
-V& v = a;
-B& b = static_cast<B&>(v); //compile OK, but it's UB.
-\end{lstlisting}
-\begin{description}
-	\item[Source code] From \texttt{V} to \texttt{B}, it's possible to downcast, so \texttt{static\_cast} succeed. But if \texttt{A} is behind reference \texttt{V}, then you will have undefined behaviour. That is why we need \texttt{dynamic\_cast}.
-\end{description}	
-	
-	
-	\item \texttt{dynamic\_cast} should only be used down-cast public inherited relationship. You can't use \texttt{dynamic\_cast} when
-	\begin{enumerate}
-		\item \textbf{Not for private or protected inherited relationship.}
-		\item If a class doesn't have virtual function, you can't use \texttt{dynamic\_cast} on this object.
-	\end{enumerate}
+%	\item  \texttt{static\_cast} can't deal with inheritance well in C++. 
+%\begin{lstlisting}[numbers = none]
+%struct V {
+%	virtual void f() {};
+%};
+%struct A : V {};
+%struct B : V {};
+%
+%A a;
+%V& v = a;
+%B& b = static_cast<B&>(v); //compile OK, but it's UB.
+%\end{lstlisting}
+%\begin{description}
+%	\item[Source code] From \texttt{V} to \texttt{B}, it's possible to downcast, so \texttt{static\_cast} succeed. But if \texttt{A} is behind reference \texttt{V}, then you will have undefined behaviour. That is why we need \texttt{dynamic\_cast}.
+%\end{description}	
 	
 	\item A child pointer can always be assigned to base pointer directly, that is the \textbf{up-cast} conversion and how polymorphic implements. \texttt{dynamic\_cast} use to \textbf{down-cast} a base pointer to child pointer. \texttt{dynamic\_cast} assure that down cast is valid. \texttt{dynamic\_cast} can also used in reference type. When cast fail, it will not return nullptr, (because it's reference), just throw a \texttt{bad\_cast} exception.
 	
@@ -891,19 +862,23 @@ struct D : public A {};
 
 D d; // the most derived object
 A& a = d;
-D& new_d = dynamic_cast<D&>(a); // downcast
-\end{lstlisting}
-\begin{description}
-	\item[Line 5:] That is up-cast,\texttt{ dynamic\_cast} may be used, but unnecessary.
-	\item[Line 6:] That is down-cast, you have to use \texttt{ dynamic\_cast} here. 
-\end{description}
+D& new_d = dynamic_cast<D&>(a); // downcast	
+\end{lstlisting}	
+	\begin{description}
+		\item[Line 5:] That is up-cast,\texttt{ dynamic\_cast} may be used, but unnecessary.
+		\item[Line 6:] That is down-cast, you have to use \texttt{ dynamic\_cast} to make sure it can be down-cast properly.
+	\end{description}
+	
+	\item \texttt{dynamic\_cast} should only be used down-cast public inherited relationship. You can't use \texttt{dynamic\_cast} when it is not private or protected inherited relationship. If a class doesn't have virtual function, you can't use \texttt{dynamic\_cast} on this object either.
+
+	
 	
 	\item If you frequently use \texttt{dynamic\_cast}, It can be a sign that your base class offer too little functionality, you'd better to re-design you base class API(adding more member function to base class.)
 	
 	\item \texttt{dynamic\_cast} can also be used in \textbf{side-cast in multi inheritance. }
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 struct V {
-	virtual void f() {};
+	virtual void f() {}; // must have virtual function
 };
 struct A : virtual V {};
 struct B : virtual V {};
@@ -914,9 +889,8 @@ A& a = d; // upcast
 B& b = dynamic_cast<B&>(a); //sidecast
 	\end{lstlisting}
 \begin{description}
-	\item[Line 2:] must be polymorphic(has virtual function) to use runtime-checked \texttt{dynamic\_cast.}
 	
-	\item[Line 10:] That is side cast. Change d to a first(from child D to parent A), then a to b, (from child D to parent B, always succeed)
+	\item[Line 9:] That is side cast. Change \texttt{d} to \texttt{a} first(from child D to parent A), then \texttt{a} to \texttt{b}, (from child D to parent B, always succeed becasue \texttt{d} is behind \texttt{a}, and \texttt{d} can be changed to \texttt{b} )
 	
 \end{description}
 	
@@ -933,23 +907,18 @@ class B : public A {
 	virtual void fun(){cout<<"child"<<endl;}
 };
 
-int main() {
-	A* pa = new B();
-	pa->fun();
-	B* pb = dynamic_cast<B*>(pa); //OK
-	B* pb = static_cast<B*>(pa);  //OK	
-}
+A* pa = new B();
+pa->fun();
+B* pb = dynamic_cast<B*>(pa); //OK, because B is behind base pointer pa,
+B* pb = static_cast<B*>(pa);  //OK, 	
 
-int main() {
-	A* pa = new A();
-	pa->fun();
-	B* pb = dynamic_cast<B*>(pa); //return nullptr
-	B* pb = static_cast<B*>(pa);  //UB, that is not good.on my VS, it print "base"
-}
+A* pa = new A();
+pa->fun();
+B* pb = dynamic_cast<B*>(pa); //return nullptr, A is behind base pointer pa, 
+B* pb = static_cast<B*>(pa);  //UB, that is not good.on my VS, it print "base"
 \end{lstlisting}
 \begin{description}
-	\item[The first main] when B is behind base pointer, When you downcast to B, both dynamic and static are OK.
-	\item[The second main]  when A is behind base pointer, When you downcast to B, dynamic give you nullptr(warning), but static run into UB.	
+	\item[Line 17 to 20]  when A is behind base pointer, When you downcast to B, dynamic give you nullptr(warning), but static run into UB.	
 \end{description}
 
 	\item \texttt{static\_cast} can not be use in virtual base 
@@ -966,61 +935,64 @@ Child& other = static_cast<Child&>(parent); //compile fail,
 
 	\item About \texttt{dynamic\_cast}, "exceptional C++" item 44 give a good question and answer.
 	
-	\item \texttt{reinterpret\_cast} can converts any pointer type to any other pointer type, even an totally unrelated classes. The operation result is a simple binary copy of the value from one pointer to the other. All pointer conversions are allowed: neither the content pointed nor the pointer type itself is checked. It can also cast pointers to or from integer types. \textbf{DON'T USE IT UNLESS YOU ARE IN THE CORNER.}
+	\item \texttt{reinterpret\_cast} can converts any pointer type to any other pointer type, even an totally unrelated classes. The operation result is a simple binary copy of the value from one pointer to the other. All pointer conversions are allowed: neither the content pointed nor the pointer type itself is checked. It can also cast pointers to or from integer types. \textbf{DON'T USE IT UNLESS YOU ARE IN THE CORNER.} When you use \texttt{reinterpret\_cast} change one type pointer to another type pointer, it violate "strict alias rule" and will lead to UB(undefined behavior).
+	
+	\item First off, yes, this results in undefined behavior because there is no \texttt{SomePod} object within the buffer. Objects do not spontaneously come into existence just because you want them too; The compiler determines that the store to the x subobject cannot possibly alias the object buffer, because buffer does not contain an x subobject, and no other object for which buffer might provide storage has been created since buffer was created. Therefore the compiler reasons that it can reorder the store to before its internal marker for the start of the lifetime of buffer. The store can now be deleted, because it is immediately followed by the start of the lifetime of an object in the same region of storage.
+\begin{lstlisting}
+struct SomePod { int x; };
+alignas(SomePod) char buffer[sizeof(SomePod)];
+reinterpret_cast<SomePod*>(buffer)->x = 42;
+\end{lstlisting}
+
+	\item In order to avoid previous UB of \texttt{reinterpret\_cast}, we can use memcpy to make sure that there is no UB problem. 
+\begin{lstlisting}
+struct SomePod { int x; };
+alignas(SomePod) char buffer[sizeof(SomePod)];
+SomePod temp;
+memcpy(&temp, buffer, sizeof(SomePod));
+temp.x = 42
+memcpy(buffer, &temp, sizeof(SomePod));	
+\end{lstlisting}
+
+	
+	\item If you understand previous \texttt{reinterpret\_cast} and memcpy, you can understand \texttt{std::bit\_cast} intent. \texttt{std::bit\_cast} also use memcpy inside, it also can be used in constexpr context.  it is a new feature of C++ 20.
 	
 	\item Conclusion:
 \begin{enumerate}
 	\item \texttt{const\_cast} should be used when you call legacy or old function without const parameter. 
-	
-	\item Four kinds of casts, they becomes more restricted and more safe. 
-	\begin{enumerate}
-		\item implicit cast
-		\item C typle cast
-		\item \texttt{static\_cast}
-		\item \texttt{dynamic\_cas}
-	\end{enumerate}
-	
+		
+	\item Four kinds of casts: 1)implicit cast, 2)C typle cast, 3)\texttt{static\_cast} and 4)\texttt{dynamic\_cas} they becomes more restricted and more safe. 
 	
 	\item \texttt{static\_cast} will suppress warning, and not allow (\texttt{int} ->\texttt{int *}) conversion. That is why we should always use \texttt{static\_cast}. 
 	
-	\item \texttt{static\_cast} ALWAYS allow downcast,(because it's OK theoretically). That is why we need to use \texttt{dynamic\_cast}.
-	
-	\item \texttt{dynamic\_cast} only can be used with inheritance class with virtual function. 
+	\item \texttt{static\_cast} ALWAYS allow downcast,(because it's OK theoretically). That is why we need to use \texttt{dynamic\_cast}. \texttt{dynamic\_cast} only can be used with inheritance class with virtual function. 
 \end{enumerate}
+
 	
 \end{itemize}
 
 \subsection{RTTI}
 \begin{itemize}
-	\item It's a relatively new conception in C++, you should avoid using it on old C++ compiler. It has two methods: \texttt{typeid} and \texttt{dynamic\_cast}.
+	\item It's a relatively new conception in C++, you should avoid using it on old C++ compiler. It has two methods: \texttt{typeid} and \texttt{dynamic\_cast}. There are two kinds of types (for the purposes of RTTI): polymorphic types and non-polymorphic types. A polymorphic type is a type that has a virtual function, in itself or inherited from a base class. A non-polymorphic type is everything else; this includes POD types and many other types too.
 	
-	\item There are two kinds of types (for the purposes of RTTI): polymorphic types and non-polymorphic types. A polymorphic type is a type that has a virtual function, in itself or inherited from a base class. A non-polymorphic type is everything else; this includes POD types and many other types too.
-	
-	\item \texttt{typeid} operator will return a \texttt{type\_info} class.  You need to include typeinfo.h head file. \texttt{typeid} operator also receive pointer or class name.
+	\item \texttt{typeid} operator will return a \texttt{type\_info} class.  You need to include typeinfo.h head file. \texttt{typeid} operator also receive pointer or class name. \texttt{name} is member function of \texttt{type\_info}.
 	
 \begin{lstlisting}
 int myint = 50;
 std::string mystr = "string";
 double *mydoubleptr = nullptr;
 	
-cout << "myint has type: " << typeid(myint).name();
-cout<< "mystr has type: " << typeid(mystr).name();
-cout<< "mydoubleptr has type: " << typeid(mydoubleptr).name();
+cout << "myint has type: " << typeid(myint).name(); //typeid is operator
+cout<< "mystr has type: " << typeid(mystr).name();  // it returns type_info
+cout<< "mydoubleptr has type: " << typeid(mydoubleptr).name(); 
 \end{lstlisting}
-\begin{description}
-	\item[Line 5:] \texttt{typeid} is operator, it return \texttt{type\_info} class. \texttt{name} is member function of \texttt{type\_info}.
-\end{description}
-
-	\item If you just want to assure up casting and you don't want to know more about the class, you should prefer to use \texttt{dynamic\_cast} . just know typeid when you have a more complicated demand, you can come back to take a look deeply.
-	
-	\item RTTI has legitimate uses but is prone to abuse, so you must be careful when you use it. You may use it freely in unittests, but avoid it when possible in other code. consider one of the following alternatives to querying the type:
+ 	
+	\item RTTI has legitimate uses but is prone to abuse, so you must be careful when you use it. Just like exception, It has some loss in performance, you can use flag "-fno-rtti" to turn off it. You may use RTTI freely in unittests, but avoid it when possible in other code. consider one of the following alternatives to querying the type:
 	\begin{enumerate}
 		\item Virtual methods are the preferred way of executing different code paths depending on a specific subclass type. This puts the work within the object itself.
 		
 		\item If the work belongs outside the object and instead in some processing code, consider a double-dispatch solution, such as the Visitor design pattern. This allows a facility outside the object itself to determine the type of class using the built-in type system. Visitor design pattern can be seen in the later section.
 	\end{enumerate}
-	
-	\item Just like exception, It has some loss in performance, you can use flag "-fno-rtti" to turn off it.
 \end{itemize}
 
 
@@ -1028,17 +1000,13 @@ cout<< "mydoubleptr has type: " << typeid(mydoubleptr).name();
 \subsubsection{Numerical Overflow}
 
 \begin{itemize}
-	\item How to understand integer overflow problems? There are two important points:
-	\begin{enumerate}
-		\item \texttt{x} is a position in the below figure, \texttt{x+3} means walk 3 step anti-clockwise from \texttt{x.} \texttt{x-3} means walk 3 step clockwise from \texttt{x}.
-		
-		\item The overflow only happen in the -8 position. Anytime you walk pass the -8 position, the overflow happens, no matter clockwise and anti-clockwise direction. For example, 5+4 = -7(not 9); -6-3 = 7(not -9).
-	\end{enumerate}
+	\item How to understand integer overflow problems? \texttt{x} is a position in the below figure, \texttt{x+3} means walk 3 step clockwise from \texttt{x.} \texttt{x-3} means walk 3 step anti-clockwise from \texttt{x}. The overflow only happen in the -8 position. Anytime you walk pass the -8 position, the overflow happens, no matter clockwise and anti-clockwise direction. For example, 5+4 = -7(not 9); -6-3 = 7(not -9).
+
 	
 	\begin{center}
-		\includegraphics[width=0.6\linewidth]{pics/integer.png}
+		\includegraphics[width=0.5\linewidth]{pics/integer.png}
 		
-		\includegraphics[width=0.6\linewidth]{pics/integer1.png}
+		\includegraphics[width=0.5\linewidth]{pics/integer1.png}
 	\end{center}
 	
 	\item Integer type has \textbf{overflow} problem, and float has \textbf{precision} problem. So prefer to use \texttt{long long} and \texttt{double} as your numerical type. In modern hardware, memory usage is not big concern, type with enough width can save you a lot of trouble in the future. 
@@ -1085,15 +1053,11 @@ if ((a < INT_MIN / x)) // a * x would underflow
 \begin{lstlisting}[numbers = none]
 uint32 a,b;
 uint32 result = a + b;
-if (result < a) {
-	//Overflow
-}
+if (result < a) //overflow
 \end{lstlisting}
 	\end{enumerate}
 	
-	\item There's no simple, general, portable way to avoid integer overflow. You cann't safely check whether a signed integer addition or subtraction overflowed after the fact. An overflow in signed arithmetic causes undefined behavior. Typically the result wraps around, but in principle your program could crash before you have a chance to examine the result.
-	
-	\item Clang 3.4+ and GCC 5+ offer checked arithmetic builtins. They offer a very fast solution to this problem, especially when compared to bit-testing safety checks.
+	\item There's no simple, general, portable way to avoid integer overflow. You can't safely check whether a signed integer addition or subtraction overflowed after the fact. An overflow in signed arithmetic causes undefined behavior. Typically the result wraps around, but in principle your program could crash before you have a chance to examine the result. Clang 3.4+ and GCC 5+ offer checked arithmetic builtins. They offer a very fast solution to this problem, especially when compared to bit-testing safety checks.
 \begin{lstlisting}[frame=single, language=c++]
 unsigned long b, c, c_test;
 if (__builtin_umull_overflow(b, c, &c_test)){
@@ -1159,13 +1123,10 @@ f = f1+f2
 	
 \begin{lstlisting}
 int i, float f = 3.99;
-i=f;
+i=f;  //i will be 3(not rounding), UB if f is too big
 
 f = i; //will lost precision if i is big.
 \end{lstlisting}
-	\begin{description}
-		\item[Line 2:] fragment will be lost,  \texttt{f= 3.99}, \texttt{i} will be 3 (not rounding). If \texttt{f} is too big, it leads to undefined behavior.
-	\end{description}
 	
 	\item A implicit conversion also happen when you call a function.(Just like you use assignment operator=). Below they all compile successfully. Compile with -Wconversion flag, it doesn't included in -Wall in g++; It just give warning when standard conversion happen. (no warning for promotion conversion).
 
@@ -1204,68 +1165,46 @@ int b = static_cast<int>(f);  //explicit C++ style
 
 \subsection{size\_t and ptrdiff\_t}
 
-\subsubsection{unsigned int}
+\subsubsection{Be careful with unsigned int}
 \begin{itemize}
 
-    \item When an \texttt{unsigned int} and an \texttt{int} are added together, the \texttt{int} is first converted to \texttt{unsigned int} before the addition takes place and the result is also an \texttt{unsigned int}.
-\begin{lstlisting}[]
-unsigned int i = 4;
-int a = -40;
-cout<<a+i<<endl; //output 4294967260
-\end{lstlisting}
-
-	\item \texttt{unsigned int + signed int} just wrapped on the clock. not overflow, just turn around on the clock. 
-	
+    \item When an \texttt{unsigned int} and an \texttt{int} are added together, the \texttt{int} is first converted to \texttt{unsigned int} before the addition takes place and the result is also an \texttt{unsigned int}. In another word, For integer addition or subtraction, It is just a trip around clock. When you reach a position in the clock, how to understanding depends on its context and type.
 \begin{lstlisting}[numbers=none]
 unsigned int ui = 0xfffffffe  // -2 or UNIT_MAX-1
 int i = 1;
 //ui+i will be expreseed 0xffffffff in memeory. 
 printf("%d", ui+i); //print -1
-printf("%u", ui+i); //print UINT_MAX;
+printf("%u", ui+i); //print UINT_MAX;	
+cout<<ui+i<<endl; //output 4294967260
+(ui+i)<6  //false here, interpret it as unsigned int
 \end{lstlisting}
-
-	\item For integer addition or subtraction, It is just a round-trip. When you reach a position in the circle, how to understanding depends on its context and type.
-\begin{lstlisting}
-unsigned int ui = 1;
-int i = -2;
-int j = i+ui; // j is -1, CORRECT
-
-(ui+i)<6  // ERROR!
-\end{lstlisting}
-
-\begin{description}
-	\item[Line 3:] \texttt{i+ui} will stop in one position in the round clock. how to interpret it depends on the programe context, as \texttt{int} interpret this position correct.
-
-	\item[Line 5:]  When an \texttt{unsigned int} and an \texttt{int} are added together, the \texttt{int} is first converted to \texttt{unsigned int} before the addition takes place (and the result is also an \texttt{unsigned int}). so \texttt{(ui+i)} is a not -1, but a big positive number. Most unsigned implicit cast error happen when you compare with a constant number.
-\end{description}
-	
+    
+	\item You can see llvm reference. \textbf{1) only i32, no ui32 2) only add}.  3) but has umultiply and uge and zext or sext. That is to say, these three operations need interpret signed semantic differently.  About umultiply and zext, please visit: \verb|https://llvm.org/docs/LangRef.html| to get more detail.
+	 
 \begin{lstlisting}[frame=single, language=c++]
 unsigned int ui = -2 // or UNIT_MAX-1
 int i = 1;
-ui+i< 6  // greater than 6
 (ui+i)/4  //a big positive number
 int* p;
 p+(ui+i);  //on 32 bits, this ok, 
 \end{lstlisting}
 
 \begin{description}
-	\item[Line 6:] On 64 bits, \texttt{ui+i} will be promote to 64 bits first. At this time, it will be promoted according to \texttt{unsigned int}. For \texttt{p+(ui+i)} questions, we can use \texttt{size\_t} and \texttt{ptrdiff\_t} type. 
+	\item[Line 5:] On 64 bits, \texttt{ui+i} will be promote to 64 bits first. At this time, it will be promoted according to \texttt{unsigned int}. For \texttt{p+(ui+i)} questions, we can use \texttt{size\_t} and \texttt{ptrdiff\_t} type. 
 \end{description}
 	
-	\item You can see llvm, in this reference. 1) only i32, no ui32 2) only add.  3) but has umultiply and uge and zext or sext. That is to say, these three operations need interpret signed semantic differently.  About umultiply and zext, please visit: \verb|https://llvm.org/docs/LangRef.html| to get more detail.
-
     \item In summary, \texttt{ui+i} result type is \texttt{unsigned int},  when you use \texttt{ui+i} in 1) compare with other, 2) promote 3) multiply or sub, it will interpret according to its unsigned semantic(non negative). Maybe it's not what you expect.  In one word, \textbf{Don't use unsigned type just for big range, if int is not big, just use long, don't use unsigned int. Don't combine unsigned and signed type together.}	
 \end{itemize}
 
 \subsubsection{size\_t}
 \begin{itemize}
-	\item Why we need \texttt{size\_t?}, Semanticlly, it should be pointer type, but physically, it's a kind of integer, so when we use int or short or long to represent. it will cause cross-plat-form problem. \textbf{In one word, int is not always same as bits of OS. but size\_t and ptrdiff\_t are always same.}
+	\item The main reason of \texttt{size\_t} is: size of something is dependent on pointer, but on different system, size of pointer is not same as size of int.  \textbf{But size of pointer is always same as size\_t}. The size of \texttt{size\_t} and \texttt{ptrdiff\_t} always coincide with the pointer's size. Because of this, it is these types which should be used as indexes for large arrays, for storage of pointers, pointer arithmetic, loop counters, array indexing, and address arithmetic.
+
+	\item Why we need \texttt{size\_t?}, Semanticlly, it should be pointer type, but physically, it's a kind of integer, so when we use \texttt{int} or \texttt{short} or \texttt{long} to represent, it will cause cross-plat-form problem. \textbf{In one word, int is not always same as bits of OS. but size\_t and ptrdiff\_t are always same.}
 
 	\item Type \texttt{size\_t} is a typedef that's an alias for some unsigned integer type, typically \texttt{unsigned int} or \texttt{unsigned long}, but possibly even \texttt{unsigned long long}. Each Standard C implementation is supposed to choose the unsigned integer that's big enough--but no bigger than needed--to represent the size of the largest possible object on the target platform.
 	
 	\item Using \texttt{size\_t} appropriately makes your source code a little more self-documenting. When you see an object declared as a \texttt{size\_t}, you immediately know that it represents a \textbf{size} in bytes or an \textbf{index}, rather than an error code or a general arithmetic value.
-	
-	\item The main reason of \texttt{size\_t} is: size of something is dependent on pointer, but on different system, size of pointer is not same as size of int.  \textbf{But size of pointer is always same as size\_t}. The size of \texttt{size\_t} and \texttt{ptrdiff\_t} always coincide with the pointer's size. Because of this, it is these types which should be used as indexes for large arrays, for storage of pointers, pointer arithmetic, loop counters, array indexing, and address arithmetic.
 	
 	\item \texttt{ptrdiff\_t} type is a base signed integer type of C/C++ language. The type's size is chosen so that it can store the maximum size of a theoretically possible array of any type. On a 32-bit system \texttt{ptrdiff\_t} will take 32 bits, on a 64-bit one 64 bits.
 \begin{lstlisting}[numbers=none]
@@ -1273,7 +1212,7 @@ int A = -2;   // should use ptrdiff_t here
 unsigned B = 1; // should use ptrdiff_t here.
 int array[5] = { 1, 2, 3, 4, 5 };
 int *ptr = array + 3;
-ptr = ptr + (A + B); //Error
+ptr = ptr + (A + B); //Error on 64 bit OS
 printf("%i\n", *ptr);
 \end{lstlisting}
 	
@@ -1283,21 +1222,32 @@ printf("%i\n", *ptr);
 \subsection{Aggregate and POD type}
 \subsubsection{Aggregate}
 \begin{itemize}
+	
 	\item \textbf{The basic idea of Aggregate type is that you can use aggregate list initialization}. All the detail definition of an aggregate can be traced back to this main purpose. In source code level, an aggregate is an array or a class with no user-declared constructors, no private or protected non-static data members, no base classes, and no virtual functions.
 \begin{lstlisting}[numbers=none]
 class NotAggregate1{
+	int x; //x is private by default and non-static
 	virtual void f() {} //remember? no virtual functions
 };
-	
-class NotAggregate2{
-	int x; //x is private by default and non-static 
-};
-	
+		
 class Aggregate1{
-public:
-	NotAggregate1 member1;   //ok, public non-aggregate member
 private:
 	void f() {} // ok, just a private function
+};
+\end{lstlisting}
+
+	\item In C++11, Previously, an aggregate could have no user-declared constructors, but now it can't have user-provided constructors. Is there a difference? Yes, there is, because now you can declare constructors and default them:
+\begin{lstlisting}[numbers=none]
+struct Aggregate {
+	Aggregate() = default; 
+};
+\end{lstlisting}
+
+	\item In C++11, Now an aggregate cannot have any brace-or-equal-initializers for non-static data members. What does this mean? Well, this is just because with this new standard, we can initialize members directly in the class like this:
+\begin{lstlisting}[numbers=none]
+struct NotAggregate {
+	int x = 5; // valid in C++11
+	std::vector<int> s{1,2,3}; // also valid
 };
 \end{lstlisting}
 
@@ -1305,23 +1255,18 @@ private:
 \begin{lstlisting}[]
 class Foo{
 public:
-    Foo(int i){
-        i_ = i;
-    }
+    Foo(int i): i_{i}{ };
     int i_;
 };
 
 struct Test{
     Foo f;
     int k;
-    int j;
 };
 
-int main() {
-    cout<<is_aggregate_v<Foo><<endl; //No, because we have user define constructor
-    cout<<is_aggregate_v<Test><<endl; //Yes, it can include non-aggregate.
-    Test t = {1,2,3}; //can use aggregate init here.
-    cout<<t.f.i_<<endl;
+cout<<is_aggregate_v<Foo><<endl; //No, because we have user define constructor
+cout<<is_aggregate_v<Test><<endl; //Yes, it can include non-aggregate.
+Test t = {1,2}; //can use aggregate init here.
 \end{lstlisting}
 
 	\item Now let's see how aggregates are special. They, unlike non-aggregate classes, can be initialized with curly braces \{\}. 
@@ -1345,31 +1290,18 @@ private:
 Y y = {'a', {10, 20}, {20, 30}}; //initialized by list initialization, f is 0
 \end{lstlisting}
 	
-	\item In C++11, Previously, an aggregate could have no user-declared constructors, but now it can't have user-provided constructors. Is there a difference? Yes, there is, because now you can declare constructors and default them:
-\begin{lstlisting}[numbers=none]
-struct Aggregate {
-	Aggregate() = default; 
-};
-\end{lstlisting}
-	
-	\item In C++11, Now an aggregate cannot have any brace-or-equal-initializers for non-static data members. What does this mean? Well, this is just because with this new standard, we can initialize members directly in the class like this:
-\begin{lstlisting}[numbers=none]
-struct NotAggregate {
-	int x = 5; // valid in C++11
-	std::vector<int> s{1,2,3}; // also valid
-};
-\end{lstlisting}
-
 	\item Now that we know the definition of aggregates, let's try to understand the restrictions on classes; that is, why they are there. We should understand that memberwise initialization with braces implies that the class is nothing more than the sum of its members. If a user-defined constructor is present, it means that the user needs to do some extra work to initialize the members therefore list initialization would be incorrect. If virtual functions are present, it means that the objects of this class have (on most implementations) a pointer to the so-called vtable of the class, which is set in the constructor, so brace-initialization would be insufficient. 
+	
+	\item An aggregate is basically a simple collection of data that does not have any invariants the class would have to guarantee. Since there is no invariant and thus all combinations of possible values of the member make sense, there is no point in making them private since there is nothing to protect.
 	
 \end{itemize}
 
-\subsubsection{POD}
+\subsubsection{POD and trivial class}
 \begin{itemize}
 	
 	\item For objects of POD types it is guaranteed by the standard that when you \texttt{memcpy} the contents of your object into an array of char or unsigned char, and then \texttt{memcpy} the contents back into your object, the object will hold its original value. Do note that there is no such guarantee for objects of non-POD types. Also, you can safely copy POD objects with \texttt{memcpy}.
 	
-	\item An aggregate class is called a POD if it has no user-defined copy-assignment operator and destructor and none of its nonstatic members is a non-POD class, array of non-POD, or a reference.
+	\item An aggregate class is called a POD if it has no user-defined copy-assignment operator and destructor and none of its non-static members is a non-POD class, array of non-POD, or a reference.
 	
 \begin{lstlisting}[numbers=none]
 struct POD{
@@ -1400,12 +1332,13 @@ struct AggregateButNotPOD2{
 	\end{enumerate}
 	
 	So, the definition has been split into two distinct concepts: \textbf{trivial classes} and \textbf{standard-layout classes}, because these are more useful than POD. The standard now rarely uses the term POD, preferring the more specific \textbf{trivial} and \textbf{standard-layout} concepts.
-\end{itemize}
 
 
-\subsubsection{trivial class}
-\begin{itemize}
+
 	\item If this is a trivial class, then it has trivial constructor/dtor/copy/assignment. When we build copy or destruct these type, we don't call these trivial ctor/copy... \textbf{but just call malloc() or memcpy()to improve efficiency.} 
+	
+	
+
 	
 	\item trivial class is not aggregate class, for example, it can include private non-static data member. 
 \begin{lstlisting}[numbers=none]
@@ -1421,8 +1354,7 @@ struct NonTrivial1 : Trivial4 {
 	// virtual members make non-trivial ctors
 };
 \end{lstlisting}
-	
-	
+		
 	\item The first property of trivial class is that it supports static initialization. Static initialization is initialization of some variable with a compile-time value such that the value ends up being "baked into" the executable image (no code needs to be actually run).
 \begin{lstlisting}[numbers=none]
 struct Foo {
@@ -1440,7 +1372,7 @@ static Foo foo = {0,1}; // This init happens in compiling time.
 	cout <<std::is_standard_layout <T>::value;
 \end{lstlisting}
 	
-	\item If a class is trivially copyable (a superset of trivial classes), it is ok to copy its representation over the place with things like memcpy For example, \texttt{std::copy} use \texttt{std::is\_trivially\_copyable} as a dispatching flag to decide whether to call memcpy or call object copy constructor. and expect the result to be the same. The detail can be seen in the reference article in the end of section. 
+	\item If a class is trivially copyable (a superset of trivial classes), it is ok to copy its representation over the place with things like \texttt{memcpy} For example, \texttt{std::copy} use \texttt{std::is\_trivially\_copyable} as a dispatching flag to decide whether to call memcpy or call object copy constructor. and expect the result to be the same. The detail can be seen in the reference article in the end of section. 
 	
 \begin{lstlisting}[numbers=none]
 template <class T> 
@@ -1459,15 +1391,13 @@ void copy(T* source, T* destination, int n, trivial_true_type){
 \item Difference between trivial and standard layout. Both standard layout and trivial can use \texttt{memcpy} safely. But trivial doesn't gurantee that it has the same memory layout with C language.
 \begin{lstlisting}[numbers=none]
 struct N { // neither trivial nor standard-layout
-	int i; // because there is 
-	int j;
+	int i; // because there is virtual destructor
 	virtual ~N();
 };
 
 struct T { // trivial but not standard-layout
-	 //access control, then the compiler is free to choose a layout.
 	int i;
-private:
+private: //access control, then the compiler is free to choose a layout.
 	int j;
 };
 
@@ -1482,21 +1412,22 @@ struct POD { // both trivial and standard-layout
 	int j;
 };
 \end{lstlisting}	
-	
+
 \end{itemize}
 
 
 \subsubsection{Summary}
 \begin{itemize}
-		\item \textbf{Both Aggregate and trivial class can improve running performance. For example, for aggregate, you don't need to run constructor, for trivial, you don't need to run copy ctor.That is the purpose of these conceptions.}
+	\item \textbf{Both Aggregate and trivial class can improve running performance. For example, for aggregate, you don't need to run constructor, for trivial, you don't need to run copy ctor.That is the purpose of these conceptions.}
 
-	\item Aggregate means that you can use list-initialization.
+	\item Aggregate means that you can use list-initialization. Its definition is not recursive.  
 
-	\item POD is obsolete after C++11 and it has been split into two distinct concepts: \textbf{trivial classes} and \textbf{standard-layout classes}. Trivial classes support static initialization and can be copied by \texttt{memcpy}, it's more efficient. \textbf{Trivial class is not subconcept of POD, it's totally new definition.}  Standard-layout classes has the same layout as structs in C, so it has better portability.
-
-	\item A good article about this topic is "What are Aggregates and PODs and how/why are they special?" in StackOverflow. 
+	\item POD is trivial and standard output and it is obsolete after C++11 and it has been expanded to two distinct concepts: \textbf{trivial classes} and \textbf{standard-layout classes}. Trivial classes support static initialization and can be copied by \texttt{memcpy}, it's more efficient. \textbf{Trivial class is not sub-concept of POD, it's totally new definition.}  Standard-layout classes has the same layout as structs in C, so it has better portability.
+	
+	\item If want to compatibility with C(not only layout compatible), you must ensure that the type is trivial AND standard-layout. For data exchange via network or file, you can use a type that satisfies only trivial or standard-layout. I would recommend either aiming for both or at least standard-layout. Because with only trivial, you risk that future compiler's or a different compiler on the other side, do rearrange data members, and then a receiver may have a different layout understanding than the sender.
+	
+	\item Understand them from semantic, not syntactic rules. A good article about this topic is "What are Aggregates and PODs and how/why are they special?" in StackOverflow. 
 \end{itemize}
-
 
 \section{type qualifier}
 \subsection{cv-qualifier}
@@ -1512,41 +1443,23 @@ int * const p1 = &i; // const is top-level
 const int *p2 = &ci; // const is low-level
 
 const int *const p3 = p2;
-const int &r = ci;
+const int &r = ci; //const in reference type is always low-level
 \end{lstlisting}
 	\begin{description}
 		\item[Line 5:] C++ is essentially that \texttt{const} applies to the type to its left. However, there's an exception that if you put it on the extreme left of the declaration, it applies to the first part of the type. Right \texttt{const} modify * on its right side. Left \texttt{const} is in the first position, so it modify the first part of the type. 
-
-		\item[Line 6:] const in reference type is always low-level
 	\end{description}
 	
-	\item \texttt{const} mainly used in three places inside of function:
-	\begin{enumerate}
-		\item functions parameter.
-		\item function return. ( just used for \texttt{const} reference, not for return value)
-		\item member function.
-	\end{enumerate}
+	\item \texttt{const} mainly used in three places inside of function: 1) functions parameter. 2) function return. ( just used for \texttt{const} reference, not for return value) and 3) member function.
+
 	
-	\item In fact, for value type parameter, the function signature is the same whether you include this const in front of a value parameter or not. It will cause redefine error. For example:
+	\item For value type parameter, the function signature is the same whether you include this const in front of a value parameter or not. It will cause redefine error. Non-value parameter: top-level const is part of function signature. Overloads g(int\&): these are two functions.
 \begin{lstlisting}[frame=single, language=c++]
-int f( int );
+int f( int );   //just one function, 
 int f( const int ); // redeclares f(int)
-// no overloading, there's only one function.
-\end{lstlisting}
-	
-	\item  Consider not writing \texttt{const} on pass-by-value function parameters when only forward-declaring a function. You can always add it on the definition to express a read-only parameter.
-\begin{lstlisting}[frame=single, language=c++]
-int f( int );
-int f( const int );    
 
-int g( int& );
-int g( const int& );   
+int g( int& );  //overload, two function
+int g( const int& );
 \end{lstlisting}
-	\begin{description}
-		\item[Line 2:] Value parameter: top-level const is not part of function signature.redeclares f(int): this is the same function.
-		
-		\item[Line 4:] Non-value parameter: top-level const is part of function signature. Overloads g(int\&): these are two functions.
-	\end{description}
 	
 	\item For \texttt{const} value type parameter in the example below, the \texttt{const} qualifier prevents code inside the function from modifying the parameter itself. Such an assurance helps you to quickly read and understand a function. Under some circumstances, this might even help the compiler generate better code. 
 \begin{lstlisting}[frame=single, language=c++]
@@ -1557,33 +1470,22 @@ double cube (const double side){
 	
 	\item \textbf{Just like assert statement, Use \texttt{const} aggressively.}  In C++, When you use pointer or reference as function parameter, You should always put \texttt{const} in front of it. Because most of time you don't need to modify it.  Once you compiler barks, then you can delete \texttt{const}, It will help you to use \texttt{const} aggressively.
 	
-	\item \textbf{When function return build-in value, don't use const at return value at all. }
-\begin{lstlisting}[numbers=none]
-const int foo() {
-	return 3;
-}
-int x = foo();  // copies happily
-foo() = 4;  // not valid anyway for built-in types
-\end{lstlisting}
 	
-	\item \textbf{When function return user-defined type value, don't use const at all. It will not allow you to use rvalue and move. }
+	
+	\item \textbf{When function return value type, don't use const at all. It will not allow you to use rvalue and move. }
 \begin{lstlisting}[frame=single, language=c++]
-const time operator+(const time &t){
+const time operator+(const time &t){  //bad smell
 	time temp;
 	return temp.bla = bla+t.bla;
-}
+}  //because + return const, compiler doesn't use move, low effecient.
 
 time t3(t1+t2);
 \end{lstlisting}
-	\begin{description}
-		\item[Line 6:] because + return const, so below just copy. compiler will not use time move constructor, it is low efficient.
-		
-	\end{description}
 	
 	\item \textbf{When function return reference or pointer, you can use const to restrict modify it.}
 \begin{lstlisting}[numbers=none]
 class String{
-	const char& operator[](int position);
+	const char& operator[](int position) const; 
 }
 \end{lstlisting}
 	
@@ -1622,8 +1524,8 @@ void A::fun() const{
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 class Fred {
 	public:
-	void inspect() const;
-	void mutate();
+	void inspect() const;  //pormises NOT to change *this
+	void mutate();      //might change *this
 };
 
 void userCode(Fred& changeable, const Fred& unchangeable){
@@ -1633,30 +1535,20 @@ void userCode(Fred& changeable, const Fred& unchangeable){
 	unchangeable.mutate();  // ERROR:
 }
 \end{lstlisting}
-		\begin{description}
-			\item[Line 3:] inspect member function promises NOT to change *this.
-			\item[Line 4:] mutate member function might change *this.
-		\end{description}
-		
+
 		\item If you want to return a member of a object from a const method, you should return it using reference-to-const (\texttt{const X\& inspect() const}) or by value ( \texttt{X inspect() const}). \textbf{const member method return value or const reference.}
 \begin{lstlisting}[frame=single, language=c++]
 class Person {
 	public:
-	const std::string& name_good() const;
-	std::string& name_evil() const;
-	int age() const;
+	const std::string& name_good() const;  //good style
+	std::string& name_evil() const;  //bad style
+	int age() const;  //good style
 };
 
-void myCode(const Person& p){
-	p.name_evil() = "Igor";  // But changed....!!
+void myCode(const Person& p){ //through bad interface,
+	p.name_evil() = "Igor";  // change const object
 }
 \end{lstlisting}
-		\begin{description}
-			\item[Line 3:]  Good style, the caller can't change the Person's name.
-			\item[Line 4:]  Bad style, the caller can change the Person's name.
-			\item[Line 5:]  Good style, the caller can't change the Person's age
-			\item[Line 9:]  Through a bad member function, you can change a const object. 
-		\end{description}
 		
 		\item The most common use of \texttt{const} overloading is with the subscript operator. You should generally try to use one of the standard container templates, such as \texttt{std::vector,} but if you need to create your own class that has a subscript operator, here's the rule of thumb:\textbf{ subscript operators often come in pairs.} One has const, the other has not const. 
 \begin{lstlisting}[numbers=none]
@@ -1669,7 +1561,6 @@ class MyFredList {
 \end{lstlisting}
 		
 	\end{enumerate}
-	
 	
 	
 	\item Do not use "volatile" except in low-level(embedded c) code that deals directly with hardware.1) don't optimized code, 2) each time you read volatile, load from memory instead of using old value.
@@ -1698,14 +1589,8 @@ public:
 }
 \end{lstlisting}
 	\begin{description}
-		\item[Line 6:] In above example, \texttt{getLength()} is member-wise const function, It just read a length value, not set it from outside. But inside this function, you need to change some private member value, At this time, you need to use mutable keyword, so \texttt{const getLength()} function can modify and cache a \texttt{length\_} value.  const function just put restraint inside of function, it doesn't ask caller to be a const object at all. Why I declare \texttt{getLength()} as const?
-		\begin{enumerate}
-			\item because if you don't do it. const obj can't call \texttt{getLength()} function at all. 
-			\item "logically", we just read, not change something.
-		\end{enumerate}
+		\item[Line 6:] In above example, \texttt{getLength()} is member-wise const function, It just read a length value, not set it from outside. But inside this function, you need to change some private member value, At this time, you need to use mutable keyword, so \texttt{const getLength()} function can modify and cache a \texttt{length\_} value.  const function just put restraint inside of function, it doesn't ask caller to be a const object at all. Why I declare \texttt{getLength()} as const? "logically", we just read, not change something, and const obj can't call \texttt{getLength()} function at all. 
 	\end{description}
-	
-	
 	
 	
 	\item \textbf{A const obj only can call const member function, and const member function just return const reference or pointer.} A example can be seen in vector example.  
@@ -1726,8 +1611,8 @@ vector<int>::iterator vi = cvi.begin(); //Compile error
 \begin{lstlisting}[frame=single, language=c++]
 class A{
 	getArea() const{
-		vector<int>::iterator vi = points.begin();
-		//previous statement compile error
+		vector<int>::iterator vi = points.begin(); 
+		//How to fixe, use 1) vector<int>::const_iterator vi or 2) auto vi
 	}
 	
 	calArea(){
@@ -1737,32 +1622,17 @@ class A{
 };
 
 const A ca;
-ca.calArea(); // not compile	
+ca.calArea(); // not compile, const obj can't call non-const member	
+ca.getArea(); // Not compile, points is const implicite.
+
 A a;
 a.calArea(); // obj can acces non-const member fun
 a.getArea(); // obj can also access const member fun.
 \end{lstlisting}
 	
 	\begin{description}
-		\item[Line 2:] because \texttt{getArea} is const member function, so \texttt{points} are const implicit. you have to use \texttt{const\_iterator} here
-		
-		\item[Line 3:] In order to resolve this problem, you have two options: one is use \texttt{const\_iterator.} 
-\begin{lstlisting}[numbers=none]
-class A{
-	getArea() const{
-		vector<int>::const_iterator vi = points.begin();
-    }
-\end{lstlisting}
-			
-		the other method is:	
-\begin{lstlisting}[numbers=none]
-class A{
-	getArea() const{
-		auto vi = points.begin();
-    }
-\end{lstlisting}
-	
-\end{description}
+		\item[Line 2:] because \texttt{getArea} is const member function, so \texttt{points} are const implicit. you have to use \texttt{const\_iterator} here	
+	\end{description}
 			
 	\item In summary, \textbf{\texttt(const) expand outside, and restraint inside}
 	\begin{enumerate}
@@ -1776,16 +1646,13 @@ class A{
 		\end{enumerate}
 	\end{enumerate}
 	
-	\item when you declare mutable, you'd better use mutex to synchronize it. It's called M\&M rule in "GotW \#6b Solution"
-	\item A good reference article about const is GotW 6. 
+	\item when you declare mutable, you'd better use mutex to synchronize it. It's called M\&M rule in "GotW \#6b Solution". A good reference article about const is GotW 6. 
 \end{itemize}
 		
 		
 \subsubsection{const\_iterator}
 \begin{itemize}
-	\item You should know the difference between: \\
-	\texttt{vector<int>::const\_iterator} and \texttt{const vector<int>::iterator}
-	It's a little like top-level and low-level const. 
+	\item \texttt{vector<int>::const\_iterator} and \texttt{const vector<int>::iterator} is like top-level and low-level const. 
 \begin{lstlisting}[numbers=none]
 vector<int>::const_iterator cvi;
 *cvi = 12; //ERROR, can't change
@@ -1810,7 +1677,7 @@ values.insert(it, 1998);
 		
 		\item[Line 2:] In C++11, insert interface has changed. Because insert will not change the input iterator,(it only insert a new element after input iterator, but not change input iterator directly.) so it should be \texttt{const\_iterator}.
 		
-		\item[Line 5:] std::find is generic algorithm, it just receive a template parameter,  You should provide \texttt{const\_iterator} to it, But how can you get \texttt{const\_iterator} from a non const container. After C++11, you can use cbegin to get \texttt{const\_iterator} easily.
+		\item[Line 5:] \texttt{std::find} is generic algorithm, it just receive a template parameter,  You should provide \texttt{const\_iterator} to it, But how can you get \texttt{const\_iterator} from a non const container. After C++11, you can use cbegin to get \texttt{const\_iterator} easily.
 	\end{description}
 	
 	\item We can't remove constness from \texttt{const\_iterator} by using \texttt{const\_cast}. If they are vector or string, maybe it's OK, because they just use pointer behind the scene. Usually, \texttt{const\_iterator} and \texttt{iterator} are two different classes. A good way is to use \texttt{std::advance} and \texttt{std::distance}. Detail can be found in effective STL. 
@@ -1819,8 +1686,8 @@ advance(i, distance<const_iterator>(i, ci));
 //change ci to i. 
 \end{lstlisting}
 
+	\item Different iterators can also be transformed according arrow direction in blow figure.
 \begin{center}
-
 		\includegraphics[width=0.6\linewidth]{pics/Iterators.png}
 \end{center}
 	\item Containers are required to provide iterator as a type convertible to const\_iterator, so you can convert implicitly:
@@ -1853,7 +1720,14 @@ std::array<int, cn> a2;// OK
 		\label{fig:constexpr}
 	\end{figure}
 	
-	\item The \textbf{constexpr specifier} declares that it is possible to evaluate the value of the function or variable at compile time. Such variables and functions can then be used where only compile time \textbf{constant expressions} are allowed (provided that appropriate function arguments are given). 
+	\item The \textbf{constexpr specifier} declares that it is possible to evaluate the value of the function or variable at compile time. Such variables and functions can then be used where only compile time \textbf{constant expressions} are allowed (provided that appropriate function arguments are given). It has two advantages: 1) Improving efficiencies(if it's possible, it will calculate at compile time, not run time). 2) Expanding usage scope (initialize constexpr obj and use in integer constexpr context)
+\begin{lstlisting}[frame=single, language=c++]
+constexpr int fun(int a, int b){return a+b;}
+	
+constexpr int const foo = fun(2,3) ;  // without line 1 declaration, 
+int a[fun(2,3)];                    //we can't use this way in line 3 and 4.
+\end{lstlisting}
+		
 	
 	\item \texttt{constexpr} can be used in three places: 
 	\begin{enumerate}
@@ -1862,23 +1736,8 @@ std::array<int, cn> a2;// OK
 		\item constexpr function. constexpr function can be thought as a kind of "metafunction".
 	\end{enumerate}
 	
-	\item \texttt{constexpr} has two advantages:
-	\begin{enumerate}
-		\item Improve efficiencies(if it's possible, it will calculate at compile time, not run time). 
-		
-		\item expand usage scope (initialize constexpr obj and use in integer constexpr context)
-	\end{enumerate}
-\begin{lstlisting}[frame=single, language=c++]
-constexpr int fun(int a, int b){return a+b;}
-
-constexpr int const foo = fun(2,3) ; 
-int a[fun(2,3)];
-\end{lstlisting}
-	\begin{description}
-		\item[Line 3 and 4:] Without constexpr in function declaration, the two statements can't be compiled correctly.
-	\end{description}
 	
-	\item Difference between constant expression and constexpr:
+	\item Difference between constant expression and \texttt{constexpr}:
 	\begin{enumerate}
 		\item Declaring a function as constexpr does not necessarily guarantee that it will be evaluated at compile time. It can be used for such, but it can be used in other places that are evaluated at run-time, as well.
 		
@@ -1889,7 +1748,7 @@ int a[fun(2,3)];
 	\begin{enumerate}
 		\item when you declare \texttt{constexpr} obj, it implicit \texttt{const.} But not all \texttt{const} is \texttt{constexpr.}
 		
-		\item \texttt{constexpr} just used on top level.If you want to specify the low level \texttt{const,} you need to write it out.
+		\item \texttt{constexpr} just used on top level. If you want to specify the low level \texttt{const,} you need to write it out.
 \begin{lstlisting}
 constexpr int const foo = 42;
 constexpr int       foo = 42; //line 1 and 2 are same 
@@ -1921,15 +1780,11 @@ constexpr int sum(int i, int j){
 int i,j;
 cin>>i>>j;
 const int result = i+j; //OK
-constexpr int result = i+j;  //ERROR
 const int ce = sum(i,j); //OK
+constexpr int result = i+j;  //ERROR, can't calculate in compile time
 constexpr ce = sum(i,j); //ERROR
-\end{lstlisting}
-\begin{description}
-	\item[Line 7 and 9:] Why they are error, they can't be calculated in compiling time.
-\end{description}
-		
-\end{enumerate}
+\end{lstlisting}		
+	\end{enumerate}
 	
 	\item For constexpr object, it must has corresponding  constexpr constructor. constructor body should be empty. You can't define constexpr object if the class has no constexpr constructor.
 	\begin{enumerate}
@@ -1965,17 +1820,16 @@ constexpr int sec= 2014;
 constexpr MyInt myIntConst3(2011,sec);
 int arr[myIntConst3.getSum()];
 static_assert( myIntConst3.getSum() == 4025, "2011+014 = 4025" );
-constexpr MyInt myIntConst5(2000); //Error
+constexpr MyInt myIntConst5(2000); //Error, constructor is not declared as constexpr function
 \end{lstlisting}
 	\begin{description}
 
         \item[Line 6:] \textbf{A constexpr class must have a constexpr constructor. If a member function needs to be used in constexpr statement, it must be constexpr too: Note, in the member function definition, the qualifier of this must be const.}
 
-		\item[Line 12 and 13:] You can declare both constexpr and non-constexpr object.
+		\item[Line 13 and 14:] You can declare both constexpr and non-constexpr object.
 		
-		\item[Line 14 and 15:] If you want to use constexpr to initialize constexpr variable, you must guarantee all the parameter are constexpr.
+		\item[Line 15 and 16:] If you want to use constexpr to initialize constexpr variable, you must guarantee all the parameter are constexpr.
 		
-		\item[Line 18:] Single parameter constructor is not declared as constexpr function
 	\end{description}
 
 	\item A good articles is: \\ \verb|https://www.modernescpp.com/index.php/constexpr-variables-and-objects|
@@ -1983,7 +1837,7 @@ constexpr MyInt myIntConst5(2000); //Error
 
 \subsubsection{constexpr function}
 \begin{itemize}
-	\item \textbf{When you declare a function as constexpr, you just tell the compiler that this function is a kind of "pure function".} The pure function has no state, and when you run it, it has no side effect.
+	\item  \texttt{Constexpr} can be used with both member and non-member functions, as well as constructors. It declares the function fit for use in constant expressions. \textbf{When you declare a function as constexpr, you just tell the compiler that this function is a kind of "pure function".} The pure function has no state, and when you run it, it has no side effect. 
 	\begin{enumerate}
 		\item The return value is only determined by its input values.
 		\item Given input values, the return value can be calculated in compiling time. 
@@ -1992,25 +1846,17 @@ constexpr MyInt myIntConst5(2000); //Error
 	
 	\item The pure function has some advantages compared with ordinary funciton: Return always the same result when given the same arguments, So the function call can be replaced by the result, and the order of function call is not important.(That is why you can run it at compiling time.) But the problem is compiler itself can't judge if a function is pure function, That's why programmer come to rescue. The programmer indicate this function is a "pure" function, so compiler can \textbf{For outside} use it in another constant expression context, \textbf{For inside} calculate it in compiling time. 
 	
-	\item On the first sight, you should declare constexpr function everywhere, but it's not good idea either. That makes a constexpr qualifier an irrevocable design decision. You cannot remove this qualifier without an incompatible change to your API. It also limits how you can implement that function, e.g. you would not be able to do any logging within this function. Not every trivial function will stay trivial in eternity. That means you should preferably use constexpr for functions that are \textbf{inherently pure functions}, and that would be actually \textbf{useful at compile time} (e.g. for template metaprogramming). It would not be good to make functions constexpr just because the current implementation happens to be constexpr-able.
+	\item On the first sight, you should declare constexpr function everywhere, but it's not good idea either. That makes a constexpr qualifier an irrevocable design decision. You cannot remove this qualifier without an incompatible change to your API. It also limits how you can implement that function, e.g. you would not be able to do any logging within this function. Not every trivial function will stay trivial in eternity. That means you should preferably use constexpr for functions that are \textbf{inherently pure functions}, and that would be actually \textbf{useful at compile time} (e.g. for template metaprogramming). It would not be good to make functions constexpr just because the current implementation happens to be constexpr-able. In semantic level, you should have something that can be evaluated down to a constant while maintaining good readability and allowing slightly more complex processing than just setting a constant to a number. Take \texttt{max( a, b )} for example: Its a pretty simple choice there but it does mean that if you call max with constant values it is explicitly calculated at compile time and not at run time.
+\begin{lstlisting}[numbers=none]
+constexpr int MeaningOfLife ( int a, int b ) { return a * b; }
+constexpr int meaningOfLife = MeaningOfLife( 6, 7 );
 	
+template< typename Type > 
+constexpr Type max(Type a, Type b) {return a < b ? b : a; }
+\end{lstlisting}		
+		
 	\item constexpr functions compile much quicker than the equivalent template-based solutions, which scale linearly with the depth of the template-recursion. Where compile-time evaluation is not necessary, using inline functions or functions with internal linkage would seem more appropriate than constexpr. Both constexpr and inline are for performance improvements, inline functions are request to compiler to expand at compile time and save time of function call overheads. In inline functions, expressions are always evaluated at run time. constexpr is different, here expressions are evaluated at compile time.
-	
-	\item constexpr can be used with both member and non-member functions, as well as constructors. It declares the function fit for use in constant expressions. A few examples of constexpr functions. 
-	\begin{enumerate}
-		\item you have something that can be evaluated down to a constant while maintaining good readability and allowing slightly more complex processing than just setting a constant to a number.
-		\begin{lstlisting}[numbers=none]
-			constexpr int MeaningOfLife ( int a, int b ) { return a * b; }
-			constexpr int meaningOfLife = MeaningOfLife( 6, 7 );
-		\end{lstlisting}
-		
-		\item It basically provides a good aid to maintainability as it becomes more obvious what you are doing. Take max( a, b ) for example: Its a pretty simple choice there but it does mean that if you call max with constant values it is explicitly calculated at compile time and not at runtime.
-		\begin{lstlisting}[numbers=none]
-			template< typename Type > 
-			constexpr Type max(Type a, Type b) {return a < b ? b : a; }
-		\end{lstlisting}
-		
-	\end{enumerate}
+
 	
 	\item Compared with ordinary function, constexpr functions:
 	\begin{enumerate}
@@ -2055,61 +1901,44 @@ int sum = cfun(i,j); //OK
 		\item a template parameter or enum or switch statement.
 	\end{enumerate}
 	
-	\item In C++11. For constexpr functions there are a few restrictions on it:
-	\begin{enumerate}
-		\item has to be non-virtual.
-		
-		\item has to have arguments and a return value of a literal type. Literal types are the types of constexpr variables.
-		
-		\item The function body must be non-virtual and extremely simple: Apart from typedefs and static asserts, only a single return statement is allowed. In the case of a constructor, only an initialization list, typedefs and static assert are allowed. (= default and = delete are allowed, too, though.)
-	\end{enumerate}
+	\item In C++11. For constexpr functions there are a few restrictions on it: it has to be non-virtual. It has to have arguments and a return value of a literal type. Literal types are the types of constexpr variables.The function body must be extremely simple: Apart from typedefs and static asserts, only a single return statement is allowed. In the case of a constructor, only an initialization list, typedefs and static assert are allowed. (= default and = delete are allowed, too, though.)
 	
 \begin{lstlisting}[frame=single, language=c++]
-	constexpr int gcd(int a, int b){
-		return (b== 0) ? a : gcd(b, a % b);
-	}
+constexpr int gcd(int a, int b){
+	return (b== 0) ? a : gcd(b, a % b);
+}  //use ternary to replace if
 \end{lstlisting}
-	\begin{description}
-		\item[Line 2:] Function body can only have one return statement. but thank for ternary operator and recursion.
-	\end{description}
 	
-	\item In C++14. constexpr function can include: 
-	\begin{enumerate}
-		\item conditional jump instructions or loop instructions and more than one instruction.
+	\item In C++14. constexpr function can include: conditional jump instructions or loop instructions and more than one instruction. fundamental data types that have to be initialized with a constant expression.The arguments and the return type must be \textbf{literal types} (i.e., generally speaking, very simple types, typically scalars or aggregates)
 		
-		\item fundamental data types that have to be initialized with a constant expression.
-		
-		\item \textbf{You can't define below:} asm declaration, a goto statement, a statement with a label other than case and default, try-block, definition of a variable of non-literal type, definition of a variable of static or thread storage duration, definition of a variable for which no initialization is performed.
-		
-		\item The arguments and the return type must be \textbf{literal types} (i.e., generally speaking, very simple types, typically scalars or aggregates)
-		
-		\item in C++11, constexpr member function is implicit const; C++14 lift it up.
-	\end{enumerate}
 \begin{lstlisting}[numbers=none]
-	constexpr auto gcd(int a, int b){
-		while (b != 0){
-			auto t= b;
-			b= a % b;
-			a= t;
-		}
-		return a;
+constexpr auto gcd(int a, int b){
+	while (b != 0){
+		auto t= b;
+		b= a % b;
+		a= t;
 	}
+	return a;
+}
 \end{lstlisting}
-    \item A literal type is a type that can qualify as constexpr. This is true for scalar types, references, certain classes, and arrays of any such types. A class that is a literal type is a class (defined with class, struct or union) that:
-        \begin{enumerate}
-            \item has a trivial destructor,
-            \item every constructor call and any non-static data member that has brace- or equal- initializers is a constant expression, is an aggregate type, or has at least one constexpr constructor or constructor template that is not a copy or move constructor.
-            \item has all non-static data members and base classes of literal types 
-        \end{enumerate}
+    \item A literal type is a type that can qualify as constexpr. This is true for scalar types, references, certain classes, and arrays of any such types. A class that is a literal type is a class (defined with class, struct or union) that has a trivial destructor. And every constructor call and any non-static data member that has brace- or equal- initializers is a constant expression, is an aggregate type, or has at least one constexpr constructor or constructor template that is not a copy or move constructor. It has all non-static data members and base classes of literal types 
 \begin{lstlisting}[]
 struct A { };
 struct B { ~B(){} };
 
-std::cout << "int: " << std::is_literal_type<int>::value ;
-std::cout << "int&: " << std::is_literal_type<int&>::value ;
-std::cout << "int*: " << std::is_literal_type<int*>::value ;
-std::cout << "A: " << std::is_literal_type<A>::value ;
-std::cout << "B: " << std::is_literal_type<B>::value;  //Only this line print false
+cout << is_literal_type<int>::value ; //int& and int* and A true
+cout << "B: " << is_literal_type<B>::value;  //Only this line print false
+
+struct point {
+	point(): x(0), y(0){  std::cout << "point() called" << std::endl; }
+	constexpr point(int x_, int y_): x(x_),y(y_){}
+	constexpr int hypot() { return x*x + y*y; }
+private:
+int x,y;
+};
+
+static_assert( point(3,4).hypot() == 25 );
+std::cout << "std::is_literal_type<point>::value=" << std::is_literal_type<point>::value;
 \end{lstlisting}
 	
 	\item \textbf{Use constexpr, const and noexcept more aggressively.} This adds more compilation-time checks, gives the compiler more information to optimize better and this has the nice side effect of making you think more about what you are currently doing. And remember: the longer it takes for your C++ program to compile, the greater your eliteness.
@@ -2122,19 +1951,15 @@ std::cout << "B: " << std::is_literal_type<B>::value;  //Only this line print fa
 	\item In C++, \textbf{global and static variables initialized to default values.}  But auto variable is random value, unless you use value initialization, because of efficiency consideration. 
 	
 	\item You can't initialize a static member variable inside the class declaration, you need to put it in a .cpp file.   But you can if the static data member is \texttt{const} of integer or enumeration. If you have a const member inside a class, better to use \texttt{const static}, because it can't be changed, so all the object can share the same static value.
-	\begin{lstlisting}[frame=single, language=c++]
-		class{  //in .h file
-			static int obj_num;  // you can't initialize
-			const static int months = 12; // you can initialize inside the class
-		};
-		
-		//In .cpp file
-		int class::obj_num = 0; // no static keyword anymore.
-		
-	\end{lstlisting}
-	\begin{description}
-		\item[Line 7:] \texttt{obj\_num} will be default value(0) even you don't initialization it.
-	\end{description}
+\begin{lstlisting}[frame=single, language=c++]
+class{  //in .h file
+	static int obj_num;  // you can't initialize
+	const static int months = 12; // you can initialize inside the class
+};
+
+int class::obj_num = 12; //in .cpp, no static keyword anymore.	
+                     //will be 0 if you don't initialize it.
+\end{lstlisting}	
 	
 	\item static member function has two usages:
 	\begin{enumerate}
@@ -2162,11 +1987,11 @@ main(){
 	
 	\item Summary: Use \texttt{static} in three ways:
 	\begin{enumerate}
-		\item Use it inside a function. invisible outside of function, valid until program end.
+		\item Use it inside a function. invisible outside of function, static life time and valid until program end.
 		
 		\item Use it inside a class. only copy for all instances, and access by static member function.
 		
-		\item Use it inside a file. internal link, avoid name conflict. But by now, we prefer to use unnamespace in moder C++.
+		\item Use it inside a file. internal link, avoid name conflict. But by now, we prefer to use unnamed namespace in modern C++.
 	\end{enumerate}
 \end{itemize}
 
@@ -2174,42 +1999,33 @@ main(){
 \section{Complex declaration}
 
 \begin{itemize}	
-	\item Any complex declaration is either a pointer to array or a pointer to a function. Introduce pointer to pointer first.
+	\item pointer to pointer is used mostly in ragged array, array of list. For ragged char array, use null character as end, for ragged int array, you need extra size information. If you want to modify pointer parameter, you can use \texttt{int* \&p}; It's more clear and direct than useing pointer to pointer. 
 \begin{lstlisting}
 int** p = new int* [2];
 p[0] = new int[2];
 p[1] = new int[3];
 p[0][1] = 0;
 
-int* &rp = p[0];
+int* &rp = p[0]; 
 
 delete [] p[0];
 delete [] p[1];
 delete [] p;		
 \end{lstlisting}
-	\begin{description}
-		\item[line 1] pointer to pointer is used mostly in ragged array, array of list. 
-		\item[Source code] If you want to modify pointer parameter, you can use \texttt{int* \&p}; It's more clear and direct than useing pointer to pointer. 
-		\item[Source code] \texttt{char** p} has null character in the end, \texttt{int**} usually need size or informaiton to tell where the last element is.
-	\end{description}	
 	
-	\item pointer to array
+		\item Any complex declaration is either a pointer to an array or a pointer to a function. Let me introduce pointer to an array first. 
 \begin{lstlisting}
 int a [2] = {1, 3};
 int b [3] = {1, 2, 3};
 
-int (*p)[] ;
+int (*p)[] ; //can omit the dimension, but you can not increment it.
 p = &b; //p = &a is OK, (*p)[1] is ok, but ++p error
 
-int (*p)[3] ;
+int (*p)[3]; //C/C++ both support int(*p)[] and int(*p)[3]
 p = &b; //p = &a is error, (*p)[1] is ok, but ++p is OK.
-//C/C++ both support int(*p)[] and int(*p)[3]
 \end{lstlisting}
-	\begin{description}
-		\item[line 4] When you declare pointer to array, you can omit the dimension.but you can not increment it.
-	\end{description}
 	
-	\item Usage of \texttt{typedef}.
+	\item Usage of \texttt{typedef}. When you use typedef, the basic sytax is the same, but the identifier has become a type, not variable. Usually, we use capital letter to denote that it's a type.
 \begin{lstlisting}[]
 struct Block{
 	int i;
@@ -2221,11 +2037,8 @@ typedef struct Block{
 	int j;
 } BB;  //define type, BB is type 
 \end{lstlisting}
-	\begin{description}
-		\item[Source code] When you use typedef, the basic sytax is the same, but the identifier has become a type, not variable. Usually, we use capital letter to denote that it's a type.
-	\end{description}
 	
-	\item pointer to function. You can use typedef to help you to define a pointer to function.
+	\item pointer to function. You can use \texttt{typedef} to help you to define a pointer to function.
 \begin{lstlisting}
 int (*foo_ptr)( int )
 
@@ -2237,61 +2050,43 @@ FOO_PTR_T foo_ptr;
 \begin{lstlisting}
 int (*foo_ptr_array[2])( int )
 
-//A better way is to use typedef
-typedef int (*Foo_ptr_t)( int );
+typedef int (*Foo_ptr_t)( int ); //A better way is to use typedef
 Foo_ptr_t foo_ptr_array[2];
 \end{lstlisting}
 	\begin{description}
 		\item[1] The first step, get the variable name, look right, found that it's array. what types are in the array?
 		\item[2] Then look left, found that pointer, then that is an array pointer.
 		\item[3] Then look right, found that this is parentheses, that is function. so pointer to function, what type of function?
-		\item[4] then look left, paramter is int, and return type is int too.
+		\item[4] then look left, paramter is \texttt{int}, and return type is \texttt{int} too.
 	\end{description}
 	
-	\item pointer to function which return complex type
+	\item pointer to function which return complex type. This is a function pointer, The function input a \texttt{int} and return a pointer. The reture pointer points to an array, and array's element type is \texttt{int *}.
 \begin{lstlisting}
 int * (* (*fp1) (int) ) [10];
 
-//Start from the variable name -------------------------- fp1
-//Nothing to right but ) so go left to find * -------------- is a pointer
-//Jump out of parentheses and encounter (int) --------- to a function that takes an int as argument
-//Go left, find * ---------------------------------------- and returns a pointer
-//Jump put of parentheses, go right and hit [10] -------- to an array of 10
-//Go left find * ----------------------------------------- pointers to
-//Go left again, find int -------------------------------- ints.
+//Start from the variable name -> fp1
+//Nothing to right but ) so go left to find * -> is a pointer
+//Jump out of parentheses and encounter (int) -> to a function that takes an int as argument
+//Go left, find * -> and returns a pointer
+//Jump put of parentheses, go right and hit [10] -> to an array of 10
+//Go left find * -> pointers to
+//Go left again, find int -> ints.
 \end{lstlisting}
-	\begin{description}
-		\item[The first step] This is a function pointer
-		\item[The second step] The function input a \texttt{int} and return a pointer 
-		\item[The third step] The pointer points to an array. 
-		\item[The fourth step] The array's element type is \texttt{int *}; 
-	\end{description}
-	\item \textbf{The basic method is find the indentifier name, then use it as center point to expand to both side following right-then-left rule.} A good reference is here: How to interpret complex C/C++ declarations. You can google and read it. 
-	
+	\item \textbf{The basic method is find the identifier name, then use it as center point to expand to both side following right-then-left rule.} A good reference is here: How to interpret complex C/C++ declarations. You can google and read it. 	
 \end{itemize}
-
 
 \section{Name}
 \subsection{Namespace}
 
 \begin{itemize}
-	\item Basic namespace style:
-	\begin{enumerate}
-		\item If you develop a library of functions or classes, you should put them in a new namespace, just like std namespace in STL.
+	\item Don't put a lot of stuff in global-scope, learn to using namespace to split your global-scope into different scopes. If you develop a library of functions or classes, you should put them in a new namespace, just like std namespace in STL. Don't put your own class into namespace \texttt{std}; Usually, namespace should be your project name, you can add company name in front of it if you like.
 		
-		\item Don't put a lot of stuff in global-scope, learn to using namespace to split your global-scope into different scopes. 
-		
-		\item Don't put your own class into namespace \texttt{std}; Usually, namespace should be your project name, you can add company name in front of it if you like.
-	\end{enumerate}
-	
-	
 	\item Use \texttt{::} before function will means that global namespace, For example, \texttt{::max} will hide \texttt{std::max}, in this way, you can define your own max function in global scope, and use \texttt{::max} call your own max function. 
 	
-
 	\item \textbf{Namespaces can be located at the global level or inside other namespaces. They can't be placed in a block.} So it has external linkage by default, that is to say it can be accessed by multi translation unit(files).
 
 
-	\item There are three kinds of namespace usages.
+	\item There are three kinds of namespace usages. Using-declaration introduces a member of another namespace into current namespace or block scope. It's the recommended way to use namespace. 
 \begin{lstlisting}[numbers = none]
 using sp::name;   //1) using declaration
 using namespace sp;   //2) using directive
@@ -2300,24 +2095,33 @@ sp::name   //3) specific refer it
 namespace ns{
 	int zy;
 }
+using std::string; //using declaration
 using namespace ns;
 int main(){
+	string str = "abc" //don't need to use std::string.
 	int zy = 0; //it will hide ns::zy
 	cin>>zy; //read into local zy
 }
 \end{lstlisting}
+
+	\item Suggestions about "using directive".
+\begin{enumerate}
+	\item  \textbf{Don't use using directive in any .h file,  because It will "pollute" all the .cpp file which include this head file.}
 	
-	\item Using-declaration introduces a member of another namespace into current namespace or block scope. It's the recommended way to use namespace. 
-	
-\begin{lstlisting}
-#include <string>
-using std::string; //using declaration
+	\item Use using directive as little as possible in any .cpp file, you should using scope-resolution or using declaration more. It will avoid polluting namespace.
+\begin{lstlisting}[numbers=none]
+#include <iostream>
+using std::cout;
+using std::endl;
+
 int main(){
-	string str = "Example";
-	using std::cout; //using declaration
-	cout << str;
-}
-\end{lstlisting}
+	cout<<"Hello world"<<endl;
+}	
+\end{lstlisting}	
+	
+	\item If you \textbf{have to} use using directive in your .cpp file, put it after all the include files.
+
+		\end{enumerate}
 	
 	\item For implementation code, there are four methods to put it into namespace. Method 3 and method 4 are recommended.
 	
@@ -2328,52 +2132,28 @@ namespace Yan{ //a.h
 	};
 }
 	
-using Yan::Foo;
+using Yan::Foo;  //method 1. using declaration
 void Foo::mem_fun(){.......}
 	
-using namespace Yan;
+using namespace Yan; //method 2. using directive. It's bad style.
 void Foo::mem_fun(){.........}
 	
-void Yan::Foo::mem_fun(){.........}
+void Yan::Foo::mem_fun(){.........} //method 3. It's good style.
 
-namespace Yan{ 
+namespace Yan{  //method 4. can include more contents in side.
 	void Foo::mem_fun(){......}
 }
 \end{lstlisting}
-\begin{description}
-	\item[Line 7:]method 1. using declaration
-	\item[Line 10:]method 2. using directive. It's bad style.
-	\item[Line 13:]method 3. It's good style.
-	\item[Line 15-17:]method 4. Also good, when you have a lot of function need to be define, compared with method3, save your typing.
-\end{description}
+
 	
-	\item Suggestions about "using directive".
-	\begin{enumerate}
-
-		\item  \textbf{Don't use using directive in any .h file,  because It will "pollute" all the .cpp file which include this head file.}
-		
-		\item Use using directive as little as possible in any .cpp file, you should using scope-resolution or using declaration more. It will avoid polluting namespace.
-\begin{lstlisting}[numbers=none]
-#include <iostream>
-using std::cout;
-using std::endl;
-
-int main(){
-	cout<<"Hello world"<<endl;
-}
-\end{lstlisting}
-		
-		\item If you \textbf{have to} use using directive in your .cpp file, put it after all the include files.
-	\end{enumerate}
 	
 	\item unnamed namespace just like \texttt{static} to specify its content to local file scope. At the same time, make anonymous namespace as small as possible.  see C++ primer p492.
 	
 \begin{lstlisting}[numbers=none]
 // a.cpp file
 static int count;
-	
-// A better method to use namespace.
-namespace{
+
+namespace{ // A better method to use namespace.
 	int count;
 }
 \end{lstlisting}
@@ -2384,12 +2164,7 @@ namespace{
 \subsection{Name lookup}
 \begin{itemize}
 	
-	\item \textbf{Phases of the function call has three steps, they are:}
-	\begin{enumerate}
-		\item Name lookup.
-		\item Overload resolution.
-		\item Access control.
-	\end{enumerate}
+	\item \textbf{Phases of the function call has three steps, they are:} 1) Name lookup. 2) Overload resolution. and 3) Access control.
 	
 	\item Detail explanation is below:
 	\begin{enumerate}
@@ -2417,13 +2192,10 @@ class Foo{
 	void f1(string & str){};
 	void f2(void){
 		int i = 3;
-		f1(i); //compiler bark here!
+		f1(i); //compiler bark here! it only see f1(string &)
 	}
 };
 \end{lstlisting}
-\begin{description}
-	\item[Line 7:] compiler bark here! because it only see \texttt{f1(string\&)}.
-\end{description}
 		
 		\item Child class scope. 
 \begin{lstlisting}
@@ -2454,14 +2226,10 @@ namespace N{
 	void f1(string & str){};
 	void f2(void){
 		int i = 3;
-		f1(i); //compiler will bark here!
-		::f1(i); //this will work
+		f1(i); //compiler will bark here! Use ::f1(i)to specify global one
 	}
 };
 \end{lstlisting}
-\begin{description}
-	\item[Line 7:] You can use \texttt{::f1(i)} to specify global f1
-\end{description}
 
 		\item Nested scope. A class name or enumeration name can be hidden by an explicit declaration of that same name -- as an object, function, or enumerator -- in a nested declarative region or derived class.
 \begin{lstlisting}[numbers=none]
@@ -2484,17 +2252,13 @@ class B:public class A{
 };
 	
 A* pa = new B();
-pa->f(3) 
+pa->f(3) // call base f, because pa is A*, event it points to B. 
 \end{lstlisting}
-\begin{description}
-	\item[Line 9:] Will call base f. Because \texttt{pa} is \texttt{A*} type, even in fact it points to \texttt{B} type
-\end{description}
-
 
 	
-	\item How to expand searching scope?  There are two methods:
+	\item How to expand searching scope?  There are two method:
 	\begin{enumerate}
-		\item using declaration.
+		\item using declaration to introduce name into the name lookup.
 		
 		\item You can use :: to specify global variable name or function if you have same name in you local scope.  Or use \texttt{Base::} to specify Base scope name if you have same name in derived class.
 \begin{lstlisting}
@@ -2502,25 +2266,20 @@ struct B{
 	int g( int );
 };
 
+struct D : public B{ 
+	using B::g;  //mehtod 1: using declaration, can orverload later
+	private:
+	int g( std::string, bool );
+};
+D d; 
+d.g(3) // also OK. 
+
 struct D : public B{
 private:
 	int g( std::string, bool );
 };
-
-D d; 
-int i;
-d.B::g(i);  //use scope specifier 
-		
-struct D : public B{ 
-	using B::g;  //using declaration
-private:
-	int g( std::string, bool );
-};
+d.B::g(3);  // method 2: use scope specifier 
 \end{lstlisting}
-\begin{description}
-	\item[Line 12:] method 1,asks for \texttt{B::g(int)} directly.
-	\item[Line 15:] method 2, introduce new name to \texttt{D}. We have two \texttt{g} names in the \textbf{immediate scope.} We can overload resolve later.
-\end{description}
 		
 	\end{enumerate}
 
@@ -2549,14 +2308,12 @@ x3 = x1+x2;
 namespace N {
 	struct X {};
 }
-
 // this template should not be put in the namespace N
 template<typename T>
 int* operator+( T , unsigned ) {/* do something */}	
 \end{lstlisting}	
-	
-	
-	\item Koenig, also called Argument-Dependent Lookup(ADL) lookup. If you supply a function argument of class type (here \texttt{parm}, of type \texttt{NS::T}), then to look up the correct function name the compiler considers matching names in the namespace (here \texttt{NS}) containing the argument's type.
+		
+	\item Koenig, also called Argument-Dependent Lookup(ADL) lookup. If you supply a function argument of class type (here \texttt{parm} of type \texttt{NS::T}), then to look up the correct function name the compiler considers matching names in the namespace (here \texttt{NS}) containing the argument's type.
 	
 \begin{lstlisting}[numbers=none]
 namespace NS{
@@ -2603,18 +2360,15 @@ namespace ajo { // AjoBigNum.h
 		bignum operator++();
 	};
 	std::ostream& operator<<(std::ostream&, bignum);
-}
-	
-namespace ajo {
 	void bar(int& x) {
 		sak::bignum b;   // refers to sak::bignum
 		++b;             // calls sak::bignum::operator++()
-		std::cout << b;  
+		std::cout << b; //ADL use here
 	}
 }
 \end{lstlisting}
 \begin{description}
-	\item[Line 19:] UH-OH! We should call \texttt{operator <<} in line 5 in sak namespace. If there is not ADL, we call \texttt{operator <<} in ine 12, which is in ajo namespace. That is not what we expect. 
+	\item[Line 16:] UH-OH! We should call \texttt{operator <<} in line 5 in sak namespace. If there is not ADL, we call \texttt{operator <<} in ine 12, compiler will stop because we can't change \texttt{sak::bignum} to \texttt{ajo::bignum}.
 \end{description}
 	
 	\item ADL can bring name lookup ambiguous problem.  When you call \texttt{f(parm)}, number 2 is in global scope, so it is in the \textbf{searching scope} default. But ADL bring namespace NS scope into searching scope, and there are two options now. Compiler will bark.
@@ -2624,9 +2378,7 @@ namespace NS { // some header T.h
 	class T { };
 	void f( T ); //  number 1, add new function
 }
-
-void f( NS::T ); //number 2
-	
+void f( NS::T ); //number 2	
 int main(){
 	NS::T parm;
 	f(parm); // ambiguous: NS::f  or global f?
@@ -2652,10 +2404,10 @@ class B{ // <-- class, not namespace
 \end{itemize}
 
 
-\section{operator}
-\subsection{basic}
+\section{operator and operator overload}
+
 \begin{itemize}
-	\item For operator, there are two important characteristics: \textbf{Precedence} and \textbf{Associativity}. Below example explains associativity. \textbf{When operators have the same precedence, then associativity will kick in to decide which step need to be preform firstl.}
+	\item For operator, there are two important characteristics: \textbf{Precedence} and \textbf{Associativity}. Below example explains associativity. \textbf{When operators have the same precedence, then associativity will kick in to decide which step need to be preform first.}
 	
 \begin{lstlisting}
 a=b=c; //correct code
@@ -2694,18 +2446,11 @@ These operators have very high precedence(group 3), Another low precedence group
 for(int i = 0;i<10; ++i)
 j=++i; // j = i+1;
 j=i++; //j = i;  i=i+1;
-++*p;  //++(*p) ;
+++*p;  //++(*p) ; prefix ++ and * has same precedence,  both right to left
 *++p; //*(++p);
 \end{lstlisting}
 	
-	\item How to understand \texttt{*p++} ?
-	
-	\begin{enumerate}
-		\item Precedence of prefix \texttt{++} and \texttt{*} is same. Associativity of both is right to left.
-		\item Precedence of postfix \texttt{++} is higher than both \texttt{*} and prefix \texttt{++}. Associativity of postfix \texttt{++} is left to right.
-		\item Prefix and postfix are both syntax sugar, in order to reduce typing.   But prefix represents \textbf{one statement}, postfix means \textbf{two statements};
-	\end{enumerate}
-	
+	\item How to understand \texttt{*p++} ? Prefix and postfix are both syntax sugar, in order to reduce typing.   But prefix represents \textbf{one statement}, postfix means \textbf{two statements}. Precedence of postfix \texttt{++} is higher than both \texttt{*} and prefix \texttt{++}. Associativity of postfix \texttt{++} is left to right.
 \begin{lstlisting}[frame=single, language=c++]
 ++i;  //just like i = i+1 or  i+=1;
 *p++; // *(p++);  *p ; p=p+1;
@@ -2714,26 +2459,25 @@ while(*p != '\0'){
 	p= p+1;
 }
 //can be written to
-while(*p++ != '\0')
-\end{lstlisting}
+while(*p++ != '\0')	
+\end{lstlisting}		
 
-\begin{description}
-	\item[Line 2:] When \texttt{i++} used in expression, treated as two statements.
-\end{description}
-
-\end{itemize}
-
-\subsection{overload}
-\begin{itemize}
- 
-	\item To provide two (or more) functions that perform similar, closely related things, differentiated by the types and/or number of arguments it accepts.
+	\item Overload means providing two (or more) functions that perform similar, closely related things, differentiated by the types and/or number of arguments it accepts.
 	
 	\begin{enumerate}
 		\item \textbf{In some cases it's worth arguing that a function of a different name is a better choice than an overloaded function.}
 		
-		\item  In the case of constructors, overloading is the only choice.
+		\item  In the case of constructors and operator, overloading is the only choice because we can't give them the different name. and operator overload is typical feature in Object Base Programming.(OB)
 		
-		\item  operator overload is also very common. In fact, it's the typical feature in Object Base Programming.(OB)
+		\item Sometimes, overload and default parameter have same client usage, as shown below. If there is a value that you can use for a default, use default parameter. Overload usually take different parameter type or different number of parameters.
+\begin{lstlisting}[numbers=none]
+void f();
+void f(int x);
+f() or f(10);
+
+void g(int x = 0);
+g() or g(10);
+\end{lstlisting}		
 	\end{enumerate}
 	
 	\item Overloading sometimes can help you to avoid implicit type conversion. In the below example, we avoid creating a temporary obj implicitly created by constructor.
@@ -2745,23 +2489,9 @@ class String{
 String str;
 if(str =="hello") //will build a temp obj String("hello");
 	
-bool operator==(const String& lhs, const char* rhs);
+bool operator==(const String& lhs, const char* rhs);  //avoid implicit type conversion.
 \end{lstlisting}
-\begin{description}
-	\item[Line 7:] You can define overload to avoid implicit type conversion.
-\end{description}
 
-	
-	\item Sometimes, overload and default parameter have same client usage, as shown below. If there is a value that you can use for a default, use default parameter. Overload usually take different parameter type or different number of parameters.
-\begin{lstlisting}[numbers=none]
-void f();
-void f(int x);
-f() or f(10);
-	
-void g(int x = 0);
-g() or g(10);
-\end{lstlisting}
-	
 	\item The binary operators = (assignment), [] (array subscription), -> (member access), as well as the unary () (function call) operator, must always be implemented as member functions, because the syntax of the language requires them to.
 	
 	\item Other operators can be implemented either as members or as non-members. Some of them, however, usually have to be implemented as non-member functions, because their left operand cannot be modified by you. The most prominent of these are the input and output operators \texttt{<<} and \texttt{>>}, whose left operands are stream classes from the standard library which you cannot change.
@@ -2776,7 +2506,6 @@ g() or g(10);
 	\end{enumerate}
 	
 \end{itemize}
-
 
 \chapter{Initialization}
 \section{Basic knowledge}
@@ -2795,7 +2524,7 @@ g() or g(10);
 		\item Initilizer list is \texttt{std::initializer\_list}. It is a \textbf{new data type. just like std::list.}
 	\end{enumerate}
 
-	\item Constructor with one parameter is called converting constructor,(before c++ 11). Copy constructor is also converting constructor. A constructor that is not declared with the specifier explicit is called a converting constructor. please note here, Implicitly-declared and user-defined non-explicit copy constructors and move constructors are all converting constructors after c++ 11.
+	\item Constructor with one parameter is called converting constructor. After C++ 11, A constructor that is not declared with the specifier explicit is called a converting constructor. please note here, Implicitly-declared and user-defined non-explicit copy constructors and move constructors are all converting constructors after c++ 11. Why are constructors with more than a single parameter considered to be \textbf{converting constructors} after C++11? That is because the new standard provides us with some handy syntax for passing arguments and returning values using braced-init-lists. Consider the following example: The ability to specify the return value as a braced-init-list is considered to be a conversion. This uses the converting constructor for foo that takes a float and an int. In addition, we can call this function by doing bar(\{2.5f, 10\}). \textbf{Converting only cares about if it has explicit, if there is no explicit, even zeor or more than 1 parameter are in consturctor, it is still converting constructor.} 
 
 \begin{lstlisting}[numbers=none]
 struct Foo{
@@ -2803,19 +2532,14 @@ struct Foo{
 	Foo(int) { }      // converting constructor
 	Foo(float, int) { } // converting constructor (since C++11)
 };
-\end{lstlisting}	
-
-	\item Why are constructors with more than a single parameter considered to be \textbf{converting constructors} in C++11? That is because the new standard provides us with some handy syntax for passing arguments and returning values using braced-init-lists. Consider the following example: The ability to specify the return value as a braced-init-list is considered to be a conversion. This uses the converting constructor for foo that takes a float and an int. In addition, we can call this function by doing bar(\{2.5f, 10\}). \textbf{Converting only cares about if it has explicit, if there is no explicit, even zeor or more than 1 parameter are in consturctor, it is still converting constructor.} 
-
-\begin{lstlisting}[numbers=none]	
 Foo bar(Foo f) {
 	return {1.0f, 5}; //CONVERTING two numbers into Foo.
 }
-\end{lstlisting}
+\end{lstlisting}	
 
 	\item The \textbf{uniform initialization} is a feature that permits the usage of a consistent syntax to initialize variables and objects which are ranging from primitive type to aggregates. In other words, it introduces \textbf{brace-initialization} that applies braces (\{\}) to enclose initializer values.
 	
-	\item \textbf{List initialization} is comprised of direct-list-initialization and copy-list-initialization. It's concrete initialize method. \textbf{brace-initialization} is generic conception. In this book, uniform(brace) initialization are interchangeable. 
+	\item \textbf{List initialization} is comprised of direct-list-initialization and copy-list-initialization. It's concrete initialize method. \textbf{brace-initialization} is generic conception. In this book, uniform(brace) or list initialization are interchangeable. 
 	
 	\item default constructor is different with default initialization. copy constructor is also different with copy initialization.
 	
@@ -2844,15 +2568,13 @@ int g2 = f();   //  dynamic initialization
 	\item You can see the dynamic initialization happen after static initialization. Sometimes it causes some subtle bugs shown below:
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 int a = f(); // call f first
-int x = 22;
+int x = 22; //this line call first.
 int f() {
 	++x;
 	return 123; // unimportant arbitrary number
-}
+} //x equals to 23, not 22. because static init is earlier than dynamic
 \end{lstlisting}
-\begin{description}
-	\item[Source code:] \texttt{x} equals to 23, not 22. Because static initialization is earlier than dynamic initialization.
-\end{description}
+
 	
 	\item Pay attention to the global object which are initialized in right order. Because the order can be arranged in the same translation unit, but not \textbf{between translation units}, see effective c++ Item 47. The initialization order uncertainty in separate translation units can cause below problem.
 	
@@ -2891,7 +2613,7 @@ Y::Y(){
 \begin{itemize}
 	\item There are six \textbf{initialization methods}:
 	\begin{enumerate}
-		\item Default initialization syntax and example. Two points to clarify: 1) default initialization doesn't equal calling default constructor. 2) default initializaiton doesn't means to set variable to zeor.
+		\item Default initialization syntax and example. Two points to clarify: 1) default initialization doesn't equal calling default constructor. 2) default initializaiton doesn't means to set variable to zeor. Default initialization call default constructor or does nothing. If it doesn't nothing, it produces indeterminate value.
 \begin{lstlisting}[numbers=none]
 T t;
 new T;  //default
@@ -2900,16 +2622,13 @@ new T;  //default
 	
 \begin{lstlisting}
 struct T1 { int mem; };
-
 struct T2{
 	int mem;
 	T2() { } // "mem" is not in the initializer list
 };
-
 int n; // static non-class, a two-phase initialization is done:
-	// 1) zero initialization initializes n to zero
-	// 2) default initialization does nothing, leaving n being zero
-
+	// first, zero initialization, then default initialization does nothing
+	
 int main(){
 	int n;          // non-class, the value is indeterminate
 	std::string s;  // class, calls default constructor, s is "" (empty string)
@@ -2925,7 +2644,6 @@ int main(){
 
 \begin{description}
 	\item[Line 8:] static initialization and default initialization is not exclusive each other, they can be combined. 
-	\item[Source code] Default initialization call default constructor or does nothing. If it doesn't nothing, it produces indeterminate value.
 \end{description}
 
 
@@ -2947,36 +2665,29 @@ struct T1{
 struct T2{
 	int mem1;
 	std::string mem2;
-	T2(const T2&) { } // user-provided copy constructor
-};                    // no default constructor
+	T2(const T2&) { } // user-provided copy constructor, no default ctor
+};
 
 struct T3{
 	int mem1;
 	std::string mem2;
 	T3() { } // user-provided default constructor
 };
-
 std::string s{}; // class => default-initialization, the value is ""
 
-int main(){
-	int n{};                // scalar => zero-initialization, the value is 0
-	double f = double();    // scalar => zero-initialization, the value is 0.0
-	int* a = new int[10](); // array => value-initialization of each element
-							//          the value of each element is 0
-							
-	T1 t1{};		// class with implicit default constructor =>
-					// t1.mem1 is zero-initialized, the value is 0
-					// t1.mem2 is default-initialized, the value is ""
-							
-	//  T2 t2{};	// error: class with no default constructor
-	
-	T3 t3{};		// class with user-provided default constructor =>
-					// t3.mem1 is default-initialized to indeterminate value
-					// t3.mem2 is default-initialized, the value is ""
-							
-	std::vector<int> v(3);  // value-initialization of each element
-							// the value of each element is 0
-}
+int n{};                // scalar => zero-initialization, the value is 0
+double f = double();    // scalar => zero-initialization, the value is 0.0
+int* a = new int[10](); // array => value-initialization of each element 0
+
+T1 t1{};		// class with implicit default constructor =>
+// t1.mem1 is zero-initialized 0, t1.mem2 is default-initialized ""
+
+//  T2 t2{};	// error: class with no default constructor
+
+T3 t3{};		// class with user-provided default constructor =>
+// t3.mem1 is default-init to indeterminate, t3.mem2 is default-init ""
+
+std::vector<int> v(3);  // value-initialization of each element to 0
 \end{lstlisting}
 
 
@@ -3007,9 +2718,8 @@ Foo f2 = 2; //error, because constructor is explicit.
 
 		\item Copy initialization syntax and example.
 \begin{lstlisting}[numbers=none]
-T object = other;        // Initialization via assignment
-T array[N] = {other};    // In array-initialization, the individual
-						 // values are copy-initialized
+T object = other;     // Initialization via assignment
+T array[N] = {other}; // In array-initialization, the individual value are copy-init
 f(other)                 // Pass-by-value
 return other;            // Return-by-value
 catch (T object)         // Catch-by-value
@@ -3089,8 +2799,7 @@ int main() {
 
 	Aarray a2 = {0, 0.1, 2, 3.4}; //you can use brace elision
 	Aarray a3{0, 0.1, 2, 3.4}; //After c++ 14, you don't need =
-
-	Aarray a2{ {0, 0.1}, {2, 3.4} }; //this is too many initializers error
+	Aarray a4{ {0, 0.1}, {2, 3.4} }; //error, this is too many initializers error
 }
 \end{lstlisting}
 \begin{description}
@@ -3098,7 +2807,10 @@ int main() {
 	\item[Line 24:] Without extra \{\}, you will have too many initializers error.
 \end{description}
 
-		\item If element in aggregate list is not aggregate type, you can't use brace elision style. 
+		\item \texttt{std::array} has no any constructor, so it is aggregate type. \texttt{S1} and \texttt{S2} are aggregate, so we can use brace elision, and we recommend using brace elision. When you use brace, with = and without = has the same semantic. If element in aggregate list is not aggregate type, you can't use brace elision style. \texttt{S3} is not aggregate, so you have to use correct nested braces.
+		 
+%		\item  Inside array, it's just another C type array,(\texttt{int a[3]}), so when you use aggregate initialization without brace elision, you have to add extra \{\} to specify it's the boundary of \texttt{int a[3]}. The basic idea is the same as previous code \texttt{struct Aarray}.
+
 \begin{lstlisting}
 struct S1 {
     S1() = default;
@@ -3126,11 +2838,6 @@ int main() {
     std::array<S3, 3> a31{{{1, 2}, {3, 4}, {5, 6}}};
 }
 \end{lstlisting}
-\begin{description}
-		\item[Source code] S1 and S2 are aggregate, so we can use brace elision, and we recommend using brace elision. When you use brace, with = and without = has the same semantic.
-
-		\item[Source code] S3 is not aggregate, so you have to use correct nested braces. \texttt{std::array} has no any constructor, so it is aggregate type. Inside array, it's just another C type array,(\texttt{int a[3]}), so when you use aggregate initilization without brace elision, you have to add extra \{\} to specify it's the boundary of \texttt{int a[3]}. The basic idea is the same as previous code \texttt{struct Aarray}.
-\end{description}
 
     \item About aggregate initialization, need more explanation. 1) After C++ 14, you don't need assignment operator in brace elision. 2) If inside member is also aggregate, just use brace elision style. 3) if inside member is not aggregate, or you like to use nested \{\} to specify delimiter, you have to add extra \{\}, just like \texttt{struct S3} in previous code.
 
@@ -3142,10 +2849,9 @@ int main() {
 	\item When pass to function or return from function by value, is copy initialization
 	\item Aggregate initialization can only be used for aggregate type.
 	\item Reference initialization is the most easy.
-	\item Uniform initialization is useful in generic programming.
 \end{enumerate}
 
-\item After you know six initialization forms, you also need to know more detail. I will introduce three differences in the next three sections: differences between value initialization and default initialization, differences between direct initialization and copy initialization and differences between traditional copy initialization and list copy initialization. The bad news is they are complicated, the good news is that a short summary is given in the end of each section. Let's Go!
+	\item After you know six initialization forms, you also need to know more detail. I will introduce three differences in the next three sections: differences between value initialization and default initialization, differences between direct initialization and copy initialization and differences between traditional copy initialization and list copy initialization. The bad news is they are complicated, the good news is that a short summary is given in the end of each section. Let's Go!
 \end{itemize}
 
 
@@ -22183,7 +21889,7 @@ struct S {
 };
 \end{lstlisting}
 
-	\item Structured bindings are especially useful for funcitons that return structures or arrays, For example, consider a function that returns a structure. For \texttt{std::map}, structured bindings is very useful.
+	\item Structured bindings are especially useful for functions that return structures or arrays, For example, consider a function that returns a structure. For \texttt{std::map}, structured bindings is very useful.
 	
 \begin{lstlisting}
 MyStruct getStruct(){
@@ -23204,10 +22910,7 @@ int main() {
 }
 \end{lstlisting}
 	
-	\item std::bit\_cast
-\begin{lstlisting}
-
-\end{lstlisting}
+	
 	
 	\item Three-way comparsion operator.
 \begin{lstlisting}
