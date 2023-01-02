@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include <iomanip>
 #include <concepts>
 using namespace std;
@@ -44,7 +44,71 @@ void reverse_list(Node* cur, Node* pre) {
     reverse_list(temp, cur);
 }
 
+//Node* merge_list(Node* phead1, Node* phead2) {
+//    Node* head;
+//    Node* p;
+//    //deal with special case
+//    //1) init 2) boundary 3) special 
+//    if (phead1 == nullptr) {
+//        head = phead2;
+//    }
+//    if (phead2 == nullptr) {
+//        head = phead1;
+//    }
+//    Node* i = phead1;
+//    Node* j = phead2;
+//    if (i->data > j->data) {
+//        head = i;
+//        i = i->next;
+//    }
+//    else {
+//        head = j;
+//        j = j->next;
+//    }
+//    p = head;
+//    while (i != nullptr && j != nullptr) {
+//        if (i->data < j->data) {
+//            i = i->next;
+//            p->next = i;
+//        }
+//        else  {
+//            j = j->next;
+//            p->next = j;
+//        }
+//        p = p->next;
+//    }
+//    if (i != nullptr)
+//        p->next = i;
+//    if (j != nullptr)
+//        p->next = j;
+//
+//    return head;
+//}
+
+
+Node* reverse_list_dummy(Node* head) {
+    //Node dummy1{ 0 };
+    //Node dummy2{ 0 };
+    //dummy1.next = head;
+    Node* pre, *current, *next;
+    pre = nullptr;
+    current = head;
+    next = current;
+    while (next) {
+        next = current->next;
+        current->next = pre;
+        current = next;
+        pre = current;
+    }
+    return current;
+}
+
+
+
+
 int main() {
+    
+
     //build a list, usually for any list operation, 
     //*we need head node and p node, p node used to move.
     Node* head = new Node{ 0 };

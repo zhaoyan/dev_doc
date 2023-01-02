@@ -921,6 +921,19 @@ Child& other = static_cast<Child&>(parent); //compile fail,
 	
 	\item \texttt{reinterpret\_cast} can converts any pointer type to any other pointer type, even an totally unrelated classes. The operation result is a simple binary copy of the value from one pointer to the other. All pointer conversions are allowed: neither the content pointed nor the pointer type itself is checked. It can also cast pointers to or from integer types. \textbf{DON'T USE IT UNLESS YOU ARE IN THE CORNER.} When you use \texttt{reinterpret\_cast} change one type pointer to another type pointer, it violate "strict alias rule" and will lead to UB(undefined behavior).
 	
+	\item "strict alias rule" explanation. Your code follows the rules, it's called strict-aliasing. Under strict aliasing, the compiler writer is free to optimize the function foo above because incompatible types,double and int, can't alias. That means that if you do call foo as foo((double *)\&anint) something will go quickly wrong, but you get what you deserve.
+\begin{lstlisting}
+int anint;
+
+void foo(double *dblptr){
+	anint = 1;  //compiler developer can optimize this line.
+	*dblptr = 3.14159;
+	bar(anint);
+}
+
+foo((double *) &anint) // violate "strict alias rule"
+\end{lstlisting}
+	
 	\item First off, yes, this results in undefined behavior because there is no \texttt{SomePod} object within the buffer. Objects do not spontaneously come into existence just because you want them too; The compiler determines that the store to the x subobject cannot possibly alias the object buffer, because buffer does not contain an x subobject, and no other object for which buffer might provide storage has been created since buffer was created. Therefore the compiler reasons that it can reorder the store to before its internal marker for the start of the lifetime of buffer. The store can now be deleted, because it is immediately followed by the start of the lifetime of an object in the same region of storage.
 \begin{lstlisting}
 struct SomePod { int x; };
@@ -7079,7 +7092,6 @@ T operator+(T&& lhs) {
 \end{enumerate}
 
 
-
 \chapter{OOP}
 
 \section{Object basic}
@@ -11810,9 +11822,9 @@ cout<<s.sum<<endl;
 7) policy classes.
 
 	
-	\item A \textbf{concept} is a set of requirements consisting of valid expressions, associated types, invariant, and complexity guarantees. A type that satisfies the requirements is said to \textbf{model} the concept. A concept can extend the requirements of another concept, which is called \textbf{refinement}.
-
 \begin{description}
+	\item[Concept] is a set of requirements consisting of valid expressions, associated types, invariant, and complexity guarantees. A type that satisfies the requirements is said to \textbf{model} the concept. A concept can extend the requirements of another concept, which is called \textbf{refinement}.
+	
 	\item[Valid Expressions] are C++ expressions which must compile successfully for the objects involved in the expression to be considered models of the concept. For example, an \texttt{Iterator x} is expected to support the expressions \texttt{++x} and \texttt{*x}.
 	
 	\item[Associated Types] are types that are related to the modeling type in that they participate in one or more of the valid expressions. Typically associated types can be accessed either through typedefs nested within a class definition for the modeling type, or they are accessed through a traits class. For example, an iterator's value type is associated with the iterator through \texttt{std::iterator\_traits}
@@ -11868,8 +11880,8 @@ releaseMutexFor(v);
 for(auto it = con.begin(), itend = con.end();it !=itend ; ++it){ //method 1
    foo(*it);
 }
+for_each(con.begin(), con.end(), [](Element& e){...}) //method 2
 
-for_each(con.begin(), con.end(), [](Element& e){.}) //method 2
 for_each(begin(c),end(c), fun1); //good style, but it also adds begin and end
 range::for_each(c,fun1);  //best style, support in C++20
 
@@ -11878,7 +11890,7 @@ for(auto & e : con){ //method 3
 }
 \end{lstlisting}
 \begin{description}
-\item[Line 6:] showing the inside of the lambda within the call to \texttt{for\_each} is not good style.
+\item[Line 4:] showing the inside of the lambda within the call to \texttt{for\_each} is not good style.
 \end{description}
 
 
@@ -11966,7 +11978,7 @@ bool result = alice < bob;
 \end{enumerate}
 
 
-\item All the container adapter support \texttt{push()}, \texttt{pop()}. \texttt{stack} and \texttt{priority\_queue} support \texttt{top()}. queue has \texttt{front()} and \texttt{back}. They don't have any iterators.
+\item All the container adapter support \texttt{push()}, \texttt{pop()}. \texttt{stack} and \texttt{priority\_queue} support \texttt{top()}. queue has \texttt{front()} and \texttt{back()}. They don't have any iterators.
 
 \item If you want strongly error-safe code, such as transnational semantics for inserting and erasing, or need to minimize iterator invalidation, prefer a node-based container.
 
@@ -12075,7 +12087,18 @@ for (int i=0; i<100; i++) myvector.push_back(i);
 std::cout << (int) myvector.size() << '\n'; // 100
 std::cout  << (int) myvector.capacity() << '\n';//128
 std::cout << (int) myvector.max_size() << '\n';//1073741823
-\end{lstlisting}	
+\end{lstlisting}
+
+	\item \texttt{reserve} will not change size of vector. 
+\begin{lstlisting}
+vector<int> vi;
+vi.reserve(10);
+cout<<vi.size() //output 0
+for(auto a :vi){
+	cout<< a; //output nothing here.
+}
+\end{lstlisting}
+		
 	
 	
 	\item Four confused conceptions: \texttt{resize()} forces the container to change to n, if n is less than \texttt{size()},  object in the end will be lost. if n is greater than \texttt{size()},  default constructor of element will be called. after \texttt{resize(n)}, size will return n. but \texttt{resize} don't change capacity. Pay attention to here.\texttt{ resize} will call default constructor, so maybe there is performance issue here.
@@ -12099,7 +12122,7 @@ string(s).swap(s) // the same idea behind.
 		\item[Line 5:] \texttt{vector<class>(v1)} copy constructor create a temp vector. temp just copy real object, so it's capacity (maybe 8)is small. \texttt{temp.swap(v1)} then \texttt{temp} has 1000 space,  \texttt{v1} capacity is 8 now. in the end of statement, \texttt{temp} is destroyed.
 	\end{description}
 	
-	\item \texttt{clear} only change size to 0, but will not change capacity. \texttt{resize} and \texttt{reserve} difference.
+	\item \texttt{clear} only change size to 0, but will not change capacity. \texttt{resize} and \texttt{reserve} are different.
 \begin{lstlisting}[frame=single, language=c++]
 vector<Foo> vcFoo;
 vcFoo.reserve(10); // just allocate space, don't build object.
@@ -12341,23 +12364,6 @@ public:
 
 \end{enumerate}
 
-	\item typedef inside of container is your good friend. 1) For a complex type, it can save typing. 2)keep good maintainable for future change. 
-\begin{lstlisting}
-typedef vector< pair<int, string> > ComVec;
-ComVec::value_type aaa;  //save a lot of typing 
-
-typedef std::vector< std::pair<int,std::string> > Record_t;
-//typedef std::vector< std::pair<float,std::string> > Record_t;
-
-int find_it(std::string value, Record_t const& stuff){
-	auto fit = std::find_if(stuff.begin(), stuff.end(),
-	[value](Record_t::value_type const& vt) -> bool
-	{ return vt.second == value; });
-}
-\end{lstlisting}
-\begin{description}
-	\item[Line 4-5:] change \texttt{int} to \texttt{float}, code below line 5 don't need change at all.
-\end{description}
 
 \end{itemize}
 
@@ -12381,7 +12387,7 @@ int find_it(std::string value, Record_t const& stuff){
 
 
 
-\item \textbf{When you use STL Container, you should realize that typedef are your best friends.}
+\item \textbf{When you use STL Container, you should realize that typedef are your best friends.} 1) For a complex type, it can save typing. 2)keep good maintainable for future change. 
 \begin{lstlisting}[numbers=none]
 typedef vector<Foo, SpecialAllocator<Foo> > FooContainer;
 typedef FooContainer::iterator FooIt;
@@ -12390,6 +12396,24 @@ FooContainer fc1; // make you programming more clearly,
 FooContainer fc2;  // you should use typedef more
 FooIt it1;
 \end{lstlisting}
+
+\begin{lstlisting}
+typedef vector< pair<int, string> > ComVec;
+ComVec::value_type aaa;  //save a lot of typing 
+
+typedef std::vector< std::pair<int,std::string> > Record_t;
+//typedef std::vector< std::pair<float,std::string> > Record_t;
+
+int find_it(std::string value, Record_t const& stuff){
+	auto fit = std::find_if(stuff.begin(), stuff.end(),
+	[value](Record_t::value_type const& vt) -> bool
+	{ return vt.second == value; });
+}	
+\end{lstlisting}
+\begin{description}
+	\item[Line 4-5:] change \texttt{int} to \texttt{float}, code below line 5 don't need change at all.
+\end{description}
+
 
 \item Never try to expect all the container has the same interface. Even a generic erase(), for sequence, It return next iterator,(because it will invalid the iterator).   But for associative, it return void(c++ 98) and return next iterator(C++ 11). If you just want to change a container in the future, you should put a container into a class: CustomCollection. then hide it from the class client. The detail can be seen in Effective STL item 2.
 
@@ -12452,7 +12476,7 @@ struct stringLess: binary_fucntion<const string* ,const string * , bool>{
         return *s1<*s2;
 	}
 }
- set<*string,  stringLess> ss;
+set<*string,  stringLess> ss;
 \end{lstlisting}
 
    \end{enumerate}
@@ -12463,7 +12487,7 @@ struct stringLess: binary_fucntion<const string* ,const string * , bool>{
 
 \subsection{string}
 \begin{itemize}
-	\item In C++, we encourage you to use string more, to replace \texttt{char[]} and \texttt{char *p = new}.  It offers you more functions, such as\texttt{ compare, find,erase, replace,insert}. String is template specialization \texttt{basic\_string<char>} , from this point of view, you will know how to construct a \texttt{w\_char} string.
+	\item In C++, we encourage you to use string more, to replace \texttt{char[]} and \texttt{char *p = new}.  It offers you more functions, such as\texttt{ compare, find, erase, replace,insert}. String is template specialization \texttt{basic\_string<char>} , from this point of view, you will know how to construct a \texttt{w\_char} string.
 	
 	
 	\item There are a lot of ways that can be used construct a string object, you can see the reference , such as:
@@ -12476,17 +12500,15 @@ string(const string& str, size_type pos, size_type n = npos)
 	
 	\item The standard containers define \texttt{size\_type} as a typedef to \texttt{Allocator::size\_type} (Allocator is a template parameter), which for \texttt{std::allocator} is defined to be \texttt{size\_t}. So for the standard case, they are the same. However, if you use a custom allocator a different underlying type could be used. So \texttt{container::size\_type} is preferable for maximum portability.
 		
-	\item About real size of string, string usually manage it's memory by itself, but you can use two functions \texttt{string::capacity()} and \texttt{string::reserve()} to do some simple work. If the size of string is not enough, string will allocates a new block twice the size and copy the old content. You can use capacity to know the real block size. And use reserve to tell string at least you need minimum size of bloc. For example, \texttt{str.reserve(50)},  str.capacity will return 63. 63 = 64-1; string need the last char to store \verb='\n'= and end of symbol.
+	\item About real size of string, string usually manage it's memory by itself, but you can use two functions \texttt{string::capacity()} and \texttt{string::reserve()} to do some simple work. If the size of string is not enough, string will allocates a new block twice the size and copy the old content. You can use capacity to know the real block size. And use reserve to tell string at least you need minimum size of bloc. For example, \texttt{str.reserve(50)},  \texttt{str.capacity} will return 63. 63 = 64-1; string need the last char to store \verb='\n'= and end of symbol.
 	
-	\item When you use string with some legacy c function, use \texttt{string.c\_str()} function for read only function, \texttt{string.c\_str()} return a \texttt{const char *}. so You can't modify it. If you Legacy C function want to fill in a string. you need do below:
+	\item When you use string with some legacy c function, use \texttt{string.c\_str()} function for read only function, \texttt{string.c\_str()} return a \texttt{const char *}. so You can't modify it. If you legacy C function want to fill in a string. you need do below:
 	
 \begin{lstlisting}[frame=single, language=c++]
 Old_c(const char* p); 
 Old_c(str.c_str());  // legacy C function read a string
 	
-// legacy C write
-size_t Old_c(char *pArray, size_t arraySize); 
-	
+size_t Old_c(char *pArray, size_t arraySize);  // legacy C write a string.
 vector<char> vc(maxNumChars); // 1) create vector char
 size_t charsWritten = Old_c(&vc[0], vc.size()); //2) input it to legacy C
 string s(vc.begin(), vc.begin()+charsWritten); //3) copy it by range constructor
@@ -12501,7 +12523,6 @@ string s(vc.begin(), vc.begin()+charsWritten); //3) copy it by range constructor
 		empty(),  size()& \\
 		\tophline
 		max\_size() & maximum number of characters \\
-		resize() & Specifies a new size for a string, appending or erasing elements as required.\\
 		\tophline
 		length() & Returns the current number of elements in a string.\bottomhline
 		
@@ -12591,11 +12612,10 @@ while (found!=std::string::npos){
 
 \begin{lstlisting}[numbers=none]
 std::string trimLeft(const std::string &s) {
-	auto temp = s;
-	temp.erase(std::begin(temp), 
-	std::find_if(std::begin(temp), std::end(temp), 
-		[](char c){return !std::isspace(c, std::locale()); }));
-	return temp;
+  auto temp = s;
+  temp.erase(std::begin(temp), std::find_if(std::begin(temp), std::end(temp), 
+    [](char c){return !std::isspace(c, std::locale()); }));
+  return temp;
 }
 \end{lstlisting}
 	
@@ -13107,12 +13127,13 @@ Swap two ranges of values and return an iterator pointing to the end of the seco
 \begin{lstlisting}[frame=single, language=c++]
 copy(myvector.begin(), myvector.end(), myvector.begin()+3) 
 
-myvector.resize(myvector.size()+3)
+myvector.resize(myvector.size()+3) //1, 2, 3, 4, 5
 copy_backward(myvector.begin(), myvector.begin()+5, myvector.end())
+// the result is 1, 2, 3, 1, 2, 3, 4, 5
 \end{lstlisting}
 \begin{description}
 	\item[Line 1:] error, when source and targe is overlap, you have to use backward copy
-	\item[Line 4:]pay attention, \texttt{copy\_backward}, *(--last) = if you want copy to position 3, you need to input position 4. or you can input \texttt{vector.end()} as target, but for copy, you can't input \texttt{vector.end()}. First, resize, then use\texttt{ myvector.end()} as the last parameter.
+	\item[Line 4:]pay attention, \texttt{copy\_backward}, *(--last) = if you want copy to position 3, you need to input position 4. Or you can input \texttt{vector.end()} as target, but for copy, you can't input \texttt{vector.end()}. First, resize, then use\texttt{ myvector.end()} as the last parameter.
 
 \end{description} 
 
@@ -13222,9 +13243,9 @@ std::copy(it, std::end(v), std::ostream_iterator<int>(std::cout, " "));
 \\output: 0 8 2 6 4   5 3 7 1 9
 \end{lstlisting}
 
-\item \textbf{Partition return: Iterator to the first element of the second group.}
+	\item \textbf{Partition return: Iterator to the first element of the second group.}
 
-\item Gather all eligible element around iterator p
+	\item Gather all eligible element around iterator p
 \begin{lstlisting}[numbers=none]
 template <typename BiIt, typename UnPred> 
 auto gather(BiIt f, BiIt l, BiIt p, UnPred s) -> std::pair <BiIt, BiIt>{
@@ -13610,7 +13631,7 @@ remove_if(...yanComare() );      //need a variable here, temporary is OK
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T> //functor can also be template 
 struct Average{
-	T operator()(T t1, T t2){(t1+t2)/2;}
+	T operator()(T t1, T t2){return (t1+t2)/2;}
 };
 
 transform(b1, e1, b1, Average<typename iterator_traits<beg1>::value_type>());	
@@ -13720,7 +13741,6 @@ run_within_for_each(lambda1);
 \end{itemize}
 
 \subsection{Adaptable}
-
 
 \subsubsection{std::mem\_fn }
 \begin{itemize}
@@ -14006,15 +14026,6 @@ std::map<std::string, int> m2((values.begin()), values.end());
 
 \subsubsection{algorithm}
 \begin{itemize}
-\item \texttt{reserve} will not change size of vector. 
-\begin{lstlisting}
-vector<int> vi;
-vi.reserve(10);
-cout<<vi.size() //output 0
-for(auto a :vi){
-	cout<< a; //output nothing.
-}
-\end{lstlisting}
 
 \item For accumulate, how to change sum type?
 \begin{lstlisting}
@@ -15267,7 +15278,7 @@ n&(n-1);
    *--
 \end{lstlisting}
 
-	\item Based on previous trip, we can tes if a number is power of 2. There is only one 1 in the binary formation.
+	\item Based on previous trip, we can test if a number is power of 2. There is only one 1 in the binary formation.
 \begin{lstlisting}[frame=single, language=c++]	
 bool isPowerOfTwo(int n) {
 	if (n <= 0) return false;
@@ -16284,23 +16295,23 @@ for (auto value: results | view::reverse | view::take(n) ){
 	\begin{enumerate}
 		\item algebraic data type:
 		 \begin{enumerate}
-		 	\item (sum type/tagged union/variant) - std::variant, std::optional std::any (the ultimate in sum types--it can store almost anything).
-		 	\item (product type/record/tuple) - std::tuple, std::pair.
+		 	\item (sum type/tagged union/variant) - \texttt{std::variant}, \texttt{std::optional} \texttt{std::any} (the ultimate in sum types--it can store almost anything).
+		 	\item (product type/record/tuple) - \texttt{std::tuple}, \texttt{std::pair}.
 		 \end{enumerate}
-		\item generic type erase type(container). std::function, std::any.
+		\item generic type erase type(container). \texttt{std::function}, \texttt{std::any}.
 		\item generic adaptor, such as smart pointer.
-		\item generic view type, such as std::string\_view and std::span
+		\item generic view type, such as \texttt{std::string\_view} and \texttt{std::span}
 	\end{enumerate}
 	
-	\item Don't get carried away and start using std::tuple and std::variant return types from every function! Named class types are still the most effective way to keep your code readable. 
+	\item Don't get carried away and start using \texttt{std::tuple} and \texttt{std::variant} return types from every function! Named class types are still the most effective way to keep your code readable. 
 	
-	\item Use std::optional to signal the possible lack of a value, or to signal the "not-yet-ness" of a data member. Use std::get\_if<T>(\&v) to query the type of a variant; use std::any\_cast<T>(\&a)to query the type of an any. Remember that the type you provide must be an exact match; if it's not, you'll get nullptr.
+	\item Use \texttt{std::optional} to signal the possible lack of a value, or to signal the "not-yet-ness" of a data member. Use \texttt{std::get\_if<T>(\&v)} to query the type of a variant; use \texttt{std::any\_cast<T>(\&a)} to query the type of an any. Remember that the type you provide must be an exact match; if it's not, you'll get nullptr.
 	
-	\item Be aware that std::make\_tuple and std::make\_pair do more than construct tuple and pair objects; they also decay reference\_wrapper objects into native references. Use std::tie and \\ std::forward\_as\_tuple to create tuples of references. std::tie is particularly useful for multiple assignment and for writing comparison operators.std::forward\_as\_tuple is useful for metaprogramming.
+	\item Be aware that \texttt{std::make\_tuple} and \texttt{std::make\_pair} do more than construct tuple and pair objects; they also decay reference\_wrapper objects into native references. Use std::tie and \\ \texttt{std::forward\_as\_tuple} to create tuples of references. std::tie is particularly useful for multiple assignment and for writing comparison operators. \texttt{std::forward\_as\_tuple} is useful for metaprogramming.
 	
-	\item Be aware that std::variant always has the possibility of being in a "valueless by exception" state; but know that you don't have to worry about that case unless you write classes with throwing move-constructors. Separately: don't write classes with throwing move-constructors! 
+	\item Be aware that \texttt{std::variant} always has the possibility of being in a "valueless by exception" state; but know that you don't have to worry about that case unless you write classes with throwing move-constructors. Separately: don't write classes with throwing move-constructors! 
 	
-	\item Be aware that the type-erased types std::any and std::function implicitly use the heap. Third-party libraries provide non-standard inplace\_ versions of these types. Be aware that std::any and std::function require copyability of their contained types. Use "capture by shared\_ptr" to deal with this case if it arises.
+	\item Be aware that the type-erased types \texttt{std::any} and \texttt{std::function} implicitly use the heap. Third-party libraries provide non-standard inplace\_ versions of these types. Be aware that \texttt{std::any} and \texttt{std::function} require copyability of their contained types. Use "capture by shared\_ptr" to deal with this case if it arises.
 	
 	\item  A product of two types A and B is a new type that contains an instance of A and an instance of B.(it will be Cartesian product of the set all values or type A and the set of all values of B.) The sum type aren't as prominent in C++ as product type. The sum type of types A and B is a type that can hold an instance of A or an instance of B. but not both at the same time. In C++, enum are special kind of sum type. unions and std::variant are common sum type. \texttt{std::option} is special type of \texttt{std::variant}.  
 	
@@ -16509,8 +16520,6 @@ catch (const std::bad_variant_access& e) { // in case a wrong type/index is used
 	std::cerr << "EXCEPTION: " << e.what() << '\n';
 }
 \end{lstlisting}	
-	
-	
 	
 	\item we can also use \texttt{get} for variant, so it looks like tuple. How variant is implemented? It also use recursive variable template, but all template shared a placement new. That is why we also can use get function. If we have get function, why do we still need \texttt{std::visit}? That is usage of \texttt{std::visit}.
 \begin{lstlisting}
