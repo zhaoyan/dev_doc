@@ -1423,9 +1423,7 @@ struct AggregateButNotPOD2{
 	
 	\item In C++ 11, The idea of a POD is to capture basically two distinct properties: 1)It supports static initialization. 2) Compiling a POD in C++ gives you the same memory layout as a struct compiled in C. So, the definition has been split into two distinct concepts: \textbf{trivial classes} and \textbf{standard-layout classes}, because these are more useful than POD. The standard now rarely uses the term POD, preferring the more specific \textbf{trivial} and \textbf{standard-layout} concepts.
 
-
-
-	\item If this is a trivial class, then it has trivial constructor/dtor/copy/assignment. When we build copy or destruct these type, we don't need to call these trivial ctor/copy... \textbf{but just call malloc() or memcpy()to improve efficiency.} 
+	\item If this is a trivial class, then it has trivial constructor/dtor/copy/assignment. When we build, copy or destruct these type, we don't need to call these trivial ctor/copy... \textbf{but just call malloc() or memcpy()to improve efficiency.} 
 	
 	\item trivial class is not aggregate class, for example, it can include private non-static data member. 
 \begin{lstlisting}[numbers=none]
@@ -1441,7 +1439,7 @@ struct NonTrivial1 : Trivial4 {
 };
 \end{lstlisting}
 		
-	\item The first property of trivial class is that it supports static initialization. Static initialization is initialization of some variable with a compile-time value such that the value ends up being "baked into" the executable image (no code needs to be actually run).
+	\item One property of trivial class is that it supports static initialization. Static initialization is initialization of some variable with a compile-time value such that the value ends up being "baked into" the executable image (no code needs to be actually run). Another point of triviality is that the type can be treated exactly like a fundamental type, in that objects of the type can be copied and moved with memcpy and constructed destructed without doing anything. Hence, triviality requires a type be essentially made only of fundamental types. T
 \begin{lstlisting}[numbers=none]
 struct Foo {
 	int x;
@@ -1516,7 +1514,7 @@ struct A { };
 struct B { ~B(){} };
 
 cout << is_literal_type<int>::value ; //int& and int* and A true
-cout << "B: " << is_literal_type<B>::value;  //Only this line print false
+cout << "B: " << is_literal_type<B>::value;  //false
 
 struct point {
 	point(): x(0), y(0){  std::cout << "point() called" << std::endl; }
@@ -7197,7 +7195,7 @@ T operator+(T&& lhs) {
 	\item Basic class categories:
 	\begin{enumerate}
 			
-		\item Value-like types, such as \texttt{int} or \texttt{vector<widget>}. These represent values, and should naturally be copyable. In C++11, generally you should think of move as an optimization of copy, and so all copyable types should naturally be moveable... moving is just an efficient way of doing a copy in the often-common case that you don't need the original object any more and are just going to destroy it anyway. such as \texttt{std::pair}, \texttt{std::vector} and \texttt{std::string}.
+		\item Value-like types, such as \texttt{int} or \texttt{vector<Widget>}, represent values and should naturally be copyable. In C++11, you should generally think of move as an optimization of copy, and so all copyable types should naturally be movable. Moving is just an efficient way of doing a copy in the often-common case that you don't need the original object anymore and are just going to destroy it anyway, such as \texttt{std::pair}, \texttt{std::vector}, and \texttt{std::string}.
 		
 		\begin{enumerate}
 			\item Has a public destructor, copy constructor and assignment operator with value semantics.
@@ -7205,7 +7203,7 @@ T operator+(T&& lhs) {
 			\item instantiated on stack or as a member of an other class.
 		\end{enumerate}
 		
-		\item Reference-like types that exist in inheritance hierarchies, such as base classes and classes with virtual or protected member functions. These are normally held by pointer or reference, often a \texttt{Base*} or \texttt{Base\&}, and so do not provide copy construction to avoid slicing; if you do want to get another object just like an existing one, you usually call a virtual function like clone. These do not need move construction or assignment for two reasons: They're not copyable, and they already have an even more efficient natural "move" operation -- you just copy/move the pointer to the object and the object itself doesn't have to move to a new memory location at all.
+		\item Object(reference)-like types that exist in inheritance hierarchies, such as base classes and classes with virtual or protected member functions. These are normally held by pointer or reference, often a \texttt{Base*} or \texttt{Base\&}, and so do not provide copy construction to avoid slicing; if you do want to get another object just like an existing one, you usually call a virtual function like clone. These do not need move construction or assignment for two reasons: They're not copyable, and they already have an even more efficient natural "move" operation -- you just copy/move the pointer to the object and the object itself doesn't have to move to a new memory location at all.
 		\begin{enumerate}
 			\item Has a destructor that is public and virtual, But for some trait class, destructor can be protected, such as \texttt{std::unary\_function}
             \item Establish interfaces through virtual functions.
@@ -7250,16 +7248,18 @@ std::cout << f(123) << '\n'; //output 123
 
 		\item Ancillary classes typically support specific idioms. such as RAII.  types that express unique ownership of a resource, such as \texttt{std::unique\_ptr}, are naturally move-only types, because they are not value-like (it doesn't make sense to copy them) but you do use them directly (not always by pointer or reference) and so want to move objects of this type around from one place to another.	
 
-        \item Functor class, includes lambda. with operator() defined. This becomes more and more importants and win a seat in this list. 
+        \item Functor class, includes lambda. with operator() defined. This becomes more and more important and win a seat in this list. 
 	\end{enumerate}
-    \item About class categories, I need to have a few points to add. Most of time, we mainly use value object and reference object. The others kinds are a kind of special and easy to understand. For value object, you can think that it's a \textbf{data abstraction}, which has zero or very little overhead. 
-    \item For reference object, usually we don't support copy, for example, A people object has no meaning to copy himself. It has three points need to metion:
+    \item About class categories, I need to add a few points. Most of the time, we mainly use value objects and reference objects. The other kinds are a kind of special and easy to understand. For value objects, you can think that it's a data abstraction, which has zero or very little overhead. 
+    
+    \item For reference object, usually we don't support copy, for example, A people object has no meaning to copy himself. It has three points need to mention:
+    
         \begin{enumerate}
-            \item It it's only used for interface, so it will be Abstract Base Class. There are two common idioms can be used here: NVI(No virtual interface) and Non-leaf-abstraction. Detail can be see later in design section. 
+            \item If it's only used for the interface, it will be an Abstract Base Class. There are two common idioms that can be used here: NVI (No virtual interface) and Non-leaf abstraction. Details can be seen later in the design section.
 
-            \item non-copyable child class. such as thread, employee etc. You should disable the copy constructor when you find it's not fit into the context.
+            \item non-copyable class. such as thread, employee etc. You should disable the copy constructor when you find it's not fit into the context.
 
-            \item copyable child class. A good example is music note, You can see the clone pattern in design pattern. Here music note is a kind of interface. So it's a ABC, at the same time, client should be able to "copy" to generate new notes. Under such context, you can use virtual copy constructor, in another word, use \texttt{basePtr->clone()} virtual function. Clone pattern is just for this scenario. 
+            \item copyable class. A good example is music note, You can see the clone pattern in design pattern. Here music note is a kind of interface. So it's a ABC, at the same time, client should be able to "copy" to generate new notes. Under such context, you can use virtual copy constructor, in another word, use \texttt{basePtr->clone()} virtual function. Clone pattern is just for this scenario. 
 
         \end{enumerate}
 \end{itemize}
@@ -7272,14 +7272,13 @@ std::cout << f(123) << '\n'; //output 123
 	
 	\item Virtual function must be member, operator\verb=>>= and \verb=<<= are never be members, or It maybe be a friend. Only non-member functions get type conversions on their left-most argument.  In the previous example, If you want to use support \texttt{2*obj}, You need make operator * to be non member function.  Detail can be seen in effective c++.
 	
-	\item Protect keyword don't use very often, it is just used in inheritance context. Child class can access base class protected member. you should use private keyword first if you real want to have good \textbf{Encapsulation} and \textbf{Never return reference or pointer to a private or protected member data.}
+	\item Protect keyword don't use very often, it is just used in inheritance context. Child class can access base class protected member. you should use private keyword first if you real want to have good \textbf{Encapsulation} and Never return reference or pointer to a private or protected member data.
 	
-	\item In C++ primer p653, you can see a good example class interface. You should remember it as a basic pattern.  If you use new operator to allocate memory inside of your class, you should define: copy constructor, assignment operator and destructor, move copy ctor, and move assignment. Usually, you should have these seven member functions. Or you can follow the Principal Four and Half rule which will be introduced later.  Put class definition into a namespace. You need to declare operator \verb=<<= inside of namespace outside of class. In this way, ADL can access it correctly.
+	\item In C++ Primer, page 653, you can find a good example of a class interface. You should remember this as a basic pattern. If you use the new operator to allocate memory inside your class, you should define the copy constructor, assignment operator and destructor, move constructor, and move assignment. Usually, you should have these seven member functions. Alternatively, you can follow the Principal Four and a Half rule, which will be introduced later. Put the class definition into a namespace. You need to declare the operator \verb=<<= inside the namespace, outside of the class. In this way, ADL (Argument-Dependent Lookup) can access it correctly.
 	
 \begin{lstlisting}[frame=single, language=c++]
-//below is string.h file
-#pragma once
-namespace Yan{
+#pragma once  //below is string.h file
+namespace Company_namespace{
 	class String{
 	public:
 		String();  //default constructor
@@ -7315,12 +7314,12 @@ str= temp // make it more efficient
 \end{lstlisting}
 	
 	
-    \item \textbf{Prefer minimal classes to monolithic classes.} Big class is difficult to reach error-safe because it tackle multiple responsibilities. It's also difficult maintain, understand and deploy.
+    \item Prefer minimal classes to monolithic classes. Big class is difficult to reach error-safe because it tackle multiple responsibilities. It's also difficult maintain, understand and deploy.
 
 	\item For operator overload, how to decide member or non-member function?
 	\begin{enumerate}
 		\item operator =, ->, [], () must be members.
-		\item needs a different type as its left-hand arguent, such as operator \verb=<<=, use nonmember.
+		\item needs a different type as its left-hand argument, such as operator \verb=<<=, use nonmember.
 		\item leftmost argument needs type conversion, use non-member.
 		\item can be implement using the class public interface alone, use nonmember.
 	\end{enumerate}
@@ -7351,9 +7350,9 @@ auto i = begin(vi);
 \subsubsection{constructor basic}
 
 \begin{itemize}
-	\item Normally, constructor, destructor and assignment should be public. Unless you have special requirment for special class or in special context. Avoid calling virtual functions in constructor and destructor. Detail can be found in "C++ Coding Standards" item 49.
+	\item Normally, constructor, destructor, and assignment should be public unless you have a special requirement for a specific class or in a particular context. Avoid calling virtual functions in constructors and destructors. Details can be found in "C++ Coding Standards" item 49.
 	
-	\item Make Constructors Protected to prohibit direct instantiation. Make constructors Private to stop Derivation. That is an old trick, in C++ 14, you can use \texttt{=delete} to tell compiler directly.
+	\item Make Constructors Protected to prohibit direct instantiation. Make constructors Private to stop Derivation. That is an old trick, in C++14, you can use \texttt{=delete} to tell the compiler directly.
 	
 	\item Use default arguments to reduce the number of constructor.
 \begin{lstlisting}[numbers=none]
@@ -7374,24 +7373,24 @@ class Brush{
 			\item When the compiler generates a temporary object.
 		\end{enumerate}
 				
-		\item For reference, once assigned, a reference cannot be re-assigned. So if a class has a reference member, It can be initialized by initializer list in constructor and copy ctor. \textbf{But you can't overload assignment operator any more, If you really need assignment operator, change reference to pointer}
+		\item For reference, once assigned, a reference cannot be re-assigned. So if a class has a reference member, It can be initialized by initializer list in constructor and copy constructor. Meanwhile, please do NOT overload assignment operator any more, If you really need assignment operator, change reference to pointer.
 		
 \end{itemize}
 
-\subsubsection{default constructor}
+\subsubsection{Default constructor}
 \begin{itemize}
 	
-	\item Avoid gratuitous default constructor. If an object can be generated from "nothing", maybe you can give a default constructor, such as a container, you can generate an empty container without any input. For container example, default constructor is reasonable, you can declare your own converting constructor and use system implicit generated one. you can use keyword default
+	\item Avoid gratuitous default constructor. If an object can be generated from "nothing", maybe you can give a default constructor, such as a container, you can generate an empty container without any input. For container example, default constructor is reasonable, you can declare your own converting constructor and use system implicit generated one. you can use keyword default. 
 \begin{lstlisting}[frame=single, language=c++]
 class Container{
-	Empty() = default; //use default is OK here.
-	Empty(int size) ;
+	Container() = default; //use default is OK here.
+	Container(int size) ;
 }	
 \end{lstlisting}
 
-	\item \textbf{If you define a specific constructor, system will not produce any default ctor for you.} At this time, maybe you need to add default constructor.
+	\item If you define a specific constructor, system will not produce any default constructor for you. At this time, maybe you need to add default constructor.
 		
-	\item But for others classes, \textbf{you should not generate a object from nothing}. For example, You must provide SSN when you create a worker. At this time, if you create default constructor, It's not good idea. A NULL SSN will cause a lot of trouble in the future. 
+	\item For some classes, you should not allow objects to be created without providing certain information. For example, when creating a worker, you must provide their SSN. In this case, creating a default constructor is not a good idea, as a null SSN could cause a lot of trouble in the future.
 \begin{lstlisting}[numbers=none]
 class Worker{
 	char* SSN; // each worker should have SSN
@@ -7400,7 +7399,7 @@ class Worker{
 }
 \end{lstlisting}
 	
-	\item We should not declare default constructor, in this way, our class design represents real word better. You must know the two sides of a coin. Without default constructor, all below statements will produce errors when compiling. In order to fix these kind of compiling error, you can use \texttt{Worker*} pointer, or \texttt{vector<Worker>}. That is C++ spirit, You never have the best answer, everything depends on context. 
+	\item We should not declare a default constructor. In this way, our class design better represents the real world. However, we must understand the two sides of the coin. Without a default constructor, all of the following statements will produce errors during compilation. To fix these kinds of compilation errors, we can use a \texttt{Worker*} pointer or a \texttt{std::vector<Worker>}. This is the spirit of C++, where there is never a single best answer, and everything depends on the context."
 	
 \begin{lstlisting}
 class Worker{
@@ -7420,14 +7419,14 @@ Array<Worker> a; //error
 \end{lstlisting}
 
 
-	\item Let's recap here. Any user-declared converting constructor will stop compiler from generating default constructor. If default constructor satisfy class semantic, such as container class, you can add it by you self or use = default. If default constructor is not valid for class semantic, such as Worker class, you should not declare explicitly or use = delete. Absence of default constructor bring some inconvenient. Such as you can't define a array of this class. \texttt{Worker arr[10];} But I think that semantic is more important than syntax, For Worker class, I prefer to delete the default constructor if we need SSN for every worker. 
+	\item Let's recap here. Any user-declared converting constructor will prevent the compiler from generating a default constructor. If a default constructor satisfies the class's semantics, such as in a container class, you can add it yourself or use \texttt{= default}. If a default constructor is not valid for the class's semantics, such as in a Worker class where an SSN is required for every worker, you should not declare it explicitly or use \texttt{= delete}. The absence of a default constructor can bring some inconvenience, such as not being able to define an array of this class (\texttt{Worker arr[10]};). However, I think that semantics are more important than syntax, and for the Worker class, I would prefer to delete the default constructor if we need an SSN for every worker.
 	
 \end{itemize}
 
 \subsubsection{member initializer list}
 
 \begin{itemize}
-	\item \textbf{Always use member initializer list instead of assignment inside constructor.} That is the most important principles. You can use member initializer list to initialize to 1)non-static const data members, 2) reference member, 3) member objects which do not have default constructor, and 4) need pass argument to base class constructor
+	\item Always use a member initializer list instead of assignment inside a constructor. This is one of the most important principles. You can use a member initializer list to initialize 1) non-static const data members, 2) reference members, 3) member objects which do not have a default constructor, and 4) when you need to pass arguments to a base class constructor.
 \begin{lstlisting}[numbers=none]
 class A {
 public:
@@ -7442,7 +7441,7 @@ public:
 B::B(int x):A(x) { }//Initializer list must be used here.
 \end{lstlisting}		
 		
-	\item Why member initializer list is more efficient. (only one copy constructor, more efficient! see below source code.)
+	\item Why is a member initializer list more efficient? It requires only one copy constructor, which makes it more efficient. See the source code below for an example.
 
 \begin{lstlisting}[frame=single, language=c++]
 class(string &a, string &b): m_a(a),m_b(b){}; //just call copy constructor
@@ -7454,7 +7453,7 @@ class(string &a, string &b){
 http://www.geeksforgeeks.org/when-do-we-use-initializer-list-in-c/  //good reference
 \end{lstlisting}
 
-	\item List member in a initialization list in the order in which they are declared in class. see effective c++ item 13. Order is important. Member variables are always initialized in the order they are declared in the class definition. The order in which you write them in the constructor initialization list is ignored.  \textbf{So you'd better not have one member's initialization depend on other members}.
+	\item List members in an initialization list in the order in which they are declared in the class. See Effective C++ item 13 for more information. The order is important because member variables are always initialized in the order they are declared in the class definition. The order in which you write them in the constructor initialization list is ignored. Therefore, it is better to avoid having one member's initialization depend on other members.
 	
 \begin{lstlisting}[numbers=none]
 class Student{
@@ -7464,7 +7463,7 @@ class Student{
 	m_email(m_first_anme+"@gmail"){}
 \end{lstlisting}
 		
-	\item Another example about initialization order problem. If \texttt{GetType()} is a static member function, or a member function that does not use its this pointer (that is, uses no member data) and does not rely on any side effects of construction (for example, static usage counts), then this is merely poor style, but it will run correctly. Otherwise (mainly, if GetType() is a normal nonstatic member function), we have a problem. \textbf{Nonvirtual base classes are initialized in left-to-right order as they are declared}, so ArrayBase is initialized before Container. Unfortunately, that means we're trying to use a member of the not-yet-initialized Container base subobject. \textbf{Order is important!}
+	\item Here's another example of an initialization order problem. If \texttt{GetType()} is a static member function or a member function that doesn't use its this pointer (that is, uses no member data) and doesn't rely on any side effects of construction (for example, static usage counts), then this is merely poor style but will run correctly. Otherwise (mainly, if \texttt{GetType()} is a normal nonstatic member function), we have a problem. Nonvirtual base classes are initialized in left-to-right order as they are declared, so \texttt{ArrayBase} is initialized before \texttt{Container}. Unfortunately, that means we're trying to use a member of the not-yet-initialized \texttt{Container} base subobject. Therefore, order is important!
 		
 \begin{lstlisting}[numbers=none]
 template<class T>
@@ -7488,16 +7487,16 @@ public:
 	// Polar coordinates (radius and angle)
 };
 
-class Point {// named constructor
+class Point {
 public:
-	static Point rectangular(float x, float y);
-	static Point polar(float radius, float angle);
+	static Point rectangular(float x, float y); // named constructor
+	static Point polar(float radius, float angle); // named constructor
 	
 Point p1 = Point::rectangular(5.7, 1.2);
 Point p2 = Point::polar(5.7, 1.2);
 \end{lstlisting}
 	
-	\item In some applications, we need to copy or assignment by base class pointer. For example, If the class "owns" the object pointed to by the (abstract) base class pointer which is illustrated below. (Another example can be found in More effective C++ item 25). The problem is how we can assignment and copy between Graph object? 
+	\item In some applications, we need to copy or assign objects using base class pointers. For example, if the class owns the object pointed to by an abstract base class pointer as illustrated below (another example can be found in More Effective C++ item 25), the problem is how to perform assignment and copy between \texttt{Graph} objects. 
 	
 \begin{lstlisting}
 class Graph {
@@ -7519,10 +7518,10 @@ private:
 };
 \end{lstlisting}
 \begin{description}
-	\item[Line 16:]  \textbf{Please note here: Shape here represent value semantic and reference semantic at the same time.} If we use \texttt{Shape*->draw}, then it's reference semantic. It's also a value member inside the graph class, that is why we need to clone function for it.
+	\item[Line 16:]  Please note here: Shape here represent value semantic and reference semantic at the same time. If we use \texttt{Shape*->draw}, then it's reference semantic. It's also a value member inside the graph class, that is why we need to clone function for it.
 \end{description}
 
-	\item A constructor shall not be virtual or static. If you need something like this, you can look up the virtual constructor idiom. The idiom uses virtual clone() member function (for copy constructing), or a virtual create() member function (for the default constructor). The purpose is to resolve the problem of assignment and copy between Graph object. As usual with this idiom, we declare a pure virtual clone() method in the base class. It follow 'non-leaf class abstract' rule.
+	\item A constructor shall not be virtual or static(named constructor can be static). If you need something like this, you can look up the virtual constructor idiom. The idiom uses virtual clone() member function (for copy constructing), or a virtual create() member function (for the default constructor). The purpose is to resolve the problem of assignment and copy between Graph object. As usual with this idiom, we declare a pure virtual clone() method in the base class. It follow 'non-leaf class abstract' rule.
 	
 \begin{lstlisting}
 class Shape {
@@ -7552,8 +7551,6 @@ delete s3;
 
 \end{itemize}
 
-
-	
 \subsection{destructor}
 \begin{itemize}
 	\item \textbf{In inheritance context, all the base class destructor should be public and virtual. Or protected and non-virtual.}  If you don't declare base class destructor virtual, below code will only call base destructor. 
@@ -7587,7 +7584,7 @@ delete base_ptr;
 \end{lstlisting}
 	
 
-	\item \textbf{Base class destructor will be called by child class destructor implicitly}, so please always implement base class destructor, even it's pure virtual. And Prevent exception from leaving destructors.
+	\item The base class destructor will be called implicitly by the child class destructor. Therefore, it's important to always implement the base class destructor, even if it's pure virtual. Additionally, it's essential to prevent exceptions from leaving destructors.
 \begin{lstlisting}[numbers=none]
 class Base {
 	virtual ~Base() = 0;
@@ -7600,7 +7597,7 @@ Base::~Base(){} //Must give implementation, even function is empty.
 	\begin{enumerate}
 		\item When you are declaring a class which is supposed to serve as a base for inheritance involving polymorphism, need a virtual destructor to make sure that the destructor of a Derived class is called upon destroying it through a pointer/reference to Base.
 		
-		\item You need to release resourced required by the class during its lifetime. Example 1: The class has a handle of a file, this needs to be closed when the object is destroyed; the destructor is the perfect location. Exempel 2: The class owns an object with dynamic-storage duration, since the lifetime of the object can potentially live on long after the class instance has been destroyed you'll need to explicitly destroy it in the destructor.
+		\item You need to release the resources required by the class during its lifetime. For example, if the class has a handle to a file, you need to close the file when the object is destroyed. The destructor is the perfect location for this. Another example is if the class owns an object with dynamic-storage duration. Since the lifetime of the object can potentially continue long after the class instance has been destroyed, you'll need to explicitly destroy it in the destructor.
 	\end{enumerate}
 \end{itemize}
 
@@ -7610,7 +7607,7 @@ Base::~Base(){} //Must give implementation, even function is empty.
 
 \begin{itemize}
 
-\item When you write an empty class, compiler will produce at least six member functions.  New compiler will produce move constructor and move assignment too.
+	\item When you write an empty class, the compiler will produce at least six member functions. Newer compilers will also produce move constructor and move assignment functions.
 \begin{lstlisting}[numbers=none]
 class Empty{};
 
@@ -7622,27 +7619,29 @@ const Empty* operator&() const ;
 ~Empty();
 \end{lstlisting}
 
-\item Why do you need to pay attention to these special member functions?  Given half a chance, the compiler will write them for you. Another reason is that C++ by default treats classes as \textbf{value-like types}, but not all types are value-like. Know when to write and disable them make you get correct code. A good reference is "Everything You ever wanted to know about move semantics" in slideshare.net.
+	\item Why do you need to pay attention to these special member functions?  Given half a chance, the compiler will write them for you. Another reason is that C++ by default treats classes as \textbf{value-like types}, but not all types are value-like. Know when to write and disable them make you get correct code. A good reference is "Everything You ever wanted to know about move semantics" in slideshare.net.
 
-\item For these special member functions, main operations can be: 1) Compiler implicitly declare one.
-2) Use explicitly declare one.
-3) Once you define one, Compiler maybe Not declare another.
-4) You can ask compiler declare or delete one.
+	\item For these special member functions, main operations can be: 
+	\begin{enumerate}
+		\item Compiler implicitly declare one.
+		\item Use explicitly declare one.
+		\item Once you define one, Compiler maybe Not declare another.
+		\item You can ask compiler declare or delete one.
+	\end{enumerate}
 
-
-\item First question is what \texttt{"declare"} mean?  
+	\item First question is what \texttt{"declare"} mean?  
 \begin{center}
 	\includegraphics[scale=0.6]{pics/sm1.png} 
 \end{center}
 
 
-\item If you just define a class without any special member function, all six special member functions(One constructor, destructor, copy construtor, copy assignment, move construtor and move assignment) will be declared by compiler implicitly. 
+	\item If you just define a class without any special member function, all six special member functions(One constructor, destructor, copy construtor, copy assignment, move construtor and move assignment) will be declared by compiler implicitly. 
 
 %\begin{center}
 %	\includegraphics[scale=0.5]{pics/sm2.png}
 %\end{center}
 
-\item "Defaulted" can mean "deleted" if the defaulted special member would have to do something illegal, such as call another deleted function. "default" in \texttt{B} just tell compiler that I want to use compiler's version, and compiler version generate "delete" default constructor for class \texttt{B}. See an example below: 
+	\item "Defaulted" can mean "deleted" if the defaulted special member would have to do something illegal, such as call another deleted function. "default" in \texttt{B} just tell compiler that I want to use compiler's version, and compiler version generate "delete" default constructor for class \texttt{B}. See an example below: 
 
 \begin{lstlisting}[frame=single, language=c++]
 class A{
@@ -7698,10 +7697,10 @@ struct noncopyable  {
 
 	\item The copy constructor and copy-assignment operator are public but deleted. It is a compile-time error to define or call a deleted function.
 
-	\item The intent is clear to anyone who understands =default and =delete. You don't have to understand the rules for automatic generation of special member functions.
+	\item The intent is clear to anyone who understands \texttt{=default} and \texttt{=delete}. You don't have to understand the rules for automatic generation of special member functions.
 \end{enumerate}
 
-	\item Another question is what differences are between =delete and "not declare". Deleted members participate in overload resolution. Member not-declared do not participate in overload resolution.	
+	\item Another question is what the differences are between using \texttt{=delete} and not declaring a member at all. Deleted members participate in overload resolution, while members that are not declared do not participate in overload resolution.
 \begin{lstlisting}
 struct X{
 	template<class ...Args>
@@ -7713,7 +7712,7 @@ X x; //without line 4, here will call template function in line 2.
      //with line 4, compiler will report error here.
 \end{lstlisting}
 
-    \item Prefer deleted functions to private undefined ones. because Any function may be deleted, including non-member functions and template instantiations.
+    \item It's preferable to use deleted functions instead of privately undefined ones. Any function, including non-member functions and template instantiations, can be declared as \texttt{= deleted}.
 
 \begin{lstlisting}[frame=single, language=c++]
 template <class charT, class traits = char_traits<charT> >
@@ -7793,7 +7792,7 @@ void processPointer<void>(void*) = delete; //can't use void to instantiate.
 	
 	\item  The justification is that declaring a copy operation (construction or assignment) indicates that the normal approach to copying an object(memberwise copy) isn't appropriate for the class, and compilers thinks that if memberwise copy isn't appropriate for the copy operations, memberwise move probably isn't appropriate for the move operations either. The same idea as the previous item, declaring a move operation (construction or assignment) in a class causes compilers to disable the copy operations.
 	
-	\item The two copy operations are independent: declaring one doesn't prevent compilers from generating the other. The two move operations are not independent. If you declare either, that prevents compilers from generating the other.
+	\item The two copy operations(copy constructor and copy assignment) are independent: declaring one doesn't prevent compilers from generating the other. The two move operations are not independent. If you declare either, that prevents compilers from generating the other.
 	
 	\item C++11 deprecates the automatic generation of copy operations for classes declaring copy operations or a destructor. If you declare a destructor, declare your copy members too, even thought not necessary. This means that if you have code that depends on the generation of copy operations in classes declaring a destructor or one of the copy operations, you should consider upgrading these classes to eliminate the dependence.  Provided the behavior of the compiler-generated functions is correct (i.e, if memberwise copying of the class's non-static data members is what you want), your job is easy, because C++11's "= default" lets you say that explicitly:
 		
@@ -7813,8 +7812,7 @@ void processPointer<void>(void*) = delete; //can't use void to instantiate.
 
 \subsection{Resource management policy}
 \begin{itemize}
-    \item If a class only include value-like member, we usually don't need resource managment policy. In another word, 
-we don't have to build any copy and move constructor, just use the compiler generate default one. That is the \textbf{Rule of zero}.
+    \item If a class only includes value-like members, we usually don't need a resource management policy. In other words, we don't have to build any copy or move constructors; we can just use the compiler-generated default ones. This is known as the \textbf{Rule of Zero}.
 \begin{lstlisting}
 class NoResource{
 	value-like member1; // such string s, std::vector
@@ -7822,7 +7820,7 @@ class NoResource{
 }
 \end{lstlisting}
 
-    \item If a class includes reference-like member, things becomes a little complex. You need to consider Ownership or lifetime control. We can use \textbf{Four and half rule}, which will be introduced later.
+    \item If a class includes reference-like member, things becomes a little complex. You need to consider ownership And lifetime control. We can use \textbf{Four and half rule}, which will be introduced later.
 
 \begin{lstlisting}
 class OneRef{
@@ -7834,7 +7832,7 @@ class OneRef{
 
 \subsubsection{Rule of zero}
 \begin{itemize}
-    \item Rule of zero: If you can avoid defining default operations, do! It’s the simplest and gives the cleanest semantics. If all members have all the special functions, no further work is needed. In another word, any time you have resource, you can put it into the wrapper and change it into value-like memeber, in this way, we can follow Rule of zeor.
+    \item Rule of zero: If you can avoid defining default operations, do! It’s the simplest and gives the cleanest semantics. If all members have all the special functions, no further work is needed. In another word, any time you have resource, you can put it into the wrapper and change it into value-like memebers, in this way, we can follow Rule of zeor.
 
 \begin{lstlisting}
 class ZeroRule{
@@ -7847,7 +7845,7 @@ class ZeroRule{
 }	
 \end{lstlisting}
 
-	\item A variant of Rule of zero: As long as you can, stick to the Rule of Zero, but if you have to write at least one of the Big Five, default the rest. Why?  When you "user declare" destructor, according to our previous introduction, it loses its move operations. BUT it doesn’t lose its copy operations! So client code will continue to compile, but will silently call copy instead of move. This is not good. Detail can be google "The Rule of Zero in C++" in Fluent C++.
+	\item A variant of Rule of zero: As long as you can, stick to the Rule of Zero, but if you have to write at least one of the Big Five, default the rest. Why?  When you "user declare" destructor, according to our previous introduction, it loses its move operations. BUT it doesn’t lose its copy operations! So client code will continue to compile, but will silently call copy instead of move. This is not good. Default version is just like you move member manually, but \texttt{= default} permits you to skip the body definition. 
 	 
 \begin{lstlisting}
 class X{
@@ -7860,8 +7858,16 @@ public:
 };
 \end{lstlisting}
 
+\begin{lstlisting}
+struct Example { 
+	string a, b;
+	Example(Example&& mE) = default;
+	// the same Example(Example&& mE) : a{move(mE.a)}, b{move(mE.b)} { }
+}	
+
+\end{lstlisting}
    
-    \item Any time, if it's possible, you should consider to follow rule oe zero first. If there is not correct wrapper class, such as \texttt{unique\_ptr} to meet your requirement, or you want to manage your resource by you self, then you will follow rule of four and half. The rule of four uses "copy and swap idiom", so I will introduce the "copy and swap idiom" first, then jump to rule of four and half.
+    \item Whenever possible, you should consider following the Rule of Zero first. If there isn't a suitable wrapper class, such as \texttt{std::unique\_ptr} or \texttt{std::shared\_ptr}, to meet your requirements or you want to manage your resources yourself, then you can follow the Rule of Four and a Half. The Rule of Four uses the "copy and swap idiom," so I will introduce that first and then move on to the Rule of Four and a Half.
 
 \end{itemize}
 
@@ -7869,19 +7875,20 @@ public:
 \begin{itemize}
 	\item Any class that manages a resource (a wrapper, like a smart pointer) needs to implement The Big Three. While the goals and implementation of the copy-constructor and destructor are straightforward, the copy-assignment operator is arguably the most nuanced and difficult. How should it be done? What pitfalls need to be avoided?
 	
-	\item The old implementation need  \textbf{1) avoid assignment self 2) return *this reference. }There are two problems, the first one is the old implementation is not strong exception safe. For example, when we copy the content1, an exception has been thrown. Under such context, original one has been damaged. The second problem is so many duplicated code. The assigment code has almost the same code with copy constructor.
+	\item The old implementation need 1) avoid assignment self 2) return *this reference. There are two problems, the first one is the old implementation is not strong exception safe. For example, when we copy the content1, an exception has been thrown. Under such context, original one has been damaged. The second problem is so many duplicated code. The assignment code has almost the same code with copy constructor.
 \begin{lstlisting}[numbers=none]
 class & class::operator=(class &a){
 	if(this == &a)
-	return *this;  //avoid assign by himself
+		return *this;  //avoid assign by himself
     this.content1 = a.content1; //
     this.content2= a.content2; 
 	return *this ; // return *this reference.
 }	
 \end{lstlisting}
 	
-	\item The copy-and-swap idiom is a better solution, and elegantly assists the assignment operator in achieving two things: \textbf{avoiding code duplication, and providing a strong exception guarantee.}  Conceptually, it works by using the copy-constructor's functionality to create a local copy of the data, then takes the copied data with a swap function, swapping the old data with the new data. The temporary copy then destructs, taking the old data with it. We are left with a copy of the new data. In order to use the copy-and-swap idiom, we need three things: a working copy-constructor, a working destructor (both are the basis of any wrapper, so should be complete anyway), and a swap function. The swap function can be a member function.
-    \item A low effeicent implementation with swap. We should not use reference as function parameter. \textbf{No matter lvalue or rvalue, copy always happen inside assignment operator.}
+	\item The copy-and-swap idiom is a better solution, and elegantly assists the assignment operator in achieving two things: avoiding code duplication, and providing a strong exception guarantee. Conceptually, it works by using the copy-constructor's functionality to create a local copy of the data, then takes the copied data with a swap function, swapping the old data with the new data. The temporary copy then destructs, taking the old data with it. We are left with a copy of the new data. In order to use the copy-and-swap idiom, we need three things: a working copy-constructor, a working destructor (both are the basis of any wrapper, so should be complete anyway), and a swap function. The swap function can be a member function.
+	
+    \item A low efficient implementation with swap. We should not use reference as function parameter. \textbf{No matter lvalue or rvalue, copy always happen inside assignment operator.}
 \begin{lstlisting}[numbers=none]
 dumb_array& operator=(const dumb_array& other){
 	dumb_array temp(other);
@@ -7894,7 +7901,7 @@ da = f(); // use const & get the pvalue, // but inside the operator =, we copy.
 // we didn't use move, so it's low effeicient.	
 \end{lstlisting}
 	
-	\item  A efficent way is to use value parameter. On a general note, a remarkably useful guideline is as follows: if you're going to make a copy of something in a function, let the compiler do it in the parameter list.
+	\item  A efficient way is to use value parameter. On a general note, a remarkably useful guideline is as follows: if you're going to make a copy of something in a function, let the compiler do it in the parameter list.
 	
 \begin{lstlisting}[numbers=none]
 dumb_array& operator=(dumb_array other){
@@ -7926,9 +7933,6 @@ class dumb_array{
 		other.swap(*this); 
 		return *this;
 	}
-	dumb_array(dumb_array&& other):dumb_array{} noexcept{
-		*this.swap(other);
-	}
 private:
 	std::size_t mSize;
 	int* mArray;
@@ -7937,7 +7941,7 @@ private:
 void swap(dumb_array& first, dumb_array& second) {
 	first.swap(second);
 }
-namesapce std{
+namespace std{
 	template<> 
 	void swap<dump_array>{dump_array& first, dump_array& seconde){
 			first.swap(second);
@@ -7949,7 +7953,7 @@ namesapce std{
     
 	\item[Line 14:] Use swap member function to implement assignment operator, the function parameter is value, and label it noexcept. 
 	
-	\item [Line 18:] Once we have swap functions, we can use it to implement move constructor and label it noexcept. That is very import, when we use vector<dump\_array>, when vector need expand its size, it will use move if move is noexcept, if move is not noexcept, it will use copy which deep copy happens. 
+	\item [Line 18:] Once we have swap functions, we can use it to implement move constructor and label it noexcept. That is very important, when we use \texttt{vector<dump\_array>}, when vector need expand its size, it will use move if move is noexcept, if move is not noexcept, it will use copy which deep copy happens. 
     
     \item[Line 26:] If \texttt{dump\_array} has it's own namespace, then put swap non-member swap function into the same namespace. In this way, client can use ADL find this version and pick it up. If no own namespace, just put it in global scope.
     
@@ -7959,7 +7963,7 @@ namespace_dr::dumb_array dr2;
 swap(dr1, dr2); // will go to namespace_dr to find the correct swap function.
 \end{lstlisting}
 
-    \item [Line 29:] You also need to put swap into the std namesapce and make it specialization.
+    \item [Line 29:] You also need to put swap into the std namespace and make it specialization.
 \begin{lstlisting}
 //clients code should be like this
 using std::swap
@@ -7970,7 +7974,7 @@ std::swap(dr1,dr2) //some people or STL library code will use this way
 
 \end{description}
 	
-	\item A interesting example about copy and swap idiom.  For below software snippet, copy and swap idiom is slow than the default empty \texttt{X}. Why? Don't use copy and swap on some std container member. 
+	\item An interesting example about copy and swap idiom.  For below software snippet, copy and swap idiom is slow than the default empty \texttt{X}. Why? Detail can be found in "Inefficiency of copy-and-swap idiom?" in stack overflow. In another word, don't use "copy and swap" on some std container member, because \texttt{std::vector<int>} has been value like member. 
 \begin{lstlisting}
 class X{  //
 	std::vector<int> v_;
@@ -7983,16 +7987,17 @@ class X{ //copy and swap idiom
 		return *this;
 	}
 }
-
 \end{lstlisting}
 
+	\item If we need a user-defined copy constructor to avoid shallow copy, and at the same time, we need a user-defined destructor to free or release some resources, that is a strong indication that we can use the "four and a half idiom". In the previous code snippet, Class X doesn't need its own copy constructor and destructor, wo we should NOT use "four and a half idiom" here either. 
 
-	\item Before C++11, we don't have move semantics. We just need to follow Rule of three: If a class requires a user-defined destructor, a user-defined copy constructor, or a user-defined copy assignment operator, it almost certainly requires all three. After C++11, we introduced move semantic, so rule of three become rule of five. Add move constructor and move assignment.
+
+	\item Before C++11, we didn't have move semantics, so we just needed to follow the Rule of Three: If a class requires a user-defined destructor, a user-defined copy constructor, or a user-defined copy assignment operator, it almost certainly requires all three. After C++11, with the introduction of move semantics, the Rule of Three became the Rule of Five, adding a move constructor and a move assignment operator.
 	
 	\item With help "copy and swap idiom", the rule of five becomes to the Rule of The Big Four (and a half), which states that if you implement one of below file, you should implement all the others.
 	\begin{enumerate}
 		\item The copy constructor.
-		\item The assignment operator.\textbf{Don't need move assignment, in assignment operator, we pass only one kind of type--value.} 
+		\item The assignment operator. Don't need move assignment, in assignment operator, we pass only one kind of type--value. 
 		\item The move constructor.
 		\item The destructor.
 		\item The swap function(that is half).
@@ -8002,17 +8007,16 @@ class X{ //copy and swap idiom
 
 \subsubsection{Summary}
 \begin{itemize}
-    \item For non-resource class follow zero rule, for wrapping-resource class, follow four and half rule. Don't use big three rule, it's deprecated after C++ 11.
+    \item For non-resource classes, you should follow the zero rule. For classes that wrap resources, you should follow the four and a half rule. Don't use the big three rule, as it has been deprecated after C++11.
 
-    \item You can use \texttt{=default} and \texttt{=delete} to explicitly declare some special member functions. For example, if you define destructor for log purpose, it will disable copy constructor generation, at this time, you can add \texttt{Foo Foo(cont Foo\& rhs)=default} to your class.
+    \item You can use \texttt{=default} and \texttt{=delete} to explicitly declare some special member functions. For example, if you define destructor for log purpose, it will disable copy constructor generation, at this time, you can add \texttt{Foo Foo(cont Foo\& rhs)=default} to your class to bring them back.
         
     \item The common use resource management policies are below:
-
 \begin{enumerate}
     \item Objects that can be both moved and copied
-        \item Objects for which it makes sense to copy but not move
-        \item Objects for which it makes sense to move but not copy
-        \item Objects which should neither be moved not copied.
+    \item Objects for which it makes sense to copy but not move
+    \item Objects for which it makes sense to move but not copy
+    \item Objects which should neither be moved not copied.
 \end{enumerate}
 
 	\item Besides these famous idiom, you can customize your own class management policy. Different policy will make the class has different behavioral, then represents the practical application semantic the best. 
@@ -8020,9 +8024,9 @@ class X{ //copy and swap idiom
 	\begin{enumerate}
 		\item Use the compiler-provided versions of these functions. In other words, you're not doing any resource management in the class.
 		
-		\item Write your own move functions, but don't support copying.(\texttt{std::unique\_ptr})
+		\item Write your own move functions, but don't support copying, such as \texttt{std::unique\_ptr}
 		
-		\item Disable copying and move semantics for the class, because it doesn't make sense to allow it.
+		\item Disable copying and move semantics for the class, because it doesn't make sense to allow it, such as \texttt{std::mutex}
 		
 		\item For \texttt{std::unary\_function}, it's base class, but it's just trait class.(extract type information from a function). You can declare its destructor as protect and non virtual. Then your client can't use below code:
 \begin{lstlisting}[numbers=none]
@@ -8045,7 +8049,7 @@ delete base_ptr; //compiler barks here.
 	\item Overload means providing two (or more) functions that perform similar, closely related things, differentiated by the types and/or number of arguments it accepts.
 	
 	\begin{enumerate}
-		\item \textbf{In some cases it's worth arguing that a function of a different name is a better choice than an overloaded function.}
+		\item  In some cases it's worth arguing that a function of a different name is a better choice than an overloaded function.
 		
 		\item  In the case of constructors and operator, overloading is the only choice because we can't give them the different name. and operator overload is typical feature in Object Base Programming.(OB)
 		
@@ -8069,6 +8073,23 @@ g() or g(10);
 		\item If a binary operator treats both operands equally (it leaves them unchanged), implement this operator as a non-member function.
 		
 		\item If a binary operator does not treat both of its operands equally (usually it will change its left operand), it might be useful to make it a member function of its left operand’s type, if it has to access the operand's private parts.
+		
+		\item If you both define member and nonmember operator, it will call your member version first,  If you delete the member version, then it will call nonmember version. 
+\begin{lstlisting}
+class Sample{
+public:
+	Sample operator + (const Sample& op2){ return Sample{};}
+	friend Sample operator + (const Sample& op1, const Sample& op2);
+};
+
+Sample operator + (const Sample& op1, const Sample& op2){
+	return Sample{};
+}
+Sample s1{};
+Sample s2{};
+Sample s3 = s1+s2;  //this line call member version in line 3. 
+\end{lstlisting}
+
 	\end{enumerate}
 	
 	
@@ -8082,17 +8103,17 @@ time operator+(int i) //member, for t+3, avoid implicit conversion from 3 to t
 	\item Overloading sometimes can help you to avoid implicit type conversion. In the below example, we avoid creating a temporary obj implicitly created by constructor.
 
 \begin{lstlisting}[frame=single, language=c++]
-	class String{
-		bool operator==(const String& lhs, const String& rhs);
-	}
-	String str;
-	if(str =="hello") //will build a temp obj String("hello");
-	
-	bool operator==(const String& lhs, const char* rhs); //avoid implicit conversion.	
+ class String{
+	bool operator==(const String& lhs, const String& rhs);
+}
+String str;
+if(str =="hello") //will build a temp obj String("hello");
+
+bool operator==(const String& lhs, const char* rhs); //avoid implicit conversion.	
 \end{lstlisting}
 
 	
-	\item For Binary Arithmetic Operators + - *, implement Compound Assignment Operators += -= *= first, then use these Compound Assignment operators to implement common operators. For example, \textbf{Use += implement operator +}. It's very good design. It provides two advantages. 1) give another function, 2) avoid code duplication. Compound assignment operators should be overloaded as member functions, as they change the left-hand operand. Like all other operators (except basic assignment), compound assignment operators must be explicitly defined. 
+	\item When implementing binary arithmetic operators such as +, -, and *, it's good practice to first implement compound assignment operators such as +=, -= and *=. These can then be used to implement the common operators. For example, you can use += to implement +. This design provides two advantages: 1) it provides an additional function, and 2) it avoids code duplication. 
 \begin{lstlisting}[numbers=none]
 Vector2D& Vector2D::operator+=(const Vector2D& right){
 	this->x += right.x;
@@ -8107,9 +8128,9 @@ Vector2D operator+(const Vector2D& lhs, const Vector2D& rhs){
 }
 \end{lstlisting}
 	
-	\item Why \verb=<<= need to be friend? You need to consider:  Because you need to write cout\verb=<<= obj. If you declare \verb=<<= as a member operator, you have to write obj\verb=<<=cout; it looks weird.
+	\item Why does \texttt{<<} need to be both a friend and a non-member? Its left operands are stream classes from the standard library, which cannot be changed. In other words, you need to write \texttt{cout << obj}. If you declare \texttt{<<} as a member operator, you would have to write \texttt{obj << cout}, which looks weird.
 	
-	\item Assignment operator overload returns a non-const reference. Don't return const reference, somebody said that it can avoid (x=y)=z. But in fact, it's not a normal way to write such code. In STL string, assignment operator just return reference. It give you a clue, \textbf{any time you have questions about interface design, you can see the STL library.}
+	\item The assignment operator overload should return a non-const reference. Some people suggest that returning a const reference can avoid the possibility of writing code like (x=y)=z. However, this is not a common coding practice. In the STL string, the assignment operator just returns a reference. This serves as a helpful reminder that whenever you have questions about interface design, you can look to the STL library for guidance.
 \begin{lstlisting}[numbers=none]
 class A & operator=(const class A& rhs){	
 	//Do some things other
@@ -8117,13 +8138,7 @@ class A & operator=(const class A& rhs){
 }
 \end{lstlisting}
 
-
-
-
-\item The binary operators = (assignment), [] (array subscription), -> (member access), as well as the unary () (function call) operator, must always be implemented as member functions, because the syntax of the language requires them to.
-
-\item Other operators can be implemented either as members or as non-members. Some of them, however, usually have to be implemented as non-member functions, because their left operand cannot be modified by you. The most prominent of these are the input and output operators \texttt{<<} and \texttt{>>}, whose left operands are stream classes from the standard library which you cannot change.
-
+	\item The binary operators = (assignment), [] (array subscription), -> (member access), as well as the unary () (function call) operator, must always be implemented as member functions, because the syntax of the language requires them to.
 	
 \end{itemize}
 
@@ -8134,7 +8149,7 @@ class A & operator=(const class A& rhs){
 \subsubsection{Polymorphism by inheritance}
 
 \begin{itemize}
-	\item polymorphism is a powerful design mechanism that allows for the encapsulation of related types behind an abstract public interface, The cost is an additional level of indirection, both in terms of memory acquisition and type resolution. This style of programming is called object-oriented. Only reference and pointer support polymorphism, see source code below:
+	\item Polymorphism is a powerful design mechanism that allows for the encapsulation of related types behind an abstract public interface. However, the cost is an additional level of indirection, both in terms of memory acquisition and type resolution. This style of programming is called object-oriented programming. Polymorphism is supported only by references and pointers. See the source code below:
 
 \begin{lstlisting}[numbers=none]
 class A{
@@ -8160,14 +8175,14 @@ cout<<b.m_b;    //OK,You can access class member by object directly.
 cout<<static_cast<B*>(pa)->m_b; //OK
 \end{lstlisting}
 \begin{description}
-	\item[Line 4-5:] Error, it doesn't work. Pointer has type. The pointer type alter the interpretation of the size and composition of the memory. Pointer type is A, so the size of memory which pointer address is sizeof(A), that's why you can't see the \texttt{m\_b}.at all.
-	\item[Line 6:] OK, when you change the pointer type from A to B, then the memory which pointer address is \texttt{sizeof(B)}, interpretation also support \texttt{->m\_b} 
+	\item[Line 4-5:] Error, it doesn't work. Pointer has type. The pointer type alter the interpretation of the size and composition of the memory. Pointer type is \texttt{A}, so the size of memory which pointer address is sizeof(A), that's why you can't see the \texttt{m\_b} at all.
+	\item[Line 6:] OK, when you change the pointer type from A to B, then the memory which pointer address is \texttt{sizeof(B)}, interpretation also support \texttt{->m\_b} now. 
 \end{description}
 
 \item Base object doesn't support polymorphism.
 \begin{lstlisting}
 B b;
-A a = b;
+A a = b; //sliced happen here.
 a.fun(); //output A
 \end{lstlisting}
 \begin{description}
@@ -8180,9 +8195,9 @@ a.fun(); //output A
 \begin{lstlisting}
 A& ra = b;
 ra.fun(); //output B
-A* pa = &b;
+A* pa = &b;  no sliced happen here
 pa->fun(); //output B
-(*pa).fun(); //output B
+(*pa).fun(); //output B, no sliced happen before.
 		
 A* pa1 = new B; //virtual table content has not changed.
 (*pa1).fun(); //output B
@@ -8194,10 +8209,10 @@ A* pa1 = new B; //virtual table content has not changed.
 
 \subsubsection{constructor and destructor in inheritance}
 \begin{itemize}
-	\item  \textbf{Subclass constructor will always call base class constructor.} Idea behind this rules is \textbf{Do best to make sure a obj can be initialized properly}. Constructor should NOT be virtual. If subclass doesn't define any constructor, compiler will implicitly define a default ctor, and this ctor will call base class default ctor.If subclass has a constructor, but it doesn't explicitly call base specify ctor, ctor of subclass will call base default ctor.(without any parameter.) If base ctor only has specify ctor, no default ctor, produce compiler error. If you want explicitly call base specify constructor, use initialization list syntax.	
+	\item  \textbf{The subclass constructor will always call the base class constructor.} The idea behind this rule is to ensure that an object can be initialized properly. The constructor should NOT be virtual. If the subclass doesn't define any constructor, the compiler will implicitly define a default constructor, and this constructor will call the base class's default constructor. If the subclass has a constructor but doesn't explicitly call the base class's specified constructor, the constructor of the subclass will call the base class's default constructor (without any parameters). If the base constructor only has a specified constructor and no default constructor, the compiler will produce an error. If you want to explicitly call the base class's specified constructor, use the initialization list syntax.
 \begin{lstlisting}[frame=single, language=c++]
 class base{
-	public:
+public:
 	base();  //default constructor
 	base(int b); //converting constructor
 	private:
@@ -8217,13 +8232,10 @@ subclass::subclass(int s, int b): base(b){
 //////////////////////////////////////////
 subclass sc1(2,3); //call converting constructor, explicit call base constructor constructor.
 subclass sc2(2);  // implicit call base default constructor
-subclass sc3;   //if base has no default ctor, sc2 and sc3 report error
+subclass sc3;   //if base has no default constructor, sc2 and sc3 report error
 \end{lstlisting}
-\begin{description}
-	\item[Line 22:] if base has not default constructor, \texttt{sc2} and \texttt{sc3} will produce error.
-\end{description}
 
-	\item If you don't use  explicitly initialization list syntax to call base specify constructor, You will get uninitialized value or you can't initialize base member, Neither are good.
+	\item If you don't use explicit initialization list syntax to call the base class's specified constructor, you will either get an uninitialized value or you won't be able to initialize the base member, both of which are not good.
 \begin{lstlisting}[frame=single, language=c++]
 DeriveClass::DeriveClass(int base_a, b){ // call default constructor,  
 	Derive_b = b
@@ -8236,10 +8248,10 @@ DeriveClass::DeriveClass(int base_a, b) {
 \end{lstlisting}
 \begin{description}
 	\item[Line 1:] it will call \texttt{base\_class} default constructor. in this case, \texttt{base\_a} is not assigned at all.
-	\item[Line 6:] You can't  access private base member data. \texttt{base\_a} need to be public member data.
+	\item[Line 6:] You can't access private base member data. \texttt{base\_a} need to be public member data.
 \end{description}
 
-	\item If a base class has a destructor, but sub class doesn't have,  compiler will produce an implicit default destructor, and this implicit default destructor will call base class destructor. If you define a subclass destructor, It will call base destructor automatically, you don't need to call it explicitly. The question is, How can you make sure you sub class destructor will be called if you use a base class pointer or reference? You need to make the base class destructor virual. That introduce an important principle: \textbf{Make base class destructor public and virtual} (polymorphic deletion by base class pointer or reference), or protect and non-virtual, base classes need not always allow polymorphic deletion. For example, consider class templates such as \texttt{std::unary\_function}. This time, you should make destructor protected and non-virtual.
+	\item If a base class has a destructor, but sub class doesn't have, compiler will produce an implicit default destructor, and this implicit default destructor will call base class destructor. If you define a subclass destructor, It will call base destructor automatically, you don't need to call it explicitly. The question is, How can you make sure you sub class destructor will be called if you use a base class pointer or reference? You need to make the base class destructor virual. That introduce an important principle: \textbf{Make base class destructor public and virtual} (polymorphic deletion by base class pointer or reference), or protect and non-virtual, base classes need not always allow polymorphic deletion. For example, consider class templates such as \texttt{std::unary\_function}. This time, you should make destructor protected and non-virtual.
 \begin{lstlisting}[]
 template <class Arg, class Result>
 struct unary_function{
@@ -8248,7 +8260,7 @@ struct unary_function{
 };
 	
 void f( std::unary_function* f ){
-	delete f; // error, illegal
+	delete f; // error, illegal code to use unary_function in this way.
 }
 \end{lstlisting}
 \begin{description}
@@ -8257,7 +8269,7 @@ void f( std::unary_function* f ){
 
 	\item Don't call base destructor explicitly, It will called automatically in the reverse order of construction.  And you should give a base destructor a definition, Or linker will report error it even you don't call it in your source code.
 	
-	\item Never throw exception from destructor, if exception A is thrown, then stack-unwindling, when a obj is destructed, then destructor is called, when another exception B is thrown by the destructor, application will call terminate function immediately.  If you have exception, catch it inside of the destructor.
+	\item Never throw an exception from a destructor. If exception A is thrown, then stack unwinding will occur. When an object is destructed, its destructor is called, and if another exception B is thrown by the destructor, the application will call the terminate function immediately. If you encounter an exception, catch it inside the destructor.
 	
 \end{itemize}
 
@@ -8308,7 +8320,7 @@ Derived d1;
 Derived d2;
 	
 Base* Copy(Base& Bref){
-	//How to avoid slicing and make deep copy.
+	//How to avoid slicing and make deep copy here?
 }
 	
 Base& Bref = d1
@@ -8321,7 +8333,7 @@ Base* d2p = Copy(Bref)
 \item Continue- Think this problem: error method
 \begin{lstlisting}[numbers=none]
 Base* Copy(Base& Bref){
-	Base* p = new Base(Bref) //Slicing happen. bad
+	Base* p = new Base(Bref) //Slicing happen here, error!
 }
 \end{lstlisting}
 	\item Continue- Think this problem: TypeID method.
@@ -8331,7 +8343,7 @@ Base* Copy(Base& Bref){
 }
 \end{lstlisting}
 \begin{description}
-	\item[Line 1:] Use \texttt{type\_id} and \texttt{dynamic\_cast}. involve a lot of if and switch about type. anytime if you use \texttt{dynamic\_cast} and \texttt{if}, you can think about using virtual function instead.
+	\item[Line 2:] Use \texttt{type\_id} and \texttt{dynamic\_cast}. involve a lot of if and switch about type. anytime if you use \texttt{dynamic\_cast} and \texttt{if}, you can think about using virtual function instead.
 \end{description}
 	
 \item Continue- Think this problem: Virtual Clone method.
@@ -8350,16 +8362,16 @@ Base* Copy(Base& Bref){
 }
 \end{lstlisting}
 	
-	\item Continue- Think this problem: Change Design. Base is concrete class,  More Effective C++ Item 33 said"Making Non-leaf class abstract. So maybe you can change the inheritance system.
+	\item Continue- Think this problem: Change Design. Base is concrete class,  More Effective C++ Item 33 said "Making Non-leaf class abstract". So maybe you can change the inheritance system design.
 	
-	\item \textbf{Assignment operator and copy constructor in inheritance summary:}
+	\item Assignment operator and copy constructor in inheritance summary:
 
 	\begin{enumerate}
-		\item Default Assignment  operator and  copy constructor in derived class which are implicitly produced by compiler will call default base assignment operator and  copy constructor.
+		\item Default Assignment  operator and  copy constructor in derived class which are implicitly produced by compiler will call default base assignment operator and copy constructor.
 		
-		\item If derived class has no new operation. Don't need to define derived class Assignment  operator and  copy constructor, implicit one will call base one automatically.
+		\item If derived class has no new operation. Don't need to define derived class Assignment operator and  copy constructor, implicit one will call base one automatically.
 		
-		\item \textbf{If derived class has new operation. You have to define derived class Assignment  operator and  copy constructor, it will not invoke assignment  operator and  copy constructor in base class any more}.  Inside, manually invoke base class Assignment operator and copy constructor. Detail can be found in C++ primer p760. Syntax looks like below: see effective C++ Item 16.
+		\item If derived class has new operation. You have to define derived class Assignment  operator and  copy constructor, it will NOT invoke assignment  operator and  copy constructor in base class any more.  Inside, manually invoke base class Assignment operator and copy constructor. Detail can be found in C++ primer p760. Syntax looks like below: see effective C++ Item 16.
 		
 		\item For copy constructor, just initialization list syntax. For assignment operator, use two different methods depends on if base class declare its own assignment operator(). Source code is below:
 		
@@ -8381,6 +8393,8 @@ DerivedClass & DerivedClass::operator=(const DerivedClass &dc){
 		
 	\end{enumerate}
 
+	\item For conversion constructors and destructors, the derived class always calls the base class one. Even if you define your own constructor or destructor, it will also implicitly call the base class one. However, for copy constructors and assignment operators, the derived class's implicit constructor or operator will not call the base class one. If you define your own copy constructor or assignment operator, you need to manually call the base class one. This is the difference between conversion constructors and destructors versus copy constructors and assignment operators.
+
 %	\item There are three articles, you should read them together.\\
 %\\
 %https://herbsutter.com/2013/05/09/gotw-1-solution/
@@ -8394,11 +8408,11 @@ DerivedClass & DerivedClass::operator=(const DerivedClass &dc){
 \subsection{Virtual function and override}
 
 \begin{itemize}
-	\item \textbf{Almost all the base class has virtual function, if a class doesn't contain a virtual function, It is an indication that it is not meant to be used as a base class.} Some base classes are just for injecting some type, such as \texttt{unary\_function}.
+	\item Almost all base classes have a virtual function. If a class does not contain a virtual function, it is an indication that it is not meant to be used as a base class, except for some base classes that are only intended for injecting a specific type, such as \texttt{unary\_function}.
 	
-	\item Only virtual functions come into vtbl. Friend functions can't be virtual function, because it's not even a member of class. When a method is declared virtual in a base class, it is automatically virtual in the derived class, but it is a good idea to explicitly declare it by using the keyword \texttt{virtual} in the derived class declarations too.
+	\item Only virtual functions are included in the vtbl. Friend functions cannot be virtual functions because they are not even members of the class. When a method is declared virtual in a base class, it is automatically virtual in the derived class, but it is still a good idea to explicitly declare it using the keyword \texttt{virtual} in the derived class declarations as well.
 	
-	\item Don't rewrite non-virtual base member function. It's not overriding, but overwriting. In fact, overwriting is not standard conception in C++, most time, you can call it \textbf{name hiding}. If you redefine the same name non-virtual function in both base and child classes, you can't use dynamic binding, just static binding. 
+	\item Do not rewrite non-virtual base member functions. It is not overriding but overwriting. In fact, overwriting is not a standard concept in C++. Most of the time, you can refer to it as \textbf{name hiding}. If you redefine the same non-virtual function name in both the base and child classes, you cannot use dynamic binding, only static binding. 
 \begin{lstlisting}[frame=single, language=c++]
 class A{
 	f(int) {}
@@ -8436,7 +8450,7 @@ makeWidget().doWork();  //call Widget::doWork &&
 
 	\end{enumerate}
 	
-\item Any small error will not real override base virtual function. But creating a new virtual method with a different signature. such as examples below.
+	\item Any small error will not real override base virtual function. But creating a new virtual method with a different signature. such as examples below.
 
 \begin{lstlisting}[numbers=none]
 class Base {
@@ -8456,7 +8470,7 @@ public:
 };
 \end{lstlisting}
 	
-	\item Use \texttt{override} specifier in derived class member function used to check if they are match with member function in base class. It can overcome all the implicit non-override problem in the previous source code.
+	\item Use the \texttt{override} specifier in derived class member functions to check if they match with the member function in the base class. It can overcome all implicit non-override problems in the previous source code.
 \begin{lstlisting}[numbers=none]
 struct A{
 	virtual void foo();
@@ -8489,7 +8503,7 @@ class Base{
 \begin{itemize}
 	\item OOP has five relationships:
 	\begin{description}
-		\item[Composition] exists when a member of a class has a \textbf{part-of} relationship with the class.  Compositions are typically implemented via normal member variables, or by pointers where the class manages all the memory allocation and deallocation. In semantic levle, it has ownership, same life time, not change in the middle, such as person and head. You should use composition relathionship if it's possible. To qualify as a composition, an object and a part must have the following relationship:
+		\item[Composition] Composition exists when a member of a class has a \textbf{part-of} relationship with the class. Compositions are typically implemented via normal member variables or by pointers where the class manages all the memory allocation and deallocation. In semantic level, it involves ownership, the same lifetime, and no change in the middle, such as a person and their head. You should use a composition relationship if possible. To qualify as a composition, an object and a part must have the following relationship:
 		\begin{enumerate}
 			\item The part (member) is part of the object (class).
 			\item The part (member) can only belong to one object (class) at a time.
@@ -8499,7 +8513,7 @@ class Base{
 	
 	
 	
-	\item[Aggregations] exists when a class has a \textbf{has-a} relationship with the member. Aggregations are typically implemented via pointer or reference. In semnatic level, it has ownership, maybe same life time, may change in the middle,  such as container and pointer(same life time, changeable), airport and airplane and school and teacher. In an aggregation relationship, the class does not manage the existence of the members. To qualify as an aggregation, an object and its parts must have the following relationship:
+	\item[Aggregations] exists when a class has a \textbf{has-a} relationship with the member. Aggregations are typically implemented via pointer or reference. In semantic level, it has ownership, maybe same life time, may change in the middle,  such as container and pointer(same life time, changeable), airport and airplane and school and teacher. In an aggregation relationship, the class does not manage the existence of the members. To qualify as an aggregation, an object and its parts must have the following relationship:
 	
 	\begin{enumerate}
 		\item The part (member) is part of the object (class)
@@ -8545,15 +8559,15 @@ class Base{
 	\end{tabular}
 \end{center}
 
-	\item \textbf{Composition is specific aggregation, and aggregation is specific associate.}
+	\item Composition is specific aggregation, and aggregation is specific associate.
 
-	\item For Aggregation, It is not a very clearly defined concept and in my opinion it causes more confusion than it is worth. Toothbrush and people can be thought as association relationship more from \textbf{semantic relationship perspective}. composition and association are used more often than aggregation. From \textbf{implementation} perspective,  we can implement divide association into shallow copy and deep copy. 
-	
-	\begin{description}
-		\item[Association-shallow copy:] Foo has a pointer to Bar object as a data member.
-		\item[Association-deep copy:] Foo has a pointer to Bar object and data of Bar is deep copied in that pointer.
-		\item[Composition:] Foo has a Bar object as data member.
-	\end{description}
+%	\item For Aggregation, It is not a very clearly defined concept and in my opinion it causes more confusion than it is worth. Toothbrush and people can be thought as association relationship more from \textbf{semantic relationship perspective}. composition and association are used more often than aggregation. From \textbf{implementation} perspective,  we can implement divide association into shallow copy and deep copy. 
+%	
+%	\begin{description}
+%		\item[Association-shallow copy:] Foo has a pointer to Bar object as a data member.
+%		\item[Association-deep copy:] Foo has a pointer to Bar object and data of Bar is deep copied in that pointer.
+%		\item[Composition:] Foo has a Bar object as data member.
+%	\end{description}
 
 	\item We can not map relationship in real word into C++ 100\% accurate. C++ is programming language which has its own syntax and semantic understand. Just like we can not inherit ellipse from circle in C++, but we can do this in real word. So we should not treat all the above relationships too pedantically! 
 
@@ -8567,9 +8581,9 @@ class Base{
 
 	\begin{itemize}
 	
-		\item Both reference and pointer support polymorphism. No source code, just header and lib, you also can use inheritance in C++ language.
+		\item Both references and pointers support polymorphism. In C++ language, you can use inheritance with just the header and library files, without any additional source code.
 		
-		\item Pure virtual class can't be instance, it just a abstract interface, it's agreement between your class and class user(client).
+		\item Pure virtual class can't be instance, it just a abstract interface, it's agreement between your class author(developer) and class user(client).
 \begin{lstlisting}[numbers=none]
 class Shape{
 	virtual draw() = 0 
@@ -8580,7 +8594,7 @@ class Circle: public Shape{
 }
 \end{lstlisting}
 			
-	\item 	There are three kinds of inheritances. Code and example and explanation:
+	\item There are three kinds of inheritances. Code and example and explanation:
 \begin{lstlisting}[frame=single, language=c++]
 class B                    { /*...*/ };
 class D_priv : private   B { /*...*/ };
@@ -8591,11 +8605,11 @@ class D_publ : public    B { /*...*/ };
 	\begin{enumerate}
 		\item None of the derived classes can access anything that is private in B.
 		
-		\item In D\_priv, the public and protected parts of B are private.
+		\item In \texttt{D\_priv}, the public and protected parts of B are private.
 		
-		\item In D\_prot, the public and protected parts of B are protected. Protect used in three generation inheritance. By protected Inheritance, grandfather member become protected member in father, so Grandson can still use grandfather's members.
+		\item In \texttt{D\_prot}, the public and protected parts of B are protected. Protect used in three generation inheritance. By protected Inheritance, grandfather member become protected member in father, so Grandson can still use grandfather's members.
 		
-		\item In D\_publ, the public parts of  B are public and the protected parts of B are protected (D\_publ is-a-kind-of-a B).
+		\item In \texttt{D\_publ}, the public parts of  B are public and the protected parts of B are protected (D\_publ is-a-kind-of-a B).
 		
 	\end{enumerate}
 
@@ -8621,7 +8635,7 @@ int Student::getNameLen(){
 }
 \end{lstlisting}
 
-\item In short, composite uses object names to invoke a method, whereas private Inheritance uses the class name and scope resolution operator instead. If you need the base class itself, use a type case \texttt{(const string\&) * this}; detail can be seen in C++ primer, P800. Use private inheritance is not mainstream style, so please don't use it unless you are in the corner. 
+	\item In short, composite uses object names to invoke a method, whereas private inheritance uses the class name and scope resolution operator instead. If you need the base class itself, you can use a type cast such as \texttt{(const string\&) * this}; more details can be found in "C++ Primer," page 800. Using private inheritance is not a mainstream style, so please don't use it unless you are in a corner case.
 \begin{lstlisting}[numbers=none]
 class Student: private string, private std::vector<double>{//2)private inheritance
 	int getNameLen(); // We don't need private member data any more
@@ -8638,27 +8652,29 @@ const string& Student::getName(){
 \subsubsection{"Is-A" relationship}
 
 \begin{itemize}
-	\item Inheritance has three level knowledges.
+	\item Inheritance has four levels of knowledge.
 	\begin{enumerate}
 		\item The basic design knowledge, manager is a person, apple is a fruit, and bla bla bla.
 		
-		\item The basic  pure virtual, virtual, and non virtual syntax knowledge.
+		\item The basic pure virtual, virtual, and non virtual syntax knowledge.
 		
 		\item \textbf{Isolate change between Client and Implement}. That is the highest level in design pattern. How to understand interface? Client<->Interface<->Implement. through Interface, you keep all the change happen in implementation side, not affect Client at all.
+		
+		\item Ultimate purpose of inheritance is message driven and cooperation between objects.
 	\end{enumerate}
 	
-	\item \textbf{Public inheritance is substitutability, not to reuse, but to be reused. } For example, client use class A, and class B inherit class A.  I don't think class B reuse something in class A. we should think that class B could be used by client too, just like client use class A.
+	\item Public inheritance is about substitutability, not just reuse. For example, if a client uses class A and class B inherits class A, we should not think that class B is reusing something in class A. Instead, we should think that class B could also be used by the client, just like the client uses class A.
 	
-	\item  A common mistake is inheriting from classes that were not designed to be base class. For example, you want to customize some current class, you have string class, but you want to change some behavior of string. So you write: \texttt{class myString : public string}. But it violate LSP( Liskov Substitution Principle): \textbf{Functions that use pointers or references to base classes must be able to use objects of derived classes without knowing it. }
+	\item  A common mistake is inheriting from classes that were not designed to be base class. For example, you want to customize some current class, you have string class, but you want to change some behavior of string. So you write: \texttt{class myString : public string}. But it violate LSP( Liskov Substitution Principle): Functions that use pointers or references to base classes must be able to use objects of derived classes without knowing it. 
 	\begin{enumerate}
 		\item client use string class through base class pointer or reference
 		\item base class has virtual function.
 		\item derived class redefine base class virtual function.
 	\end{enumerate}
 	
-	\item See previous three points: all requirement are not satisfied. Clients most times use string by value directly, string doesn't has any virtual function, it's a value class, and you didn't design before hand.
+	See the previous three points: all requirements are not satisfied. Clients most times use a string by value directly, the string class does not have any virtual functions as it is a value class, and you didn't design it beforehand.
 	
-\item If you want to change find function, You don't need inherit,  Just write non-member function and pass a string object.
+	\item If you want to change find function, You don't need inherit,  Just write non-member function and pass a string object.
 \begin{lstlisting}[numbers=none]
 myFind(const string& str){
 	//you custimized behavior.
@@ -8680,7 +8696,7 @@ class MyString{
 }
 \end{lstlisting}
 	
-	\item \textbf{Another mistake is public inheritance is work-like-a, not is-a.} For example, circle is a eclipse, and square is a rectangle, but in OOP, you can't make circle inherit from eclipse, because, eclipse has two centers.  you can't make square inherit from rectangle, because setWidth is not work as the same as in rectangle, (setWidth in square will change height at the same time.) It breaks LSP.  A solution is make an abstract base class(ABC) then make circle and ellipse inherit from ABC
+	\item Another mistake is that public inheritance is about "work-like-a," not "is-a." For example, a circle is an ellipse and a square is a rectangle, but in OOP, you can't make a circle inherit from an ellipse because an ellipse has two centers. Similarly, you can't make a square inherit from a rectangle because setWidth works differently in square (it changes the height at the same time), which breaks the Liskov Substitution Principle (LSP). The solution is to make an abstract base class (ABC) and have both circle and ellipse inherit from it. 
 	
 	\item Previous example also explain, when you design a class, it doesn't need to be a practical object, such as animal, car, people, etc.  It can be abstract conception.  (So design pattern is so important conception).
 	
@@ -8688,46 +8704,48 @@ class MyString{
 	\begin{enumerate}
 		\item Does TypeB want to expose the complete interface (all public methods no less) of TypeA such that TypeB can be used where TypeA is expected? Indicates Inheritance. e.g. A Cessna biplane will expose the complete interface of an airplane, if not more. So that makes it fit to derive from Airplane.
 		
-		\item Does TypeB only want only some/part of the behavior exposed by TypeA? Indicates need for Composition. In this case, it makes sense to extract it out as an interface/class / both and make it a member of both classes.
+		\item Does TypeB only want only some/part of the behavior exposed by TypeA? Indicates need for Composition.  A Bird may need only the fly behavior of an Airplane. In this case, it makes sense to extract it out as an interface/class, and make it a member of both classes. 
 		
 		\item Inheritance must pass Liskov Substitution Principle. Previous example about ellipse and circle fail this test. because ellipse has setLongAxis() and setShortAxis(), but circle doesn't have them at all.
 	\end{enumerate}
 
-    \item There is a very good article: it explain the ellipse and circle debate in C++ community. \verb=https://isocpp.org/wiki/faq/proper-inheritance=. There are two important points:
+    \item There is a very good article: it explain the ellipse and circle debate in C++ community. \verb=https://isocpp.org/wiki/faq/proper-inheritance=. There are a few important points:
 
         \begin{enumerate}
-            \item \textbf{The biggest difference is to change "is-a" into "is-substitutable". }
+            \item The biggest difference is to change "is-a" into "is-substitutable". 
 
             \item substitutable is defined by "contract". If the base class has a method void \texttt{insert(const Foo\& x)}, the \textbf{contract} of that method includes the signature (meaning the name insert and the parameter \texttt{const Foo\&}), but goes well beyond that to include the method’s \textbf{advertised preconditions and postconditions}. 
 
             \item For ellipse and circle dillema, You can 1)weak the base class promises, or 2)Strengthen child class promises. 3) Drop the inheritance relationship. 
 
-            \item Even you drop inheritance relationship, in modern C++ age, you can also use lambda or closure to reach some kind of dynamic behaviour in the run time. \textbf{That is mainstream method in the future.}. With \texttt{std::function}, maybe we don't need any behaviour design pattern in the 23 design patterns. I hope that it will become true. 
+            \item Even you drop inheritance relationship, in modern C++ age, you can also use lambda or closure to reach some kind of dynamic behavior in the run time. That is mainstream method in the future. With \texttt{std::function}, maybe we don't need any behavior design pattern in the 23 design patterns. I hope that it will become true. 
         \end{enumerate}
 
 \end{itemize}
 
 \subsection{"Has-A" relationship}
 \begin{itemize}
-	\item You can use \textbf{1)private inheritance, 2)composition, 3)template} three methods to describe has-a relationship. Private and protect inheritances are used to implement has-a relationship. 
+	\item You can use \textbf{1)private or protect inheritance, 2)composition, 3)template} three methods to describe has-a relationship. Private and protect inheritances are used to implement has-a relationship. 
 
-	\item \textbf{Prefer composition, use private inheritance when you have to.} Reusing by private inheritance is weird in syntax and difficult to understand. One exception is you have to access string or vector<T> protect member function, at this time, you MUST use private inheritance.
+	\item Prefer composition, use private inheritance when you have to. Reusing by private inheritance is weird in syntax and difficult to understand. One exception is you have to access \texttt{std::string} or vector<T> protect member function, at this time, you MUST use private inheritance from \texttt{std::string}.
 	
-	\item By now, I want to not only reuse class A, I also want to make a class adaptable. or make it possible to select different algorithms from the outside.  An example is  to replace brakes of a car (at runtime), There are three options.
+	\item By now, I want to not only reuse class A, I also want to make a class adaptable, or make it possible to select different algorithms from the outside. An example is to replace the brakes of a car (at runtime). There are three options.
 	\begin{enumerate}
 		\item Version 1: Abstract base class, In fact, consider \textbf{same life time and composition relationship},  Using Brake obj directly is better. But you want to have runtime polymorphism at the same time, So have to use pointer or reference. Here you can also use smart pointer\texttt{(uniqu\_ptr)}.
 \begin{lstlisting}[numbers=none]
 class Brake {
-	public: virtual void stopCar() = 0;
+public: 
+	virtual void stopCar() = 0;
 };	
 class BrakeWithABS : public Brake {
-public: void stopCar() { ... }
+public: 
+	void stopCar() { ... }
 };
 		
 class Car {
 	Brake* _brake;
 public:
-Car(Brake* brake) : _brake(brake) { brake->stopCar(); }
+	Car(Brake* brake) : _brake(brake) { brake->stopCar(); }
 };
 \end{lstlisting}
 		
@@ -8759,7 +8777,7 @@ public:
 
 \subsection{Ownership semantic}
 \begin{itemize}
-	\item Ownership may describe the relationship between two classes or class and its member. \textbf{Ownership semantic is different with structure semantic.} Structure semantic care about the whole-part relationship. There are two kinds of ownerships: exclusive ownership and shared ownership. Composition usually has exclusive ownership and Aggregation usually has shared ownership. Associate can have ownership, such as people and his brush. people and his wife. Ownership lies in semantic level. 
+	\item Ownership may describe the relationship between two classes or a class and its member. Ownership semantics are different from structural semantics. Structural semantics concern the whole-part relationship. There are two kinds of ownership: exclusive ownership and shared ownership. Composition usually has exclusive ownership, while Aggregation usually has shared ownership. Association can also involve ownership, such as a person and their brush or a person and their spouse. Ownership lies at the semantic level.
 	
 	\item Ownership semantic has two children policies: life time policy and Nonnullity policy. 
 		
@@ -8799,7 +8817,7 @@ class Man{
 
 \subsection{Examples about classes relationship}
 \begin{itemize}
-	\item OOP example 1: If it's a car-engine (composition) relationship, and it's compiler-given(not dynamic), just use \textbf{member obj.}   Pay attention, If engine has no default constructor, you have to use initialization list in car ctor.  initialization list can be used to call base ctor.
+	\item OOP example 1: If it's a car-engine (composition) relationship, and it's compiler-given(not dynamic), just use \textbf{member obj.}   Pay attention, If engine has no default constructor, you have to use initialization list in car constructor. 
 \begin{lstlisting}[frame=single, language=c++]
 class Car{
 	Engine eng; // member obj, not use pointer here.
@@ -8818,10 +8836,10 @@ class Person{
 };
 \end{lstlisting}
 \begin{description}
-	\item[Line 5:] you can't use \texttt{unpbrush= new Brush()}, unpbrush assignment only support( unique\_ptr< T > \&\&); use reset, it will make original deleted automatically. don't need destructor any more.
+	\item[Line 5:] you can't use \texttt{unpbrush= new Brush()}, \texttt{unpbrush} assignment only support( unique\_ptr< T > \&\&); use reset, it will make original deleted automatically. don't need destructor in Person class any more.
 \end{description}
 	
-	\item OOP example 3: If it's wife-husband(Association) relationship, If you want to express \textbf{Strong Not Nullity}, use reference, such as Mother-Son association, You need to use initialization list to initialize mother. If Nullity, such as wife, just use raw pointer, \texttt{weak\_ptr} or \texttt{shared\_ptr}. \textbf{Because no ownership involved, don't use uniqu\_ptr at all. }
+	\item OOP example 3: If it's wife-husband(Association) relationship, If you want to express \textbf{Strong Not Nullity}, use reference, such as Mother-Son association, You need to use initialization list to initialize mother. If Nullity, such as wife, just use raw pointer, \texttt{weak\_ptr} or \texttt{shared\_ptr}. Because no ownership involved, don't use uniqu\_ptr at all. 
 	
 	\item OOP example 3-1: What's different with raw pointer, weak\_ptr or shared\_ptr?
 	\begin{lstlisting}[]
@@ -8859,18 +8877,17 @@ Worker Han(commonComputer);
 	
 	\item OOP example 6:  Change a semantic,  school may have a Bus, but \textbf{owner policy} tell us that bus can be shared by different schools. and \textbf{life time policy} tell us that bus and school has separate life time. so here, we should use \texttt{shared\_ptr}.
 \begin{lstlisting}[numbers=none]
-class Unit{
+class School{
 	shared_ptr<Bus> shr_p_bus;
 }
 \end{lstlisting}
 	
-	\item OOP example 7: One class provides a container to hold multiple objects of another type. A value container is a composition that stores copies of the objects it is holding. A reference container is an aggregation that stores pointers or references to objects that live outside the container.
+	\item OOP example 7: Some classes provide a container to hold multiple objects of another type. A value container is a composition that stores copies of the objects it is holding. A reference container is an aggregation that stores pointers or references to objects that live outside the container. For example, \texttt{std::vector} and \texttt{std::map} are containers that can hold multiple objects of another type.
 	
 \end{itemize}
 
 
-\section{design pattern}
-
+\section{Class design}
 
 \subsection{Three big principles}
 \begin{itemize}
@@ -8878,7 +8895,7 @@ class Unit{
 \begin{enumerate}
 	\item Liskov Substitution Principle(LSP)----Clients (Functions and Class) that use pointers or references to base classes must be able to use objects of derived classes without knowing it.  So all overrides of virtual member functions must \textbf{require less and provide more}. So you are able to make substitution successfully.
 	
-	\item Dependence Inversion Principle(DIP). client doesn't depend on implementation. \textbf{Both clients and implementation depend on interface.}
+	\item Dependence Inversion Principle(DIP). client doesn't depend on implementation. \textbf{Both clients and implementation depend on interface.} The "inversion" in Dependency Inversion Principle refers to the reversal of this traditional dependency relationship, which is an inversion of the control of dependencies. Instead of high-level modules controlling and depending on low-level modules, the control is inverted so that low-level modules depend on high-level modules through abstractions. This inversion can result in a more flexible and maintainable system.
 	\begin{figure}[h]
 		\centering
 		\includegraphics[width=0.66\linewidth]{pics/DIP.png}
@@ -8915,10 +8932,10 @@ car.start();
 
 \begin{itemize}
 
-\item Inheritance three usage: 1) I want to inherit a interface. (pure virtual, you have to rewrite ) 2) I want to inherit a implement,but I want to change it. (virtual, you may or may not rewrite) 3) I want to inherit a implementation, but I don't want to change it. (Non-virtual, you can't rewrite it at all)
+	\item Inheritance has three usages: 1) I want to inherit a interface. (pure virtual, you have to rewrite ) 2) I want to inherit a implement, but I may want to change it. (virtual, you may or may not rewrite) 3) I want to inherit a implementation, but I don't want to change it. (Non-virtual, you can't rewrite it at all)
 \begin{lstlisting}[numbers=none]
 class shape{
-	public:
+public:
 	virtual draw() = 0 // you have to re-implement.
 	virtual error(); // there is default implement, but you may change it.
 	int objectID(); // you should not rewrite it.
@@ -8928,12 +8945,10 @@ class shape{
 	\item A problem with inheriting from a concrete type is that it creates some ambiguity as to whether code which specifies a certain type really wants an object of the specific concrete type, or wants an object of a type which behaves in the fashion that the concrete type behaves. This distinction is vital in C++, since there are many cases where operations which will work correctly on objects of a certain type will fail badly on objects of derived types. The problem can be illustrated by the assignment of pointer to base class. The problem has been introduced in "More effective C++ item 33"
 	
 
-	\item "non-leaf classes abstract" rule can be found in More effective 33 "making non-leaf classes abstract" and C++ coding standards 36 "Prefer providing abstract interfaces." They all said that you should only inherit from an abstract interfaces. It also follow DIP.
-
-	\item \textbf{When you found abstract conception appear in more than one context, you need build abstract interface for it. }
+	\item "non-leaf classes abstract" rule can be found in More effective 33 "making non-leaf classes abstract" and C++ coding standards 36 "Prefer providing abstract interfaces." They all said that you should only inherit from an abstract interfaces. It also follow DIP. When you found abstract conception appear in more than one context, you need build abstract interface for it. 
 
 
-	\item NVI is making virtual functions nonpublic, and public function nonvirtual. This is similar with Template Method design pattern.  
+	\item NVI is making virtual functions nonpublic, and public function nonvirtual. This is similar with Template Method design pattern. About NVI, more detail can be found in "C++ coding standards Item 39" and "Virtuality herb sutter"
 
 \begin{enumerate}
 	\item Prefer to make interfaces nonvirtual, using Template Method.
@@ -8945,19 +8960,98 @@ class shape{
 	\item A base class destructor should be either public and virtual, or protected and nonvirtual.
 \end{enumerate}
 
-    \item About NVI, more detail can be found in "C++ coding standards Item 39" and "Virtuality herb sutter"
-
-    \item A good example can be found below. \textbf{It illustrates "Non leaf abstract", "DIP", "NVI" and template method. You should learn this example and do you best to understand all ideas behinds it. }
+    \item Below figure illustrates "Non leaf abstract", "DIP", "NVI" and template method. You should learn this example and do you best to understand all ideas behinds it. 
 
 	\centering
 	\includegraphics[width=0.93\linewidth]{pics/NVI.png}
 
-
 \end{itemize}
 
-\subsection{template method, strategy and factory template}
+\subsection{Common used design pattern}
 \begin{itemize}
-	\item These three pattern has the same UML structure, but different application.
+	
+		\item Observer pattern: A way of notifying change to a number of classes. Define a one-to-many dependency between objects so that when one object changes state, all its dependents are notified and updated automatically.
+	
+	\begin{center}
+		\includegraphics[scale=0.5]{pics/observer.png}
+	\end{center}
+	
+	
+	\item Observer includes update(); Subject includes addObserve(), deleteObserve(), notify(). 
+	
+	
+	
+	\item Composite pattern: A tree structure of simple and composite objects. Compose objects into tree structures to represent part-whole hierarchies. Composite lets clients treat individual objects and compositions of objects uniformly.
+
+\begin{figure*}
+	\centering
+	\includegraphics[width=0.49\linewidth]{pics/composite.png}
+	\includegraphics[width=0.49\linewidth]{pics/com_file.png}
+\end{figure*}
+
+
+	
+
+	
+	
+	\item It can be use as recursive Tree structure. Such as file tree. A folder is composite, and a file is component, and a folder can be a component of another composite. 
+	
+%\begin{center}
+%	\includegraphics[scale=0.6]{pics/com_file.png}
+%\end{center}
+	
+	
+\end{itemize}
+
+\subsubsection{MI or bridge}
+\begin{itemize}
+	
+	\item "If a class has two superclasses that share a common base class, multiple inheritance can cause the diamond problem, where a subclass inherits two copies of the shared base class. To solve this problem, you can use the virtual keyword and follow the new constructor rules, which are described in detail in C++ Primer on page 815. It's important to carefully consider the use of multiple inheritance and only use it when necessary.
+	
+\begin{lstlisting}[numbers=none]
+Father 1: virtual public grandfather
+Father2: virtual public grandfather
+son : public Father1, public Father2	
+\end{lstlisting}	
+	
+	\item Suppose you have land vehicles, water vehicles, air vehicles, and space vehicles. (Forget the whole concept of amphibious vehicles for this example; pretend they don't exist for this illustration.) Suppose we also have different power sources: gas powered, wind powered, nuclear powered, pedal powered, etc. We could use multiple inheritance to tie everything together, but before we do, we should ask a few tough questions:
+	
+	\begin{enumerate}
+		\item Will the users of Land Vehicle need to have a Vehicle\& that refers to a LandVehicle object? In particular, will the users call methods on a Vehicle-reference and expect the actual implementation of those methods to be specific to LandVehicles?
+		
+		\item Ditto for GasPoweredVehicles: will the users want a Vehicle reference that refers to a GasPoweredVehicle object, and in particular will they want to call methods on that Vehicle reference and expect the implementations to get overridden by GasPoweredVehicle?
+	\end{enumerate}
+	If both answers are "yes," multiple inheritance is probably the best way to go.
+\begin{lstlisting}[numbers=none]
+Class GasPowered :public Power //method 1: Multiple inheritance
+Class LandVehicle :public Vehicle
+Class LandVehicleGasPowered :public GasPowered, LandVehicle 
+
+Class Vehicle{   //method 2: Bridge design pattern
+	//
+	Power * _power;
+}
+
+Class LandVehicle :public Vehicle  // mehtod 3: Nested generalization.
+Class LandVehicleGasPowered: public LandVehicle
+\end{lstlisting}
+	
+	\item There are at least three choices for the overall design: the bridge pattern, nested generalization, and multiple inheritance. Each has its pros/cons:
+	\begin{center}
+		\includegraphics[scale=0.38]{pics/MI.png}
+	\end{center}
+	
+	
+	\item Try especially hard to use ABCs when you use MI. In particular, most classes above the join class (and often the join class itself) should be ABCs. In this context, "ABC" doesn't simply mean "a class with at least one pure virtual function;" it actually means a pure ABC, meaning a class with as little data as possible (often none), and with most (often all) its methods being pure virtual.
+	
+	\item A design discussion can be seen in "C++ FAQ Inheritance-- Multiple and Virtual Inheritance"
+	
+\end{itemize}
+
+
+\subsubsection{factory method, strategy and template method}
+\begin{itemize}
+	\item These three patterns have the similar UML structure, but different applications context.
 	
 \begin{center}
 	\includegraphics[width=0.93\linewidth]{pics/template_method.png}
@@ -8967,51 +9061,20 @@ class shape{
 	 
 \end{itemize}
 
-\subsection{MI or bridge}
-\begin{itemize}
-    
-	\item If two superclasses of a class have a common base class, Multiple Inheritance(MI) will trigger diamond problem. It cause one grandson has two copy of grandfathers. A solution is use virtual key word: When you use this method, you need to follow New Constructor Rules, Detail can be seen in C++ primer P815.  Just look back when you really need MI.
-
-\begin{lstlisting}[numbers=none]
-Father 1: virtual public grandfather
-Father2: virtual public grandfather
-son : public Father1, public Father 2
-\end{lstlisting}
-	
-	\item Suppose you have land vehicles, water vehicles, air vehicles, and space vehicles. (Forget the whole concept of amphibious vehicles for this example; pretend they don't exist for this illustration.) Suppose we also have different power sources: gas powered, wind powered, nuclear powered, pedal powered, etc. We could use multiple inheritance to tie everything together, but before we do, we should ask a few tough questions:
-	
-	\begin{enumerate}
-		\item Will the users of LandVehicle need to have a Vehicle\& that refers to a LandVehicle object? In particular, will the users call methods on a Vehicle-reference and expect the actual implementation of those methods to be specific to LandVehicles?
-		
-		\item Ditto for GasPoweredVehicles: will the users want a Vehicle reference that refers to a GasPoweredVehicle object, and in particular will they want to call methods on that Vehicle reference and expect the implementations to get overridden by GasPoweredVehicle?
-	\end{enumerate}
-	If both answers are "yes," multiple inheritance is probably the best way to go.
-	
-	\item There are at least three choices for the overall design: the bridge pattern, nested generalization, and multiple inheritance. Each has its pros/cons:
-\begin{center}
-	\includegraphics[scale=0.4]{pics/MI.png}
-\end{center}
-	
-	
-	\item Try especially hard to use ABCs when you use MI. In particular, most classes above the join class (and often the join class itself) should be ABCs. In this context, "ABC" doesn't simply mean "a class with at least one pure virtual function;" it actually means a pure ABC, meaning a class with as little data as possible (often none), and with most (often all) its methods being pure virtual.
-	
-    \item A design discussion can be seen in "C++ FAQ Inheritance-- Multiple and Virtual Inheritance"
-	
-\end{itemize}
 
 \subsubsection{Comparsion between factory, bridge and visitor}
 
 \begin{itemize}
-	\item These three design pattern share the same UML structure, so I introduce them together. One is creational pattern, one is structural pattern, and the last one is behavioral pattern. They are all complicated. \textbf{Design patter is based on semantic and concrete application, not based on UML relationship and structure.}
+	\item Factory, bridge and visitor, these three design patterns share the same UML structure, so I will introduce them together. One is a creational pattern, one is a structural pattern, and the last one is a behavioral pattern. However, it's important to note that design patterns are based on \textbf{semantics} and concrete applications, not on \textbf{UML relationships and structures}.
 	
-	\item This is an example with bicycle and car.  We use abstract factory, bridge and visit three patterns. Both bicycle and car can use gas engine or electrical engine. So we have 4 different vehicles: gas bicycle, gas car, electrical bicycle and eletrical car. That is the context of our example. 
+	\item This is an example that uses the abstract factory, bridge, and visitor design patterns with bicycles and cars. Both bicycles and cars can use either a gas engine or an electric engine, resulting in four different vehicles: gas bicycle, gas car, electric bicycle, and electric car. This is the context of our example.
 
-	\item Below figure illustrates the basic idea and implementation of three patterns. in each pattern, there are two  basic abstract conceptions, and also some relationship betweens these two conceptions. Such as (Factor--create--Engine), (vehicle--implement--engine) and (vehicle--visit--visitor). When we use double dispatch, we need to understand "visit" in broader view. 	
+	\item The figure below illustrates the basic ideas and implementations of the three patterns. Each pattern consists of two basic abstract concepts and their relationships, such as (Factory--create--Engine), (Vehicle--implement--Engine), and (Vehicle--visit--Visitor). When using double dispatch, it's important to understand the broader meaning of "visit". 	
 	
-	\item visit pattern also support double dispatch, how to understand it? From semantic point of view, vehicle type and refillor type (two types) decide Refill method . From source code point of view, \texttt{Vehicle} first decide a \texttt{Refillor} (\texttt{Electric} or \texttt{Oil}), once it decide one(for example \texttt{Electric}), then pass \texttt{this} pointer to decide \texttt{Refill(Car*)} or \texttt{Refill(Bicyle*)} inside of ElectricRefill class. That is \textbf{double dispatch, you give me base class pointer, I give you this.} 
+	\item visit pattern also support double dispatch, how to understand it? From semantic point of view, vehicle type and refillor type (two types) decide Refill method . From source code point of view, \texttt{Vehicle} first decide a \texttt{Refillor} (\texttt{Electric} or \texttt{Oil}), once it decide one(for example \texttt{Electric}), then pass \texttt{this} pointer to decide \texttt{Refill(Car*)} or \texttt{Refill(Bicyle*)} inside of ElectricRefill class. That is double dispatch, element(Vehicle) accept visitor(Refillor) base class pointer, and pass \texttt{this} pointer to visitor's visit method(Refill). 
 	
 \begin{center}
-			\includegraphics[width=0.93\linewidth]{pics/visitor.png}
+			\includegraphics[width=0.95\linewidth]{pics/visitor.png}
 \end{center}
 
 	    
@@ -14892,7 +14955,7 @@ cin.clear();    //Important. clear state and buffer
 while(cin.get()!='\n')
 	continue ;      // method 1
 	
-while(!issapce(cin.get()))
+while(!isspace(cin.get()))
 	continue;  //method 2
 	
 basic_istream& ignore(streamsize _Count = 1, \
