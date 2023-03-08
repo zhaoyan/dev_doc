@@ -10357,17 +10357,22 @@ template< bool B, class T = void >
 using enable_if_t = typename enable_if<B,T>::type;
 \end{lstlisting}
 	
-	\item Specialization template will have default template argument automatically.
-\begin{lstlisting}[numbers=none]
+	\item Specialization templates have default template arguments automatically provided. This feature makes it easier to use \texttt{enable\_if}, as shown in line 7 of the code below.
+\begin{lstlisting}
 template<bool B, class T = void>
 struct enable_if {};
 
 template<class T>
 struct enable_if<true, T> { typedef T type; }; //T default is void
+
+template <class T, typename = std::enable_if_t<std::is_integral<T>::value> >
+void do_stuff(T& t) {  
+	T sum = t+t; //we only provide bool value, T in enable_if is void already.
+}
 \end{lstlisting}
 
 
-    \item \texttt{void\_t}. This metafunction is used in template metaprogramming to detect ill-formed types in SFINAE context. Why do we need void in the primary template? The default parameters are propagated in the specialization. So when we use \texttt{has\_toString<OurType>::value}, the default parameter comes into play and we are actually looking for \texttt{has\_toString<OurType, void>::value} both on the primary template and the specialization. In the meantime, the substitution and the evaluation of decltype are processed if OurType has a serialize method that returns a \texttt{std::string}, otherwise the substitution fails. 
+    \item \texttt{void\_t} is a metafunction used in template metaprogramming to detect ill-formed types in a SFINAE context. The reason we need \texttt{void} in the primary template is that default parameters are propagated to the specialization automaticlly, which we just introduced before. So, when we use \texttt{has\_toString<OurType>::value}, the default parameter comes into play, and we are actually looking for \texttt{has\_toString<OurType, void>::value} in both the primary template and the specialization. At the same time, the substitution and evaluation of \texttt{decltype} are processed if \texttt{OurType} has a \texttt{serialize} method that returns a \texttt{std::string}. Otherwise, the substitution fails.
 \begin{lstlisting}
 template< class... >
 using void_t = void;
@@ -10383,31 +10388,31 @@ template< class , class = void > // default template:
 struct has_toString : false_type { };
 
 template< class T> // specialized as has_member< T , void > or SFINAE
-struct has_toString<T , void_t<decltype(&T::toString)> > 
-  : std::is_same<std::string, decltype(declval<T>().toString())>{ };
+struct has_toString<T , void_t<std::is_same<std::string, decltype(declval<T>().toString()) >>> :true_type{ }
 \end{lstlisting}
 
-\begin{enumerate}
-	\item In order to understand previous code, you need to know "the default argument applies to the specialization". If you only give one type in \texttt{test<int>}, implicitly, it changes into \texttt{test<int, void>}.  
-	When input test<int> Choosing a template specialization happens in five steps:
-	\begin{enumerate}
-		\item Take the primary template declaration. (<T, U = void> test)
-		\item Fill in user-specified template arguments. (T <- int)
-%		\item Function templates only: Deduce additional template arguments.
-		\item Use defaults for remaining template arguments. (U <- void)
-		\item Use the partial ordering algorithm (C++14 14.5.6.2) to choose the best-matching specialization. (<int, void> \item does not match <T, float>, so ignore the specialization; only possibility left is primary template)
-	\end{enumerate}
-In another word, Any time you specify only one template parameter, it select primary template calss first, then use default parameter to fill the second one. Such as \texttt{test<int>} become \texttt{test<int, void>}. then it will look for if we have \texttt{test<int,void>} partial specification. Understanding this is very important. 
+
+	\item In order to understand the previous code, you need to know about the "default argument applies to the specialization" rule. I will explain this rule in detail with the example code below. If you only give one type in \texttt{test<int>}, it is implicitly changed into \texttt{test<int, void>}. In other words, anytime you specify only one template parameter, the primary template class is selected first, and then the default parameter is used to fill the second one, such as \texttt{test<int>} becoming \texttt{test<int, void>}. Then, it looks to see if we have a \texttt{test<int, void>} partial specialization. Understanding this is very important. If you specify \texttt{void} in the specialization, then a type that is specified explicitly is preferred over one that is specified implicitly. Therefore, your specialization (which specified \texttt{void} explicitly) is preferred over the base template (which specified \texttt{void} implicitly).
+	
+	When the partial specialization fails, we use the base template to match, and the base template always matches successfully and returns \texttt{false\_type}.
+
 
 \begin{lstlisting}
-template <class T, typename U = void>
+template <class T, typename U = void> // base version.
 class test {
 public:
 	test() {
 		std::cout << "base" << std::endl;
 	}
 };
-template <class T>
+template <class T>   //specialization version.
+class test<T, void> { 
+	public:
+	test() {
+		std::cout << "sp" << std::endl;
+	}	
+};
+template <class T>   //another specialization version 
 class test<T, float> { 
 public:
 	test() {
@@ -10416,37 +10421,38 @@ public:
 	
 };
 int main() {
-	test<int> t; // actually, you call test<int, void> t, output base
+	test<int> t; // actually, you call test<int, void>,output "sp"
 	test<int, float> t1; //call specialization
 	test<int, int> t2; //call base.
 }
 \end{lstlisting}
-
-	\item If you specify \texttt{void} in specialization, then a type that's specified explicitly is preferred over one that's specified implicitly, so your specialization (which specified \texttt{void} explicitly) is preferred over the base template (which specified \texttt{void} implicitly).
-\begin{lstlisting}
-template <class T, typename U = void>
-class test {
-public:
-	test() {
-		std::cout << "base" << std::endl;
-	}
-};
-template <class T>
-class test<T, void> { 
-public:
-	test() {
-		std::cout << "sp" << std::endl;
-	}
-	
-};
-int main() {
-	test<int> t; //call specialization
-}
-\end{lstlisting}
-	
-	\item The specialization has therefore the precedence in the good cases. In another word, need both match primary and specialization, so even when match fail, we can return false\_type.
-
+	When input test<int> Choosing a template specialization happens in four steps:
+	\begin{enumerate}
+	\item Take the primary template declaration. (<T, U = void> test)
+	\item Fill in user-specified template arguments. (T <- int)
+	%		\item Function templates only: Deduce additional template arguments.
+	\item Use defaults for remaining template arguments. (U <- void)
+	\item Use the partial ordering algorithm (C++14 14.5.6.2) to choose the best-matching specialization, \texttt{class test<int, void>} 
+	%\item does not match <T, float>, so ignore the specialization; only possibility left is primary template)
 \end{enumerate}
+
+%	\item 
+%\begin{lstlisting}
+%template <class T, typename U = void>
+%class test {
+%public:
+%	test() {
+%		std::cout << "base" << std::endl;
+%	}
+%};
+%
+%int main() {
+%	test<int> t; //call specialization
+%}
+%\end{lstlisting}
+	
+
+%\end{enumerate}
 
 	\item A partial specialization can indeed have more template parameters than the primary template. A typical example of this use is \texttt{std::function}: 
 \begin{lstlisting}
@@ -10733,17 +10739,17 @@ class Rational {
 
 
 
-\section{type traits}
-
+\section{Type traits}
+\subsection{build type traits}
 \begin{itemize}
-	\item A type trait is a way for you to obtain information about the types that are passed in as template arguments at compile time, so you can make static decisions based on that information. A type trait can return any information or customization about a type. A simple example is \texttt{is\_integer}, which simply returns a boolean value indicating whether the type is an integer or not. A more complex example is \texttt{char\_traits}, which can return a set of functions. In this way, you can also think of \texttt{char\_traits} as a policy.
+	\item A type trait is a mechanism that allows you to obtain information about the types passed as template arguments at compile-time, enabling you to make static decisions based on that information. A type trait can provide any information or customization about a type. For instance, the \texttt{is\_integer} trait simply returns a boolean value indicating whether the type is an integer or not, while the more complex \texttt{char\_traits} trait can return a set of functions. In this way, you can also view \texttt{char\_traits} as a policy.
 	
 \end{itemize}
 
-\subsection{Class partial specialization implement trait}
+\subsubsection{Class partial specialization implement trait}
 \begin{itemize}
 	
-	\item The most common way of implementation is through template class specialization. This approach is very useful for system-defined types. Typically, we make the default template return false, and then create a template specialization that returns true.
+	\item The most common implementation approach for type traits is through template class specialization. This method is particularly useful for system-defined types. By default, the template returns false, and we create a template specialization that returns true to indicate a specific trait.
 	 
 \begin{lstlisting}[frame=single, language=c++]
 template <typename T>
@@ -10761,7 +10767,7 @@ struct is_swapable<int> {
 };
 \end{lstlisting}
 
-\item Another way is to build new trait based on existing trait.
+	\item Another way is to build new trait based on existing trait.
 \begin{lstlisting}[numbers=none]
 template <typename T>
 struct is_swapable {
@@ -10770,7 +10776,7 @@ struct is_swapable {
 };
 \end{lstlisting}
 
-	\item After C+11, we introduced \texttt{std::true\_type} and \texttt{std::false\_type}.
+	\item Starting with C++11, a new type generator was introduced - \texttt{std::integral\_constant}, along with its corresponding \texttt{std::true\_type} and \texttt{std::false\_type} types. 
 \begin{lstlisting}[frame=single, language=c++]
 template<class T, T v>
 struct integral_constant {
@@ -10786,7 +10792,7 @@ typedef integral_constant<bool,true> true_type;
 
 
 \item \texttt{std::true\_type} use \texttt{integral\_constant}(type generator)to define a new type. \newline 
-\texttt{is\_arithmetic} derived form \texttt{true\_type} or \texttt{false\_type}.
+\texttt{is\_arithmetic} can be derived form \texttt{true\_type} or \texttt{false\_type}. It makes easier for use to build a new type trait. 
 \begin{lstlisting}[numbers=none]
 std::integral_constant<bool, true>
 
@@ -10798,9 +10804,9 @@ struct is_arithmetic : std::integral_constant<bool, std::is_integral<T>::value |
 	\item Rules need to be follow when you build type trait.
 	
 	\begin{enumerate}
-		\item most common usage of trait is member constants ::value, such as \texttt{is\_integer<T>::value}
+		\item most common usage of trait is member constants ::value, such as \texttt{is\_integer<T>::value}, 
 		
-		\item You use a template structure, usually named with the type trait you are after. Eg) \texttt{is\_integer, is\_pointer, is\_void}. The structure contains a static const bool named value which defaults to a sensible state. You use a type trait by querying its value, like: \texttt{my\_type\_trait<T>::value}. A good article is "A simple introduction to type traits"
+		\item To use a type trait, you typically define a template structure, named after the trait you need, such as \texttt{is\_integer}, \texttt{is\_pointer}, or \texttt{is\_void}. The structure contains a static constant boolean value named \texttt{value}, which is initialized to a sensible state by default. To query the value of a type trait, you can use the following syntax: \texttt{my\_type\_trait<T>::value}. For more information, you may refer to the article "A Simple Introduction to Type Traits.
 	\end{enumerate}
 
 	\item Another kind of implementation is to use predefined type. An example can be found in iterator and container.
@@ -10816,7 +10822,7 @@ class deque {
 	};		
 \end{lstlisting}
 \begin{description}
-	\item[Line 7:] Insider deque, we define iterator class. We define \texttt{iterator\_category} inside iterator class. 
+	\item[Line 7:] Insider deque, we define \texttt{iterator\_category} inside iterator class. 
 \end{description}
 
 	\item Then we can use \texttt{iterator\_traits} to get \texttt{iterator\_category} defined inside deque.
@@ -10835,12 +10841,12 @@ struct iterator_traits<T*>{ // for built-in pointer types
 };
 \end{lstlisting}
 
-\subsection{SFINAE(Type deduct) to build trait}
-\subsubsection{Before C++ 11}
+\subsubsection{SFINAE(Type deduct) to build trait}
+
 
 	\item SFINAE is "Substitution Failure Is Not An Error". Compiler will try type deduct when it instantiate the template function or template class. when it can't deduct properly, compiler will search for another option instead of report error. 
 	
-	\item Use \texttt{sizeof} and \texttt{static\_cast}, these two can be executed at compile time. For example, we want to test if a class derived from another class.
+	\item You can use the \texttt{sizeof} and \texttt{static\_cast} operators to perform compile-time evaluation. For instance, you can use this technique to test if a class is derived from another class. It's worth noting that this approach was popular before C++11, but C++14/17 offer better ways to achieve the same objective. Therefore, it's advisable to be aware of this technique, but there's no need to use it in your code.
 \begin{lstlisting}[frame=single, language=c++]
 template<typename D, typename B>
 class IsDerivedFromHelper{
@@ -10859,9 +10865,8 @@ bool IsDerivedFrom() {
 }
 \end{lstlisting}
 
-\subsubsection{If T has a certain name member function?}
 	
-	\item After C++11, you can use constexpr instead of sizeof, and \textbf{decltype and declval also get type in the compiling time.}  For example, We can test if the type has "serialize" member function by using \texttt{decltype} and \texttt{declval}.
+	\item In C++14/17, you can use the \texttt{constexpr} operator instead of \texttt{sizeof}, and the \texttt{decltype} and \texttt{declval} operators to obtain type information at compile-time. For example, the following code tests if the type has a "serialize" member function:
 	
 \begin{lstlisting}[frame=single, language=c++]
 template <class T> 
@@ -10886,9 +10891,9 @@ struct hasSerialize{
 	\begin{enumerate}
 		\item template class \texttt{hasSerialize} accepts \texttt{T}, we usually use \texttt{hasSerialize<Foo>:value}.
 		
-		\item Two overload template test functions. One return true, default return false. \textbf{Why do we still need different template member function test?} That is because SFINAE only happens in template type deduction phrase, we build two template member function with typename C
+		\item Two overloaded template test functions are used, with one returning true and the other, by default, returning false. However, we still need different template member function tests because SFINAE only occurs during template type deduction. As such, we create two template member functions with the typename C argument.
 		
-		\item In the funciton which return true, use decltype and declval to simulate call some functions you want to judge. make these type used in function parameter or return. 
+		\item In the function which return true, use \texttt{decltype} and \texttt{declval} to simulate call some functions you want to judge. make these type used in function parameter or return. 
 		
 		\item Pay attention to the usage of \texttt{static constexpr bool}. Use test function to initialized \textbf{constexpr value} 
 	\end{enumerate}
@@ -10963,7 +10968,7 @@ struct hasSerialize{
 %\includegraphics[scale=0.59]{pics/is_valid.png}
 %\end{center}
 
-	\item Or we can use \texttt{true\_type} directly, it will make source code look simple.
+	\item A better way in C++14/17 is to directly inherit from \texttt{std::true\_type}, which makes the source code simpler to read.
 
 \begin{lstlisting}[frame=single, language=c++]
 // Primary template, inherit from std::false_type.
@@ -10975,7 +10980,7 @@ template <typename T>
 struct hasSerialize<T, decltype(std::declval<T>().serialize())> : std::true_type { };
 \end{lstlisting}
 
-	\item Use \texttt{void\_t} to judge if has \texttt{reserve()} member function in type \texttt{T}.
+	\item Building on previous technology, we also introduced \texttt{void\_t} in C++17, which makes it easier for us to define new type traits. For example, the code below judges whether the type \texttt{T} has a \texttt{reserve()} member function.
 \begin{lstlisting}[frame=single, language=c++]
 template <typename T, typename = void>
 struct has_reserve : false_type {};
@@ -10983,9 +10988,14 @@ struct has_reserve : false_type {};
 template <typename T>
 struct has_reserve<T, void_t<decltype(declval<T&>().reserve(1U))>>: true_type {};
 \end{lstlisting}
+
+	\item There are two articles which are good.
+"An introduction to C++'s SFINAE concept: compile-time introspection of a class member" and "checking expression validity in-place with C++17"
+\end{itemize}
 		
 \subsubsection{ If T is function type? }
 
+\begin{itemize}
 	\item This is an example to test if T is function.
 \begin{lstlisting}[frame=single, language=c++]
 template <class T>
@@ -11014,7 +11024,7 @@ IsFunction<decltype(f)>::value; //value is true
 \end{description}
 
 \begin{enumerate}
-	\item what is function type?
+	\item What is a function type?
 \begin{lstlisting}
 typedef int FT(); //FT is function type
 typedef int (*PFT)(); //PFT is function pointer type
@@ -11050,7 +11060,7 @@ typedef int FunSignature() const&;
 FunSignature A::*p = &A::fun;
 \end{lstlisting}
 
-	\item When we want to use template class to deduct it, it can be used in \textbf{\texttt{U T::*}}.
+	\item When we want to use template class to deduct it, it can be used in \texttt{U T::*}.
 \begin{lstlisting}[frame=single, language=c++]
 struct A {
 	int fun() const&;
@@ -11066,7 +11076,7 @@ int main() {
 }
 \end{lstlisting}
 
-\item Based on previous knowledge, we can implement 
+	\item Based on previous knowledge, we can implement 
 \begin{lstlisting}[frame=single, language=c++]
 template< class T >
 struct is_member_function_pointer_helper : std::false_type {};
@@ -11082,32 +11092,19 @@ class A {
 public:
 	void member() { }
 };
-// output 0 if A::member is a data member and not a function
+//&A::member is expression, decltype change it to a type.
 cout<<std::is_member_function_pointer<decltype(&A::member)>::value
 \end{lstlisting}
+
+
 \end{itemize}
 
-\subsection{Summary}
+
+\subsection{Applications of type trait}
+
+\subsubsection{Tag dispatch}
 \begin{itemize}
-	\item Common type traits implementation methods which are introduced in previous sections. 
-	\begin{enumerate}
-		\item template specification: \texttt{is\_integer}
-		\item use basic trait to build more complex one: \texttt{is\_swap}
-		\item use template parameter deduction : \texttt{std::is\_function} and
-		\texttt{is\_member\_function}, \texttt{is\_array}, \texttt{is\_class(T::*)}
-		\item define trait in existing class : \texttt{iterator\_trait}.
-		\item overload template function, deduct return or function parameter based on template parameter T's expression:  \texttt{has\_serialize}, \texttt{IsFunction}
-	\end{enumerate}
-
-	\item There are two articles which are good.
-"An introduction to C++'s SFINAE concept: compile-time introspection of a class member" and "checking expression validity in-place with C++17"
-\end{itemize}
-
-\section{Usage of type trait}
-
-\subsection{Tag dispatch}
-\begin{itemize}
-	\item A famous usage of tag dispatch is iterator. Pay attention to \texttt{iterator\_traits}. Why do we use it here? It's a template. With specialization, it can support common pointer type. Client side may or may not be template. For advance, it should be template, because it need template parameter Inputiterator. There is some tag type which need to be defined. And you should use these tags in the functions which you want to dispatched by overload resolve in compiling time. 
+	\item A famous usage of tag dispatch is in iterators. Pay attention to \texttt{iterator\_traits}. Why do we use it here? It's a template that, with specialization, can support common pointer types. The client side may or may not be a template. For \texttt{advance}, it should be a template because it needs a template parameter \texttt{InputIterator}. There are some tag types that need to be defined, and you should use these tags in the functions that you want to dispatch by overload resolution at compile time. 
 
 \begin{lstlisting}[numbers=none]
 struct input_iterator_tag { };
@@ -11139,14 +11136,14 @@ template <typename T>
 double foo_impl(T value, std::false_type) {...}
 
 template <typename T>
-auto foo(T value) {
+auto foo(T value) {  //please note here, we use auto!
 	return foo_impl(value, std::is_arithmetic<T>{});
 }
 \end{lstlisting}
 
 \end{itemize}
 
-\subsection{enable\_if}
+\subsubsection{enable\_if}
 \begin{itemize}
 	
 	\item For false, \texttt{enable\_if} is empty define.
@@ -11248,7 +11245,7 @@ auto get_value(T t){
 	\item A good article is "SFINAE and enable\_if"
 \end{itemize}
 
-\subsection{A practical example}
+\subsubsection{A practical example}
 \begin{itemize}
     \item If we want to add some items to a kind of "container". We need to check if a container has reserve method(for example, vector). If we have this method, use it to reserve space before we use push back. Otherwise, we use push back directly. Below code build a type trait, it uses void\_t and true\_type. We have introduced before. 
 \begin{lstlisting}
@@ -11282,24 +11279,24 @@ void append(C& container, T* ptr, size_t size) {
 }
 \end{lstlisting}
 
-    \item You can use \texttt{enable\_if} too. The syntax is little "bloat" compared with \texttt{true\_type} dispatch. But one advantage of \texttt{enable\_if} is that you can use it not only in dispatch to two different implementations, but also filter a valid type to generate valid code, for invalid type, if you don't provide \texttt{!has\_reserve<C>} match, it will generate compiling error directly.
-\begin{lstlisting}
-template <typename C, typename T>
-enable_if_t<has_reserve<C>::value> append(C& container, T* ptr, size_t size){
-    container.reserve(container.size() + size);
-    for (size_t i = 0; i < size; ++i) {
-    	container.push_back(ptr[i]);
-    }
-}
-
-template <typename C, typename T>
-enable_if_t<!has_reserve<C>::value> append(C& container, T* ptr, size_t size){
-	for (size_t i = 0; i < size;  ++i) {
-        container.push_back(ptr[i]); 
-    }
-}
-\end{lstlisting}
-
+%    \item You can use \texttt{enable\_if} too. The syntax is little "bloat" compared with \texttt{true\_type} dispatch. But one advantage of \texttt{enable\_if} is that you can use it not only in dispatch to two different implementations, but also filter a valid type to generate valid code, for invalid type, if you don't provide \texttt{!has\_reserve<C>} match, it will generate compiling error directly.
+%\begin{lstlisting}
+%template <typename C, typename T>
+%enable_if_t<has_reserve<C>::value> append(C& container, T* ptr, size_t size){
+%    container.reserve(container.size() + size);
+%    for (size_t i = 0; i < size; ++i) {
+%    	container.push_back(ptr[i]);
+%    }
+%}
+%
+%template <typename C, typename T>
+%enable_if_t<!has_reserve<C>::value> append(C& container, T* ptr, size_t size){
+%	for (size_t i = 0; i < size;  ++i) {
+%        container.push_back(ptr[i]); 
+%    }
+%}
+%\end{lstlisting}
+%
 	\item If you don't want to "dispatch", just want to use one function if it match.  When the input type is not valid, you hope to have compile error. Under such context, you can use decltype and declval directly.
 
 \begin{lstlisting}[numbers=none]
@@ -11344,15 +11341,51 @@ void append(C& container, T* ptr, size_t size){
 
 \end{itemize}
 
-\subsection{Summary}
+\subsection{Type traits Summary}
+
+
 \begin{itemize}
-	\item use a few ways to implement type trait, then use enable\_if or other static dynamic to use type trait to get generic programming(static polymorphism); That is generic programming basic idea.
+	\item Common type traits implementation methods includes
+	\begin{enumerate}
+		\item template partial specification: \texttt{is\_integer}
+		\item use basic trait to build more complex one: \texttt{is\_swap}
+		\item use template parameter deduction : \texttt{std::is\_function} and
+		\texttt{is\_member\_function}, \texttt{is\_array}, \texttt{is\_class(T::*)}
+		\item define trait in existing class : \texttt{iterator\_trait}.
+		\item template class partial specification, with help of \texttt{decltype}, \texttt{declval} and void\texttt{\_t}. A good example is \texttt{has\_serialize}.
+		
+	\end{enumerate}
 	
+	\item Use a few ways to implement type traits, then use these type traits to achieve static polymorphism and increase efficiency. This is the basic idea of generic programming.
 \begin{center}
 	\includegraphics[scale=0.9]{pics/tag_dispatch.png}
 \end{center}
 
-	\item For type\_trait side, we introduced two main methods. In "SFINAE(Type deduct) to build trait" section, we use these two methods to implement \texttt{hasSerialize}. After C++ 14, we recommend to use \texttt{void\_t} method. But after C++ 20, we strongly recommend to use \textbf{concept}. On the other side, as a client, we mainly use \texttt{enable\_if} and tag dispatch. But after C++17, we strongly recommend use \texttt{if constexpr} and concept. In one word, if you compiler supports concept, use it to define type trait and use it in the client code too. 
+%	\item For type\_trait side, we introduced two main methods. In "SFINAE(Type deduct) to build trait" section, we use these two methods to implement \texttt{hasSerialize}. After C++ 14, we recommend to use \texttt{void\_t} method. But after C++ 20, we strongly recommend to use \textbf{concept}. On the other side, as a client, we mainly use \texttt{enable\_if} and tag dispatch. But after C++17, we strongly recommend use \texttt{if constexpr} and concept. In one word, if you compiler supports concept, use it to define type trait and use it in the client code too. 
+	
+	 \item With the development of C++, we have had three major generations of technology for defining and using types in template metaprogramming.
+	
+	\begin{tabular}{|p{0.14\textwidth} |p{0.38\textwidth}|p{0.38\textwidth}|}
+		\hline
+		C++ version & build type trait method  & use type trait method \\
+		\hline
+		C++11& static and size of & enable\_if \\
+		\hline
+		C++14/17& \specialcell[t]{1) void\_t, true\_type \\  
+			                      2) decltype and constexpr \\
+		                          3) hasSerialize is example} & \specialcell[t]{1) constexpr\ if \\ 2)true\_type overload } \\
+		\hline
+		C++2x & requires expression & requires clause \\
+		\hline
+	\end{tabular}
+
+	We should use the new generation technology if the compiler supports it, because it's easier to write and maintain. The requires expression and requires clause will be introduced in the Modern C++ chapter. You can see how elegant the requires expression is when we want to check if T has a certain member function.
+\begin{lstlisting}
+template <typename T>
+concept HasSquare = requires (T t) {
+	{t.square()} -> std::convertible_to<int>;
+}; 	
+\end{lstlisting}	
 	
 \end{itemize}
 
@@ -11365,7 +11398,7 @@ These three patterns are associated, so I put them together.
 \subsubsection{policy}
 \begin{itemize}
 	
-	\item The Policy class can be thought as an optional of multi-inheritance. Why do we use private inheritance here? Because we don't want to expose \texttt{print} and \texttt{message} methods. We just want to use it. So we use private inheritance here.
+	\item The Policy class can be thought of as an optional of multiple inheritance. Why do we use private inheritance here? Because we don't want to expose \texttt{print} and \texttt{message} methods. We just want to use it. So we use private inheritance here.
 	
 \begin{lstlisting}[numbers=none]
 class OutputPolicyWriteToCout{
@@ -11413,7 +11446,8 @@ HelloWorldGerman hello_world2;
 hello_world2.run(); // prints "Hallo Welt!"
 \end{lstlisting}
 	
-	\item If this polymorphism can be known at compile time, we can use "static polymorphism". Use template parameter inject a class with static method. They can be inline and without any runtime overhead. 
+	\item If polymorphism can be determined at compile time, we can use "static polymorphism" by using template parameters to inject a class with static methods. These methods can be inlined and incur no runtime overhead.
+	
 \begin{lstlisting}[frame=single, language=c++]
 // char_traits::eq, traits with case-insensitive eq:
 struct custom_traits: std::char_traits<char> {
@@ -11430,14 +11464,25 @@ std::cout<< "found at position" <<str.find('t') ;
 \end{lstlisting}
 
 	
-	\item This kind of examples can be found a lot in the STL, most of time by a kind of functor. Basic idea is the same. All above technologies are part of generic programming. A good and more example about generic programming examples can be found in "Modern C++ design" a book. The first chapter introduce policy pattern. The second chapter introduce a lot of ways to manage Type information at compile time. 
+	\item This kind of examples can be found a lot in the STL, most of time by a kind of functor. Basic idea is the same. All above technologies are part of generic programming. A good and more example about generic programming examples can be found in "Modern C++ design" a book. The first chapter introduce policy pattern. The second chapter introduces a lot of ways to manage Type information at compile time. 
 	
 \end{itemize}
 
 \subsubsection{Mixin}
 \begin{itemize}
 	
-	\item \textbf{Mixin refers to the following idiom - a template class that is parameterized on its base class.} Here Mixin classes are template classes that define a generic behaviour, and are designed to inherit from the type you wish to plug their functionality onto. For example, \texttt{RepeatPrint} is Mixin class, T is the type you wish to plug their functionality onto.
+	\item How to understand Mixin? From semantic level, it's a idea to add some new code(new functions) to an existing class. From syntax level, there are different ways to achieve the goal. For example, below three different way are all "Mixin", and they have corresponding context. 
+	\begin{enumerate}
+		\item method 1: An base (Mixin) class that includes the regular \texttt{operator new} and then have your own (existing) class inherit from it. This method is introduced in "Memory" chapter "Operator new overload" section. For this scenoriao, Mixin class doesn't depend on existing class, it just add some common functions.	
+		
+		\item method 2: CRTP, such as \texttt{enable\_from\_this}. The main point here is that CRTP will generate a new base class, and this new base class is different due to the different child class. Let me explain it in detail. In the next section "CRTP, we give an exmaple of Calculating how many objects have been generated. CRTP patten work, but method 1 doesn't work.  The same idea also apply to enable\_from\_this, because they need different weak\_ptr point for different classes. 
+		
+		\item method 3: An template class, which is parameterized on its base class. Such as RepeatPrint which I will introduce next.
+	\end{enumerate}
+	So please understand Mixin in semantic way,
+	
+	\item Mixin classes are template classes that define a generic behavior, and are designed to inherit from the type you wish to plug their functionality onto. For example, \texttt{RepeatPrint} is Mixin class, T is the type you wish to plug their functionality onto.
+	
 \begin{lstlisting}[numbers=none]
 template<typename T>
 class RepeatPrint : T{
@@ -11530,7 +11575,7 @@ dog d;
 speakFun(d); // output miao
 \end{lstlisting}
 
-\item Adding Functionality.
+\item Adding Functionality. Calculate how many objects have been generated. 
 
 \begin{lstlisting}[]
 template <typename T>
@@ -11587,7 +11632,7 @@ int main(){
 }
 \end{lstlisting}
 
-\item CRTP patten with template template class, you can see the \texttt{class Base} has template template argument. The below is syntax demo. This pattern doesn't use very widely, I just found on practical usage. please google "An Implementation Helper For The Curiously Recurring Template Pattern"
+	\item CRTP patten with template template class, you can see the \texttt{class Base} has template template argument. The below is syntax demo. This pattern doesn't use very widely, I just found on practical usage. please google "An Implementation Helper For The Curiously Recurring Template Pattern"
 
 %\begin{lstlisting}
 %template<typename T, template< typename > class child>
@@ -11935,7 +11980,10 @@ int y = run_twice([](int x) { return x+1; });
 assert(y == 4);
 \end{lstlisting}
 
-\item A good article is "What is Type Erasure" A detail implementation can be found in:\\ \verb|http://blog.bitfoc.us/p/525|
+	\item A good article is "What is Type Erasure" A detail implementation can be found in:\\ \verb|http://blog.bitfoc.us/p/525|
+
+	\item Another good example is member function to deal with interruption. 
+
 \end{itemize}
 
 \chapter{STL}
