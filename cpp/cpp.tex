@@ -112,7 +112,7 @@
 
 \chapter*{Preface}
 \addcontentsline{toc}{chapter}{Preface}
-Every year, I publish a new edition and this is the sixth one. The first edition has only about 100 pages and the second one has 200 pages. The sixth edition has almost 500 pages now.\par \medskip
+I publish a new edition every year, and the sixth edition, which I have just released, now has almost 500 pages. In comparison, the first edition had only about 100 pages, while the second edition had 200 pages. \par \medskip
 
 Bjarne Stroustrup, the creator of C++ language, stated that modern C++  "feels like a new language". I totally agree with him. By now, modern C++ is quicker, safer and easier to use, but it can be challenging to learn and teach. I love this language, I also like to recommend and teach more people to use it. That is precisely why I have written this book.  \par \medskip
 
@@ -7137,6 +7137,11 @@ int main() {
 \subsection{Function interface design summary}
 
 \begin{itemize}
+			\item Based on the previous concepts of rvalue reference, forwarding reference, and RVO, the following figure illustrates the principles of function interface design for parameters and return values.
+		\begin{center}
+			\includegraphics[width=1.0\linewidth]{pics/move.png}
+		\end{center}
+	
 		\item We usually don't return references, whether they are lvalue references or rvalue references. Only three operator overloads return lvalue references. \texttt{std::move} returns an rvalue reference. It doesn't involve value semantics, just a type change. All the others return values. That's all!
 	
 		\item If a function returns a value and it's only a copyable lvalue, you should return the value directly. For rvalue reference parameters, you should use \texttt{std::move} explicitly. Because an rvalue reference is still a reference, not a local auto object, if we don't use \texttt{std::move}, it will be copied when we return it. Use \texttt{std::forward} on universal references the last time they are used.
@@ -7160,10 +7165,7 @@ T operator+(T&& lhs) {
 
 %		\item \textbf{if RVO is not applicable, at the same time, move is not cheap, we should use referent parameter as return methond, such as big POD type, or use it in loop.} I think that it will be rare case. If you have good example of this, please tell me.
  
-		\item Based on the previous concepts of rvalue reference, forwarding reference, and RVO, the following figure illustrates the principles of function interface design for parameters and return values.
-	\begin{center}
-		\includegraphics[width=1.0\linewidth]{pics/move.png}
-	\end{center}
+	
 
 \end{itemize}
 
@@ -15406,6 +15408,8 @@ const Function *getFunction() const;
 \subsection{Code Convention}
 \begin{itemize}
 	
+	\item \texttt{nullptr} is always a pointer type; therefore, don't use NULL anymore. While NULL is just 0 in the C language, it can be ambiguous in the strong-typed C++ language, such as in \texttt{f(int);} and \texttt{f(foo *);}
+	
 	\item The pointer and reference symbol should be placed near the data type, not near the variable name.
 	
 	item Declare variables locally as much as possible and minimize the usage of global variables.
@@ -17652,6 +17656,11 @@ a = i;//another thread
 \end{lstlisting}
 
     \item \texttt{share\_ptr} is not thread safe, because it includes ptr and reference count, so you can't read and write the same \texttt{share\_ptr} at the same time. 
+    
+    \begin{center}
+    	\includegraphics[width=0.80\linewidth]{pics/shared_ptr_con.png}
+    \end{center}
+    
 
 \begin{lstlisting}
 shared_ptr<int> p(new int(42));
@@ -17676,11 +17685,8 @@ p3.reset(new int(2)); //thread B, Error  undefined, multiple write
 
 
 %    \item \texttt{share\_ptr} causes the data race. Because it also includes two seperate operations. A detail can be seen below:
-	\item Below figure shows how the data race happen. 
+
     
-\begin{center}
-		\includegraphics[width=0.80\linewidth]{pics/shared_ptr_con.png}
-\end{center}
 
     \item There is a conception of "Benign data race", but right now, all data race is considered bad. because sometimes compiler will change the "Benigh data race" into the "harmful data race". An example can be seen in "How to miscompile programs with “benign” data races". If \texttt{p->data} are all negative, then \texttt{count++} update will never happen. But after compiler optimization, we have a last statement \texttt{count = reg}.  If at the same time, there is another thread modify count, then modification will "disappear" by the first thread to perform \texttt{count = reg}. That is why a benigh data race is really harmful. So just remember, There is no benigh data race in C++ concurrency.
 \begin{lstlisting}[]
@@ -19149,9 +19155,7 @@ if you really need to register this pointer,(such as Observer pattern),  use two
     \item Compared with construt, destruct is difficult, we can \textbf{NOT} put mutex in the destructor. When we have a object, at the same time, we give the reference or pointer to another thread to use it. At this time, data race will happen when one thread try to use one member function, and another thread try to destruct it. 
 \begin{lstlisting}[]
 A* a = new A();
-
 thread b(fun, a); thread A
-
 delete a //thread B, How can you make sure a isn't used in thread A? 
 \end{lstlisting}
 
@@ -19243,10 +19247,8 @@ void testLongLifeFactory() {
     boost::shared_ptr<Stock> stock = factory->get("NYSE:IBM");
     boost::shared_ptr<Stock> stock2 = factory->get("NYSE:IBM");
     assert(stock == stock2); 
-    // stock destructs here
-  }
-  // factory destructs here
-}
+  } // stock destructs here
+} // factory destructs here
 void testShortLifeFactory() {
   boost::shared_ptr<Stock> stock;
   {
@@ -19254,10 +19256,8 @@ void testShortLifeFactory() {
     stock = factory->get("NYSE:IBM");
     boost::shared_ptr<Stock> stock2 = factory->get("NYSE:IBM");
     assert(stock == stock2);
-    // factory destructs here
-  }
-  // stock destructs here
-}
+  } // factory destructs here
+} // stock destructs here
 \end{lstlisting}
 	\begin{center}	
 		\includegraphics[width=0.90\linewidth]{pics/weak_ptr.png}
@@ -19323,15 +19323,15 @@ counter++;
     
 \end{itemize}
 
-\def\sixth{}
-\ifdefined\sixth
+
 
 \chapter{Internet}
 \section{common used protocals}
 \subsection{Level and different protocols}
 
 \begin{itemize}
-	\item In networking, a protocol is a standardized way of doing certain actions and formatting data so that two or more devices are able to communicate with and understand each other. It play central role in the internet programming. Below are some important protocols you need to know in each different levels.
+	\item Protocols play a central role in internet programming by providing a standardized way of performing certain actions and formatting data. It enables two or more devices to communicate with and understand each other. Below are some important protocols that you need to know at different levels:
+	
 	\begin{enumerate}
 		\item Application level: DHCP, HTTP, FTP, RPC.
 		\item Transport  level: UDP, TCP (Segment)
@@ -19342,8 +19342,7 @@ counter++;
 
 	\item TargetMac(6 bytes)+sourceMacMac(6 bytes)+Kind of upper level protocol(2 bytes, 0800 is ip, 0806 is ARP) + data(46-1500 bytes)+CRC(4 bytes). That is the data link frame. In \textbf{data link level}, we call data as \textbf{frame}. 
 
-	\item STP is Spanning tree protocol. STP is a link management protocol designed to support redundant links that stops switching loops in the STP network google "Spanning Tree Protocol STP Tutorial", it is a good example.
-https://www.9tut.com/spanning-tree-protocol-stp-tutorial
+	\item STP stands for Spanning Tree Protocol, which is a link management protocol designed to support redundant links in a network and prevent switching loops. To learn more about STP, you can refer to a tutorial such as 'Spanning Tree Protocol (STP) Tutorial' available on Google.
 
 	\item A VLAN (virtual LAN) is a sub network which can group together collections of devices on separate physical local area networks (LANs) VLANs are often set up by larger businesses to re-partition devices for better traffic management.
 
@@ -19356,6 +19355,7 @@ https://www.9tut.com/spanning-tree-protocol-stp-tutorial
 		\begin{center}
 			\includegraphics[width=0.95\linewidth]{pics/it_layer.png}
 		\end{center}
+	
 		\item All the package in the internet, Maybe it doesn't have upper layer, but it must includes lower layer, (Mac level and IP level). Lower refer the bottom of previous figure. When we talk about level 2 or leve 3, we also count this number from lower to upper. So it's important to remember and understand above figure. 
 		
 	
@@ -19400,6 +19400,8 @@ root@test:~# ip addr
 
 	\item  For IP, you need to know two things: router protocol and NAT. The most common used router protocol is OSPF(Open shortest Path First) which is based link state routing.  It mainly used in Interior Gateway Protocol, IGP.  BGP is based path-vector protocol. Why do we have IGP and BGP?, because BGP mainly deal with AS(Autonomous system). You can think IGP and BGP as 192.168.0.1/24, one is for net id, and the other is for computer id. 
 	
+	\item NAT stands for Network Address Translation. It is a protocol used in computer networking to map an IP address from one network to another. NAT is typically used in small-scale networks where a limited number of public IP addresses are available, but many devices need to access the internet. NAT allows the devices in the network to share a single public IP address while maintaining communication with external devices on the internet. There are different types of NAT protocols, including Static NAT, Dynamic NAT, and Port Address Translation (PAT). Each type has its own specific use case and benefits.
+	
 	\item NAT operates on a router—generally connecting only two networks. Before any packets are forwarded to another network, NAT translates the private (inside local) addresses within the internal network into public (inside global) addresses. This functionality gives you the option to configure NAT so that it advertises only a single address for your entire network to the outside world. Doing this translation, NAT effectively hides the internal network from the world, giving you some additional security. Most our home and small office internet connection use this protocol to connect to internet. 
 	
 	\item Implementation of NAT is based on Netfilter. 
@@ -19432,16 +19434,17 @@ root@test:~# ip addr
 \subsection{VPN, GRE and tunnel}
 \begin{itemize}
 	
+	\item GRE is a protocol for encapsulating one protocol within another, while VPN is a technology for creating a secure, private connection over a public network. While both technologies have their own specific use cases, VPN is generally considered to be more versatile and secure. GRE is typically used to connect two networks together, allowing them to communicate as if they were on the same network. VPN can be used to connect two devices or networks together, but it is most commonly used to connect remote workers or branch offices to a company's internal network.
 	
-	
+	\begin{center}
+		\includegraphics[width=0.48\linewidth]{pics/payload.drawio.png}
+	\end{center}
 
 	\item Computer networks use a \textbf{tunneling protocol} when one network protocol (the \textbf{delivery protocol}) encapsulates a different \textbf{payload protocol}. By using tunneling one can (for example) carry a payload over an incompatible delivery-network, or provide a secure path through an untrusted network. As an example of network layer over network layer, Generic Routing Encapsulation (GRE), a protocol running over IP , often serves to carry IP packets with private addresses, over the Internet using delivery packets with public IP addresses. In this case, the delivery and payload protocols are compatible, but the payload addresses are incompatible with those of the delivery network. Another example is VPN, the basic idea is the same, payload packet can't be transmitted in delivery network because it has been encrypted. 
 	
 	
 	
-	\begin{center}
-		\includegraphics[width=0.48\linewidth]{pics/payload.drawio.png}
-	\end{center}
+
 	
 	
 
@@ -19450,26 +19453,28 @@ root@test:~# ip addr
 	\end{center}
 
 	\item How tunnel is implemented? We usually use virtual network devices. In computer networking, TUN and TAP are kernel virtual network devices. Being network devices supported entirely in software, they differ from ordinary network devices which are backed by physical network adapters. different with eth0, other side tun0 can be attached to user application. Data sent by network protocol stack can be read by this user application. 
+	\begin{enumerate}
+		\item User application A send a packet by socket A to 192.168.3.1
+		
+		\item socke A give this packet network protocol stack.
+		
+		\item network protocol stack find that target address is 192.168.3.1, according to router table rule, I know that this packet should be sent to tun0. 
+		
+		\item tun0 receives the packet from one side, and send it from the other side, The other side is User application B. 
+		
+		\item Application B so some extra job, For VPN, it will encrpte the data, and embedded old packet to new packet. At this time, it change the target address 10.33.0.1 and send it to eth0 by socket B.
+		
+		\item sockB give the data to network protocol stack.
+		
+		\item network protocol stack find this packet should be sent by eth0. 
+		
+		\item eth0 send out the new packet. 
+	\end{enumerate}
+	
+	
 \begin{center}
 	\includegraphics[width=0.60\linewidth]{pics/vpn.png}
 \end{center}
-\begin{enumerate}
-	\item User application A send a packet by socket A to 192.168.3.1
-	
-	\item socke A give this packet network protocol stack.
-	
-	\item network protocol stack find that target address is 192.168.3.1, according to router table rule, I know that this packet should be sent to tun0. 
-	
-	\item tun0 receives the packet from one side, and send it from the other side, The other side is User application B. 
-	
-	\item Application B so some extra job, For VPN, it will encrpte the data, and embedded old packet to new packet. At this time, it change the target address 10.33.0.1 and send it to eth0 by socket B.
-	
-	\item sockB give the data to network protocol stack.
-	
-	\item network protocol stack find this packet should be sent by eth0. 
-	
-	\item eth0 send out the new packet. 
-\end{enumerate}
 
 	\item How to understand tunnel? tunnel is not pysical link between nodes(A, B) in overlay, but a logic link one.  Payload Data(payload protocol) between A and B can't transfer in underlay network, maybe it has been encrypted, so we wrap it another header(IP), with this header, data can be transfer in underlay network(delivery protocol).  Think in this way, data is car(payload protocol), but underlay network is ocean. so we build a tunnel under ocean, so car can go from A to B. That is the metaphor of tunnel. 
 	
@@ -19485,10 +19490,13 @@ root@test:~# ip addr
 		https://segmentfault.com/a/1190000009251098?utm\_source=sf-similar-article
 		
 		\item \textbf{Virtual machine}. NAT, bridge and host three models, basic implementation behind it.
-		
+	\begin{center}
+		\includegraphics[width=0.6\linewidth]{pics/bridge}
+	\end{center}
+				
 		\item \textbf{VPN}, Know the tunnel conception tunnel means use one protocal to wrap another protocal. You can use tun/tap to implement it. 
 		
-		\item \textbf{Vxlan}, need to know the overlay conception. and vxlan also use tunnle. The links that connect the overlay nodes are implemented as tunnels through the underlying network. 
+		\item \textbf{Vxlan}, need to know the overlay conception. and vxlan also use tunnel. The links that connect the overlay nodes are implemented as tunnels through the underlying network. 
 	\end{enumerate}
 \end{itemize}
 
@@ -19500,7 +19508,7 @@ root@test:~# ip addr
 \begin{itemize}
 	\item The sequence of function calls for the client and a server participating in a UDP connection.
 	\begin{center}
-		\includegraphics[width=0.43\linewidth]{pics/udp.png}
+		\includegraphics[width=0.39\linewidth]{pics/udp.png}
 	\end{center}
 
 	\item The sequence of function calls for the client and a server participating in a TCP connection.
@@ -20672,6 +20680,8 @@ pytest -n 3
 
 \end{itemize}
 
+%\def\sixth{}
+\ifdefined\sixth
 
 \chapter{Common libs}
 \section{Curl}
@@ -20775,8 +20785,8 @@ g++ profile.cpp -o profile -ljsoncpp
 \subsection{New int and syntax}
 \begin{itemize}
 
-    \item C++ standard doesn't define the accurate bit size, it just defines: \texttt{int} must be at least 16 bits, \texttt{long} must be at least 32 bits, \texttt{long long} must be at least 64 bits.
-    In modern C++, we add some new data types with specified size, such as, "\texttt{char16\_t}"  and "\texttt{char32\_t}". If you need a specific integer size for a particular application, rather than trusting the compiler to pick the size you want, \#include <stdint.h> (or <cstdint>) so you can use these types:\textbf{All these types have \_t in the end.}
+    \item C++ standard doesn't define the accurate bit size for arithmetic types. It only defines that \texttt{int} must be at least 16 bits, \texttt{long} must be at least 32 bits, and \texttt{long long} must be at least 64 bits. In modern C++, new data types have been added with specified sizes, such as "\texttt{char16\_t}" and "\texttt{char32\_t}". If you need a specific integer size for a particular application, rather than trusting the compiler to pick the size you want, include <stdint.h> (or <cstdint>) so you can use these types. All of these types end with \texttt{\_t}.
+    
 \begin{lstlisting}[numbers=none]
 int8_t and uint8_t
 int16_t and uint16_t
@@ -20784,28 +20794,29 @@ int32_t and uint32_t
 int64_t and uint64_t
 \end{lstlisting}
 
-    \item The fixed-width integers have two downsides: First, they may not be supported on architectures where those types can't be represented. They may also be less performant than the built-in types on some architectures.To help address the above downsides, C++11 also defines two alternative sets of integers. They are \texttt{int\_least} and \texttt{int\_fast}. Below are some integer usage suggetions. 
+    \item The fixed-width integers have two downsides: First, they may not be supported on architectures where those types can't be represented. Second, they may also have lower performance than the built-in types on some architectures. To help address these downsides, C++11 also defines two alternative sets of integers: \texttt{int\_least} and \texttt{int\_fast}. Below are some usage suggestions for integers:
 
 \begin{enumerate}
-	\item \texttt{int} should be preferred when the size of the integer doesn't matter (e.g. the number will always fit within the range of a 2 byte signed integer). For example, if you're asking the user to enter their age, or counting from 1 to 10, it doesn't matter whether int is 16 or 32 bits (the numbers will fit either way). This will cover the vast majority of the cases you're likely to run across.
 	
-	\item If you need a variable guaranteed to be a particular size and want to favor performance, use \texttt{std::int\_fast\_t}.
+	\item \texttt{int} should be preferred when the size of the integer doesn't matter, for example when the number will always fit within the range of a 2-byte signed integer. For tasks such as asking the user to enter their age or counting from 1 to 10, it doesn't matter whether \texttt{int} is 16 or 32 bits as the numbers will fit either way. This will cover the vast majority of cases you're likely to encounter.
 	
-	\item If you need a variable guaranteed to be a particular size and want to favor memory conservation over performance, use \texttt{std::int\_least\_t}. This is used most often when allocating lots of variables.
+	\item If you require a variable guaranteed to be a particular size and want to prioritize performance, use \texttt{std::int\_fast\_t}.
 	
-	\item Don't use unsigned types, unless you have a compelling reason or just for bit operation.
+	\item If you require a variable guaranteed to be a particular size and prioritize memory conservation over performance, use \texttt{std::int\_least\_t}. This is most often used when allocating numerous variables.
+	
+	\item Don't use unsigned types unless you have a compelling reason, such as when performing bit operations.
 \end{enumerate}
 
-    \item \texttt{nullptr} is always a pointer type, Don't use NULL any more. NULL is just 0 In C language, but in strong type C++ language, NULL can be ambiguity in \texttt{f(int);} and \texttt{f(foo *);}
 
-    \item Other syntactic improvement of C++ 14: 1) Prefix 0b and are followed by binary digits.  2) To use the single quote character, making the million dollar value render in C++ as: 1'000'000.00.
+    \item Other syntactic improvements in C++14 include the ability to use prefix 0b, followed by binary digits, and the ability to use single quotes to make large numbers more readable. For instance, you can represent one million as 1'000'000.00 in C++.
+    
 \begin{lstlisting}[numbers=none]
 int val = 0b11110000;
 std::cout << 0b1000'0001'1000'0000;
 std::cout<<300'000.00;
 \end{lstlisting}
 
-    \item Note that the syntax of C++ attribute-tokens might seem a bit unfamiliar. The list of attributes, including [[deprecated]], comes after keywords like class or enum, and before the entity name. A good article can be found if you google "Marking as deprecated in C++14". This feature is useful for a large and long term project. You can't just delete class \texttt{flaky}, because other people maybe is using it in their code. When you use \texttt{flaky}, it will generate compiler warning.
+    \item Note that the syntax of C++ attribute-tokens may seem a bit unfamiliar. The list of attributes, including [[deprecated]], comes after keywords like class or enum and before the entity name. A good article on this topic can be found by searching for 'Marking as deprecated in C++14.' This feature is especially useful for large and long-term projects. For instance, you can't simply delete class \texttt{flaky} because other people may still be using it in their code. However, when you mark it as \texttt{deprecated}, it will generate a compiler warning.
 
 \begin{lstlisting}[frame=single, language=c++]
 class [[deprecated]] flaky {
@@ -20821,26 +20832,27 @@ int cranky(){
 \subsection{New container}
 \begin{itemize}
 
-    \item New container: \texttt{forward\_list}, \texttt{unordered\_map} and \texttt{unordered\_set}.  The latter two support implementing hash tables. std library provide basic hash function for some basic type, such as \texttt{int} and \texttt{string}. If you have you own class, you can use \texttt{boost::hash\_combine.} 
+    \item New containers introduced in C++11 include \texttt{forward\_list}, \texttt{unordered\_map}, and \texttt{unordered\_set}. The latter two support implementing hash tables, and the standard library provides basic hash functions for some basic types, such as \texttt{int} and \texttt{string}. If you have your own class, you can use \texttt{boost::hash\_combine} to implement a hash function(or functor).
 
-    \item To support user-defined key types in \texttt{std::unordered\_set<Key>} and \texttt{std::unordered\_map<Key, Value>} one has to provide \texttt{operator==(Key, Key)} and a hash functor
+    \item To support user-defined key types in \texttt{std::unordered\_set<Key>} and \texttt{std::unordered\_map<Key, Value>} one has to provide \texttt{operator==(Key, Key)} and a hash function(or functor).
 \begin{lstlisting}[numbers=none]
 struct X { int id; /* ... */ };
-bool operator==(X a, X b) { return a.id == b.id; }
-struct MyHash {
-	size_t operator()(const X& x) const { 
-		return std::hash<int>()(x.id); }
-};
+	bool operator==(X a, X b) { return a.id == b.id; }
+	struct MyHash {
+		size_t operator()(const X& x) const { 
+			return std::hash<int>()(x.id); }
+	};
+}
 
 std::unordered_set<X, MyHash> s;
 \end{lstlisting}
 
-    \item Just like swap function I introduced before (you can find detail in the previous OOP chapter), you are expressly allowed and encouraged to add specializations to namespace \texttt{std*}. The correct (and basically only) way to add a hash function is this:
+    \item Just like the swap function introduced earlier (you can find details in the previous OOP chapter), you are expressly allowed and encouraged to add specializations to the \texttt{std::} namespace. The correct (and basically only) way to add a hash function is like this:
 \begin{lstlisting}[frame=single, language=c++]
 namespace std {
 	template <> struct hash<Foo>{
 		size_t operator()(const Foo & x) const{
-			//your code here
+			//your hash function code here
 		}
 	};
 }
@@ -20849,7 +20861,7 @@ std::unordered_set<Foo> s;
 
     \item A good \texttt{std::hash} example can be found in cppreference.com 
 
-    \item \texttt{std::array} is just a class version of the classic C array. \textbf{Its size is fixed at compile time and it will be allocated  on the stack}. \texttt{std::vector} is a small class containing pointers into the heap. (So when you allocate a \texttt{std::vector,} it always calls new.) They are slightly slower to access because those pointers have to be chased to get to the arrayed data... But in exchange for that, they can be resized and they only take a trivial amount of stack space no matter how large they are.
+    \item \texttt{std::array} is a class version of the classic C array, with the difference that its size is fixed at compile time and it will be allocated on the stack. On the other hand, \texttt{std::vector} is a small class containing pointers to the heap. This means that when you allocate a \texttt{std::vector}, it always calls \texttt{new}. While accessing elements in a \texttt{std::vector} is slightly slower due to chasing pointers to get to the arrayed data, they can be resized, and they only take a trivial amount of stack space no matter how large they are.
 
     \item array support copy and assignment between the same size. \texttt{at()} is slower (but safer) than \texttt{operator []}, because it does bounds checking. 
 \begin{lstlisting}[numbers=none]
@@ -20859,7 +20871,7 @@ a5 = a2 // a2 and a5 must have the same size.
 \end{lstlisting}
 
 
-    \item Fixed C arrays decay into pointers, losing the array length information when you pass it to a function. Like \texttt{std::vector}, \texttt{std::array} doesn't implicitly decay into a raw pointer. If you want to use the underlying \texttt{std::array} pointer, you must use the \texttt{data()} member function.For example, let's assume you are using an API with a C-style buffer interface: For other new function, you can use \texttt{std::array\&} as a function parameter. 
+    \item Fixed C arrays decay into pointers, losing the array length information when passed to a function. Unlike C arrays, \texttt{std::array} and \texttt{std::vector} don't implicitly decay into a raw pointer. If you want to use the underlying pointer of an \texttt{std::array}, you must use the \texttt{data()} member function for an API with a C-style buffer interface. When you use an \texttt{std::array\&} as a function parameter, this ensures that the array length information is preserved.
 
 \begin{lstlisting}[numbers=none]
 void carr_func(int * arr, size_t size){
@@ -20870,7 +20882,7 @@ carr_func(a2, a2.size()); //Error:
 carr_func(a2.data(), a2.size()); //OK
 \end{lstlisting}
 
-    \item For most of time, you should use \texttt{std::array} and \texttt{std::forward\_list} firstly if you don't have any strong reason against using them.
+    \item For most cases, you should use \texttt{std::array} and \texttt{std::forward\_list} first if you don't have any strong reason against using them.
 \begin{lstlisting}[numbers=none]
 void printLength(const std::array<double, 5> &myarray){
     myarray.sort();
@@ -20886,17 +20898,16 @@ printLength(myarray);
 \subsection{Range base for}
 \begin{itemize}
 	
-	\item A range-based for loop is introduced in C++11. Use \texttt{auto\&} to avoid copying each element. Below are highly recommended when yo use STL container.
+	\item A range-based for loop was introduced in C++11. To avoid copying each element, use \texttt{auto\&}. The following patterns are highly recommended when using STL containers:
 	
 	\begin{enumerate}
-		\item  For observing the elements in generic code, since we can't make assumptions about generic type T being cheap to copy, it's safe to always use for \texttt{(const auto\& elem : container)}.  (This won't trigger potentially expensive useless copies, will work just fine also for cheap-to-copy types like int, and also for containers using proxy-iterators, like \texttt{std::vector<bool>}.)
+		\item  When observing the elements in generic code, since we cannot assume that the generic type T is cheap to copy, it is safe to always use \texttt{(const auto\& elem : container)} in for loops. This will avoid potentially expensive and unnecessary copies, work well for cheap-to-copy types like int, and also for containers using proxy-iterators, like \texttt{std::vector<bool>}.
 \begin{lstlisting}[numbers=none]
 for (const auto& elem : container)    
 	// capture by const reference
 \end{lstlisting}	
-		
-		
-		\item If the objects are cheap to copy (like ints, doubles, etc.), it's possible to use a slightly simplified form. If there is a need to make a local copy of the element inside the loop body, capturing by value is a good choice.
+				
+		\item If the objects are cheap to copy (like \texttt{int}, \texttt{double}, etc.), it is possible to use a slightly simplified form. If there is a need to make a local copy of the element inside the loop body, capturing by value is a good choice.
 		
 \begin{lstlisting}[numbers=none]
 for (const auto elem : container)   
@@ -20909,7 +20920,7 @@ for (auto& elem : container)
 	// capture by (non-const) reference
 \end{lstlisting}
 		
-		\item If there are pointer inside the container. You don't need star symbol explicitly, but it give more information to the variable, so I recommend using this style.
+		\item Although you don't need to use the star symbol explicitly, it can provide more information about the variable, especially when dealing with pointers inside the container. Therefore, I recommend using this style.
 \begin{lstlisting}[numbers=none]
 for(auto *ptr: Container){ ptr->change();} //make sure Container contain pointer
 for(const auto *ptr: Container){ ptr->read();}
@@ -20929,7 +20940,7 @@ for(const auto *ptr: Container){ ptr->read();}
 %\end{lstlisting}
 	
 	
-	\item The range-based version is for: You want to do something with every element in the container, \textbf{without mutating the container(insert or erase).} If you want to mutate the container, Follow idea introduced in Container--Erasure section below.
+	\item The range-based version is for: You want to do something with every element in the container, \textbf{without mutating the container(insert or erase).} If you want to mutate the container, refer to the Container--Erasure section below for guidance.
 	
 	\begin{enumerate}
 		\item For any container, you can \textbf{NOT} mutating container by calling insert or erase inside loop.
@@ -20942,7 +20953,7 @@ for(const auto *ptr: Container){ ptr->read();}
 \subsection{alias declaration}
 
 \begin{itemize}
-    \item Alias declaration is better than typedef when you declare a function pointer, It's more clear and direct.
+    \item Alias declaration is better than typedef when you declare a function pointer; it's more clear and direct.
 \begin{lstlisting}[frame=single, language=c++]
 typedef void (*FP)(int, const std::string&); //FP is function pointer type
 typedef void (FP)(int, const std::string&); //FP is function type
@@ -20950,19 +20961,15 @@ typedef void (FP)(int, const std::string&); //FP is function type
 using FP = void (*)(int, const std::string&); //looks clean and simple.
 \end{lstlisting}
 
-\begin{description}
-	\item[Line 1:] FP is a synonym for a pointer to a function taking an \texttt{int} and a \texttt{const std::string\&} and returning nothing.
-\end{description}
-
     \item C++98 doesn't support typedef template directly, only can be put inside a struct. 
 \begin{lstlisting}[frame=single, language=c++]
-template<typename T>
-struct MyAllocList { //C++ 98 style
+template<typename T> //C++ 98 style
+struct MyAllocList { 
 	typedef std::list<T, MyAlloc<T>> type;
 };
 MyAllocList<Widget>::type lw; // client code
 
-template<typename T>
+template<typename T> 
 class Container { 
 private:
 	typename MyAllocList<T>::type list; 
@@ -20973,7 +20980,7 @@ private:
 \end{description}
 
 
-\item In C++14, A better way is to use Alias template.
+\item In C++14, A better way is to use alias template.
 
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>  //C++ 14 style, use template alias,
@@ -20986,7 +20993,6 @@ private:
 	MyAllocList<T> list; //no typename here. no ::type
 };
 \end{lstlisting}
-
 
 
 	\item Another advantage of alias name is below. The first source code uses typedef inside a struct; The second source code uses "using alias". You can see the code become clear and not compiling error.
@@ -21017,7 +21023,7 @@ someFunction(a); //OK, can deduce int
 \end{lstlisting}
 
 
-\item C++14 offers alias templates for all the C++11 type traits transformations.
+	\item C++14 offers alias templates for all the C++11 type traits transformations.
 \begin{lstlisting}[numbers=none]
 template <class T>
 using remove_const_t = typename remove_const<T>::type;
@@ -21033,7 +21039,9 @@ using add_lvalue_reference_t=typename add_lvalue_reference<T>::type;
 
 \subsection{scoped enums}
 \begin{itemize}
+	
 	\item C++98-style enums are now known as unscoped enums.
+	
 \begin{lstlisting}[frame=single, language=c++]
 enum Color { black, white, red };
 auto white = false; // error! 
@@ -21054,9 +21062,9 @@ if (static_cast<double>(c) < 14.5) { // this will be OK!
     \item[Line 10-11:] Implicit conversion is not legale any more, unless you explicit convert it.
 \end{description}
 
-\item Both scoped and unscoped enums support specification of the underlying type.  The default underlying type for scoped enums is \texttt{int}. Unscoped enums have no default underlying type.
+	\item Both scoped and unscoped enums support specification of the underlying type.  The default underlying type for scoped enums is \texttt{int}. Unscoped enums have no default underlying type.
 
-\item Scoped enums may always be forward-declared. Unscoped enums may be forward-declared only if their declaration specifies an underlying type.
+	\item Scoped enums may always be forward-declared. Unscoped enums may be forward-declared only if their declaration specifies an underlying type. 
 
 \end{itemize}
 
@@ -21074,14 +21082,16 @@ if (static_cast<double>(c) < 14.5) { // this will be OK!
     
     \item The following are potentially throwing:
         \begin{enumerate}
-            \item Normal function call. \textbf{Most functions are exception-neutral rather than noexcept.}
-            \item an implicit call to a potentially-throwing function (such as an overloaded operator, an allocation function in a new-expression, a constructor for a function argument)
+            \item Normal function call. Most functions are exception-neutral rather than noexcept.
+            
+            \item An implicit call to a potentially-throwing function (such as an overloaded operator, an allocation function in a new-expression, a constructor for a function argument)
+            
             \item \texttt{dynamic\_cast} and \texttt{typeid} expression.
         \end{enumerate}
 
-    \item \texttt{noexcept} is new exception specfication in C++11. When an exception is thrown from an noexcept function, \texttt{std::terminate} gets triggered. compiler will not check it for you. There are two good reasons for the use of \texttt{noexcept}: First, an exception specifier documents the behaviour of the function. If a function is specified as noexcept, it can be safely used in a non-throwing function. Second, it is an optimisation opportunity for the compiler. noexcept may not call \texttt{std::unexpected} and may not unwind the stack. The initialisation of a container may cheap move the elements into the container if the move constructor is declared as noexcept. If not declared as noexcept, the elements may be expensive copied into the container.
+    \item \texttt{noexcept} is a new exception specification introduced in C++11. When an exception is thrown from an \texttt{noexcept} function, \texttt{std::terminate} is triggered. It is the responsibility of the programmer to ensure that the function is not throwing any exceptions. There are two good reasons for the use of \texttt{noexcept}: First, an exception specification documents the behavior of the function. If a function is specified as \texttt{noexcept}, it can be safely used in a non-throwing context. Second, it is an optimization opportunity for the compiler. If a function is declared as \texttt{noexcept}, it may not call \texttt{std::unexpected} and may not unwind the stack. For example, the initialization of a container may cheaply move elements into it if the move constructor is declared as \texttt{noexcept}. Otherwise, the elements may be expensively copied into the container.
 
-    \item \texttt{noexcept} is part of a function's interface, and that means that callers may depend on it.  \texttt{noexcept} functions are more optimizable than non-noexcept functions. \texttt{noexcept} is particularly valuable for the move operations, swap, memory deallocation functions, and destructors.
+    \item \texttt{noexcept} is part of a function's interface, and that means that callers may depend on it. \texttt{noexcept} functions are more optimizable than non-\texttt{noexcept} functions. \texttt{noexcept} is particularly valuable for the move operations, swap, memory deallocation functions, and destructors.
 
     \item Why \texttt{vector::operator[]} is not noexcept? The standard's policy on noexcept is to only mark functions that cannot or must not fail, Functions that get marked are things like swap (must not fail, because exception safety often relies on that) and numeric\_limits::min (cannot fail, returns a constant of a primitive type). But not those that simply are specified not to throw exceptions. In other words, all functions that have a limited domain (pass the wrong arguments and you get undefined behavior) are not noexcept, even when they are not specified to throw. In another word, operator[] will fail if it out-of-bound. At this time, maybe you want to throw an exception, in this way, make it noexcept is not suitable.
 
@@ -21112,11 +21122,12 @@ constexpr bool b5{ noexcept(S{}) };   // true; a struct's default constructor is
             \item Variadic tempalte for forwarding.
         \end{enumerate}
 
-    \item Variadic template for ctach-all functions example. It uses template template parameter. \texttt{vector} template has two template parameters, while map template has four template parameters. So I use \textbf{parameter pack} to deal with this flexibility.
+    \item Variadic templates can be used to implement catch-all functions. This example does not use the traditional recursive approach of implementing variadic templates, but rather uses them to express the concept of "any template parameters can go here". One of example is to write a function that can print out standard library containers without acting on iterators. The function should work for any container, and the user should type as little as possible. To achieve this, template template parameters are used. The \texttt{vector} template has two template parameters, while the \texttt{map} template has four template parameters. A parameter pack is used to deal with this flexibility.
 
+    
 \begin{lstlisting}
 template <template <typename, typename...> class ContainerType,
-          typename ValueType, typename... Args>
+          typename ValueType, typename... Args> // typename... Args is template parmeter pack
 void print_container(const ContainerType<ValueType, Args...>& c) {
     for (const auto& v : c) {
         std::cout << v << ' ';
@@ -21128,7 +21139,7 @@ print_container(vector<double> vd);
 print_container(map<int,string> mi);
 \end{lstlisting}
 
-    \item Variadic templates for forwarding. 
+    \item Variadic templates for forwarding. This is a very typical usage for \texttt{make\_*} functions (object generators) in the STL. 
 \begin{lstlisting}
 std::unique_ptr<FooType> f = std::make_unique<FooType>(1, "str", 2.13);
 
@@ -21138,16 +21149,16 @@ unique_ptr<T> make_unique(Args&&... args){
 }
 \end{lstlisting}
 
-    \item In previous code, you need to pay attention the syntactic usage. \textbf{The ... applies to the thing of its left.}
+    \item In previous code, you need to pay attention the syntactic usage. The ... applies to the thing of its left.
 \begin{lstlisting}
 function(params...) expands function(param1, param2, ..., paramN).
 
 function(std::forward<Tys>(params)...)
-expands to
+//expands to
 function(std::forward<Tys1>(param1), std::forward<Tys2>(param2), ..., std::forward<TysN>(paramN))
 
 function(std::forward<Tys>(params...))
-expands to
+//expands to
 function(std::forward<Tys>(param1, param2, ..., paramN))
 //The last line is not correct and will cause compiler error.
 \end{lstlisting}
@@ -21166,7 +21177,7 @@ T adder(T first, Args... args) {
 }
 \end{lstlisting}
 
-    \item Another example to demonstrate how to use cout. In the next section, you will learn how to use \textbf{fold expression} to write these two function easily.
+    \item Another example to demonstrate how to use \texttt{cout}. In the next section, you will learn how to use \textbf{fold expression} to write these two function easily.
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 show_list(const T& value){cout<<value<<endl;}
@@ -21178,11 +21189,11 @@ show_list(const T& value, const Args&... args){
 }
 \end{lstlisting}
 
-    \item Variadic templates make it possible to define data structures that could have an arbitrary number of fields, and have this number configured per use. The prime example of this is a tuple class. The same recursive idea is just like previous examples.
+    \item Variadic templates make it possible to define data structures with an arbitrary number of fields, whose number can be configured per use. One prime example of this is a std::tuple class, which uses the same recursive idea as the previous examples.
 \begin{lstlisting}
-template <class... Ts> struct tuple {};
+template <typename... Ts> struct tuple {};
 
-template <class T, class... Ts>
+template <typename T, typename... Ts>
 struct tuple<T, Ts...> : tuple<Ts...> {
 	tuple(T t, Ts... ts) : tuple<Ts...>(ts...), tail(t) {}
 	T tail;
@@ -21193,19 +21204,16 @@ struct tuple<T, Ts...> : tuple<Ts...> {
 \begin{lstlisting}
 tuple<double, uint64_t, const char*> t1(12.2, 42, "big");
 
-struct tuple<double, uint64_t, const char*>:tuple<uint64_t, const char*> {
+struct tuple<double, uint64_t, const char* >: tuple<uint64_t, const char*> {
   double tail;
 }
-
 struct tuple<uint64_t, const char*> : tuple<const char*> {
   uint64_t tail;
 }
-
 struct tuple<const char*> : tuple {
   const char* tail;
 }
-
-struct tuple {
+struct tuple {  
 }
 \end{lstlisting}
 
@@ -21224,7 +21232,8 @@ struct elem_type_holder<k, tuple<T, Ts...>> {
   typedef typename elem_type_holder<k - 1, tuple<Ts...>>::type type;
 };
 \end{lstlisting}
-    \item With help of this helper function, we can implement get function in this way. \texttt{get} is template function, that is why you need to use \texttt{get<3>} to initilization it. 
+
+    \item With help of this helper function, we can implement \texttt{get} function in this way. \texttt{get} is template function, that is why you need to use \texttt{get<3>} to initialize it. 
 \begin{lstlisting}
 template <size_t k, class... Ts>
 typename std::enable_if<
@@ -21242,7 +21251,7 @@ get(tuple<T, Ts...>& t) {
 }
 \end{lstlisting}
 
-    \item Dont' be worry about performance of variadic template implementation. There's no actual recursion involved, all we have is a sequence of function calls pre-generated at compile-time. This sequence is, in practice, fairly short (variadic calls with more than 5-6 arguments are rare). Since modern compilers are aggressively inlining code, it's likely to end up being compiled to machine code that has absolutely no function calls. What you end up with, actually, is just like loop unrolling.
+    \item Don't worry about the performance of variadic template implementation. There's no actual recursion involved; all we have is a sequence of function calls pre-generated at compile-time. This sequence is, in practice, fairly short (variadic calls with more than 5-6 arguments are rare). Since modern compilers aggressively inline code, it's likely to end up being compiled to machine code that has absolutely no function calls. What you end up with is similar to loop unrolling.
 
     \item A good article is "Variadic templates in C++."
 
@@ -21254,14 +21263,18 @@ get(tuple<T, Ts...>& t) {
 \subsubsection{structured binding}
 \begin{itemize}
 
-    \item Structured bindings can be used for structures with public data members, raw C-style arrays, and tuple-like object. A structured binding declaration then performs the binding in one of three possible ways, depending on E:
+    \item Structured bindings can be used for structures with public data members, raw C-style arrays, and tuple-like object. A structured binding declaration then performs the binding in one of three possible ways, depending on the type:
         \begin{enumerate}
-            \item If E is an array type, then the names are bound to the array elements.
-            \item If E is a non-union class type and \texttt{std::tuple\_size<E>} is a complete type with a member named value (regardless of the type or accessibility of such member), then the "tuple-like" binding protocol is used.
-            \item If E is a non-union class type but \texttt{std::tuple\_size<E>} is not a complete type, then the names are bound to the accessible data members of E.
+            \item If type is an array type, then the names are bound to the array elements.
+            
+            \item If type is a non-union class type and \texttt{std::tuple\_size<E>} is a complete type with a member named value (regardless of the type or accessibility of such member), then the "tuple-like" binding protocol is used.
+            
+            \item If type is a non-union class type but \texttt{std::tuple\_size<E>} is not a complete type, then the names are bound to the accessible data members of type.
         \end{enumerate}
+    
+    
 
-    \item \texttt{std::tuple} has define its own \texttt{std::tuple\_size}, so it will use tuple-like binding protocal. If you want your customized class use tuple-like binding protocal, you also need define your own \texttt{std::tuple\_size} implementation. For the customized class, binding structure needs to know two important information, how many element? each element type. That is why we also need to implement \texttt{tuple\_element} and get function.
+    \item \texttt{std::tuple} has defined its own \texttt{std::tuple\_size}, so it will use tuple-like binding protocal. If you want your customized class use tuple-like binding protocal, you also need define your own \texttt{std::tuple\_size} implementation. For the customized class, binding structure needs to know two important information, how many element? each element type. That is why we also need to implement \texttt{tuple\_element} and get function.
 
 \begin{lstlisting}
 template< class... Types > //partial specification of std::tuple_size
@@ -21334,11 +21347,10 @@ MyStruct getStruct(){
 }	
 auto[id, val] = getStruct();
 
-for(const auto& [key,value] :map){
+for(const auto& [key,value] :map){ //That is very useful pattern. 
 	cout<<key<<value<<endl;
 }
 \end{lstlisting}
-	
 	
 	
     \item We can use qualifiers, such as const and references. Again, these qualifiers apply to the anonymous entity \texttt{e} as a whole.
@@ -21390,14 +21402,11 @@ First sum1(First&& first, Second&& second, Rest&&... rest){
 		return sum1(first+second, forward<Rest>(rest)...);
 }
 
-template<typename First, typename... Rest> //C++ 17
-First sum2(First&& first, Rest&&... rest){
-		return (first+ ... + rest);
+template<typename First, typename... Rest> //C++ 17, the first ...
+First sum2(First&& first, Rest&&... rest){  // the second ...
+		return (first+ ... + rest);   // the third ...
 }
 \end{lstlisting}
-\begin{description}
-	\item[Line 10-13] Pay attention to the three ... usages. the first one after \texttt{typename}, The second one after \texttt{T}, and the third one is before the \texttt{+}
-\end{description}	
 
     \item With help of fold expression, we can implement \texttt{std::all} much easier.
 \begin{lstlisting}
@@ -21417,12 +21426,14 @@ auto foldSum(T... s){
   return (0 + ... +s); 
 } 
 \end{lstlisting}
+
     \item The first operand might be special, such as:
 \begin{lstlisting}
 template<typename...T>
 void print (const T&... args){
   (std::cout<<...<<args)<<endl;
-} //print("hello", 42, "world") output hello42world.
+} 
+//print("hello", 42, "world") output hello42world.
 \end{lstlisting}
 
     \item If you want to output space, you can use this way.
@@ -21446,14 +21457,14 @@ void print(const First& firstarg, const Args&... args){
 
 	\item Below figure demonstrate relationship between previous three important modern c++ feature: variadic template, fold expression and structure binding. 
 \begin{center}
-	\includegraphics[width=0.80\linewidth]{pics/Variadic.png}
+	\includegraphics[width=0.75\linewidth]{pics/Variadic.png}
 \end{center}
 \end{itemize}
 
 \subsubsection{class template argument deduction}
 \begin{itemize}
 
-	\item Class template argument deduction(CTAD) is a big improvement in C++ 17. You can omit explicit definition of the template arguments if the constructor is able to deduce all template parameters. 
+	\item Class template argument deduction (CTAD) is a big improvement in C++ 17. You can omit explicit definition of the template arguments if the constructor is able to deduce all template parameters.
 
 \begin{lstlisting}
 std::vector<int> vi{1, 2, 3, 4, 5}; //C++ 11
@@ -21478,7 +21489,7 @@ auto p = std::make_pair(v.begin(), v.end());
 std::pair p{v.begin(), v.end()}; //use c++ 17 CTAD
 \end{lstlisting}
 
-    \item CTAD only use primary class constructor to deduct template argument. Sometimes, CTAD doesn't work, because it only used in some primary classes. Sometimes, CTAD doesn't deduct the type what you want. At this time, you can use deduction guides to help compiler.
+    \item CTAD only uses the primary class constructor to deduce template arguments. Sometimes, CTAD doesn't work because it can only be used in some primary classes. Additionally, sometimes CTAD doesn't deduce the type that you want. In such cases, you can use deduction guides to help the compiler.
 \begin{lstlisting}
 //primary class is empty, so no primary class constructor to use.
 template<typename T> struct wrap_ptr; 
@@ -21509,7 +21520,8 @@ template<typename T>
 wrap_ptr(shared_ptr<T>) -> wrap_ptr<shared_ptr<T>>;
 \end{lstlisting}
 
-	\item When CTAD can not deduct argument properly, we also can use deduction guide to help us. In below example, we want to get \textbf{Force Decay}, but when you use reference, it will not decay, in another word, array will not become pointer. So we add deduct guide to tell compiler take its argument by value, not by reference. If we use value to take argument, then decay will happen.
+	\item When CTAD cannot properly deduce the argument, we can also use a deduction guide to help us. In the example below, we want to get 'Force Decay.' However, when we use a reference, the array will not become a pointer and will not decay. Therefore, we add a deduction guide to tell the compiler to take its argument by value rather than by reference. If we use a value to take the argument, then decay will occur."
+	
 \begin{lstlisting}
 template<typename T>
 struct C{
@@ -21525,7 +21537,7 @@ C x{"hello"};
 //with the deduction guide, T is const char*
 \end{lstlisting}
 
-    \item In general, CTAD automatically works when class templates have constructors whose signatures mention all of the class template parameters. However, sometimes constructors themselves are templated, which breaks the connection that CTAD relies on. In below code, we want to make our \texttt{my\_pair} to accept any type array, then deduct T and U as the array type element type. According to the CTAD, we can just use primary class constructor(not template constructor) to deduct argument. So we can use deduct guide to deduct A type in our \#2 constructor, Change it to primary class constructor \#1 now, then compiler can use \#1 to continue its work properly.
+    \item In general, CTAD automatically works when class templates have constructors whose signatures mention all of the class template parameters. However, sometimes constructors themselves are templated, which breaks the connection that CTAD relies on. In the code below, we want to make our '\texttt{my\_pair}' class accept any type of array and deduce T and U as the element types of the array. According to CTAD, we can just use the primary class constructor (not the template constructor) to deduce the argument. Therefore, we can use a deduction guide to deduce the A type in our second constructor (\#2), change it to the primary class constructor \#1, and then the compiler can use \#1 to continue its work properly.
 
 \begin{lstlisting}
 template<typename T, typename U>
@@ -21537,13 +21549,13 @@ struct my_pair {
 };
 
 template<typename A>  // Deduction Guide
-my_pair(A[]) -> my_pair<A, A>; //my_pair<A, A> is #1 style now
+my_pair(A []) -> my_pair<A, A>; //my_pair<A, A> is #1 style now
 
 char ca[] = {'a', 'b'};
 my_pair mp2{ca}; // my_pair<char, char>, T and U ar char
 \end{lstlisting}
 
-    \item This code has some things to explain, \#1 is deduction guid, because it's a template, so can be specilized. \#2 just it's specilized. You can see the specification is simple, just to say when we input pointer array, change it to \texttt{string}. The third point is we also use explicit. then the specification deduction rule only used in constructor, not used in copy constructor. \textbf{That is a good example, it has demonstrate some common technologies which used in template deduction guide.}
+    \item This code has some things to explain. \#1 is the deduction guide because it's a template that can be specialized. \#2 is simply specialized. You can see that the specification is simple: just to say that when we input a pointer array, it should be changed to a \texttt{string}. The third point is that we also use '\texttt{explicit}'. Then, the specification deduction rule is only used in the constructor, not the copy constructor. This is a good example that demonstrates some common technologies that are used in template deduction guides.
 
 \begin{lstlisting}
 template<typename A> // Deduction Guide
@@ -21562,7 +21574,8 @@ my_pair mp4copy = stra; //use #1, deduct my_pair<const char*, const char*>
 
 \subsubsection{compile-time if}
 \begin{itemize}
-		\item Example of compile-time if.
+	
+	\item Example of compile-time if.
 \begin{lstlisting}
 template <typename T>
 std::string asString(T x){
@@ -21578,7 +21591,7 @@ std::string asString(T x){
 }
 \end{lstlisting}
 
-	\item Compile-Time if Impacts the Return Type.The return type of below function can be \texttt{int} or \texttt{void}. The code never compiles if the runtime if is used here. because both return statement are taken into account and they are conflict, when we use runtime if in the below code. When we use Compile-Time if, the code can compile, but has caveat. 
+	\item The Compile-Time if statement impacts the return type of the function below. The return type can be either \texttt{int} or \texttt{void}. If a runtime if statement is used in this code, it will never compile because both return statements will be taken into account, resulting in a conflict. When we use a Compile-Time if statement, the code can compile, but there is a caveat.
 \begin{lstlisting}
 quto foo(){
 	if constexpr(sizeof(int)>4){
@@ -21629,7 +21642,7 @@ else if constexpr(is_convertible_v<cat, bidirectional_access_iterator_tag){
 \subsubsection{other features}
 \begin{itemize}
 	
-	\item Lambdas is constexpr implicitly. The compiler will help you to decide it. If it's not constexpr lambdas, when you use in constexpr context, then compiler will report error. 
+	\item Lambdas are implicitly constexpr, and the compiler will determine this. If a lambda is not constexpr, and you try to use it in a constexpr context, the compiler will report an error.
 \begin{lstlisting}
 auto squared = [](auto val){return val*val;};
 std::array<int, squared(5)> a; //Don't need constexpr when you define squared lambda.	
@@ -21645,7 +21658,7 @@ Class C{
 };	
 \end{lstlisting}	
 	
-    \item Aggregate init,in C++ 17, aggregate initialization can have base class.
+    \item In C++ 17, aggregate initialization can have base class.
 \begin{lstlisting}
 struct Data{
   std::string name;
@@ -21659,7 +21672,7 @@ struct MoreData : Data{
 MoreData y{{"test1", 6.77}, false}; //support base class
 \end{lstlisting}
 
-    \item Mandatory copy elision. In C++ 17, copy elision is Mandatory, don't need any copy and move ctor in \texttt{MyClass}.
+    \item Mandatory copy elision. In C++ 17, copy elision is mandatory, don't need any copy and move constructor in \texttt{MyClass}.
 \begin{lstlisting}
 class MyClass
 void foo(MyClass param)...
@@ -21684,18 +21697,20 @@ foo(bar()); // use returned temporary to init parameter.
 
 \subsubsection{define new conception}
 \begin{itemize}
-    \item There are two ways to define concept: 1) concept expression 2) requires expression.
+	
+    \item There are two ways to define a concept: 1) using a concept expression, and 2) using a requires expression.
+    
 \begin{lstlisting}
 template < template-parameters>
 concept _conceptName_ = _conceptExpression_;
 
-template < template-parameters>
+template < template-parameters>  //require expression
 concept _conceptName_ = requires(_arguments_) {
    _conceptExpression_;
 };
 \end{lstlisting}
 
-	\item Below is a simple example. concept is C++ keyword, mainly used in template. Define a new concept from existing concept.
+	\item Below is a simple example using the C++ keyword '\texttt{concept}', which is mainly used in templates. We define a new concept based on an existing concept.
 \begin{lstlisting}
 template<typename T> 
 concept Any = true;
@@ -21704,9 +21719,9 @@ template <typename T>
 concept Number = std::integral<T> || std::floating_point<T>;	
 \end{lstlisting}
 
-    \item When you define concept, you use \textbf{requires expression}; When you use concept, you use \textbf{requires clauses}.
+    \item When you define a concept, you use \textbf{requires expression}; When you use concept, you use \textbf{requires clauses}, they are different.
     
-    \item We can simply express that we require a template parameter support a certain operation or operator by wishful writing. If you require that template parameters are addable you can create a concept for that:
+    \item We can express our requirement for a template parameter to support a certain operation or operator through wishful writing. For example, if you require template parameters to be addable, you can create a concept for that.
 
 \begin{lstlisting}
 template <typename T>
@@ -21720,7 +21735,7 @@ concept HasPower = requires (T t, int exponent) {
 };
 \end{lstlisting}
 
-    \item We can also use a requires-expression for other purposes than declaring a concept:
+    \item We can also use a requires-expression for other purposes than declaring a concept, such as define a constexpr variable.
 
 \begin{lstlisting}
 template <typename T>
@@ -21728,6 +21743,7 @@ void clever_swap(T& a, T& b) {
   constexpr bool has_member_swap = requires(T a, T b){ 
     a.swap(b); 
   };
+
   if constexpr (has_member_swap) {
     a.swap(b);
   }
@@ -21738,7 +21754,7 @@ void clever_swap(T& a, T& b) {
 }
 \end{lstlisting}
 
-    \item In order for these expressions to work, function square() doesn’t have to return precisely \texttt{int}. If it returns \texttt{short} it will work for us too. If you want the type to be convertible to \texttt{int}, the syntax for it is:
+    \item In order for these expressions to work, function \texttt{square()} doesn’t have to return precisely \texttt{int}. If it returns \texttt{short} it will work for us too. If you want the type to be convertible to \texttt{int}, the syntax for it is:
 
 \begin{lstlisting}
 template <typename T>
@@ -21747,7 +21763,7 @@ concept HasSquare = requires (T t) {
 }; 
 \end{lstlisting}
 
-	\item With concepts, you can require both syntactic and semantic conditions. In terms of syntactic requirements, imagine that you can impose the existence of certain functions in the API of any class. For example, you can create a concept Car that requires the existence of an accelerate function:
+%	\item With concepts, you can require both syntactic and semantic conditions. In terms of syntactic requirements, imagine that you can impose the existence of certain functions in the API of any class. For example, you can create a concept \texttt{Car} that requires the existence of an \texttt{accelerate} function:
 
 
 \end{itemize}
@@ -21763,7 +21779,7 @@ std::cout << "(in C++11) int is the same as long: " << std::is_same_v<int, long>
 std::cout << "int is the same as long: " << std::same_as<int, long> << std::endl;
 \end{lstlisting}
 
-    \item use new concept: four different ways to use concept.
+    \item use a new concept: four different ways to use concept.
 \begin{lstlisting}
 #include <concepts>
 
@@ -21771,28 +21787,27 @@ template <typename T>
 concept Number = std::integral<T> || std::floating_point<T>;
 
 template <typename T>
-requires Number<T>
+requires Number<T>  //1) Use requires clause
 auto addRequiresClause(T a, T b) {
 	return a+b;
 }
 
-template <typename T>
+template <typename T> //2) trailing position
 auto addTrailingRequiresClause(T a, T b) requires Number<T> {
 	return a+b;
 }
 
-template <Number T>
+template <Number T> //3) use concetp directly in template 
 auto addConstrainedTemplate(T a, T b) {
 	return a+b;
 }
 
 auto addAbbreviatedFunctionTemplate(Number auto a, Number auto b) {
-	return a+b;
-} //That is call conception auto variable usage.
+	return a+b;  //4) That is call conception auto variable usage.
+} 
 \end{lstlisting}
 
-
-\item You can use concept to constraint the function parameter or function return value.
+	\item You can use concept to constraint the function parameter or function return value.
 \begin{lstlisting}
 template<typename T>
 concept IntCon = std::integral<T>;
@@ -21807,18 +21822,15 @@ cout<<returnInt<int>()<<endl;  //OK
 cout<<returnInt<float>()<<endl; //compile error
 \end{lstlisting}
 
-\item In template class, use require clause.
+	\item In template class, use require clause or use concept directly.
 \begin{lstlisting}
 template <typename T>
-requires Number<T>
+requires Number<T>  // this is requires clause.
 class WrappedNumber {
 	...
 };
-\end{lstlisting}
 
-\item In template class, you can also use require clause in this way.
-\begin{lstlisting}
-template <Number T>  //pay attention here.
+template <Number T>  //pay attention here, use concept directly.
 class WrappedNumber {
 	...
 };
@@ -21837,12 +21849,12 @@ class WrappedNumber {
 \subsection{module}
 \begin{itemize}
 	
-	\item Advantage of module.
+	\item Advantages of module are below:
 	\begin{enumerate}
-		\item No need to write separate files for the interface (.h) and the implementation (.cpp)
-		\item Faster compile / recompile times
-		\item No need for include guards	
-		\item Modules don’t have ‘side-effects’ so the order in which modules are imported is not important
+		\item No need to write separate files for the interface (.h) and the implementation (.cpp). 
+		\item Faster compile / recompile times.
+		\item No need for include guards.	
+		\item Modules don’t have ‘side-effects’ so the order in which modules are imported is not important.
 		\item Precompiled headers can be a very effective way of speeding up compile times. Also, removing implementation details from the interface file (e.g. using the PIMPL idiom) reduces the ‘ripple effect’ and prevents unnecessary recompilation when small changes are introduced.
 	\end{enumerate}
 
@@ -21868,7 +21880,6 @@ export namespace math {
 }	
 \end{lstlisting}	
 	
-	
     \item The first module example based on previous module structure. This is file func.cxx. compile with: g++ -c -std=c++20 -fmodules-ts func.cxx. g++ generates func.o and a gcm.cache/mod.gcm.
 \begin{lstlisting}
 module; // 1) global module fragment
@@ -21888,7 +21899,7 @@ void func2(){
 }
 \end{lstlisting}
 \begin{description}
-    \item[Source code] There are three parts: 1) global module fragment, that is where we include things we need. 2) main module, which we can export type and behaviour. 3) private fragment. Purpose of private fragment is to separate implementation with interface. If we change implementation in the private module, client code doesn't need to re-compile. We can also put interface and module implementation into different files. 
+    \item[Source code] There are three parts: 1) global module fragment, that is where we include things we need. 2) main module, which we can export type and behavior. 3) private fragment. Purpose of private fragment is to separate implementation with interface. If we change implementation in the private module, client code doesn't need to re-compile. We can also put interface and module implementation into different files. 
     
 \end{description}
 
@@ -21917,7 +21928,7 @@ g++ -c -std=c++20 -fmodules-ts func_impl.cxx
 g++ main.o func.o func_impl.o -o App
 \end{lstlisting}
 
-    \item Assuming we have multiple functions, we want to export, the standard allows export block.
+    \item If we have multiple functions that we want to export, the standard allows us to use an export block.
 
 \begin{lstlisting}
 export module mod;
@@ -21931,35 +21942,330 @@ export { //use export block
 \end{itemize}
 
 \subsection{coroutine}
+\subsubsection{basic implementation of coroutine}
 \begin{itemize}
-	\item 
-	\includegraphics[width=.9\linewidth]{pics/cor1.png}
+	\item In C++, coroutines are a language feature introduced in C++20 that allows a function to be executed asynchronously and cooperatively. Coroutines provide a way to write code that can be suspended and resumed later, allowing for non-blocking I/O operations and efficient event-driven programming. A coroutine is a special type of function that can be paused at any point during its execution and resumed later. The main difference between a coroutine and a regular function is that a coroutine can be paused and resumed without losing its state. This allows a coroutine to perform I/O operations without blocking the thread or process, which makes them particularly useful for writing high-performance network servers and other event-driven applications.
 	
-	\includegraphics[width=.9\linewidth]{pics/cor2.png}
+	\item Four important concepts in the coroutine.
 	
-		\includegraphics[width=.9\linewidth]{pics/cor3.png}
+	\begin{center}
+		\includegraphics[width=.5\linewidth]{pics/cor2.png}
+	\end{center}
+
+	\begin{center}
+		\begin{tabular}{|c|c|}
+			\hline
+			concept	& c++ coroutine  \\
+			\hline
+			invoke	&  call coroutine directly \\
+			\hline
+			Finalize & con\_return \\
+			\hline
+			Suspend	& co\_await, co\_yield  \\
+			\hline
+			Resume	& coroutine\_hand<P>::resume()  \\
+			\hline
+		\end{tabular}
+	\end{center}
+	
+	
+	
+	\item In implementation level, The compiler will generate a coroutine framework of code around your coroutine. This code relies on \textbf{user-defined return and promise types}. Until we get some standard types in C++23, you will need to write these yourself. The coroutine frame includes three important component, they are handle, promise and awaitable. 
+	
+	\begin{center}
+		\includegraphics[width=.63\linewidth]{pics/cor1.png}
+	\end{center}
+	
+	
+	\item We need to make the \texttt{coroutine\_handle} available to caller. To do that, we pass it through the \texttt{get\_return\_object()} call where we create it from the promise instance. Then the caller can either call resume() or destroy() on the suspended coroutine. Note that calling these methods on a coroutine that isn't suspended is undefined behaviour. It also makes sense to make the caller-level type move-only to avoid confusion over the handle ownership.
+	
+\begin{lstlisting}
+struct ReturnType { //This is user-defined return type
+	struct promise_type { 	// user-defined coroutine level promise type
+		using Handle = std::coroutine_handle<promise_type>;
+		Task get_return_object() {
+			return Task{Handle::from_promise(*this)};
+		}
+		std::suspend_always initial_suspend() { return {}; }
+		std::suspend_never final_suspend() noexcept { return {}; }
+		void return_void() { }
+		void unhandled_exception() { }
+	};
+	explicit Task(promise_type::Handle coro) : coro_(coro) {}
+	void destroy() { coro_.destroy(); }
+	void resume() { coro_.resume(); }
+	// Making Task move-only:
+	ReturnType(const ReturnType&) = delete;
+	ReturnType& operator=(const ReturnType&) = delete;
+	ReturnType(ReturnType&& t) noexcept : coro_(t.coro_) { t.coro_ = {} }
+	ReturnType& operator=(ReturnType&& t) noexcept {
+		if (this == &t) return *this;
+		if (coro_) coro_.destroy();
+		coro_ = t.coro_;
+		t.coro_ = {};
+		return *this;
+	}
+private:
+	promise_type::Handle coro_;
+};
+ReturnType myCoroutine() {
+	co_return; // make it a coroutine
+}
+int main() {
+	auto c = myCoroutine();
+	c.resume();
+}
+\end{lstlisting}
+
+	\item ReturnType, \texttt{promise\_type}, and coroutine\_handle are the main tools of the coroutine mechanism. \texttt{promise\_type} is a type within ReturnType.
+	
+	\item The programmer's design for a coroutine (such as what type of value it returns, whether it suspends or continues execution after initialization, how it handles exceptions, etc.) is passed to the compiler through \texttt{promise\_type}, which is responsible for instantiating the promise object. The compiler fills the coroutine handle (coroutine\_handle) into the future object, exposing control of the coroutine to the caller.
+
+\begin{center}
+	\begin{tabular}{| p{0.25\textwidth} |p{0.5\textwidth}|p{0.1\textwidth}|}
+		\hline
+		\textbf{promise\_type Interface} & \textbf{Function} & \textbf{Required} \\ \hline
+		initial\_suspend() & Used to customize when the coroutine body begins execution & Yes \\ \hline
+		final\_suspend() & Used to customize the behavior of the coroutine body after it completes & Yes \\ \hline
+		get\_return\_object() & Used to obtain the holder that contains the coroutine return value & Yes \\ \hline
+		unhandled\_exception() & Used to customize the behavior when an exception occurs during coroutine execution & Yes \\ \hline
 		
-			\includegraphics[width=.9\linewidth]{pics/cor4.png}
+		\specialcell[t]{return\_value(T) \\ return\_void()} & Used to customize the behavior of the co\_return xxx; statement in the coroutine body & No \\ \hline
+		
+		
+		yield\_value() & Used to customize the behavior of the co\_yield xxx; statement in the coroutine body & No \\ \hline
+		await\_transform() & Used to customize the behavior of the co\_await xxx; statement in the coroutine body. When this method is defined, the compiler will transform every co\_await xxx; in the coroutine body to co\_await promise.await\_transform(xxx) & No \\ \hline
+	\end{tabular}
+	
+\end{center}
+
+	
+	
+	\item \texttt{coroutine\_handle} also exposes multiple interfaces for controlling coroutine behavior and accessing its state. Unlike \texttt{promise\_type}, where we need to provide implementations for the interfaces since they are called by the compiler, \texttt{coroutine\_handle} interfaces do not require us to provide implementations as we can directly call them.
 	
 	\begin{tabular}{|c|c|}
 		\hline
-	concept	& c++ coroutine  \\
-		\hline
-	invoke	&  No change \\
-		\hline
-	Finalize	& con\_return \\
-		\hline
-	Suspend	& co\_await, co\_yield  \\
-		\hline
-	Resume	& coroutine\_hand<P>::resume()  \\
-		\hline
+		\textbf{coroutine\_handle Interface} & \textbf{Function} \\ \hline
+		from\_promise() & Create a coroutine\_handle from a promise object \\ \hline
+		done() & Check if the coroutine has completed \\ \hline
+		operator bool & Check if the current handle is a coroutine \\ \hline
+		operator() & Resume the execution of a coroutine \\ \hline
+		resume() & Resume the execution of a coroutine \\ \hline
+		destroy() & Destroy a coroutine \\ \hline
+		promise() & Get the promise object associated with the coroutine \\ \hline
+		address() & Return a pointer to the coroutine\_handle \\ \hline
+		from\_address() & Import a coroutine\_handle from a pointer \\ \hline
 	\end{tabular}
 
+	\item The execution process of a coroutine follows a basic pattern, but there are some customizable points (such as \texttt{initial\_suspend}) where you can input your own behaviors to control the behavior of the coroutine. The basic pattern is illustrated by below figure.
+	
+	\begin{center}
+		\includegraphics[width=.66\linewidth]{pics/cor3.png}
+	\end{center}
+
+
+
+	\item Similarly to the promise type, the compiler will generate code around the awaitable type. If the promise type provides a await\_transform(expr); method, the co\_await expr; call will be transformed into co\_await promise.await\_transform(expr);. Therefore, the promise type can control which awaitable types are allowed to appear inside the coroutine body and potentially return different awaitables based on the expression (note that expr here doesn't have to be awaitable).
+	\begin{enumerate}
+		\item 	Returning void or true indicates that the coroutine will yield back to the function that originally called or resumed it after suspension. 
+		
+		\item Returning false will resume the execution of the current coroutine, but unlike when await\_ready returns true, the coroutine has already been suspended, so await\_suspend returning false is equivalent to suspending and immediately resuming it.
+		
+		\item 	Returning another coroutine's coroutine\_handle object will resume the execution of the corresponding coroutine.
+		
+		\item 	Throwing an exception will resume the execution of the current coroutine and throw the exception within the coroutine."
+	\end{enumerate}
+
+		
+	\begin{center}
+		\includegraphics[width=.76\linewidth]{pics/cor4.png}
+	\end{center}
+
+	\item Based on the previous introduction, below is a concise version of the code that the compiler generates when it expands your coroutine code.
+
+\begin{lstlisting}
+template <typename R, typename... Args> // Given coroutine function, 
+R Func(Args... args) {
+	auto ret = co_await Awaiter();
+	co_yield ret;
+	co_return;
+}
+
+// compiler expand coroutine function to below code
+template <typename R, typename... Args>
+R Func(Args... args) {
+	using promise_t = typename coroutine_traits<R, Args...>::promise_type;
+	
+	promise_t promise;  // put it head, not stack, just for illustration purpose
+	auto __return__ = promise.get_return_object();
+	co_await promise.initial_suspend(); //initial_suspend is called here.
+	
+	try {		
+		auto &&value = Awaiter();  // auto ret = co_await Awaiter();
+		auto &&awaitable=get_awaitable(promise, static_cast<decltype(value)>(value));
+		auto &&awaiter = get_awaiter(static_cast<decltype(awaitable)>(awaitable));
+		if (!awaiter.await_ready()) {
+			using handle_t = std::coroutine_handle<Promise>;
+			using await_suspend_result_t =
+			decltype(awaiter.await_suspend(handle_t::from_promise(promise)));
+			// coroutine suspend
+			if constexpr (std::is_void_v<await_suspend_result_t>) {
+				awaiter.await_suspend(handle_t::from_promise(promise));
+				return __return__;  // give control to caller or resumer
+			} else {
+				static_assert(std::is_same_v<await_suspend_result_t, bool>,
+				"await_suspend() must return 'void' or 'bool'.");
+				if (awaiter.await_suspend(handle_t::from_promise(promise))) {
+					return __return__;  // give control to caller or resumer
+				}
+			}
+			// resume pointer, come here after call handle.resume()
+		}
+		auto ret = awaiter.await_resume();  // return resume value
+		
+		co_await promise.yield_value(ret);  	// co_yield ret;
+	
+		promise.return_void(); 	// co_return;
+		goto final_suspend;
+	} catch (...) {
+		promise.set_exception(std::current_exception());
+	}
+	
+	final_suspend:
+	co_await promise.final_suspend();
+}	
+\end{lstlisting}
 
 \item Three codes examples are here:
 https://github.com/zhaoyan/coroutine\_examples/
 \end{itemize}
 
+\subsubsection{usage of coroutine}
+\begin{itemize}
+	\item the first example is ge generateo, let us to see the client code first. 
+	
+\begin{lstlisting}
+Generator sequence() {
+	int i = 0;
+	while (true) {
+		co_await i++;
+	}
+}
+
+int main() {
+	auto gen = sequence();
+	for (int i = 0; i < 5; ++i) {
+		std::cout << gen.next() << std::endl;
+	}
+}	
+\end{lstlisting}
+
+\begin{lstlisting}
+struct Generator {
+	// return type must includes promise_type.
+	struct promise_type {
+		int value;
+		
+		// for co_await 
+		std::suspend_always await_transform(int value) {
+			this->value = value;
+			return {};
+		}
+		//boiler plate code, will call Cenerator constructor in 
+		//
+		 Generator get_return_object() {
+			return Generator{ std::coroutine_handle<promise_type>::from_promise(*this) };
+		}
+		//suspend in the beginning
+		std::suspend_always initial_suspend() { return {}; };
+		//don't suspend in the end.
+		std::suspend_never final_suspend() noexcept { return {}; }
+		//suppose has not exception, so keep it empty here.
+		void unhandled_exception() { }
+		
+		//no return value
+		void return_void() { }
+	};
+	std::coroutine_handle<promise_type> handle;
+	explicit Generator(std::coroutine_handle<promise_type> handle) noexcept
+	 : handle(handle) {}
+	 
+	 ~Generator() {
+	 	if (handle) handle.destroy();
+	 }
+	
+	int next() {
+		handle.resume();
+		return handle.promise().value;
+	}
+};	
+\end{lstlisting}
+
+	
+	
+	\item In a true asynchronous application, it is not necessary to synchronize between threads after every task is executed like this. Instead, new work should be appended onto existing tasks, and the return value of the preceding task should be passed as a parameter to the next task after it finishes.
+	
+	\item use call back implement async
+\begin{lstlisting}
+template <std::invocable<int> F>
+void async_sqr_cbk(const int value, F&& continuation)
+{
+	std::thread thr([v = value, c = std::forward<F>(continuation)]() mutable
+	{
+		c(slow_sqr(v));
+	});
+	thr.detach();
+}	
+\end{lstlisting}
+
+\item if you want to sync, use future. 
+\begin{lstlisting}
+void sync_func()
+{
+	std::promise<void> pms;
+	std::future<void> ftr = pms.get_future();
+	async_sqr_cbk(7, [p = std::move(pms)](const int result) mutable
+	{
+		std::cout << "result = " << result;
+		p.set_value();
+	});
+	ftr.get();
+}
+\end{lstlisting}
+
+\item The most interesting thing is callback hell, that is very bad
+
+\begin{lstlisting}
+void power_8(const int value){
+	std::promise<void> pms;
+	std::future<void> ftr = pms.get_future();
+	async_sqr_ftr(value, [p = std::move(pms)](const int squared) mutable
+	{
+		async_sqr_ftr(squared, [p = std::move(p)](const int fourth) mutable
+		{
+			async_sqr_ftr(fourth, [p = std::move(p)](const int result) mutable
+			{
+				std::cout << "result = " << result;
+				p.set_value();
+			});
+		});
+	});
+	ftr.get();
+}	
+\end{lstlisting}
+
+\item coroutine implementation, much better now.
+
+\begin{lstlisting}
+task<void> power_8_async(const int value){
+	const int squared = co_await async_sqr_coro(value);
+	const int fourth = co_await async_sqr_coro(squared);
+	const int result = co_await async_sqr_coro(fourth);
+	std::cout << "result = " << result;
+}		
+\end{lstlisting}
+
+\end{itemize}
 
 \subsection{others}
 
@@ -21998,7 +22304,7 @@ Hexadecimal:    0x1.8p+0 0X1.4CCCCCCCCCCCDP+0
 \section{Example of Modern C++}
 \begin{itemize}
     
-	\item We want to build a function to make an array, the basic idea is just like make\_pair. One implementation looks like below:
+	\item We want to build a function to make an array, the basic idea is just like make\_pair. One implementation looks like below: We mainly use three features in C++11/14: 1) \texttt{std::array}, 2) list initilization(return \{\} ) 3) variadic templates.
 
 \begin{lstlisting}
 template<typename VT, typename ... Params>
@@ -22008,11 +22314,9 @@ std::array<VT, sizeof ... (Params)+1> get_data(
 }
 \end{lstlisting}	
 
-\begin{description}
-	\item[Source code] We mainly use three features in C++11/14: 1) array, 2) list initilization(return ) 3) variadic templates.  
-\end{description}
 
-\item With help of modern C++, \texttt{get\_data} can become a little easier. That is not make C++ easier to teach, but it does allow for a high level of efficiency. comparing with previous example, VT disappear is not because fold expression substitude recursive variadic template defenition, it is because that we can deduce the array type from params automatically(C++ 17). Params ... args is valid declaration, if you just want to forward it into some function. An example is make\_unique. 
+
+	\item With help of modern C++, \texttt{get\_data} can become a little easier. That is not make C++ easier to teach, but it does allow for a high level of efficiency. Comparing with previous example, VT disappear is not because fold expression substitude recursive variadic template defenition, it is because that we can deduce the array type from params automatically(C++ 17). Params ... args is valid declaration, if you just want to forward it into some function. 
 \begin{lstlisting}
 auto get_data(const auto& ...params){
 	return std::array{std::forward<decltype(params)>(params)...};
@@ -22048,16 +22352,16 @@ void print_map(const auto& map, const std::string_view key_desc = "key",
 
 \begin{enumerate}
     \item C++ 98: const, template and STL
-    \item C++ 11: std::array, list initialization, variadic template, constexpr, auto, lambdas, range-base for loops, rvalue references, default and deleted functions, smart pointers
+    \item C++ 11: \texttt{std::array}, list initialization, variadic template, constexpr, auto, lambdas, range-base for loops, rvalue references, default and deleted functions, smart pointers
     \item c++ 14: generic and variadic lambdas, return type deducitons, std::make\_unique.
-    \item C++ 17: structured bindings, string\_view, class template argument deduction, guaranteed copy elision, fold Expressions.
+    \item C++ 17: structured bindings, \texttt{std::string\_view}, class template argument deduction, guaranteed copy elision, fold Expressions.
     \item C++ 20: format, range, concept. 
 \end{enumerate}
 
 \end{itemize}
 
 \section{To be continue...}
-In 2020, when I am writing this book,  C++ standard just issue newest C++ standard: \textbf{C++20}. So next edition(Sixth edition) of this book will cover more features in C++20: Concept, Range, Modules, concurrent. At the same time, I will add another two important chapters: test and internet. They are also very important for modern software development. Another improvement will focus more content and detail explanation in Moder C++ chapter. Every year, I will publish new edition to cover new content. 
+In 2020, when I am writing this book,  C++ standard just issue newest C++ standard: \textbf{C++20}. So next edition(Sixth edition) of this book will cover more features in C++20: Concept, Range, Modules, concurrent. At the same time, I will add another two important chapters: Library and Embedded. Another improvement will focus more content and detail explanation in Moder C++ chapter. Every year, I will publish new edition to cover new content. 
 \newline
 \textbf{"I'll be back"}
 
