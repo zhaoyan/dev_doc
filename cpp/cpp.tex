@@ -19983,34 +19983,27 @@ int read_line(int fd, char *buf, int size) {
 	
 	\item All exceptions pattern. When you get opposite FIN, only means that opposite will not send any message.  You can still send out messages to opposite even you get FIN from opposiste. When you write all data, you can close socket from your direction. FIN will be sent out by close(shutdown) or application crash.  It's different with power off. 
 
-	\item After TCP connection establishment, the ways to perceive the TCP link are limited, one is read-based reading operation, the other is write-based writing operation. Next, we will explore how to detect abnormal situations through reading and writing operations, and the corresponding processing methods.
+	\item After TCP connection establishment, the ways to perceive the TCP link are limited, one is reading operation, the other is writing operation. Next, we will explore how to detect abnormal situations through reading and writing operations, and the corresponding processing methods.
 	
 	
-	There are many reasons that can cause a network interruption. In this case, the TCP program cannot perceive the abnormal information in time unless other devices in the network, such as routers, send an ICMP message indicating that the destination network or host is unreachable. At this time, the read or write call will return an "Unreachable" error.
+	\item There are many reasons that can cause a network interruption. In this case, the TCP program cannot perceive the abnormal information in time unless other devices in the network, such as routers, send an ICMP message indicating that the destination network or host is unreachable. At this time, the read or write call will return an "Unreachable" error. Unfortunately, most of the time this is not the case. Without an ICMP message, the TCP program cannot understand and detect connection abnormalities. If the program is blocked in a read call, then unfortunately, the program cannot recover from the exception. This is obviously very unreasonable, but we can solve this problem by setting a timeout for the read operation. 
 	
-	Unfortunately, most of the time this is not the case. Without an ICMP message, the TCP program cannot understand and detect connection abnormalities. If the program is blocked in a read call, then unfortunately, the program cannot recover from the exception. This is obviously very unreasonable, but we can solve this problem by setting a timeout for the read operation. I will discuss the specific method in Lecture 18.
-	
-	If the program first calls the write operation to send a stream of data and then blocks in the read call, the result will be very different. The Linux TCP protocol stack will continuously attempt to send the data in the send buffer. After about 12 retransmissions, totaling about 9 minutes, the protocol stack will mark the connection as abnormal. At this time, the blocked read call will return a "TIMEOUT" error message. If the program persists in writing data to this connection, the write operation will immediately fail and return a SIGPIPE signal to the application.
+	\item If the program first calls the write operation to send a stream of data and then blocks in the read call, the result will be very different. The Linux TCP protocol stack will continuously attempt to send the data in the send buffer. After about 12 re-transmissions, totaling about 9 minutes, the protocol stack will mark the connection as abnormal. At this time, the blocked read call will return a "TIMEOUT" error message. If the program persists in writing data to this connection, the write operation will immediately fail and return a SIGPIPE signal to the application.
 	
 	
-	When the system crashes suddenly, such as during a power outage, there is no time for the network connection to send anything out. Unlike killing an application through a system call, no FIN packet is sent out.
+	\item When the system crashes suddenly, such as during a power outage, there is no time for the network connection to send anything out. Unlike killing an application through a system call, no FIN packet is sent out. This situation is very similar to the result of a network interruption. Without an ICMP message, the TCP program can only obtain information about the network connection exception through read and write calls, and a timeout error is a common result.
 	
-	This situation is very similar to the result of a network interruption. Without an ICMP message, the TCP program can only obtain information about the network connection exception through read and write calls, and a timeout error is a common result.
-	
-	However, there is another situation to consider, which is when the system restarts after crashing. When the retransmitted TCP packets reach the restarted system, since there is no connection data corresponding to the TCP packets in the system, the system will return a RST reset segment. The TCP program can handle the RST through read or write calls.
-	
-	If it is a blocking read call, an error will be returned immediately, and the error message will be "Connection Reset".
-	
-	If it is a write operation, it will also fail immediately, and the application program will be returned a SIGPIPE signal.
+	\item However, there is another situation to consider, which is when the system restarts after crashing. When the retransmitted TCP packets reach the restarted system, since there is no connection data corresponding to the TCP packets in the system, the system will return a RST reset segment. The TCP program can handle the RST through read or write calls. If it is a blocking read call, an error will be returned immediately, and the error message will be "Connection Reset". If it is a write operation, it will also fail immediately, and the application program will be returned a SIGPIPE signal.
 	
 	
-	When the remote end sends a FIN packet, there are two possible scenarios: the remote end explicitly closes the connection by calling close or shutdown, or the remote application crashes and the operating system kernel cleans up the connection on its behalf. From the application's perspective, it is impossible to distinguish between the two scenarios.
+	\item When the remote end sends a FIN packet, there are two possible scenarios: the remote end explicitly closes the connection by calling close or shutdown, or the remote application crashes and the operating system kernel cleans up the connection on its behalf. From the application's perspective, it is impossible to distinguish between the two scenarios.
 	
-	After a blocking read operation completes reading the expected data, the FIN packet is acknowledged by returning an EOF to complete the notification. At this point, the return value of the read operation is 0. It should be emphasized that the read operation does not return immediately upon receiving the FIN packet. You can think of receiving the FIN packet as placing an EOF marker in the receive buffer, which does not affect the previously received data in the receive buffer.
+	\item After a blocking read operation completes reading the expected data, the FIN packet is acknowledged by returning an EOF to complete the notification. At this point, the return value of the read operation is 0. It should be emphasized that the read operation does not return immediately upon receiving the FIN packet. You can think of receiving the FIN packet as placing an EOF marker in the receive buffer, which does not affect the previously received data in the receive buffer.
 	
+	\item The below figure illustrate the above various exceptions when you perform socket I/O. 
 	\begin{center}
 	\includegraphics[width=0.66\linewidth]{pics/net_ex.png}
-\end{center}
+	\end{center}
 
 
 \item If no FIN, then use setsockopt to set waiting time.
@@ -20190,7 +20183,7 @@ int main() {
 
 	\item The basic data structure behind of epoll function is illustrated by below figure.
 \begin{center}
-	\includegraphics[width=0.65\linewidth]{pics/epoll1.png}
+	\includegraphics[width=0.55\linewidth]{pics/epoll1.png}
 \end{center}
 \end{itemize}
 
@@ -20222,9 +20215,9 @@ int main() {
 	\begin{enumerate}
 		\item Write a test(red): describe expected feature. 
 		
-		\item Write your code to make the test to pass(green): code is logic right and suitable. because we make it pass the test, and the test is our expected feature, so the code is \textbf{both we want and right}.
+		\item Write your code to make the test pass (green). The code should be logically correct and suitable. Since we make it pass the test, and the test is our expected feature, the code is \textbf{both what we want and correct}.
 		
-		\item Optimize the design(refactor): When the basic code is right, we need to improve it on the whole code base.  Why we have confidence to refactor, because when we finish the refactor, we can use tests to approve it. 
+		\item Optimize the design (refactor): When the basic code is correct, we need to improve the whole codebase. We have confidence in refactoring because we can use tests to verify the changes once we finish. "
 	\end{enumerate}
 
 	\item The three rules of TDD:
@@ -20245,9 +20238,9 @@ int main() {
 		
 	\item When doing TDD, you write the tests first. You strive to keep the granularity of tests small and consistent. You don't seek to write tests that cover a wide swath of functionality. The responsibility for such end-to-end tests lies elsewhere, perhaps in the realm of acceptance tests/ or system tests. 
 	
-	\item \textbf{test behavior, not methods.} think of your tests as examples that describe, or document, the behavior of your system. 
+	\item \textbf{Test behavior, not methods.} think of your tests as examples that describe, or document, the behavior of your system. 
 		
-	\item if your code make a test fail and you can't resolve it within 10mins. maybe you should discard your current effort and start over. Do I need to follow this rule strictly? 
+	\item If your code make a test fail and you can't resolve it within 10mins. maybe you should discard your current effort and start over. Do I need to follow this rule strictly? In fact, it is a guideline, not a hard and fast rule that you must follow strictly. It suggests that if you are stuck on a particular problem for an extended period of time, it may be more efficient to start over rather than continuing to try and fix the problem. However, it's important to use your judgment and consider the context of the situation. If you feel that you are making progress and can eventually solve the issue, it may be worth continuing to work on it. Ultimately, the decision to discard your current effort and start over should be based on the specific circumstances and your own judgment.
 		
 	\item When you find defect, also follow test fail, write code to pass and refactor.
 	
@@ -20255,20 +20248,27 @@ int main() {
 		
 	\item why TDD?
 		\begin{enumerate}
-			\item Before you coding, use a test to describe your requirement, \textbf{make sure your requirement is right}
-			\item Give test good name, \textbf{Use it as document}
-			\item Using your test, \textbf{make sure you implementation is right }
-			\item Write only one or small number test, \textbf{make sure we follow small incrementalism}
-			\item When you coding, \textbf{make sure not too wide, not too deep}
-			\item After coding, \textbf{make sure refactoring correct.} Two refactor methods: (avoid duplicate, and SRP and small method, increase expressive, such as introducing an abstraction such as new member function or class. )
-			\item when you write next test, you are doing a kind of \textbf{incremental design}.
+			\item Before you coding, use a test to describe your requirement, it helps to make sure your requirement is right.
+			
+			\item Give your tests descriptive names and use them as documentation.
+			
+			\item Use your test to make sure your implementation is correct.
+			
+			\item Write only one or a small number of tests to ensure that you follow small incrementalism.
+			
+			\item When you code, make sure not to go too wide or too deep.
+			
+			\item After coding, make sure your refactoring is correct. There are two refactoring methods: avoid duplication and use SRP and small methods to increase expressiveness. For example, you can introduce an abstraction such as a new member function or class.
+			
+			\item When you write the next test, you are engaging in incremental design.
+		
 		\end{enumerate}
 	
 \end{itemize}
 
 \subsection{Quality tests}
 \begin{itemize}
-	\item The FIRST mnemonic 
+	\item The FIRST mnemonic.
 	\begin{enumerate}
 		\item F for fast
 		\item I for isolated
@@ -20276,11 +20276,12 @@ int main() {
 		\item S for Self-verifying
 		\item T for timely.
 	\end{enumerate}
-	\item reducing the build time by mock, or running a subset of test by filter. 
+
+	\item Reducing the build time by mock, or running a subset of test by filter. 
 	
 	\item If you're doing TDD, each of your tests should always fail at least once. 
 	
-	\item you want your tests to be isolated-failing for a single reason. Not only should tests be independent from external production system factors. They should also be independent from other tests. Any test that uses static data runs the risk of ailing because of stale data. 
+	\item You want your tests to be isolated-failing for a single reason. Not only should tests be independent from external production system factors. They should also be independent from other tests. Any test that uses static data runs the risk of ailing because of stale data. 
 	
 	\item Intermittent tests failures are bad news. you maybe use static data or volatility of external service or Concurrency, just avoid these elements and make you test \textbf{repeatable}
 	
@@ -20288,12 +20289,16 @@ int main() {
 	
 	\item Don't write a bunch of tests in advance of any code. Instead, you write one test at a time, and even within that one test you write one assertion at a time. 
 	
-	\item One Assert per test or One Assert purpose per test 	\item The most important declaration of intent is the test's name, which should clarify the context and goal. The names of single-purpose tests stand on their own. 
+	\item One Assert per test or One Assert purpose per test. 	
+	
+	\item The most important declaration of intent is the test's name, which should clarify the context and goal. The names of single-purpose tests stand on their own. 
 
 	\item Test Abstraction.
 \begin{enumerate}
-	\item put bloated construction or irrelevant details into the helper function or fixture. 
+	\item Put bloated construction or irrelevant details into the helper function or fixture. 
+	
 	\item Assert Null or exception should be put in different test.
+	
 	\item Don't or reducing use comment. instead to use good name. 
 \end{enumerate}
 
@@ -20302,7 +20307,7 @@ int main() {
 
 
 \section{gtest}
-\subsection{install}
+\subsection{Install}
 
 \begin{itemize}
 \item gtest need to be compiled in your platform. The good news is it's very simple with help of CMake. 
@@ -20312,14 +20317,14 @@ cd source_dir and mkdir build
 cd buil and cmake ..
 make 
 sudo make install.  \\it will copy .h file and lib files to below directory,
-					\\ if you don't specify.usr\local\include and \usr\local\lib
+					\\ if you don't specify \usr\local\include and \usr\local\lib
 \end{lstlisting}	
 
 \end{itemize}
 
 \subsection{Basic usage}
 \begin{itemize}
-	\item gtest is independent and repeatable. It’s a pain to debug a test that succeeds or fails as a result of other tests. googletest isolates the tests by running each of them on a different object. When a test fails, googletest allows you to run it in isolation for quick debugging.
+	\item gtest is independent and repeatable. It’s a pain to debug a test that succeeds or fails as a result of other tests. gtest isolates the tests by running each of them on a different object. When a test fails, gtest allows you to run it in isolation for quick debugging.
 	
 	\item Build test directory put all tests source code parallel with the normal source code. You can use cmake to manage the whole project,  github link: https://github.com/zhaoyan/gtest\_cmake. it has a simple project template, it includes all the necessary cmake files that you can modify. The basic usage is below. You can add and modify source file and test files, then run make test, That is all. 
 \begin{lstlisting}
@@ -20336,7 +20341,7 @@ TEST(TestSuiteName, TestName) {
 }
 \end{lstlisting}
 	
-	\item You can omit the main function in your code. That give me a good clue. write TEST case in separate file then use -lgtest\_main to compile it. 
+	\item You can omit the main function in your code. That give me a good clue. write TEST case in a separate file then use -lgtest\_main to compile it. 
 	
 \begin{lstlisting}
 #include "gtest/gtest.h"
@@ -20351,7 +20356,7 @@ TEST(AddTest, Positive){
 g++ test.cpp -lgtest_main -lgtest -lpthread
 \end{lstlisting}
 
-\item You can also add main function here. Don't put -lpthread in front of -lgtest. because lgtest still use pthread, if put it in front of -lgtest, it will report compiling error.
+	\item You can also add main function here. Don't put -lpthread in front of -lgtest. Because lgtest still use pthread, if put it in front of -lgtest, it will report compiling error.
 \begin{lstlisting}
 int main(int argc, char ** argv){
 	testing::InitGoogleTest(&argc, argv);
@@ -20361,7 +20366,7 @@ int main(int argc, char ** argv){
 g++ test.cpp  -lgtest -lpthread
 \end{lstlisting}
 
-\item You can also use matcher, but you have to include gmock.h and use testing namespace.
+	\item You can also use matcher, but you have to include gmock.h and use testing namespace.
 \begin{lstlisting}
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
@@ -20373,7 +20378,7 @@ TEST(AddTest, Positive){
 } // use << to output customized message. 
 \end{lstlisting}
 
-\item Three levels. TestSuiteName and TestName and assert. You can use gtest\_filter to filter them.
+\item Three levels. TestSuiteName and TestName and assert. You can use \texttt{--gtest\_filter} to filter them.
 
 \begin{lstlisting}
 TEST(TestSuiteName, TestName) {
@@ -20383,18 +20388,18 @@ TEST(TestSuiteName, TestName) {
 //test --gtest_filter=Test_Case* to filter 
 \end{lstlisting}
 
-\item Basic filter syntax. 
+	\item Basic filter syntax. 
 \begin{lstlisting}
 ./test --gtest_filter=TestSuiteName.*
 ./test --gtest_filter=TestSuiteName1.*:TestSuiteName2.*Construct*
 \end{lstlisting}
 
-\item  You disable a test by prepending DISABLED\_ to its name.  Don't check in code with disabled tests unless you have a really good reason.
+	\item  You disable a test by prepending DISABLED\_ to its name.  Don't check in code with disabled tests unless you have a really good reason.
 \begin{lstlisting}
 TEST(ATweet, DISABLED_RequireUserNameToStartWithAnAtSign)
 \end{lstlisting}
 
-\item  ASSERT and EXPECT are different, ASSERT will end test once it fails. There are few kinds of assertions: 
+	\item  ASSERT and EXPECT are different, ASSERT will end test once it fails. There are few kinds of assertions: 
 \begin{enumerate}
 	\item EXPECT\_THAT + matcher
 	\item Bool, such as EXPECT\_TRUE(FALSE)
@@ -20405,7 +20410,8 @@ TEST(ATweet, DISABLED_RequireUserNameToStartWithAnAtSign)
 EXPECT_STRNE(str1,str2)
 EXPECT_FLOAT_EQ(val1,val2)
 \end{lstlisting}
-	\item THROW, ANY\_THROW and NO\_THROW
+	\item THROW, ANY\_THROW and NO\_THROW.
+	
 	\item Predicate Assertions, used for more complex predicates. Verifies that the predicate pred returns true when passed the given values as arguments.
 \begin{lstlisting}
 EXPECT_PRED1(pred,val1)
@@ -20433,11 +20439,11 @@ ASSERT_THROW(statement,exception_type)
 \end{itemize}
 
 
-\subsection{test fixture}
+\subsection{Test fixture}
 \begin{itemize}
 	\item The first step, define a fixture, then use \texttt{TEST\_F}. You typically define the fixture at the beginning of your test files.
 \begin{lstlisting}
-using namespace ::testing //using namespace here
+using namespace ::testing  //using namespace here
 class QueueTest : public Test { //make fixture name describe the context.
 protected:
 	void SetUp() override {
@@ -20531,7 +20537,7 @@ public:
 };
 
 class MockFoo: public FooInterface {
-	public:
+public:
 	MOCK_METHOD0(getArbitraryString, std::string());
 };
 
@@ -20684,16 +20690,16 @@ MockMutator mutator;
 EXPECT_CALL(mutator, Mutate(true, _))
 .WillOnce(SetArgPointee<1>(5)); //assign 5 to *value in line 3
 \end{lstlisting}
-	
 
 \end{itemize}
+
 
 \section{catch2}
 \subsection{install}
 
 \begin{itemize}
 	
-	\item in Ubuntu, run below command, it will install doc, lib and header file to /usr/local
+	\item In Ubuntu, run below commands, it will install doc, lib and header file to /usr/local
 	
 \begin{lstlisting}
 git clone https://github.com/catchorg/Catch2.git
@@ -20709,7 +20715,7 @@ git clone https://github.com/catchorg/Catch2.git
 \subsection{Basic usage}
 \begin{itemize}
 	
-	\item Just like gtest, Catch supports two assert, they are REQUIRE and CHECK.
+	\item Just like gtest, Catch supports two assert, they are REQUIRE and CHECK. REQUIRE is used to specify a requirement that must be true for the test case to continue executing. If the requirement fails, the test case is immediately marked as failed and no further test code is executed. CHECK, on the other hand, is used to verify a condition, but if it fails, the test case continues to execute. The test case is only marked as failed when the end of the test case is reached and at least one CHECK has failed.
 	
 \begin{lstlisting}
 CHECK( str == "string value" );
@@ -20736,9 +20742,13 @@ TEST_CASE( "Factorials are computed", "[factorial]" ) { //[factorial] is tag.
 	REQUIRE( Factorial(3) == 6 );    
 }
 TEST_CASE( "D", "[widget][gadget]" ) { /* ... */ }
+
+./my_test_suite -t [factorial] // run only test cases with the "factorial" tag
+./my_test_suite -e [slow] // exclude all test cases with the "slow" tag
 \end{lstlisting}
 
-	\item section is just fixture in gtest.  Catch2 supports a class-based fixture mechanism, where individual tests are methods on class and setup/teardown can be done in constructor/destructor of the type. However, their use in Catch2 is rare, because idiomatic Catch2 tests instead use sections to share setup and teardown code between test code. This is best explained through an example.
+	\item A section in gtest is simply a fixture. In contrast, Catch2 supports a class-based fixture mechanism where individual tests are methods on a class, and setup/teardown can be done in the constructor/destructor of the class. However, this mechanism is rarely used in Catch2 because idiomatic Catch2 tests use sections to share setup and teardown code between test code. This can be best explained through an example.
+	
 \begin{lstlisting}
 TEST_CASE( "vectors can be sized and resized", "[vector]" ) {
 	std::vector<int> v( 5 );    
@@ -20758,9 +20768,9 @@ TEST_CASE( "vectors can be sized and resized", "[vector]" ) {
 }
 \end{lstlisting}
 
-	\item Test functions can be nested (without limit) and they form a tree structure with test cases on root nodes and test function on inner and leaf nodes. When a leaf test functions is run, the entire code from the root test case to the leaf test function is executed. As a result, when multiple test functions (i.e. section) share common code, that code is executed for each section. This makes it unnecessary to have fixtures with setup and teardown code.
+	\item Test functions can be nested without limit, forming a tree structure with test cases as root nodes and test functions as inner and leaf nodes. When a leaf test function is run, the entire code from the root test case to the leaf test function is executed. As a result, when multiple test functions (i.e., sections) share common code, that code is executed for each section. This makes it unnecessary to have fixtures with setup and teardown code.
 
-	\item Section can also be nested,
+	\item Section can also be nested.
 \begin{lstlisting}
 SECTION( "reserving bigger changes capacity but not size" ) {
 	v.reserve( 10 );
@@ -20831,7 +20841,7 @@ SCENARIO( "vectors can be sized and resized", "[vector]" ) {
 		\item Pytest requires the test function names to start with \texttt{test\_}. Function names which are not of format test* are not considered as test functions by pytest. We cannot explicitly make pytest consider any function not starting with test as a test function.
 		
 		\item test class begins with \texttt{Test}, and can't have init method.
-\begin{lstlisting}
+\begin{lstlisting}[language=Python]
 class TestClass:  
 	def test_one(self):  
 		x = "this"  
@@ -20845,15 +20855,15 @@ class TestClass:
 		\item Just use basic assert.
 	\end{enumerate}
 
-	
 	\item Pytest provides two ways to run the subset of the test suite.
 	\begin{enumerate}
 		\item Select tests to run based on substring matching of test names.
 		\item Select tests groups to run based on the markers applied.
 	\end{enumerate}
 	
-	\item  we have a fixture function named \texttt{input\_value}, which supplies the input to the tests. To access the fixture function, the tests have to mention the fixture name as input parameter.
-\begin{lstlisting}
+	\item  We have a fixture function named '\texttt{input\_value}' which supplies the input to the tests. To access the fixture function, the tests have to mention the fixture name as an input parameter.
+	
+\begin{lstlisting}[language=Python]
 import pytest
 
 @pytest.fixture
@@ -20871,7 +20881,7 @@ pytest -k divisible -v // -k filter test name.
 \end{lstlisting}
 
 	\item We can define the fixture functions conftest.py to make them accessible across multiple test files. Create a new file conftest.py and add the below code into it. the fixture method is invoked and the result is returned to the input argument of the test.
-\begin{lstlisting}
+\begin{lstlisting}[language=Python]
 import pytest
 
 @pytest.fixture 
@@ -20880,7 +20890,7 @@ def input_value():
 	return input
 \end{lstlisting}
 
-\begin{lstlisting}
+\begin{lstlisting}[language=Python]
 import pytest
 def test_divisible_by_13(input_value):
 	assert input_value % 13 == 0
@@ -20888,7 +20898,7 @@ def test_divisible_by_13(input_value):
 
 	\item In a real scenario, a test suite will have a number of test files and each file will have a bunch of tests. This will lead to a large execution time. To overcome this, pytest provides us with an option to run tests in parallel.
 
-\begin{lstlisting}
+\begin{lstlisting}[language=Python]
 pip install pytest-xdist
 pytest -n 3
 \end{lstlisting}
