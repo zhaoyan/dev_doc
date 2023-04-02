@@ -349,6 +349,11 @@ extern "C" double acos(double);
 
 	\item From the above code, we can see a potential issue of header file is that multiple definitions of the same function or variable can occur if header files are not properly guarded against multiple inclusions. This can lead to errors and undefined behavior.
 	
+	\item Recommended compiler flags for your first programs.
+\begin{lstlisting}
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Wshadow input.cpp -o output	
+\end{lstlisting}
+	
 	\item You can google "Advanced Software Engineering with C++ Templates". The first half part introduces separate compilation very well.
 \end{itemize}
 
@@ -3434,7 +3439,7 @@ void TestFunction2(vector<int> v) {}
 TestFunction2({1, 2, 3}); // Call a function using a braced-init-list.
 \end{lstlisting}
 
-	\item  You should not only judge \texttt{initializer\_list} by braces. 1) The class should have a \texttt{initializer\_list} constructor. 2) It uses braces to initialize. 3) The number of parameter inside braces is flexible but the type should be the same.
+	\item  You should not only judge \texttt{initializer\_list} by braces. 1) \texttt{initializer\_list} should be class constructor parameter. 2) It uses braces to initialize. 3) The number of parameter inside braces is flexible but the type should be the same.
 
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 vector( std::initializer_list<T> init)
@@ -6648,8 +6653,8 @@ T move_to_temp(T& t) { return std::move(t); }
 
 void foo(unique_ptr<SomeType>&& param);
 unique_ptr<SomeType> p;
-foo(move_to_temp(p));//note: this does move, p will become empty 
-foo(std::move(p));//here, p will not become empty.  
+foo(move_to_temp(p)); //note: this does move, p will become empty 
+foo(std::move(p)); //here, p will not become empty.  
 \end{lstlisting}
 
 
@@ -6675,7 +6680,7 @@ foo(std::move(p));//here, p will not become empty.
 
 
 
-    \item The last option is universial reference. At this time, you have to use \texttt{std::forward} 
+    \item The last option is universal reference. At this time, you have to use \texttt{std::forward} 
 \begin{lstlisting}[numbers=none]
 template<typename T>
 Fraction reduceAndCopy(T&& frac){ //only used in template function 
@@ -6961,7 +6966,7 @@ Snitch ReturnGlobal() {
 }
 \end{lstlisting}
 
-	\item return by \texttt{std::move()}. That is the most obvious error for some basic C++ developers, who do not understand RVO very well.
+	\item Return by \texttt{std::move()}. That is the most obvious error for some basic C++ developers, who do not understand RVO very well.
 \begin{lstlisting}[numbers=none]
 Snitch CreateSnitch() {
 	Snitch snitch; //Basicly, RVO will trigger here
@@ -12368,7 +12373,7 @@ vcFoo[2] = foo;    // OK here.
 
 \subsubsection{Search in Container}
 \begin{itemize}
-	\item Distinguish among the following algorithms: \texttt{count}, \texttt{find}, \texttt{binary\_search}, \texttt{lower\_bound}, \texttt{upper\_bound}, and \texttt{equal\_range}.
+	\item Distinguish among the following algorithms: \texttt{count}, \texttt{find}, \texttt{binary\_search}, \texttt{lower\_bound}, \\ \texttt{upper\_bound}, and \texttt{equal\_range}.
 
 \begin{figure}[ht]
 	\centering
@@ -14395,11 +14400,44 @@ int r2 = std::inner_product(a.begin(), a.end(), b.begin(), 0,
 std::cout << "Number of pairwise matches between a and b: " <<  r2; //output 2
 \end{lstlisting}
 
-\item get rid of duplicate space in a string.
+	\item get rid of duplicate space in a string.
 \begin{lstlisting}
 string str{"abc    de    f"};
 str.erase(unique(begin(str), end(str)), end(str));
 cout<<str<<endl;
+\end{lstlisting}
+
+	\item Fill 10 random number to vector. 
+\begin{lstlisting}
+vector<int> v1(10, 0); //1) both fill and generate need resize the vector
+ranges::generate(v1,  [](){
+	uniform_int_distribution<int> dist{1, 100};
+	random_device device;
+	mt19937 gen{device()}; //2) device is functor,  
+	return dist(gen); //3) distribution + mt19337.
+});
+
+random_device rd;
+mt19937 gen{rd()};
+ranges::shuffle(v1, gen);  //shuffle also need to use mt19937.
+\end{lstlisting}
+
+	\item Common pattern for k-max frequency. 
+\begin{lstlisting}
+map<int, int> map1;
+for(auto e: v1){
+	map1[e]++;  //you can use [] directly here, will insert
+	            //default value if it doesn't exist.
+}
+
+vector<pair<int, int>> v2{map1.begin(), map1.end()};  //range construct
+                           //don't use template deduct, otherwise it will be pair<const int, int>
+ranges::partial_sort(v2, v2.begin()+3, greater{}, &pair<int,int>::second);
+                          //pay attention projection here. 
+
+for(auto [k,v]: v2){ //auto binding.
+	cout<<k<<" "<<v<<endl;
+}
 \end{lstlisting}
 
 \end{itemize}
@@ -15176,6 +15214,15 @@ ostream & operator<<(ostream& s, const Foo &r){
 	s<<Foo.a<<Foo.b<<endl;
     return s;
 }
+\end{lstlisting}
+
+	\item Only use std::endl if you absolutely need to make sure that some output needs to materialize immediately. Each call to std::endl flushes the output buffer and writes the output immediately. This can lead to serious performance degradation, if done frequently.
+
+\begin{lstlisting}
+std::cout << "some text" << std::endl;
+std::cout << "more text" << std::endl; //bad
+
+std::cout << "some text\nmore text\n"; //good 
 \end{lstlisting}
 	
 	\item  How to print pointer address in C and C++?
@@ -16341,22 +16388,8 @@ ranges::for_each(v, &Employee::printName); //input pointer member function direc
 
 \subsection{view}
 \begin{itemize}
-	\item An basic std::view example. You can compiled by "g++ a.cpp -std=c++20"
-\begin{lstlisting}
-using namespace std;
-int main() {
-	std::vector<uint64_t> in{1, 2, 3,4, 5};
-	for (auto && i : in | views::drop(2) | views::transform([]( auto &e ){
-		e+=2; return e*2;}))
-	std::cout << i << ' '; //should print: 6, 8, 10		 
-	for(auto e :in){
-		std::cout<<e << ' '; //should print 1,2,5,6,7
-	} 
-}		
-\end{lstlisting}	
+	\item Views are simply ranges that are cheap to copy and move (in constant time). Because of this, a view can \textbf{NOT} own the elements it is viewing. One exception is \texttt{std::views::single} which owns the single element it is viewing. Creating a view is preparation to do work in the future. Creating the view doesn't do any implementation job, work happens only when you access an element in the view.
 	
-	
-	\item view idea is to avoid extra copy. Below code illustrate this point. 
 \begin{lstlisting}
 //'string::substr' returns a new string, it's memeory-instensive.
 std::cout << str.substr(5, 15) << '\n';
@@ -16364,8 +16397,86 @@ std::cout << str.substr(5, 15) << '\n';
 //string_view from the literals does not require a dynamic allocation.
 // string_view::substr returns a new string_view. No new memory allocated
 std::string_view sv = str;
-std::cout << sv.substr(5, 15) << '\n';	
+std::cout << sv.substr(5, 15) << '\n';		
 \end{lstlisting}
+
+	
+	\item Elements of a view are usually the actual elements of the range used to create the view. The view usually doesn't own the elements; it just refers to them, with the exception of \texttt{owning\_view}. Changing an element changes that element in the range that the view was created from. The following example shows this behavior:
+	
+\begin{lstlisting}
+int input[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+auto even = [](const int n) { return n % 2 == 0; };
+auto x = input | std::views::filter(even); // create a view of the even elements from input
+std::ranges::fill(x, 42); // changes the evens from input[] to 42
+//  input is 42 1 42 3 42 5 42 7 42 9 42 now.
+\end{lstlisting}
+
+	\item Three different ways to use views. We recommend to use the first and the second method.
+\begin{lstlisting}
+std::vector<int> v {0,1,2,3,4,5,6,7,8};
+// 1) using functor notation:
+fmt::print("{}\n", std::views::stride(v,3)); // [0,3,6]
+// 2) using pipeline notation:
+fmt::print("{}\n", v | std::views::stride(2)); // [0,2,4,6,8]
+// 3) using an explicit view object:
+std::ranges::stride_view sv2 {v,2};
+fmt::print("{}\n", sv2); // [0,2,4,6,8]
+\end{lstlisting}
+	
+%	\item An basic \texttt{std::view} example. You can compiled by "g++ a.cpp -std=c++20"
+%\begin{lstlisting}
+%using namespace std;
+%int main() {
+%	std::vector<uint64_t> in{1, 2, 3, 4, 5};
+%	for (auto && i : in | views::drop(2) | views::transform([]( auto &e ){
+%		e+=2; return e*2;}))
+%	std::cout << i << ' '; //should print: 6, 8, 10		 
+%	
+%	for(auto e :in){
+%		std::cout<<e << ' '; //should print 1,2,5,6,7
+%	} 
+%}		
+%\end{lstlisting}	
+
+	\item For \texttt{views::all}, if \texttt{rg} is a non-view rvalue such as a temporary object, or is the result of passing the range to std::move, an \texttt{owning\_view}. Use std::views::all\_t<decltype((rg))> to get the type of the returned view.
+\begin{lstlisting}
+template <ranges::viewable_range R>
+constexpr ranges::view auto all(R&& rg) const noexcept;
+
+std::vector<int> v = {1,2,3,4,5,6,7,8,9,10};
+auto myRefView = std::views::all(v); // create a ref_view of the vector
+std::cout << myRefView.size() << '\n'; // 10
+
+auto myOwningView = std::views::all(std::move(v)); // create an owning_view from a moved vector
+std::cout << myRefView.size() << '\n'; // outputs 0 because myOwningView now owns the elements
+std::cout << v.size() << '\n'; // outputs 0 because myOwningView now owns the elements
+std::cout << myOwningView.size(); // 10 	
+\end{lstlisting}
+	
+	\item Usage of \texttt{common\_view}
+\begin{lstlisting}
+std::list<int> lst{1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+auto firstFive = std::views::take(lst, 5); 
+// firstFive.begin(), firstFive.end() have different types: counted_iterator versus default_sentinel
+// auto r = std::accumulate(firstFive.begin(), firstFive.end(), 0); // Error: accumulate() requires firstFive.begin() and firstFive.end() types to be the same.
+
+auto common = std::views::common(firstFive); // create a common_view that has the same begin/end iterator types
+std::cout << std::accumulate(common.begin(), common.end(), 0);	
+\end{lstlisting}
+
+	
+	\item Comparison between iterator version and view version.
+\begin{lstlisting}
+std::sort(v.begin() + 5, v.end())
+std::sort(v.rbegin(), v.rend());
+std::sort(v.rbegin() + 5, v.rend());
+
+std::ranges::sort(std::views::drop(v, 5));
+std::ranges::sort(std::views::reverse(v));
+std::ranges::sort(std::views::drop(std::views::reverse(v), 5));
+\end{lstlisting}	
+	
 
 	\item Pay attention view and adapter, usually we use adapter more.
 \begin{lstlisting}
@@ -16434,6 +16545,84 @@ std::array arr2{1, 2, 3, 4, 5, 6}; // (3)
 printMe(arr2);				
 \end{lstlisting}
 
+	\item Element selector views are: \texttt{filter, stride}
+\begin{lstlisting}
+std::vector<int> v {0,1,2,3,4,5,6,7,8};
+auto const is_even = [] (int x) { return !(x & 1); };
+fmt::print("{}\n", v | std::views::filter(is_even)); // [0,2,4,6,8]
+fmt::print("{}\n", v | std::views::stride(2)); // [0,2,4,6,8]
+\end{lstlisting}	
+
+	\item Subrange selector views are: \texttt{count, take, take\_while, drop, drop\_while}. Note that std::views::counted is not pipelinable and that there's also no \texttt{std::ranges::counted\_view} type.
+\begin{lstlisting}
+std::vector<int> v {0,1,2,3,4};
+fmt::print("{}\n", std::views::counted(v.begin()+1,2)); // [1, 2]
+fmt::print("{}\n", v | std::views::take(3)); // [0,1,2]
+fmt::print("{}\n", v | std::views::drop(2)); // [2,3,4]
+
+std::vector<int> v {2,6,7,6,5};
+auto const is_even = [] (int x) { return !(x & 1); };
+fmt::print("{}\n", v | std::views::drop_while(is_even)); // [7,6,5]	
+\end{lstlisting}
+
+	\item Sliding Window Views: return a range of either tuples or contiguous subranges of the input range. \texttt{slide, adjacent, pairwise}
+\begin{lstlisting}
+std::vector<int> v {0,1,2,3,4};
+for (auto x : v | std::views::slide(3)) { fmt::print("{} ",x); } // [0,1,2] [1,2,3] [2,3,4]
+
+std::string s = "abcde";
+for (auto p : s | std::views::adjacent<3>) {fmt::print("{} ",p); } // abc bcd cde
+for (auto p : s | std::views::pairwise) {fmt::print("{} ",p); } // ab bc cd de
+\end{lstlisting}
+
+	\item Function application call are \texttt{transform, adjacent\_transform and pairwise\_transform}
+	
+	\item Tokenization view are \texttt{split, lazy\_split, chunk, and chunk\_by}
+	
+	\item special adaptor are \texttt{ref\_view, owning\_view, all and common}. 
+	
+	\item Multiple ranges to single range: \texttt{join, join\_with, zip, zip\_transform, cartesian\_product}
+\begin{lstlisting}
+std::vector<std::string> v = {"I","am","here","now"};
+fmt::print("{}\n", v | std::views::join); // Iamherenow
+
+std::array a {0,1};
+std::string s2 = "AB";
+std::string s3 = "-+";
+fmt::print("{}\n", std::views::zip(a,s2,s3)); // (0,A,-) (1,B,+)
+\end{lstlisting}
+	
+	\item Non-range to range. \texttt{iota, repeat}.
+\begin{lstlisting}
+auto i37 = std::views::iota(3,8);
+for (int x : i37) { std::cout << x << ' '; } // 3 4 5 6 7
+auto i17 = std::views::iota(1) | std::views::take(7); // 1 2 3 4 5 6 7
+
+auto const r51 = std::views::repeat(1,5); // 1 1 1 1 1 
+auto const r4a = std::views::repeat('a') | std::views::take(4); // a a a a
+\end{lstlisting}
+
+	\item Tuple projections: \texttt{keys, values, elements}
+\begin{lstlisting}
+std::vector<std::pair<char,int>> v {{'b',3},{'a',4},{'z',2},{'k',9}};
+fmt::print("{}\n", v | std::views::keys); // [b,a,z,k]
+fmt::print("{}\n", v | std::views::values); // [3,4,2,9]
+
+std::vector<std::tuple<char,int,std::string>> v {
+	{'b',3,"hearts"}, {'a',4,"clubs"}, {'z',2,"spades"}, {'k',9,"diamonds"} };
+fmt::print("{}\n", v | std::views::elements<2>);
+\end{lstlisting}
+
+	\item \texttt{Subrange} combines an iterator and a sentinel (or two iterators) into a view. 
+\begin{lstlisting}
+std::vector<int> v {9,1,3,7,4,5,3,8};
+auto const srv = std::ranges::subrange(v.begin()+2, v.begin()+6); // 3 7 4 5
+
+std::string s = "ABCD";
+for (auto const& [index, value] : std::views::enumerate(s)) {
+	std::cout << "@" << index << ":" << value << '\n';
+}  // @0:A @1:B @2:C @3:D
+\end{lstlisting}
 
 	\item Below are some range::view defined in STL.  \\
 \begin{tabular}{| p{0.4\textwidth} |p{0.5\textwidth}|}
@@ -16532,7 +16721,12 @@ auto rr = ints  | std::views::filter(even)
 
 ints = std::vector(std::ranges::begin(rr), std::ranges::end(rr));
 std::ranges::sort(ints); // output 4, 36, 64.
-\end{lstlisting}	
+\end{lstlisting}
+
+\begin{center}
+	\includegraphics[width=0.7\linewidth]{pics/range.drawio}
+\end{center}
+	
 
 \end{itemize}
 
@@ -18593,7 +18787,7 @@ a_x++ //a_x.fetch_add(1) //Also the same
 
 	\item \texttt{test\_and\_set}, \texttt{exchange}, \texttt{compare\_exchange\_weak(strong)} are all read-modify-write operation. \texttt{exchange(desired)} atomically replaces the underlying atomic value with desired. The operation is read-modify-write operation. It \textbf{ALWAYS} writes desired value to underlying atomic value. 
 
-	\item \texttt{test\_and\_set} and \texttt{clear} can only be used in atomic bool type.  \texttt{test\_and\_set} sets the atomic\_flag(make it true) and returns whether it was already set immediately before the call. There are a few points here: 1) it first read the atomic\_flag as return value, then it \textbf{ALWAYS} set(write) atomic\_flag. 2) The read and set are atomic operation(an atomic read-modify-write operation): the value is not affected by other threads between the instant its value is read (to be returned) and the moment it is modified by this function. A typical usage of \texttt{test\_and\_set} is spin lock and I will introduce it in the next section.
+	\item \texttt{test\_and\_set} and \texttt{clear} can only be used in atomic bool type.  \texttt{test\_and\_set} sets a \texttt{atomic\_flag} (make it true) and returns whether it was already set immediately before the call. There are a few points here: 1) it first read the atomic\_flag as return value, then it \textbf{ALWAYS} set(write) atomic\_flag. 2) The read and set are atomic operation(an atomic read-modify-write operation): the value is not affected by other threads between the instant its value is read (to be returned) and the moment it is modified by this function. A typical usage of \texttt{test\_and\_set} is spin lock and I will introduce it in the next section.
 
 	\item \texttt{compare\_exchange\_weak} is a kind of CAS(compare-and-swap). \texttt{a\_x} has been modified by other thread. Most of time, \texttt{a\_x} is atomic pointer type. In compare-and-swap, why do we need to read into expected? we first read from memory into \texttt{oldx}, then compare it with the memory, because at this time,the memory can be modified by another thread, so we need to compare. if they are equal(no other thread touch \texttt{a\_x}), then we can update it with \texttt{newx} and return the preceding oldValue. That is the famous CAS loop. 
 \begin{lstlisting}[numbers=none]
@@ -21995,6 +22189,26 @@ concept HasSquare = requires (T t) {
 
 \subsubsection{Use conception}
 \begin{itemize}
+	\item Four different ways use concepts, they are the same. 	
+\begin{lstlisting}
+void func_with_auto_inline(const std::convertible_to<std::string> auto& x) {
+	std::string v = x;
+}
+void func_with_auto_postfix(const auto& x)
+requires std::convertible_to<decltype(x), std::string> {
+	std::string v = x;
+}
+template <std::convertible_to<std::string> T>
+void func_with_template_inline(const T& x) {
+	std::string v = x;
+}
+template <typename T>
+requires std::convertible_to<T, std::string>
+void func_with_template_postfix(const T& x) {
+	std::string v = x;
+}
+\end{lstlisting}	
+	
     \item You can use concept as compile-time bool.
 
 \begin{lstlisting}
