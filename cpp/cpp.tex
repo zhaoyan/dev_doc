@@ -228,17 +228,16 @@ int main(void){
 	
 	\item About Object-base programming(data abstraction), C++ provides below supports:
 	\begin{enumerate}
-		\item Member function and private member data.
-		\item Global function overload, such as \texttt{complex sin(const complex\& x)}.
-		\item Copy control.
-		\item Operator overload. 
+		\item Member function and private member data, and opy control.
+		\item Global function overload, such as \texttt{complex sin(const complex\& x)} and operator overload, such as +, x, etc..
 		\item template, such as \texttt{std::vector}, \texttt{std::complex}, \texttt{std::pair}.
 	\end{enumerate}
 	
-
-    \item There are three constraints in C++ language:1) compatible with C; 2) zero overhead abstraction; 3)static type. Some people also think the third constraint is value semantic. If you want to follow value semantic, you need to know the type information when you compile. So static type and value semantic are the two sides of one coin. These three constraints give C++ language very special characteristics. 
+    \item There are three constraints in C++ language: 1) compatible with C; 2) zero overhead abstraction; 3)static type. Some people also think the third constraint is value semantic. If you want to follow value semantic, you need to know the type information when you compile. So static type and value semantic are the two sides of one coin. These three constraints give C++ language very special characteristics. 
     
     \item In C++ language, value semantics refer to the way that values (i.e., objects) are passed between functions or copied from one object to another. When a value is passed to a function or copied to another object, a new copy of the value is created. Any modifications made to the copy will not affect the original value. This is in contrast to reference semantics, where a reference (i.e., pointer) to the original value is passed or copied, and any modifications made to the reference will affect the original value. The shortcoming of value semantic is less efficient than reference semantics, particularly when working with large objects or arrays. Another disadvantage is you can't change the type(static type) and type must be known at the compile time.
+    
+    \item \texttt{complex, pair, vector, list, map, string, stack, queue} in STL are based value semantics. They are a kind of data and support copying. 
 \end{itemize}
 
 
@@ -12136,20 +12135,19 @@ assert(y == 4);
 	\item When using the STL library, it is important to always include the proper headers. Specifically, you should include the corresponding header files when using containers and algorithms.
 \begin{enumerate}
 
-	\item All the algorithms are declared in <algorithm>. \texttt{inner\_product}, \texttt{adjacent\_difference}, \texttt{partial\_sum} and \texttt{accumulate} are in the <numeric>.
+	\item All the algorithms are declared in <algorithm>. \texttt{std::inner\_product}, \texttt{std::adjacent\_difference}, \texttt{std::partial\_sum} and \texttt{std::accumulate} are in the <numeric>.
 
-	\item Special kinds of iterators , including \texttt{istream\_iterators} are in the <iterator>
+	\item Special kinds of iterators, including \texttt{std::istream\_iterators}, are found in the <iterator> library.
 
-	\item Standard functors, such as \texttt{less<T>} and functor adapters like \texttt{not1} and \texttt{bind2nd}, are declared in \texttt{<functional>}. However, it is not recommended to use these functors in C++11, since C++11 introduced the \texttt{function} and \texttt{bind} templates.
+	\item Standard functors, such as \texttt{less<T>} and functor adapters like \texttt{not1} and \texttt{bind2nd}, are declared in \texttt{<functional>}. However, it is not recommended to use these functor adapters in C++11 because C++11 introduced the \texttt{function} and \texttt{bind} templates.
 
 \end{enumerate}
 
-	\item Anytime you want to write new [..] just for allocate dynamic array, using a \texttt{std::vector} or \texttt{std::string} instead, and using \texttt{reserve()} to allocate enough space for large amount of data.
-
+	\item Anytime you want to write new [..] just for allocate dynamic array, using a \texttt{std::vector} or \texttt{std::string} instead, and using \texttt{reserve()} to allocate enough space for large amount of data for memory efficiency.
 
 	\item The main principle of STL library is: Use \textbf{functors} to customize \textbf{algorithms}, and then apply the algorithm on \textbf{containers} by \textbf{iterators}. For example, algorithms such as \texttt{std::for\_each} take two iterators as input and do not care about the container they operate on. 
 \begin{lstlisting}[frame=single, language=c++]
-struct Sum{
+struct Sum{ //functors are usually struct, not class
     Sum(): sum{0} { }
     void operator()(int n) { sum += n; }
     int sum;
@@ -12161,9 +12159,9 @@ Sum s = std::for_each(nums.begin(), nums.end(), Sum());  //return Sum struct
 cout<<s.sum<<endl;
 \end{lstlisting}
 
-	\item Below are some commonly used idioms in \texttt{std}:
+	\item Below are some commonly used idioms in STL:
 1) concept,
-2) traits, 
+2) type traits, 
 3) tag dispatching,
 4) adapters,
 5) type generators,
@@ -12175,28 +12173,47 @@ cout<<s.sum<<endl;
 		\item Valid expressions are C++ expressions which must compile successfully for the objects involved in the expression to be considered models of the concept. For example, an \texttt{Iterator x} is expected to support the expressions \texttt{++x} and \texttt{*x}.
 		
 		\item Associated Types are types that are related to the modeling type in that they participate in one or more of the valid expressions. Typically associated types can be accessed either through typedefs nested within a class definition for the modeling type, or they are accessed through a traits class. For example, an iterator's value type is associated with the iterator through \texttt{std::iterator\_traits}
+\begin{lstlisting}
+template<class BidirIt>
+void my_reverse(BidirIt first, BidirIt last){
+	typename std::iterator_traits<BidirIt>::difference_type n = std::distance(first, last);
+	for (--n; n > 0; n -= 2){
+		typename std::iterator_traits<BidirIt>::value_type tmp = *first;
+		*first++ = *--last; *last = tmp;
+	}
+}
+std::vector<int> v{1, 2, 3, 4, 5};
+my_reverse(v.begin(), v.end());
+std::list<float> v{1, 2, 3, 4, 5};
+my_reverse(v.begin(), v.end());
+\end{lstlisting}
 		
 		\item Invariants are run-time characteristics of the objects that must always be true, that is, the functions involving the objects must preserve these characteristics. The invariants often take the form of pre-conditions and post-conditions. For example, forward iterator is copied, the copy and original must compare equal.
 		
 		\item Complexity Guarantees are maximum limits on how long the execution of one of the valid expressions will take, or how much of various resources its computation will use.
 	\end{enumerate}
 
-	\item A type generator is a template whose only purpose is to synthesize a new type or types based on its template argument(s). The generated type is usually expressed as a nested typedef named, appropriately type.
-\begin{lstlisting}
-template <class Value>
+	\item A type generator is a template whose only purpose is to synthesize a new type or types based on its template argument(s). The generated type is usually expressed as a nested typedef named, appropriately type. Another good example of type generator is \texttt{std::integral\_constant}.
+\begin{lstlisting}[numbers=none]
+template <typename Value>
 struct Directory{
 	typedef std::map <std::string, Value, std::less<std::string>, 
 	__gnu_cxx::malloc_allocator<std::string> > type;
 };
 
-Directory<int>::type    // gives a map of string to integers.
-Directory<float>::type  // gives a map of string to floats.
+Directory<int>::type var_d1;   // gives a map of string to integers.
+
+//Better method in C++11, use alias template
+template <typename Value> 
+using Directory = std::map <std::string, Value, std::less<std::string>, 
+	__gnu_cxx::malloc_allocator<std::string> > ;
+	
+Directory<int> var_d1;
 \end{lstlisting} 
 	
 	\item An object generator is a function template whose only purpose is to construct a new object out of its arguments. Think of it as a kind of \textbf{generic constructor}. An object generator may be more useful than a plain constructor when the exact type to be generated is difficult or impossible to express and the result of the generator can be passed directly to a function rather than stored in a variable. Most Boost object generators are named with the prefix "make\_", after \texttt{std::make\_pair(const T\&, const U\&)}.
 	
 	\item An adapter is a class template which builds on another type or types to provide a new interface or behavioral variant. Examples of standard adapters are \texttt{std::reverse\_iterator}, which adapts an iterator type by reversing its motion upon increment/decrement, and \texttt{std::stack} , which adapts a container to provide a simple stack interface.
-	
 	
 \end{itemize}
 
@@ -12206,7 +12223,7 @@ Directory<float>::type  // gives a map of string to floats.
 \subsection{Basic knowledge}
 \begin{itemize}
 
-	\item For all container, \textbf{Copy in, Copy out}. In C++11, you can use \texttt{emplace\_back} to build object directly on the \texttt{vector} to avoid copy.
+	\item For all containers in the STL, the general principle is "Copy in, Copy out." However, in C++11, you can utilize the \texttt{emplace\_back} function to directly construct objects within a container to avoid unnecessary copying.
 \begin{lstlisting}[numbers=none]
 int j = 10;
 vector<int> vc;
@@ -12225,7 +12242,7 @@ vector<Foo> fvc; // no default constructor has been called.
 fvc.reserve(50);
 \end{lstlisting}
 
-	\item Copy-in and copy-out operations can cause efficiency problems. Additionally, inserting a derived class object into a container of base class objects always results in a slicing error. To avoid this issue, you can use a container of pointers. However, this can lead to resource leakage if you forget to deallocate the memory or if an exception is thrown. A better choice is to use smart pointers. But it is important to avoid using \texttt{std::auto\_ptr} in any container, as it is prohibited in C++ and will produce a compiler error. For more information on this topic, see "Effective STL" item 8.
+	\item Copy-in and copy-out operations can potentially cause efficiency problems. Additionally, attempting to insert a derived class object into a container of base class objects will result in a slicing error. To overcome this issue, using a container of pointers is a common approach. However, this approach can lead to resource leakage if you forget to deallocate memory or if an exception is thrown. A better alternative is to utilize smart pointers. It is important to note that using \texttt{std::auto\_ptr} in any container is prohibited in C++ and will produce a compiler error. For more in-depth information on this topic, refer to "Effective STL" item 8.
 
 	\item All container is not thread-safe. It's your duty to make it thread-safe, and thread-safe is OS dependent. Detail can be seen "Effective STL" item 12.
 \begin{lstlisting}[numbers=none]
@@ -12233,7 +12250,7 @@ getMutexFor(v); // do something on v.
 releaseMutexFor(v);
 \end{lstlisting}
 
-	\item There are three kinds of for-loop container syntax; \textbf{std::for\_each is a tool for raising the level of abstraction of a range-based for loop}. A good article can google " Why You Should Use \texttt{std::for\_each} over Range-based For Loops"
+	\item There are three kinds of for-loop container syntax; \texttt{std::for\_each} is a tool for raising the level of abstraction of a range-based for loop. A good article can google " Why You Should Use \texttt{std::for\_each} over Range-based For Loops"
 \begin{lstlisting}
 for(auto it = con.begin(), itend = con.end();it !=itend ; ++it){ //method 1
    foo(*it);
@@ -12252,7 +12269,7 @@ range::for_each(c, fun1);  //best style, support in C++20 standard
 \end{description}
 
 
-	\item With the help of an allocator, a container can optimize its behavior. For example, for Plain Old Data (POD), it is not necessary to call a constructor, and for small objects, they can be put into a memory pool. More details can be found in the "source code of STL". In fact, an allocator can be customized, as shown in "Effective STL" with two examples. However, in general, it is not necessary to replace the default allocator.
+	\item With the assistance of an allocator, a container can optimize its behavior. For instance, in the case of Plain Old Data (POD), calling a constructor may not be necessary. Similarly, for small objects, they can be stored in a memory pool. Further information on this topic can be found in the book "source code of STL". In fact, an allocator can be customized, as demonstrated in "Effective STL" with two examples. Nevertheless, in most cases, it is not essential to replace the default allocator.
 	
 	\item There is another opinion that the allocator is not a good design from the beginning because it can cause \texttt{vector<int, allocA>} and \texttt{vector<int, allocB>} to be two different types. 
 \end{itemize}
@@ -12265,19 +12282,23 @@ range::for_each(c, fun1);  //best style, support in C++20 standard
 	\item STL has four kinds of containers: sequence container, associative container, container adaptor and unordered associative containter
 	
 \begin{enumerate}
-\item sequence: \texttt{vector, list, forward\_list, string,  deque}
-\item associative: \texttt{map , multiset , set, multimap, unordered\_map unordered\_set}
-\item adaptor: \texttt{stack, queue and priority\_queue}.
-\item unordered: texttt{std::unordered\_map, std::unordered\_set, std::unordered\_multimap, std::unordered\_multiset}.
+\item sequence: \texttt{std::vector, std::list, std::forward\_list, std::string, std::deque}.
+\item associative: \texttt{std::map, std::set, std::multiset, std::multimap}.
+\item adaptor: \texttt{std::stack, std::queue and std::priority\_queue}.
+\item unordered: \texttt{std::unordered\_map, std::unordered\_set,  std::unordered\_multimap}, \\ \texttt{std::unordered\_multiset}.
 \end{enumerate}
+
+
 
 \begin{figure}[ht]
 	\centering
 	\includegraphics[width=0.7\linewidth]{pics/container.png}
-	\label{fig:constexpr}
+	\caption{Containers in STL}
+	\label{fig:container}
 \end{figure}
 
-	\item Some interesting characteristics about STL container.
+
+	\item Some interesting characteristics about STL containers:
 
 \begin{enumerate}
 	\item \texttt{operator >, >=, ==...} is non member function. 
@@ -12327,18 +12348,18 @@ bool result = alice < bob;
 \end{figure}
 
 
-\item Difference between \texttt{vector} and \texttt{deque}:
+\item Difference between \texttt{std::vector} and \texttt{std::deque}:
 \begin{enumerate}
-\item \texttt{vector} has relocation problem, if \texttt{vector} has 1000 elements, It probably need log(1000) = 10 times relocation. that is a little costly. On the contrary, \texttt{deque} just allocate a new place then insert pointer of new place to pointer map. It's relatively cheaper.
+\item \texttt{std::vector} has relocation problem, if \texttt{std::vector} has 1000 elements, It probably need log(1000) = 10 times relocation. that is a little costly. On the contrary, \texttt{std::deque} just allocate a new place then insert pointer of new place to pointer map. It's relatively cheaper.
 
 
-\item Elements in a \texttt{deque} are not contiguous in memory; \texttt{vector} elements are guaranteed to be. So if you need to interact with a plain C library that needs contiguous arrays, or if you care (a lot) about spatial locality, then you might prefer vector.
+\item Elements in a \texttt{std::deque} are not contiguous in memory; \texttt{std::vector} elements are guaranteed to be. So if you need to interact with a plain C library that needs contiguous arrays, or if you care (a lot) about spatial locality, then you might prefer vector.
 
-\item For stack and queue default use \texttt{deque} as container inside. Why, because for a large amount of element, \texttt{vector} has relocation problem.
+\item For stack and queue default use \texttt{std::deque} as container inside. Why, because for a large amount of element, \texttt{std::vector} has relocation problem.
 \end{enumerate}
 
 
-\item All the container adapter support \texttt{push()}, \texttt{pop()}. \texttt{std::stack} and \texttt{std::priority\_queue} support \texttt{top()}. \texttt{std::queue} has \texttt{front()} and \texttt{back()}. They don't have any iterators.
+\item All the container adapters support \texttt{push()}, \texttt{pop()}. \texttt{std::stack} and \texttt{std::priority\_queue} support \texttt{top()}. \texttt{std::queue} has \texttt{front()} and \texttt{back()}. They don't have any iterators.
 
 \item If you want strongly error-safe code, such as transnational semantics for inserting and erasing, or need to minimize iterator invalidation, prefer a node-based container.
 
@@ -12350,10 +12371,10 @@ bool result = alice < bob;
 \end{itemize}
 
 
-\subsubsection{memory classification}
+\subsubsection{Memory classification}
 
 \begin{itemize}
-	\item Another classification of container : \textbf{contiguous-base and node-base.} \texttt{vector}, \texttt{string}, and \texttt{deque} are contiguous-base. \texttt{list} and \texttt{slist}(linked list), \texttt{set} and \texttt{map}(balanced trees) are node-base. Why we have such classification? 
+	\item Another classification of container : \textbf{contiguous-base and node-base.} \texttt{std::vector}, \texttt{std::string}, and \texttt{std::deque} are contiguous-base. \texttt{std::list} and \texttt{std::slist}(linked list), \texttt{std::set} and \texttt{std::map}(balanced trees) are node-base. Why we have such classification? 
 \begin{enumerate}
 	\item All the contiguous-base container has invalidation of iterator(pointer, reference) problem. 
 
@@ -12382,10 +12403,10 @@ bool result = alice < bob;
 	\item Container adapters:  \texttt{stack}, \texttt{queue} and \texttt{priority\_queue}: inherited from underlying container.(Usually, we don't use iterator in \texttt{stack}, \texttt{queue} and \texttt{priority\_queue}. Maybe you don't need to worry about it. )
 \end{itemize}
 
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]	
-vecArr.insert ( it + 2, 1 , 200 ); //iterator invalid.
-it = vecArr.begin(); //Reinitialize the invalidated iterator to beginning.
-\end{lstlisting}
+%\begin{lstlisting}[frame=single, language=c++, mathescape=true]	
+%vecArr.insert ( it + 2, 1 , 200 ); //iterator invalid.
+%it = vecArr.begin(); //Reinitialize the invalidated iterator to %beginning.
+%\end{lstlisting}
 
 \item[Erasure] on different containers: 
 \begin{itemize}
@@ -12431,7 +12452,7 @@ std::cout<<(*it)<<"  "; //Unpredicted Behavior
 
 \subsubsection{Size and capacity of vector}
 \begin{itemize}
-	\item When checking if a container is empty, it is recommended to use the \texttt{empty()} function rather than checking the \texttt{size()} against zero. This is easier to understand. For a vector, the \texttt{size()}, \texttt{capacity()}, and \texttt{max\_size()} functions can be used as shown below: the capacity is always equal to or greater than the size.
+	\item When checking if a container is empty, it is recommended to use the \texttt{empty()} function rather than checking the \texttt{size()} against zero. This is easier to understand. For a vector, the \texttt{size()}, \texttt{capacity()}, and \texttt{max\_size()} functions can be used as shown below: the \texttt{capacity()} is always equal to or greater than the \texttt{size()}.
 \begin{lstlisting}[frame=single, language=c++]
 std::vector<int> myvector;
 for (int i=0; i<100; i++) myvector.push_back(i);
@@ -12451,7 +12472,7 @@ for(auto a :vi){
 }
 \end{lstlisting}
 		
-	\item Four confused conceptions: \texttt{resize()} forces the container to change to n, if n is less than \texttt{size()},  object in the end will be lost. if n is greater than \texttt{size()},  default constructor of element will be called. after \texttt{resize(n)}, size will return n. \texttt{resize} to smaller size don't change capacity. Pay attention to here: \texttt{resize} will call default constructor, so maybe there is performance issue here.
+	\item \texttt{resize} and \texttt{reserve} are different. \texttt{resize()} forces the container to change to \texttt{n}, if \texttt{n} is less than \texttt{size()}, objects in the end will be lost. If \texttt{n} is greater than \texttt{size()}, the default constructor of the element will be called. After \texttt{resize(n)}, \texttt{size} will return \texttt{n}. \texttt{resize} to a smaller size doesn't change the capacity. Pay attention to this: \texttt{resize} will call the default constructor, so there might be a performance issue here.
 \begin{lstlisting}[frame=single, language=c++]
 capacity() //how many CAN hold
 size()   //how many are in NOW
@@ -12459,7 +12480,7 @@ resize(n) //initial or fill with default constructor.
 reserve(n) //cause the container's capacity() to at lease n.
 \end{lstlisting}	
 	
-	\item You want to avoid allocation, 1), if you know the number, then use \texttt{reserve}, 2) if you don't know the number, you can reserve maximum space, then you can trim off any excess capacity. You can use \texttt{shrink\_to\_fit()} function here. 
+	\item To avoid allocation, follow these guidelines: 1), if you know the number, then use \texttt{reserve}, 2) if you don't know the number, you can reserve maximum space, then you can trim off any excess capacity. You can use \texttt{shrink\_to\_fit()} function here. 
 \begin{lstlisting}[frame=single, language=c++]
 vector<class> v1;
 v1.reserve(1000); 
@@ -12469,10 +12490,10 @@ vector<class>(v1).swap(v1);
 string(s).swap(s) // the same idea behind.
 \end{lstlisting}
 	\begin{description}
-		\item[Line 5:] \texttt{vector<class>(v1)} copy constructor create a temp vector. temp just copy real object, so it's capacity (maybe 8)is small. \texttt{temp.swap(v1)} then \texttt{temp} has 1000 space,  \texttt{v1} capacity is 8 now. in the end of statement, \texttt{temp} is destroyed.
+		\item[Line 5:] \texttt{vector<class>(v1)} copy constructor create a temp vector. temp just copy real object, so it's capacity (maybe 8) is small. \texttt{temp.swap(v1)} then \texttt{temp} has 1000 space,  \texttt{v1} capacity is 8 now. in the end of statement, \texttt{temp} is destroyed.
 	\end{description}
 	
-	\item \texttt{clear} only change size to 0, but will not change capacity. \texttt{resize} and \texttt{reserve} are different.
+	\item \texttt{clear} only change size to 0, but will not change capacity. 
 \begin{lstlisting}[frame=single, language=c++]
 vector<Foo> vcFoo;
 vcFoo.reserve(10); // just allocate space, don't build object.
@@ -12484,15 +12505,15 @@ vcFoo[2] = foo;    // OK here.
 \end{itemize}
 
 
-\subsubsection{Search in Container}
+\subsubsection{Search in a container}
 \begin{itemize}
 	\item Distinguish among the following algorithms: \texttt{count}, \texttt{find}, \texttt{binary\_search}, \texttt{lower\_bound}, \\ \texttt{upper\_bound}, and \texttt{equal\_range}.
 
 \begin{figure}[ht]
 	\centering
 	\includegraphics[scale=0.6]{pics/distinguish.png}
-	\caption{Implementation of deque}
-	\label{fig:queue}
+	\caption{Search algorithms}
+	\label{fig:search}
 \end{figure}
 
 
@@ -12506,7 +12527,7 @@ vcFoo[2] = foo;    // OK here.
 	
 	\item Don't use generic \texttt{find()} algorithm on a sorted range,  use \texttt{binary\_search()}. \texttt{binary\_search} just return bool, not position.
 	
-	\item  \texttt{find()} will return match iterator, if no match, it will return end() (for map or set) or last iterator (for generic algorithm). but \texttt{Lower\_bound}  will return a position anyway, match position or insert position(no match).
+	\item  \texttt{find()} will return a match iterator, if no match, it will return \texttt{end()} (for map or set) or last iterator (for generic algorithm). but \texttt{Lower\_bound}  will return a position anyway, match position or insert position(no match).
 	
 	\item Lower bound: first element that is greater-or-equal. Upper bound: first element that is strictly greater. \texttt{equal\_range} return a pair of (\texttt{lower\_bound}, \texttt{upper\_bound}).
 	
@@ -12538,7 +12559,7 @@ if(distance(p.first, p.second)  >=1){  //or code below:
 \subsubsection{Range member functions}
 
 \begin{itemize}
-	\item Prefer range member functions to their single-element counterparts, Detail can be found Effective STL Item 5.
+	\item Prefer range member functions to their single-element counterparts, Detail can be found in "Effective STL Item 5".
 	
 \begin{lstlisting}[numbers=none]
 container::container(inputIterator1, inputIterator2); //Range construction
@@ -12550,9 +12571,9 @@ container::assign(inputIterator1, inputIterator2); //Range assignment
 
 	\item The copy algorithm uses a loop internally, but sometimes there are more efficient member functions available. In almost all cases where the destination range is specified using an insert iterator, it is better to replace the copy algorithm with a call to a range member function.
 
-\begin{lstlisting}[frame=single, language=c++]
+\begin{lstlisting}[numbers=none]
 v1.clear();
-copy(v2.begin(), v2.end(), back_inserter(v1) );
+copy(v2.begin(), v2.end(), back_inserter(v1) ); //don't use copy here
 
 v1.insert(v1.end(), v2.begin(),v2.end() ); //use below 4 range function
 v1.assign(v2.begin(), v2.end() )
@@ -12588,7 +12609,7 @@ v1.insert(v1.begin(),  v2,begin() , v2.end()); // a better method is here.
 	\item Both associative and sequential containers support the \texttt{insert} and \texttt{erase} functions, which are common interfaces for STL containers. In sequential containers, these functions are not as important because we usually use \texttt{push\_*} and \texttt{pop\_*} instead. However, in associative containers, the \texttt{insert} and \texttt{erase} functions are very important APIs for modifying the container.
 
 	\item For an associative container, you don't need to use \texttt{find} before using \texttt{insert}. The \texttt{insert} function has three versions:
-\begin{lstlisting}[numbers=none]
+\begin{lstlisting}[]
 std::pair<iterator, bool> insert( P& value ); 
 iterator insert( iterator hint, const value_type& value );
 void insert( InputIt first, InputIt last );  //insert range.
@@ -12645,8 +12666,8 @@ void erase( InputIt first, InputIt last ); //erase range.
 
 	\item Choose carefully among erasing options:  To eliminate all objects in a container that have a particular value.
 	\begin{enumerate}
-		\item For a vector,string or deque: use erase-remove. Don't use for loop, it will invalid the iterator.
-		\item For a list: use it's own remove.
+		\item For a \texttt{std::vector}, \texttt{std::string} or \texttt{std::deque}: use erase-remove. Don't use for loop, it will invalid the iterators.
+		\item For a \texttt{std::list}: use it's own remove.
 		\item For an associative container: use its erase member function.		
 	\end{enumerate}
 
@@ -12659,9 +12680,9 @@ map.erase(1963);
 
 \item  To eliminate all objects in a container that satisfy a particular predicate.
 \begin{enumerate}
-	\item For a vector, string or deque: use erase-remove, Don't use for loop, it will invalid the iterator.
+	\item For a \texttt{std::vector}, \texttt{std::string} or \texttt{std::deque}: use erase-remove, Don't use for loop, it will invalid the iterator.
 	
-	\item For a list: use \texttt{remove\_if}.
+	\item For a \texttt{std::list}: use \texttt{remove\_if}.
 	
 	\item For an associative container: write loop, make sure to post increment your iterator. detail can be seen in effective STL item 9.
 \end{enumerate}
@@ -12669,6 +12690,7 @@ map.erase(1963);
 bool badValue(int x);
 vc.erase(remove_if(vc.begin(), vc.end(), badValue), vc.end()); // 1) vector
 lsit.remove_if(badValue);                                   // 2) list
+
 for(auto i = map.begin();i!=map.end(); /* no ++i here*/) {  // 3) map
 	if(badVaue(*i)) 
 		map.erase(i++); //post increment here! or i = map.erase(i);
@@ -12691,7 +12713,7 @@ for(vect<int>::iterator i = vect.begin();i!=vect.end(); ){
 
 \end{itemize}
 
-\subsubsection{Other Usage Suggestions}
+\subsubsection{Other usage suggestions}
 \begin{itemize}
 		
 	\item Store only values and smart pointers(\texttt{unique\_ptr} or \texttt{shared\_ptr}) in container, because smart pointer is also kind of value semantic. 
@@ -12708,7 +12730,7 @@ for(vect<int>::iterator i = vect.begin();i!=vect.end(); ){
 
 
 
-	\item When you use STL Container, you should realize that typedef are your best friends. 1) For a complex type, it can save typing. 2)keep good maintainable for future change. 
+	\item When you use STL Container, you should realize that typedef are your best friends. 1) For a complex type, it can save typing. 2) keep good maintainable for future change. 
 \begin{lstlisting}[numbers=none]
 typedef vector<Foo, SpecialAllocator<Foo> > FooContainer;
 typedef FooContainer::iterator FooIt;
@@ -12773,7 +12795,7 @@ public:
 	\item The standard associative containers are implemented as balanced binary search trees. They are optimized for a mixed combination of insertions, erasures, and lookups. However, if the container is used as a dictionary, it can fall into three distinct phases: setup, lookup, and modify. Modify is not very frequent, whereas lookup is very frequent. In such cases, the associative container may not be the best option. A sorted \texttt{vector} also supports logarithmic search time and has two advantages: 1) it uses less space, and 2) more space can cause page faults in memory, making the sorted \texttt{vector} faster than the associative container with the same logarithmic search complexity. Therefore, for a dictionary, it's better to use a sorted vector.
 
 
-	\item Avoid using \texttt{vector<bool>}, use \texttt{deque<bool>} or \texttt{bitset}
+	\item Avoid using \texttt{vector<bool>}, use \texttt{deque<bool>} or \texttt{bitset}.
 
 
 	\item Effective STL item 22: Avoid in-place key modification in \texttt{std::set} and \texttt{std::multiset}.
@@ -12814,7 +12836,7 @@ m.insert(std::move(n2)); // move node back in
 \end{lstlisting}
  \end{enumerate}
 
-	\item Item19 effective STL, Understand the difference between equality and equivalence in associative Containers.
+	\item The book "effective STL item 19" introduces the difference between equality and equivalence in associative Containers.
 	
   \begin{enumerate}
 	  \item \textbf{equality} is based on \texttt{operator ==}. \textbf{equivalence} is based on \texttt{operator <}. Because associate container, \texttt{set}, \texttt{map}, they must sort their elements, so they must use \texttt{operator <}. Then it use \texttt{!if(a<b)\&\&!if(b<a)} to define equivalence, and associate container use equivalence to decide if a object exist in a container.
@@ -12850,7 +12872,7 @@ set<*string,  stringLess> ss;
 
 \subsection{string}
 \begin{itemize}
-	\item In C++, we encourage you to use the string class more often, instead of \texttt{char[]} and \texttt{char *p = new}. It offers more functions, such as \texttt{compare, find, erase, replace,} and \texttt{insert}. The string class is a template specialization of \texttt{basic\_string<char>}. Understanding this will enable you to construct a string of type \texttt{w\_char}."
+	\item In C++, we encourage you to use the string class more often, instead of \texttt{char[]} and \texttt{char *p = new}. It offers more functions, such as \texttt{compare, find, erase, replace,} and \texttt{insert}. The string class is a template specialization of \texttt{basic\_string<char>}. Understanding this will enable you to construct a string of type \texttt{w\_char}.
 	
 	
 	\item There are a lot of ways that can be used construct a string object, you can see these methods in the cpp reference website, such as:
@@ -13176,9 +13198,9 @@ foo.erase((++ri).base()); //adjust ri before you want to erase too.
 \begin{itemize}
 
 \item Effective STL item 43, Prefer algorithm calls to hand-written loops.
+
 \begin{enumerate}
-	
-	\item  Handing writing is prone to bug.
+	\item  Handing writing is prone to bugs.
 \begin{lstlisting}
 int data[3] ={1,2, 3}
 int max = 3;
@@ -13221,10 +13243,6 @@ auto i = find_if(v.begin(), v.end(), [x, y](int &i){i>x && i<y}); //better
 %for_each(lw.begin(),lw.end(), mem_fun_ref(&Widget::redraw) );
 %\end{lstlisting}
 
-	\item There are four groups: non modifying sequence , mutating sequence, sorting, generalized numeric operations. Detail can be see c++ primer p1286.
-
-	
-
 
 
 	\item Know you sorting options: It makes no sense to sort elements in standard associative containers, because such containers use their comparison functions to remain sorted all the time. For other sequence container, sorting options is below: (1-3) need random iterator. 4 only need bidirection iterator.(list)
@@ -13246,7 +13264,7 @@ bool good(const Foo &f1)
 partition(vf.begin(), vf.end(), good);
 \end{lstlisting}
 
-	\item When using remove-like algorithms on containers of pointers, it's important to be careful. Deleting a pointer and freeing the memory it points to are two separate things. To avoid errors, it's a good idea to use \texttt{std::unique\_ptr}."
+	\item When using remove-like algorithms on containers of pointers, it's important to be careful. Deleting a pointer and freeing the memory it points to are two separate things. To avoid errors, it's a good idea to use smart pointers.
 \begin{lstlisting}[numbers=none]
 void delAndNULL(Foo*& pf){ // use pointer reference here.
 	if(!pf->isCertified(){ delete pf; pf = nullptr}
@@ -13258,7 +13276,7 @@ v.erase(remove(v.begin(),v.end(),static_cast<Foo *>(0) ), v.end());
 
 \item When you use algorithms in STL, you need to pay attention to some points: 
 \begin{enumerate}
-	\item Algorithms writes its result by making assignment. So you need to 1) use resize or 2) use reserve + inserter in the algorithms when you want to write element to target range.
+	\item Algorithms writes its result by making \textbf{assignment}. So you need to 1) use resize or 2) use reserve + inserter in the algorithms when you want to write elements to target range.
 \begin{lstlisting}[numbers=none]
 vector<int> values, result;
 int doSth(int x); // function
@@ -13269,12 +13287,12 @@ transform(values.begin(), values.end(), back_inserter(result), doSth) //OK
 transform(values.rbegin(), values.rend(), front_insert(result), doSth) //OK	
 \end{lstlisting}
 
-	\item what kind of iterator does it accept? 
+	\item What kind of iterator does it accept? 
 	\item What does functor/lambda it accept and return?
 	\item Note below algorithms expect sorted ranges:
 \begin{lstlisting}[numbers=none]
-binary_search, lower_bound, upper_bound, equal_range, set_union, set_intersection, 
-set_difference, merge, inplace_merge, includes, unique, unique_copy
+binary_search, lower_bound, upper_bound, equal_range, set_union, 
+set_intersection, set_difference, merge, inplace_merge, includes, unique
 \end{lstlisting}	
 \end{enumerate}
 
@@ -13307,7 +13325,7 @@ Parameter:  \\
 \end{tabular}
 
 \subsubsection{Nonmutating algorithms}
-There are five big group inside this Nonmutating group, you can remember them as \texttt{CCMFS} (CC makes friends) They are \textbf{count, compare, max, find and search}.
+There are five big group inside this Nonmutating group, you can remember them as \texttt{ACCMFS} (a CC makes friends) They are \textbf{all(any,none)\_of, count, compare, max, find and search}.
 
 
 \textbf{count} \\
@@ -13332,20 +13350,18 @@ There are five big group inside this Nonmutating group, you can remember them as
 	\bottomhline
 \end{tabular}
 
-An example of using \texttt{std::equal}:
+An example of using \texttt{std::equal} and \texttt{std::mismatch}:
 \begin{lstlisting}[numbers=none]
 bool is_palindrome(const std::string& s){
 	return std::equal(s.begin(), s.begin() + s.size()/2, s.rbegin());
 } //return true for "abcdcba"
-\end{lstlisting}
 
-An example of using \texttt{std::mismatch}
-\begin{lstlisting}
 std::string mirror_ends(const std::string& in){
-	return std::string(in.begin(),
-	std::mismatch(in.begin(), in.end(), in.rbegin()).first);
+	return std::string(in.begin(), 
+	       std::mismatch(in.begin(), in.end(), in.rbegin()).first);
 }
 \end{lstlisting}
+
 
 
 
@@ -13414,11 +13430,9 @@ For a contiguous sequence of n values each equal to \&, return iterator to the f
 \end{tabular}
 
 
-
-
 \subsubsection{Mutating algorithms}
 
-	In this group, remember RRRRSSSSPPCFMT(RRRRSSSSPP copy friends many time). They are \textbf{replace, remove(unique), random, rotate, shift, swap, sample, shuffle,  partition, permuting, copy, fill(generate), math(accumulate, inner\_product, partial\_sum, adjacent\_difference), transform}. 
+	In this group, remember RRRRSSSSPPCFMT(RRRRSSSSPP copy friends many time). They are \textbf{replace, remove(unique), reverse, rotate, shift, swap, sample, shuffle,  partition, permuting, copy, fill(generate), math(accumulate, inner\_product, partial\_sum, adjacent\_difference), transform}. 
 
 \textbf{for\_each} \\
 \begin{tabular}{| p{0.3\textwidth} |p{0.43\textwidth}|p{0.18\textwidth}|}
@@ -13523,9 +13537,7 @@ void selection_sort(ForwardIt begin, ForwardIt end){
 	for (ForwardIt i = begin; i != end; ++i)
 	std::iter_swap(i, std::min_element(i, end));
 }
-\end{lstlisting}
 
-\begin{lstlisting}
 void swap_adjacent_pairs (std::vector<int>& v) {
 	if (v.size() < 2) return;
 	for (auto i=begin(v), j=i+1, e=end(v); j < e; i+=2, j+=2) {
@@ -13547,7 +13559,13 @@ copy(myvector.begin(), myvector.end(), myvector.begin()+3)  //error
 
 myvector.resize(myvector.size()+3) //1, 2, 3, 4, 5
 copy_backward(myvector.begin(), myvector.begin()+5, myvector.end())
-`// the result is 1, 2, 3, 1, 2, 3, 4, 5
+// the result is 1, 2, 3, 1, 2, 3, 4, 5
+
+std::vector<int> source(6);
+std::iota(source.begin(), source.end(), 1);  3, 4
+std::copy_backward(source.begin()+1, source.begin()+4, source.begin()+5);
+//1 2 3 4 5 6
+//1 2 2 3 4 6
 \end{lstlisting}
 \begin{description}
 	\item[Line 1:] error, when source and targe is overlap, you have to use backward copy
@@ -13675,8 +13693,8 @@ auto gather(BiIt f, BiIt l, BiIt p, UnPred s) -> std::pair <BiIt, BiIt>{
 \end{lstlisting}
 
 
-\item All of the elements before this new nth element are less than or equal to the elements after the new nth element. Who are my top 20 salespeople?" For example, nth\_element( s.begin(),
-s.begin()+19, s.end(), SalesRating ); puts the 20 best elements at
+\item All of the elements before this new nth element are less than or equal to the elements after the new nth element. Who are my top 20 salespeople?" For example, \texttt{std::nth\_element( s.begin(),
+s.begin()+19, s.end(), SalesRating );} puts the 20 best elements at
 the front.
 \item If you use \texttt{nth\_element} on most of the range, It may be slower than a full sort.
 \end{itemize}
@@ -13728,7 +13746,7 @@ rotate(myvector.begin(), myvector.begin()+3,myvector.end());
 
 \begin{lstlisting}[breaklines, basicstyle=\scriptsize]
 for (auto i = v.begin(); i != v.end(); ++i)  //insertion sort
-	std::rotate(std::upper_bound(start, i, *i), i, std::next(i));
+	std::rotate(std::upper_bound(v.begin(), i, *i), i, std::next(i));
 
 template <typename It> 
 auto slide(It f, It l, randIter p) -> std::pair<It, It>{
@@ -13967,8 +13985,7 @@ std::cout << std::accumulate(nums.begin(), nums.end(), std::string{},
 			[] (std::string previousResult, int item) {
 				return previousResult + '-' + std::to_string(item);
 			}) ;
-		// Init result, the first paramter of lambda and return of lambda
-		// these three have the same type. 
+// Init result, the first paramter and return of lambda share the same type. 
 \end{lstlisting} 
 
 	\item difference between \texttt{std::reduce} and \texttt{std::accumulate}
@@ -14037,7 +14054,7 @@ int sum(int i,int j);
 call_bakc(2, 3, sum); //pass function name here. 
 \end{lstlisting}
 
-	\item In C++, generic algorithms can also accept functions as template arguments. \texttt{for\_each} is a template function, so we need to provide an input variable. We can simply input the function name, using a function pointer. \texttt{fun} in below code is a variable, not a type.
+	\item In C++, generic algorithms can also accept functions as template arguments. \texttt{std::for\_each} is a template function, so we need to provide an input variable. We can simply input the function name into the \texttt{std::for\_each}.
 \begin{lstlisting}[]
 void fun(int i) {
 	//do stuff
@@ -14057,7 +14074,7 @@ for_each(a.begin(), a.end(), functor()); //need value, not type
 
 	\item  You can use a struct or class to build a functor. If you want to have a private, customized value, you have to use a class. For example, the cutoff value in the code below.
 \begin{lstlisting}[frame=single, language=c++]
-struct less_than_7 {
+struct less_than_7 {  //in struct, default is public, so struct is better!
     bool operator()(int i) const { return i < 7; }
 };
 
@@ -14071,9 +14088,9 @@ private:
 count_if(v.begin(),v.end(), std::not1(less_than_7()));
 count_if(v.begin(),v.end(),std::not1(less_than_value(7)));
 \end{lstlisting}
-\begin{description}
-	\item[Line 2:] you can use class instead struct, but you need to make operator() public, in struct, default is public, so struct is better!
-\end{description}
+%\begin{description}
+%	\item[Line 2:] you can use class instead struct, but you need to make operator() public, in struct, default is public, so struct is better!
+%\end{description}
 
 
    \item In previous example, you can see advantage of usage \texttt{less\_than\_value}.
@@ -14084,12 +14101,12 @@ count_if(v.begin(),v.end(),std::not1(less_than_value(7)));
 
    \item \texttt{std::set} and \texttt{std::map} are template classes, so they only accept types, not functions. If you want to give a set or map a customized compare function, you have to use a functor to define a type.
 \begin{lstlisting}[frame=single, language=c++]
-class yanCompare{
+class YanCompare{
     bool operator()(string &s1, string &s2){....;}
 };
 
-set<string, yanCompare> setDic;  //set is a class, need a type here
-std::sort(...yanComare{}); //sort function needs a variable, temporary is OK
+set<string, YanCompare> setDic;  //set is a class, need a type here
+std::sort(...YanComare{}); //sort function needs a variable, temporary is OK
 \end{lstlisting}
  
 \end{enumerate}
@@ -14378,24 +14395,26 @@ Foo foo;
 test([&foo](int i){ foo.print_add(i); });
 \end{lstlisting}
 	
-\begin{lstlisting}
-struct A{
-public:
-	void output(int i, int j){
-		cout<<"i, j = "<<i,j<<endl;
-	}
-};
-vector<int> vi  = {1,2,3};
-A a;
-//below is bind, very complicated.
-using namespace std::placeholders;
-auto bind_mem_fn = bind(&A::output, &a, 5, _1);
-bind_mem_fn(10);
-for_each(vi.begin(), vi.end(), bind_mem_fn );
+%\begin{lstlisting}
+%struct A{
+%public:
+%	void output(int i, int j){
+%		cout<<"i, j = "<<i,j<<endl;
+%	}
+%};
+%vector<int> vi  = {1,2,3};
+%A a;
+%//below is bind, very complicated.
+%using namespace std::placeholders;
+%auto bind_mem_fn = bind(&A::output, &a, 5, _1);
+%bind_mem_fn(10);
+%for_each(vi.begin(), vi.end(), bind_mem_fn );
+%
+%//below is lambda, very clear and easy
+%for_each(vi.begin(), vi.end(), [&a](auto item){a.output(5, item);} );	
+%\end{lstlisting}
 
-//below is lambda, very clear and easy
-for_each(vi.begin(), vi.end(), [&a](auto item){a.output(5, item);} );	
-\end{lstlisting}
+
 	\item Lambdas allow to store state easily.
 \begin{lstlisting}
 std::vector<int> vec { 0, 5, 2, 9, 7, 6, 1, 3, 4, 8 };
@@ -14441,7 +14460,7 @@ host(T v){v();}
 		\item A template parameter, which can then be any callable object, i.e. a function pointer, a functor, a lambda, a \texttt{std::function}, ...  On the other hand you get the advantage that the call to the callback can be inlined, as the client code of your (outer) function "sees" the call to the callback will the exact type information being available.
 	\end{enumerate}
 
-	\item Drawback here is that your (outer) function becomes a template and hence needs to be implemented in the header.
+	Drawback here is that your (outer) function becomes a template and hence needs to be implemented in the header.
 	
 	\item When use \texttt{std::function}? One such use case arises when you need to resolve a call at run-time by invoking a callable object that adheres to a specific signature, but whose concrete type is unknown at compile-time. This is typically the case when you have a collection of callbacks of potentially different types, but which you need to invoke uniformly; the type and number of the registered callbacks is determined at run-time based on the state of your program and the application logic. Some of those callbacks could be functors, some could be plain functions, some could be the result of binding other functions to certain arguments.
 	
@@ -14474,22 +14493,18 @@ host(T v){v();}
 	%	\includegraphics[scale=0.9]{pics/function.png} 
 	%\end{center}
 	
-	\item There are two articles "Should I use \texttt{std::function} or a function pointer in C++?" and "std::function vs template", You can search them in the stackoverflow.
+	\item Lambda is also Functor, but it's unnamed type. \texttt{std::function} is a kind of callable container. it also support invoke. The type of a lambda object is not \texttt{std::function}! Instead, it has "unique unnamed non-union non-aggregate class type, known as closure type". The upshot of this is that creating a \texttt{std::function} from a lambda is not free:\texttt{ std::function} has a non-trivial constructor and destructor. 
 	
-\end{itemize}
-
-\subsection{Summary}
-\begin{itemize}
-
-	\item Lambda is also Functor, but it's unnamed type. \texttt{std::function} is a kind of callable container. it also support invoke.
 	
-	\item the type of a lambda object is not \texttt{std::function}! Instead, it has “unique unnamed non-union non-aggregate class type, known as closure type". The upshot of this is that creating a \texttt{std::function} from a lambda is not free:\texttt{ std::function} has a non-trivial constructor and destructor. 
-	
-	\item The whole concept can be illustrated by the figure below. In the middle of the figure, Function, Functor, Lambda, and Member Function are the four types of real, concrete callable objects. The top part of the figure represents the callback interface, while the bottom part represents some adapters. Both templates and \texttt{std::function} can accept all types of callable objects. However, \texttt{std::function} has some overhead.  \texttt{std::bind} and \texttt{std::mem\_fn} are both adapters. They change the existing signature or invoking syntax. Although \texttt{std::bind} can still be used, it is somewhat obsolete. Most of the time, you can use a lambda to achieve the same effect, which is clearer and more readable. \texttt{mem\_fn} is not used very often, because you can use a lambda to invoke a member function on an object as well. 
 		
 \begin{center}
 	\includegraphics[width=0.95\linewidth]{pics/callable.png}
 \end{center}
+
+\item The whole concept can be illustrated by the figure above. In the middle of the figure, Function, Functor, Lambda, and Member Function are the four types of real, concrete callable objects. The top part of the figure represents the callback interface, while the bottom part represents some adapters. Both templates and \texttt{std::function} can accept all types of callable objects. However, \texttt{std::function} has some overhead.  \texttt{std::bind} and \texttt{std::mem\_fn} are both adapters. They change the existing signature or invoking syntax. Although \texttt{std::bind} can still be used, it is somewhat obsolete. Most of the time, you can use a lambda to achieve the same effect, which is clearer and more readable. \texttt{mem\_fn} is not used very often, because you can use a lambda to invoke a member function on an object as well. 
+
+\item There are two articles "Should I use \texttt{std::function} or a function pointer in C++?" and "std::function vs template", You can search them in the stackoverflow.
+
 
 \end{itemize}
 
@@ -14498,6 +14513,30 @@ host(T v){v();}
 \section{Code examples}
 \subsubsection{container}
 \begin{itemize}
+\item A code snippet illustrates \texttt{std::iota} and constrained algorithms.
+\begin{lstlisting}
+vector<int> vi2;
+vi2.resize(10);
+iota(vi2.begin(), vi2.end(), 0); //iota just assign, not push.  need resize container. 
+copy_if(vi2.begin(), vi2.end(), ostream_iterator<int>(cout, " "),  //copy_if 
+ [](auto &e){return e%2 ==0;} );
+
+auto n = count(vi2.begin(), vi2.end(), 3); //use auto n here. 
+auto j = ranges::max_element(vi2); //use constrained algorithems.
+cout<<*j<<'\n';  //return iterators.
+\end{lstlisting}
+
+\item Use \texttt{ostream\_iterator} and \texttt{ranges::copy} to output a container.
+\begin{lstlisting}
+ostream_iterator<int> ct{cout, " "}; // use ct and ranges::copy. 
+transform(begin(vi),end(vi),begin(vi), [](auto &e){
+	if(e%2 == 0)
+		return 2;
+	return e;       
+});
+ranges::copy(vi,ct); //use ranges library.
+\end{lstlisting}
+	
 \item A good example about \texttt{emplace\_back} usage.
 \begin{lstlisting}
 struct A{
@@ -14506,12 +14545,12 @@ struct A{
 };
 vector<A> va;
 A a("aa",1);
-va.push_back(a); //constructor, copy ctor
-va.push_back(A("aa",1)); //constructor, move ctor
-va.emplace_back("aa",1); //only call constructor, most efficient
+va.push_back(a); //call constructor and copy ctor.
+va.push_back(A("aa",1)); //call constructor and move ctor.
+va.emplace_back("aa",1); //only call constructor, the most efficient.
 \end{lstlisting}
 
-\item Another example is \texttt{try\_emplace} in \texttt{map} in C++ 17.
+\item Another example is \texttt{try\_emplace} and \texttt{insert\_or\_assign} in \texttt{std::map} in C++ 17. Detail can be found "C++17: try\_emplace() and insert\_or\_assign() as a solution to double lookup". 
 
 \begin{lstlisting}
 auto m = std::map<int, A> {};
@@ -14520,13 +14559,13 @@ m.insert({1, {"Ann", 63}}); //constructor, copy, move
 m.insert({1, A("Ann", 63)});  //constructor, move, move
 m.insert(std::make_pair(1, A("Ann", 63))); //constructor, move , move 
 m.emplace(std::make_pair(1, A("Ann", 63))):  //constructor,  move, move
-m.emplace(1, A("Ann", 63)): //constructor, copy, move
+m.emplace(1, A("Ann", 63)): //constructor, move
 
 // m.emplace(1, "Ann", 63); //doens't work
 m.try_emplace(1, "Ann", 63); //Work, only constructor
 \end{lstlisting}
 
-\item From \texttt{std::vector} to \texttt{std::map}, you can use \texttt{std::copy} or range construction.
+\item From \texttt{std::vector} to \texttt{std::map}, you can use \texttt{std::copy} or range construction. 
 
 \begin{lstlisting}
 std::vector<std::pair<std::string, int> > values {   
@@ -14538,28 +14577,50 @@ std::map<std::string, int> mapped_values;
 std::copy(values.begin(), values.end(), 
                std::inserter(mapped_values, mapped_values.begin()));
 
-//or, you could initialize the map from the vector:
+//or, you could initialize the map from the vector by using range consruction.
 std::map<std::string, int> m2((values.begin()), values.end());
 \end{lstlisting}
 \end{itemize}
 
 \subsubsection{algorithm}
 \begin{itemize}
-\item There are a few famous algorithm examples to remember. You can see them in the previous sections.  1) quick sort(std::partition), 2)merge sort(std::inplace\_merge) 3) insert sort(std::rotate) 4) selection sort(std::swap) 5)palindrome(std::equal) 6)fabonacci(std::adjacent\_difference) \\ 7) trim\_string (std::erase+std::find) 8)gather(std::partition) 9)slide(std::rotate) 
+\item There are a few famous algorithm examples to remember. You can see them in the previous sections.  1) quick sort(std::partition), 2)merge sort(std::inplace\_merge) 3) insert sort(std::rotate) 4) selection sort(std::iter\_swap) 5)palindrome(std::equal) 6)fabonacci(std::adjacent\_difference) \\ 7) trim\_string (std::erase+std::find) 8)gather(std::partition) 9)slide(std::rotate) 
 
-\item For accumulate, how to change sum type? For \texttt{std::accumulate}, the init value, the first parameter of op and the return the result, they are all the same type.
+
+\item Filter and transform example. A container, filter some items and get the name of it.
 \begin{lstlisting}
-vector<int> vi(10,1);
-long long sum = 0; //use long long here to avoid overflow.
-sum = std::accumulate(begin(vi),end(vi),sum);
+std::string name(const person_t &person) {
+	return person.name();
+}
+bool is_female(const person_t &person) {
+	return person.gender() == person_t::female;
+}
+std::vector<person_t> people {
+	{ "David"  , person_t::male   },	{ "Jane"   , person_t::female },
+	{ "Martha" , person_t::female },
+};
+
+std::vector<person_t> females; // Filtering the collection by copying
+std::copy_if(people.cbegin(), people.cend(), std::back_inserter(females), is_female);
+
+std::vector<std::string> names(females.size());
+std::transform(females.cbegin(), females.cend(), names.begin(), name);	
 \end{lstlisting}
 
 
-\item simulate zip in python with \texttt{std::transform}. In C++20, you can use \texttt{std::views::zip} to do the same thing.
+\item For \texttt{std::accumulate}, the init value, the first parameter of op and the return the result, they are all the same type.
+\begin{lstlisting}
+vector<int> vi(10,1);
+long long sum = 0; //use long long here to avoid overflow.
+sum = std::accumulate(begin(vi),end(vi), sum);
+\end{lstlisting}
+
+
+\item Simulate zip in python with \texttt{std::transform}. In C++20, you can use \texttt{std::views::zip} to do the same thing.
 \begin{lstlisting}
 vector<int> vi(10,1); // 1, 1, 1...
 vector<int> vi1(10,2);// 2, 2, 2....
-vector<pair<int, int> > result; //{1,2}, {1,2}, {1,2}...
+vector< pair<int, int> > result; //{1,2}, {1,2}, {1,2}...
 
 std::transform(begin(vi),end(vi),begin(vi1), back_inserter(result),
         [](auto &a, auto &b){return make_pair(a, b); } );
@@ -14567,7 +14628,7 @@ std::transform(begin(vi),end(vi),begin(vi1), back_inserter(result),
 std::views::zip(vi, vi1);  //C++20 supports.
 \end{lstlisting}
 
-\item Produce the number serial. 
+\item Produce a number serial. 
 \begin{lstlisting}
 vector<int> vi(10,2);
 partial_sum(begin(vi),end(vi), begin(vi));
@@ -14579,11 +14640,8 @@ adjacent_difference(begin(vi),end(vi), begin(vi), divides<int>());
 
 vector<int> vi(10,1);
 adjacnet_difference(begin(vi), prev( end(vi) ), next(begin(vi), plus<int>()))
-//1 1 2 3 5 8 13 21...
+//1 1 2 3 5 8 13 21...  Fibonacci number, pay attention to the prev and next
 \end{lstlisting}
-\begin{description}
-\item[Line 10:] Fibonacci number, pay attention to the prev and next
-\end{description}
 
 \item  Example of \texttt{std::inner\_product}. It is just like \texttt{std::accumulate}, \texttt{std::inner\_product} is "fold" algorithm.
 
@@ -14621,7 +14679,7 @@ mt19937 gen{rd()};
 ranges::shuffle(v1, gen);  //shuffle also need to use mt19937.
 \end{lstlisting}
 
-	\item Common pattern for k-max frequency problem. 
+	\item Code snippet for k-max frequency problem. 
 \begin{lstlisting}
 map<int, int> map1;
 for(auto e: v1){
@@ -14649,7 +14707,7 @@ for(auto e: v1){
 }
 \end{lstlisting}
 
-	\item quick sort and merge sort
+	\item Implement quick sort by using \texttt{std::partition}.
 \begin{lstlisting}
 template<class ForwardIt>
 void quicksort(ForwardIt first, ForwardIt last){
@@ -14657,12 +14715,10 @@ void quicksort(ForwardIt first, ForwardIt last){
 	return;
 	
 	auto pivot = *std::next(first, std::distance(first, last) / 2);
-	auto middle1 = std::partition(first, last, [pivot](const auto& em)
-	{
+	auto middle1 = std::partition(first, last, [pivot](const auto& em){
 		return em < pivot;
 	});
-	auto middle2 = std::partition(middle1, last, [pivot](const auto& em)
-	{
+	auto middle2 = std::partition(middle1, last, [pivot](const auto& em){
 		return !(pivot < em);
 	});
 	
@@ -14671,7 +14727,7 @@ void quicksort(ForwardIt first, ForwardIt last){
 }
 \end{lstlisting}
 
-\item merge sort
+\item Implement merge sort by using \texttt{std::inplace\_merge}.
 \begin{lstlisting}
 template<class Iter>
 void merge_sort(Iter first, Iter last){
@@ -14679,7 +14735,7 @@ void merge_sort(Iter first, Iter last){
 		Iter middle = first + (last - first) / 2;
 		merge_sort(first, middle);
 		merge_sort(middle, last);
-		std::inplace_merge(first, middle, last);
+		std::inplace_merge(first, middle, last); //using std::inplace_merge
 	}
 }
 \end{lstlisting}
@@ -16524,110 +16580,110 @@ decltype(auto) look_up_a_string_2() { return lookup2(); } //C++ 14 idiom
 \end{itemize}
 
 \section{range}
-	In range library: There are three components:
+	In the range library: There are three components:
 \begin{enumerate}
-	\item Concepts, these concepts are basic building block of range library. You can also use them when you building your own range container. 
+	\item Concepts: these concepts are basic building block of range library. You can also use them when you building your own range container. 
 	
-	\item Constrained algorithms, these algorithms only accept an range, don't need to input two iterators. 
+	\item Constrained algorithms: these algorithms accept an range or a sentinel, don't need to input two iterators. 
 	
-	\item The view supported by C++ 20. This is a range that doesn’t own the elements that the begin/end points to. A view is cheap to create, copy and move. There are three characteristics with view: 1) it will not affect original input data range, 2) it uses "evaluated lazily 3) it can be combined, you can use pipe operator to combine different view together.  
+	\item The views: This is a range that doesn’t own the elements that the begin/end points to. A view is cheap to create, copy and move. There are three characteristics with view: 1) it will not affect original input data range, 2) it uses "evaluated lazily" 3) it can be combined, you can use pipe operator to combine different view together.  
 	
 \end{enumerate}
 
 \subsection{range concept and sential}
 \begin{itemize}
 
-	\item basic range concepts.
+	\item Basic range concepts.
+	
+\begin{center}
+	\begin{tabular}{|c|c|}
+		\hline
+		\textbf{concept} & \textbf{model}  \\
+		\hline
+		ranges::input\_range & \texttt{std::istream\_iterator} \\
+		\hline
+		ranges::output\_range & \texttt{std::back\_insert\_iterator} \\
+		\hline
+		ranges::forward\_range & \texttt{std::forward\_list} \\
+		\hline
+		ranges::bidirectional\_range & \texttt{std::list} \\
+		\hline
+		ranges::random\_access\_range & \texttt{std::deque} \\
+		\hline
+		ranges::contiguous\_range & \texttt{std::vector} \\
+		\hline
+		common\_range & sentinel is same type as iterator, \texttt{views::common} \\
+		\hline
 		
-\begin{tabular}{|c|c|}
-	\hline
-	concept & container  \\
-	\hline
-	ranges::input\_range & std::istream\_iterator \\
-	\hline
-	ranges::output\_range & std::back\_insert\_iterator \\
-	\hline
-	ranges::forward\_range & std::forward\_list \\
-	\hline
-	ranges::bidirectional\_range & std::list \\
-	\hline
-	ranges::random\_access\_range & std::deque \\
-	\hline
-	ranges::contiguous\_range & std::vector \\
-	\hline
-	common\_range & sentinel is same type as iterator, views::common \\
-	\hline
+		borrowed\_range & \texttt{std::string\_view}, \texttt{std::span} \\
+		\hline
+		
+		sized\_range & size is constant time \\
+		\hline
+		
+		view & copy is constant time \\
+		\hline
+	\end{tabular}
 	
-	borrowed\_range &  \\
-	\hline
-	
-	sized\_range & size is constant time \\
-	\hline
-	
-	view & copy is constant time \\
-	\hline
-\end{tabular}
-
-	\item \texttt{std::ranges::dangling} usage. 
+\end{center}
+		
+	\item The temporary returned by \texttt{get\_vector()} will be destroyed at the end of the statement, meaning that it will be unsafe to use – it is a dangling iterator. The solution in C++20 is to have a special type, \texttt{std::ranges::dangling}, which algorithms use in their return types instead of potentially-dangling iterators when passed an rvalue range. This type does not provide any operations, so if you try to use it like you would an iterator you’ll get a handy error message involving the dangling type. Detail can be found in the article "Rvalue Ranges and Views in C++20".
 \begin{lstlisting}
-	auto min_val = *std::ranges::min_element(get_vector());
-	// Error, no operator* in std::ranges::dangling
+vector<int> get_vector(){...}
+
+auto min_val = std::ranges::min_element(get_vector()); //min_val a is dangling iterator
+cout<< *min_val; // Error, no operator* in std::ranges::dangling
 \end{lstlisting}
 
-	\item borrowed range has no dangling problem. 
+	\item Dangling iterators are a potential problem for most kinds of ranges – we need to be careful to make sure that we do not use a vector iterator after the parent object has been destroyed. However, this is not the case for all ranges though. A \texttt{std::string\_view}’s iterators for example actually point into some other character array – so we can safely use a \texttt{string\_view::iterator} after the \texttt{string\_view} itself has been destroyed. Types like \texttt{std::string\_view} are called borrowed ranges in the new C++20 terminology. A borrowed range is one whose iterators can safely outlive their parent object. So an rvalue \texttt{std::vector} is not a borrowed range, but an rvalue \texttt{std::string\_view} is.
 \begin{lstlisting}
 std::string str = "Hello world";
-// Weird, but okay:
-auto iter = std::string_view{str}.begin();
-*iter = 'h';
+auto iter = std::string_view{str}.begin(); //iter's parent object is string_view.
+*iter = 'h'; // Weird, but okay:
 
 auto iter = std::ranges::min_element(get_span());
 // iter is an iterator, *not* ranges::dangling
 \end{lstlisting}
 
-	\item By default, all rvalue ranges are assumed to be non-borrowing. If we have a custom type whose iterators can safely “dangle” (say, a custom StringRef type) then we can opt in to allowing the ranges machinery to consider it borrowed by specialising the enable\_borrowed\_range trait:
+	\item By default, all rvalue ranges are assumed to be non-borrowing. If we have a custom type whose iterators can safely “dangle” (say, a custom StringRef type) then we can opt in to allowing the ranges machinery to consider it borrowed by specialising the \texttt{enable\_borrowed\_range} trait. \texttt{std::enable\_borrowed\_range} is a opt-in idea, detail can be seen in a a good article is "C++20 concepts are structural: What, why, and how to change it?".
 \begin{lstlisting}
 template <>
 inline constexpr bool std::ranges::enable_borrowed_range<my::StringRef> = true;
 \end{lstlisting}
 
-	\item enable\_borrowed\_range is a opt-in idea, detail can be seen in a a good article is "C++20 concepts are structural: What, why, and how to change it?".  borrowed\_range can be found "Rvalue Ranges and Views in C++20"
 	
-	
-	\item return a suitable view(ref\_view, owning\_view, etc) depending on the input range type. Usually, we don't use it directly. 
+	\item \texttt{std::views::all} returns a suitable view(std::views::ref\_view, std::views::owning\_view, etc) depending on the input range type. Usually, we don't use it directly. 
 \begin{lstlisting}
 #include <ranges>
 std::vector<int> v {9,1,3,7,4};
-auto vw1 = std::views::all(v);
-// 'vw1' is a ref_view
+auto vw1 = std::views::all(v); //return std::views::ref_view.
 fmt::print("{}\n", vw1); // [9,1,3,7,4]
 v.pop_back();
 fmt::print("{}\n", vw1); // [9,1,3,7]
+
 // move 'v' into a new view:
-auto vw2 = std::views::all(std::move(v));
+auto vw2 = std::views::all(std::move(v)); //return std::views::owning_view.
 v = std::vector<int>{8};
-// => 'vw2' is an owning_view
-// which stores the elements
+// => 'vw2' is an owning_view, which stores the elements
 fmt::print("{}\n", vw2); // [9,1,3,7]
 fmt::print("{}\n", v); // [8]
 \end{lstlisting}
 
-	\item usage of views::common. 
+	\item Usage of \texttt{views::common}. 
 \begin{lstlisting}
 #include <ranges>
 class Gadget {
 	std::array<int,6> a_ {5,4,3,2,1,0};
-	public:
-	auto begin () const {
-		// exclude last element
+public:
+	auto begin () const { // exclude last element
 		return std::counted_iterator{a_.begin(),5};
 	}
-	auto end () const {
-		// counting_iterator already knows size
+	auto end () const { // counting_iterator already knows size	
 		return std::default_sentinel;
 	}
 };
 Gadget g;
+
 fmt::print("{}\n", g);
 // accumulate requires same type for 'begin' and 'end'
 // ERROR: std::accumulate(g.begin(), g.end(), 0);
@@ -16791,6 +16847,17 @@ std::string_view sv = str;
 std::cout << sv.substr(5, 15) << '\n';		
 \end{lstlisting}
 
+	\item Constrained algorithems only accept a range, not two iterators. It looks like that it's not very flexible, but we can use std::view to get the same result. Comparison between iterator version and view version.
+\begin{lstlisting}
+std::sort(v.begin() + 5, v.end())
+std::sort(v.rbegin(), v.rend());
+std::sort(v.rbegin() + 5, v.rend());
+
+std::ranges::sort(std::views::drop(v, 5));
+std::ranges::sort(std::views::reverse(v));
+std::ranges::sort(std::views::drop(std::views::reverse(v), 5));	
+\end{lstlisting}	
+
 	
 	\item Elements of a view are usually the actual elements of the range used to create the view. The view usually doesn't own the elements; it just refers to them, with the exception of \texttt{owning\_view}. Changing an element changes that element in the range that the view was created from. The following example shows this behavior:
 	
@@ -16802,7 +16869,7 @@ std::ranges::fill(x, 42); // changes the evens from input[] to 42
 //  input is 42 1 42 3 42 5 42 7 42 9 42 now.
 \end{lstlisting}
 
-	\item Pay attention view and adapter, usually we use adapter more.
+	\item Pay attention to view and adapter, usually we use adapter more.
 \begin{lstlisting}
 std::ranges::views::transform // this is adaptor. it's a object name.
 std::ranges::transform_view // this is a view. that is class name
@@ -16835,7 +16902,7 @@ fmt::print("{}\n", sv2); // [0,2,4,6,8]
 %}		
 %\end{lstlisting}	
 
-	\item For \texttt{views::all}, if \texttt{rg} is a non-view rvalue such as a temporary object, or is the result of passing the range to std::move, an \texttt{owning\_view}. Use std::views::all\_t<decltype((rg))> to get the type of the returned view.
+	\item For \texttt{views::all}, if \texttt{rg} is a non-view rvalue such as a temporary object, or is the result of passing the range to \texttt{std::move}, it will return an \texttt{owning\_view}. Use \texttt{std::views::all\_t<decltype((rg))>} to get the type of the returned view.
 \begin{lstlisting}
 template <ranges::viewable_range R>
 constexpr ranges::view auto all(R&& rg) const noexcept;
@@ -16863,18 +16930,9 @@ std::cout << std::accumulate(common.begin(), common.end(), 0);
 \end{lstlisting}
 
 	
-	\item Comparison between iterator version and view version.
-\begin{lstlisting}
-std::sort(v.begin() + 5, v.end())
-std::sort(v.rbegin(), v.rend());
-std::sort(v.rbegin() + 5, v.rend());
 
-std::ranges::sort(std::views::drop(v, 5));
-std::ranges::sort(std::views::reverse(v));
-std::ranges::sort(std::views::drop(std::views::reverse(v), 5));
-\end{lstlisting}	
 	
-	\item  A very basic and brief introduction to implementing your own view: from a syntactic point of view, \texttt{std::ranges::SquareView} is a class with a special iterator, where the \texttt{operator*()} of the iterator is redefined. It also defines basic \texttt{begin()} and \texttt{end()} functions. Please search for "An Introduction to the Range-v3 Library" on Google; it introduces the basic adapter and view concepts.
+	\item  A very basic and brief introduction to implementing your own view: from a syntax point of view, \texttt{std::ranges::SquareView} is a class with a special iterator, where the \texttt{operator*()} of the iterator is redefined. It also defines basic \texttt{begin()} and \texttt{end()} functions. Please search for "An Introduction to the Range-v3 Library" on Google; it introduces the basic adapter and view concepts.
 \begin{lstlisting}
 template<typename T>
 using IteratorBase = decltype( std::begin( std::declval<T&>( ) ) );
@@ -16928,7 +16986,8 @@ fmt::print("{}\n", v | std::views::filter(is_even)); // [0,2,4,6,8]
 fmt::print("{}\n", v | std::views::stride(2)); // [0,2,4,6,8]
 \end{lstlisting}	
 
-	\item Subrange selector views are: \texttt{count, take, take\_while, drop, drop\_while}. Note that std::views::counted is not pipelinable and that there's also no \texttt{std::ranges::counted\_view} type.
+	\item Subrange selector views are: \texttt{count, take, take\_while, drop, drop\_while}.  \\
+	Note that \texttt{std::views::counted} is not pipelinable and that there's also no \texttt{std::ranges::counted\_view} type.
 \begin{lstlisting}
 std::vector<int> v {0,1,2,3,4};
 fmt::print("{}\n", std::views::counted(v.begin()+1,2)); // [1, 2]
@@ -17130,8 +17189,9 @@ std::ranges::copy(firstFive.begin(), zstring_sentinel{},  output); //3) use sent
 
 \subsubsection{Sequence View}
 \begin{itemize}
+	\item Two main sequence views are \texttt{std::string\_view} and \texttt{std::span}.
 	
-	\item how to build \texttt{std::string\_view}? 
+	\item How to build \texttt{std::string\_view}? 
 \begin{lstlisting}
 std::string s = "Some Text";
 
@@ -17150,7 +17210,7 @@ std::string_view sv2 {"Hello"s}; //""s return a string., ""sv return view.
 cout<<sv2 //string object has been destroyed. 
 \end{lstlisting}
 
-	\item For read-only string parameter, difference between const reference and string\_view is: If we pass an object as function argument that is not a string itself, but something that can be used to construct a string, e.g., a string literal or an iterator range, a new temporary string object will be allocated and bound to the const reference.
+	\item For read-only string parameter, difference between const reference and \texttt{std::string\_view} is: If we pass an object as function argument that is not a string itself, but something that can be used to construct a string, e.g., a string literal or an iterator range, a new temporary string object will be allocated and bound to the const reference.
 
 \begin{lstlisting}
 void f_cref (std::string const& s) { ... }
@@ -17158,7 +17218,7 @@ void f_view (std::string_view s) { ... }
 
 
 std::string stdStr = "Standard String";
-auto const cStr = "C-String";
+auto const cStr = "C-String";  //cStr is const char* 
 std::vector<char> v {'c','h','a','r','s','\0'};
 f_cref(stdStr);     // no copy
 f_cref(cStr);       //  temp copy, bad
@@ -17171,7 +17231,7 @@ f_view("Literal");  //  no copy
 f_view({begin(v),end(v)});  //  no copy
 \end{lstlisting}
 
-	\item All the basic idea of \texttt{std::string\_view} also apply to \texttt{std::span}. You should also mainly use \texttt{std::span} as function parameter.
+	
 	
 	\item Usage of \texttt{std::span}. You can think that \texttt{std::span} is also a view type.
 \begin{lstlisting}
@@ -17205,13 +17265,13 @@ cout << s[0]; //  w might hold new memory, bad
 	\item \texttt{std::string\_view} and \texttt{std::span} as a function parameters.
 	
 \begin{enumerate}
-	\item decouple function implementations from the data representation/container type.
-	\item clearly communicate the intent of only reading/altering elements in a sequence, but not modifying the underlying memory/data structure.
+	\item Decouple function implementations from the data representation/container type.
+	\item Clearly communicate the intent of only reading/altering elements in a sequence, but not modifying the underlying memory/data structure.
 	
-	\item make it easy to apply functions to sequence subranges.
+	\item Make it easy to apply functions to sequence subranges.
 	
-	\item can almost never be dangling, i.e., refer to memory that has already been destroyed (because parameters outlive all function-local variables).
-	\item views can speed up accesses by avoiding a level of indirection:
+	\item Can almost never be dangling, i.e., refer to memory that has already been destroyed (because parameters outlive all function-local variables).
+	\item Views can speed up accesses by avoiding a level of indirection:
 
 \end{enumerate}
 
@@ -17223,27 +17283,6 @@ cout << s[0]; //  w might hold new memory, bad
 
 \begin{itemize}
 	
-	\item Filter and transform example. A container, filter some items and get the name of it.
-\begin{lstlisting}
-std::string name(const person_t &person) {
-    return person.name();
-}
-bool is_female(const person_t &person) {
-    return person.gender() == person_t::female;
-}
-
-std::vector<person_t> people {
-	{ "David"  , person_t::male   },
-	{ "Jane"   , person_t::female },
-	{ "Martha" , person_t::female },
-};
-
-std::vector<person_t> females; // Filtering the collection by copying
-std::copy_if(people.cbegin(), people.cend(), std::back_inserter(females), is_female);
-
-std::vector<std::string> names(females.size());
-std::transform(females.cbegin(), females.cend(), names.begin(), name);
-\end{lstlisting}
 
 	\item Count word frequency. 
 \begin{lstlisting}
@@ -21675,7 +21714,7 @@ A microcontroller UART can not generate such voltages levels by itself. This is 
 	
 \end{itemize}
 
-\chapter{Other libs}
+\chapter{Common used libs}
 
 \section{boost}
 \subsection{install}
@@ -22095,6 +22134,114 @@ trim_copy_if(str2, is_punct() || is_digit() || is_space());
 	\item circular\_buffer
 	\item multi\_array
 	\item property\_tree
+\begin{lstlisting}
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/hashed_index.hpp>
+#include <boost/multi_index/identity.hpp>
+#include <boost/multi_index/mem_fun.hpp>
+#include <boost/multi_index/member.hpp>
+#include <string>
+#include <utility>
+#include <iostream>
+
+using std::cout;
+using std::endl;
+
+//using namespace std;
+
+
+using namespace boost::multi_index;
+
+/*class animal
+{
+	public:
+	//animal(std::string name, int legs) : name_{std::move(name)},
+	// legs_(legs) {}
+	bool operator<(const animal &a) const { return legs_ < a.legs_; }
+	const std::string &name() const { return name_; }
+	//private:
+	std::string name_;
+	int legs_;
+};
+*/
+
+class animal
+{
+	public:
+	std::string name1;
+	std::string name2;
+	bool operator<(const animal &a) const { return name1+name2 < a.name1+a.name2; }
+	//const std::string &name() const { return name1; }
+};
+
+/*
+typedef multi_index_container<
+animal,
+indexed_by<
+ordered_unique<
+identity<animal>
+>,
+hashed_unique<
+const_mem_fun<
+animal, const std::string&, &animal::name
+>
+>
+>
+> animal_multi;
+*/
+
+typedef multi_index_container<
+animal,
+/*indexed_by<
+ordered_unique<
+identity<sp> 
+>,
+hashed_unique<
+const_mem_fun<
+sp, const std::string&, &sp::name
+>
+> */
+
+indexed_by<
+ordered_unique<
+identity<animal>
+>,
+hashed_non_unique<
+member<
+animal, std::string, &animal::name1
+>
+>, 
+hashed_non_unique<
+member<
+animal, std::string, &animal::name2
+>
+>
+>
+> animal_multi;
+
+
+int main()
+{
+	animal_multi animals;
+	
+	animals.emplace("cat", "dog");
+	animals.emplace("shark", "dog");
+	animals.emplace("cat", "mouse");
+	
+	//std::cout << animals.begin()->name() << '\n';
+	
+	std::cout<< "zy="<<animals.size()<< '\n';
+	
+	const auto &name_index = animals.get<1>();
+	std::cout << name_index.count("cat") << '\n';
+	
+	const auto &name_index2 = animals.get<2>();
+	std::cout << name_index2.count("dog") << '\n';
+	
+}
+\end{lstlisting}	
+
 \end{itemize}
 
 \subsection{math}
