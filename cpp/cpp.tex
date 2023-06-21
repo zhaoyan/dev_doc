@@ -16888,7 +16888,6 @@ std::ranges::sort(ints); // output 4, 36, 64.
 %}		
 %\end{lstlisting}	
 
-
 	
 	\item  A very basic and brief introduction to implementing your own view: from a syntax point of view, \texttt{std::ranges::SquareView} is a class with a special iterator, where the \texttt{operator*()} of the iterator is redefined. It also defines basic \texttt{begin()} and \texttt{end()} functions. Please search for "An Introduction to the Range-v3 Library" on Google; it introduces the basic adapter and view concepts.
 \begin{lstlisting}
@@ -19061,11 +19060,27 @@ ready_promise.set_value(); 	// signal all threads to go
 
 \subsection{time}
 \begin{itemize}
-	\item This section covers three topics: 1) clock, 2) time point, and 3) time duration.
+	\item This section covers three topics: 1) clock, 2) time point, and 3) time duration. the core of the chrono library consists of the following types or concepts, which serve as abstract mechanisms to specify and deal with points in and durations of time. 
 	
-	\item There are two sorts of timeouts that you may wish to specify: a duration-based timeout and an absolute timeout. The variants that handle the duration-based timeouts have a \_for suffix, while those that handle the absolute timeouts have an \_until suffix."
+	\begin{figure}
+		\centering
+		\includegraphics[width=0.7\linewidth]{pics/chrono}
+		\caption{}
+		\label{fig:chrono}
+	\end{figure}
 	
-	\item Three different clocks:
+	\begin{figure}
+		\centering
+		\includegraphics[width=0.7\linewidth]{pics/tm}
+		\caption{}
+		\label{fig:chrono}
+	\end{figure}
+	
+	\begin{enumerate}
+		\item A duration of time is defined as a specific number of ticks over a time unit. One example is a duration such as “3 minutes” (3 ticks of a “minute”). Other examples are “42 milliseconds” or “86,400 seconds,” which represents the duration of 1 day. This concept also allows specifying something like “1.5 times a third of a second,” where 1.5 is the number of ticks and “a third of a second” the time unit used.
+	
+	
+		\item Three different clocks:
 	\begin{enumerate}
 		\item \texttt{std::chrono::sytem\_clock:} Is the system-wide real-time clock (wall-clock). The clock has the auxiliary functions to\_time\_t and from\_time\_t to convert time points into dates.
 		
@@ -19073,7 +19088,66 @@ ready_promise.set_value(); 	// signal all threads to go
 		
 		\item \texttt{std::chrono::high\_resolution\_clock:} Is the clock with the highest accuracy but it can be a synonym for the clocks \texttt{std::chrono::system\_clock} or \texttt{std::chrono::steady\_clock}.
 	\end{enumerate}
-
+	
+	
+	\item A timepoint is defined as combination of a duration and a beginning of time (the so-called epoch). A typical example is a timepoint that represents “New Year’s Midnight 2000,” which is described as “1,262,300,400 seconds since January 1, 1970” (this day is the epoch of the system clock of UNIX and POSIX systems). In other words, timepoint is defined as a duration before or after an epoch, which is defined by a clock.
+	
+	\item The concept of a timepoint, however, is parametrized by a clock, which is the object that defines the epoch of a timepoint. Thus, different clocks have different epochs. In general, operations dealing with multiple timepoints, such as processing the duration/difference between two time-points, require using the same epoch/clock. A clock also provides a convenience function to yield the timepoint of now.
+	
+	\end{enumerate}
+	
+	\item The steady\_clock is important to compare or compute the difference of two times in your program, where you processed the current point in time.  If you're holding a system\_clock in your hand, you would call it a watch, and it would tell you what time it is. If you're holding a steady\_clock in your hand, you would call it a stopwatch, and it would tell you how fast someone ran a lap, but it would not tell you what time it is.
+	
+	\item Usage of time point.
+	\begin{lstlisting}[numbers=none]
+		using namespace std::chrono;
+		system_clock::time_point tp_epoch;	// epoch value
+		time_point <system_clock, duration<int>> tp_seconds (duration<int>(1));
+		system_clock::time_point tp (tp_seconds);
+		
+		std::cout << "1 second since system_clock epoch = ";
+		std::cout << tp.time_since_epoch().count();
+		std::cout << " system_clock periods." << std::endl;
+		
+		std::time_t tt = system_clock::to_time_t(tp); // display time_point:
+		std::cout << "time_point tp is: " << ctime(&tt);
+	\end{lstlisting}
+	
+	\item Duration's type is decided by the clock. That is why the first duration return nanosecond. 
+	\begin{lstlisting}[numbers=none]
+		std::cout << std::fixed << std::endl;
+		std::cout << "Time since 1.1.1970:\n" << std::endl;	
+		auto timeNow= std::chrono::system_clock::now();
+		auto duration= timeNow.time_since_epoch();
+		std::cout << duration.count() << " nanoseconds " << std::endl;
+		
+		//typedef std::chrono::duration<long double,std::ratio<1,1000000>> MyMicroSecondTick;
+		//typedef std::chrono::duration<long double,std::ratio<1,1000>> MyMilliSecondTick;
+		//typedef std::chrono::duration<long double> MySecondTick;
+		//typedef std::chrono::duration<double, std::ratio<60>> MyMinuteTick;
+		//typedef std::chrono::duration<double, std::ratio<60*60>> MyHourTick;
+		MyHourTick myHour(duration);
+		std::cout << myHour.count() << " hours" << std::endl;
+	\end{lstlisting}
+	
+	\item A time function example. There are four concepts here: 1) clock, 2) time\_point 3) duration 4)ratio, milliseconds is ratio, and it's a type. 
+	\begin{lstlisting}
+		void func() {  
+			std::chrono::time_point<std::chrono::steady_clock> begin = steady_clock::now();
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			auto end = steady_clock::now();
+			cout << "time " << duration_cast<milliseconds>(end - begin).count() << endl;
+		}	
+	\end{lstlisting}
+	
+	\item There are two sorts of timeouts that you may wish to specify: a duration-based timeout and an absolute timeout. The variants that handle the duration-based timeouts have a \_for suffix, while those that handle the absolute timeouts have an \_until suffix." Durations and timepoints can be used to block threads or programs (i.e., the main thread). These blocks can be conditionless or can be used to specify a maximum duration when waiting for a lock, a condition variable, or another thread to end
+	
+\begin{lstlisting}
+sleep_for and sleep_until
+try_lock_for and try_lock_until
+wait_for and wait_until.
+\end{lstlisting}	
+	
 \begin{lstlisting}[numbers=none]
 std::cout << std::fixed << std::setprecision(9) << std::left;
 for (auto size = 1ull; size < 1000'000'000ull; size *= 100) {
@@ -19087,47 +19161,38 @@ for (auto size = 1ull; size < 1000'000'000ull; size *= 100) {
 }
 \end{lstlisting}
 
-	\item Usage of time point.
-\begin{lstlisting}[numbers=none]
-using namespace std::chrono;
-system_clock::time_point tp_epoch;	// epoch value
-time_point <system_clock,duration<int>> tp_seconds (duration<int>(1));
-system_clock::time_point tp (tp_seconds);
-
-std::cout << "1 second since system_clock epoch = ";
-std::cout << tp.time_since_epoch().count();
-std::cout << " system_clock periods." << std::endl;
-
-std::time_t tt = system_clock::to_time_t(tp); // display time_point:
-std::cout << "time_point tp is: " << ctime(&tt);
-\end{lstlisting}
-	
-	\item Duration's type is decided by the clock. That is why the first duration return nanosecond. 
-\begin{lstlisting}[numbers=none]
-	std::cout << std::fixed << std::endl;
-	std::cout << "Time since 1.1.1970:\n" << std::endl;	
-	auto timeNow= std::chrono::system_clock::now();
-	auto duration= timeNow.time_since_epoch();
-	std::cout << duration.count() << " nanoseconds " << std::endl;
-
-	//typedef std::chrono::duration<long double,std::ratio<1,1000000>> MyMicroSecondTick;
-	//typedef std::chrono::duration<long double,std::ratio<1,1000>> MyMilliSecondTick;
-	//typedef std::chrono::duration<long double> MySecondTick;
-	//typedef std::chrono::duration<double, std::ratio<60>> MyMinuteTick;
-	//typedef std::chrono::duration<double, std::ratio<60*60>> MyHourTick;
-	MyHourTick myHour(duration);
-	std::cout << myHour.count() << " hours" << std::endl;
-\end{lstlisting}
-
-	\item A time function example. There are four concepts here: 1) clock, 2) time\_point 3) duration 4)ratio, milliseconds is ratio, and it's a type. 
+\item Following C++ program calculates the time elapsed for a simple code in seconds, milliseconds, microseconds, and nanoseconds. It includes the <chrono.h>
 \begin{lstlisting}
-void func() {  
-	std::chrono::time_point<std::chrono::steady_clock> begin = steady_clock::now();
-	std::this_thread::sleep_for(std::chrono::milliseconds(20));
-	auto end = steady_clock::now();
-	cout << "time " << duration_cast<milliseconds>(end - begin).count() << endl;
-}	
+auto start = chrono::steady_clock::now();
+
+// do some stuff here
+sleep(3);
+
+auto end = chrono::steady_clock::now();
+
+cout << "Elapsed time in nanoseconds: "
+<< chrono::duration_cast<chrono::nanoseconds>(end - start).count()
+<< " ns" << endl;
+
+cout << "Elapsed time in microseconds: "
+<< chrono::duration_cast<chrono::microseconds>(end - start).count()
+<< " micro second" << endl;
+
+cout << "Elapsed time in milliseconds: "
+<< chrono::duration_cast<chrono::milliseconds>(end - start).count()
+<< " ms" << endl;
+
+cout << "Elapsed time in seconds: "
+<< chrono::duration_cast<chrono::seconds>(end - start).count()
+<< " sec";
 \end{lstlisting}
+
+ \item There is a simple rule I follow with the <chrono> library. The rule is actually not completely correct (thus it is a guideline). But it is close enough to correct to be a guideline that is nearly always followed: Don't use count(). and Don't use time\_since\_epoch(). The <chrono> library is designed around a type-safe system meant to protect you from units conversions mistakes. If you accidentally attempt an unsafe conversion, the error is caught at compile time (as opposed to it being a run time error). The member functions count() and time\_since\_epoch() are "escape hatches" out of this type-safe system ... to be used only in cases of emergency. 
+ 
+ 	\item There is no date type in c++ standard, you can use boost::date type. Detail can be see in the "common used libs" in this book. 
+	
+
+	\item Three good article are "The C++ standard Library: Utilities" and "Difference between steady\_clock vs system\_clock?" and "https://paul.pub/cpp-date-time/"
 
 \end{itemize}
 
@@ -21702,9 +21767,13 @@ A microcontroller UART can not generate such voltages levels by itself. This is 
 
 \chapter{Common used libs}
 
+
+
+
 \section{boost}
 \subsection{install}
 \begin{itemize}
+	
 
 \begin{lstlisting}[]
 sudo apt-get install libboost-all-dev
@@ -21721,32 +21790,39 @@ g++ -o s b.cpp
 
 \end{lstlisting}
 
-\item You can test in compiler explore by using below command
+\item You can test in compiler explore by using below command. Select boost library to use. Right now, compiler explore supports many library, such as fmt. You can also test fmt functions. 
 \begin{lstlisting}
--std=c++20 -I/opt/compiler-explorer/libs/boost_1_64_0 
+-std=c++20 -I/opt/compiler-explorer/libs/boost_1_82_0 
 \end{lstlisting}
 	
 \end{itemize}
 
 \subsection{date and time}
+\subsubsection{date}
 \begin{itemize}
-	\item timer library includes timer, progress\_timer and progress
-	\_display three components. 
+	\item  The "boost:: timer::cpu\_timer" class is used to measure the execution time of a section of code.It alse calculates and prints the time taken to read the file using "cpu\_timer".
+	"boost::timer::cpu\_timer" provides member functions "stop()" and "resume()",which stop and resume timers.
+	 
 \begin{lstlisting}
-#include <boost/timer.hpp>
-using namespace boost;
-timer t;
-cout << CLOCKS_PER_SEC << endl;
-cout << "max timespan:" << t.elapsed_max() /3600 << "h" <<endl;
-cout << "min timespan:" << t.elapsed_min() << "s" << endl;
-cout << "now time elapsed:" << t.elapsed() <<"s" << endl;
+ #include <boost/timer/timer.hpp>
+#include <iostream>
+#include <cmath>
+using namespace boost::timer;
+int main(){
+	cpu_timer timer;
+	for (int i = 0; i < 1000000; ++i)
+	std::pow(1.234, i);
+	std::cout << timer.format() << '\n';
+}
 \end{lstlisting}
 
-	\item clock() is defined to tell you how much \textbf{CPU} time is used; using more threads uses more CPU time, sleeping threads use less time.
+%	\item clock() is defined to tell you how much \textbf{CPU} time is used; using more threads uses more CPU time, sleeping threads use less time.
+%	
+%	Secondly, not all platforms implement the same behavior; some platforms implement clock() as though it were supposed to give wall-clock time. Thus portable code can't use it for either purpose. The C++11 <chrono> API is much better about these things. The one problem is that <chrono> doesn't have a CPU time clock. If you want wall-clock time then std::chrono::steady\_clock is the best choice; It has a type-safe API and it's defined to advance 'at a steady rate with real time'.
+%	
 	
-	Secondly, not all platforms implement the same behavior; some platforms implement clock() as though it were supposed to give wall-clock time. Thus portable code can't use it for either purpose. The C++11 <chrono> API is much better about these things. The one problem is that <chrono> doesn't have a CPU time clock. If you want wall-clock time then std::chrono::steady\_clock is the best choice; It has a type-safe API and it's defined to advance 'at a steady rate with real time'.
 	
-	\item date\_time library is based on gregorian calendar, it can define time point, time duration and time period. It also supports conversion from/to tm in C. it also supports infinite time and invalid time.
+	\item date\_time library is based on gregorian calendar, it can define \textbf{time point}, \textbf{time duration} and \textbf{time period}. It both supports conversion from/to tm in C and infinite time and invalid time.
 \begin{lstlisting}
 #include <boost/date_time/gregorian/gregorian.hpp>
 using namespace boost::gregorian;
@@ -21818,7 +21894,9 @@ assert(y_iter == d + days(1));
 assert(y_iter->year() == 2017);
 \end{lstlisting}
 
-	\item For time, we need to define time\_duration first. 
+\subsubsection{time}
+
+	\item For time, we need to define time\_duration first. The accuracy is micro second.
 \begin{lstlisting}
    time_duration td(1,10,30,1000);
 assert(td.hours() == 1 && td.minutes() == 10 && td.seconds() == 30);
@@ -21830,7 +21908,7 @@ assert(td.total_seconds() == 1*3600+ 10*60 + 30);
 #endif
 \end{lstlisting}
 
-	\item ptime is date + time\_duration. 
+	\item ptime is date + time\_duration. It's the core conception in data\_time library. It use 64 bit(micro) or 96 bit(nano) integral to save time. 
 \begin{lstlisting}
 ptime p(date(2017,7,7), hours(1));
 ptime p1 = time_from_string("2017-7-7 01:00:00");
@@ -21867,6 +21945,15 @@ tp2.expand(hours(10));
 assert(tp2.contains(p) && tp2.contains(tp1));	
 \end{lstlisting}
 
+\end{itemize}
+
+\subsubsection{summary of date and time}
+\begin{itemize}
+	\item The basice concept is point, duration and period. 
+	\item Date is a kind of integral.
+	\item Once we have time\_duration, we can define ptime(time point),  then time\_period.
+	\item Know the usage of time part, output, format and iterator.
+	
 \end{itemize}
 
 \subsection{utility}
@@ -21922,8 +22009,9 @@ for (int i = 0; i < 10 ; ++i)
 	cout << *ps << endl;
 }	
 \end{lstlisting}
+	\item Another good article is "boost::pool\_allocator significantly slower than std::allocator"
 
-\item noncopyable and ignore\_unused
+\item noncopyable and ignore\_unused.  You can public or private inherited from noncopyable, it doesn't matter. 
 \begin{lstlisting}
 #include <boost/noncopyable.hpp>
 #include <boost/core/ignore_unused.hpp>
@@ -21941,8 +22029,30 @@ int func(int x, int y){
 }
 \end{lstlisting}
 
-\item operator, 
-it supports totally\_ordered, additive, multiplicative, arithmetic, unit\_stoppable. 
+\item operator overload can be deducted from basic operator, for example, a>=b can be !(a<b) . \texttt{std::rel\_ops} provide four template operator overload: \texttt{!=, >, <=, >=}.  If you define \texttt{==, <}, then all other four can be implemented automatically. 
+
+\item Boost library apply the same idea, it supports totally\_ordered, additive, multiplicative, arithmetic, unit\_stoppable.
+
+\begin{tabular}{|c|c|c|}
+	\hline
+	name & provide & implement automatically \\
+	\hline
+	equality\_comparable & ==  & !=  \\
+	\hline
+	less\_than\_comparable& >, <=, >= &  \\
+	\hline
+	addable& += &  + \\
+	\hline
+	subtractable& -=  & - \\
+	\hline
+	incrementable& prefix ++ & postfix ++  \\
+	\hline
+	decrementable& prefix -- & postfix -- \\
+	\hline
+	equivalent& <  &  \\
+	\hline
+\end{tabular}
+ 
 \begin{lstlisting}
 class point : totally_ordered<point, additive<point> >
 {
@@ -21980,6 +22090,7 @@ class point : totally_ordered<point, additive<point> >
 };
 \end{lstlisting}
 
+\item Usage of dereference and index operator
 \begin{lstlisting}
 template<typename T>
 class my_smart_ptr:
@@ -22024,7 +22135,6 @@ ma[0] = 1.0;
 cout << ma[1] << endl;
 \end{lstlisting}
 
-	\item operator bool is dangerous conversion, you should add explicit or use boost safe conversion to do this job.
 
 \end{itemize}
 
@@ -22120,6 +22230,8 @@ trim_copy_if(str2, is_punct() || is_digit() || is_space());
 	\item circular\_buffer
 	\item multi\_array
 	\item property\_tree
+	
+	\item mulit\_index\_container. Below is example. 
 \begin{lstlisting}
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -22358,7 +22470,40 @@ cout << tp2 << endl;
 	\item aaa
 \end{itemize}
 
+\section{fmt}
 
+\begin{itemize}
+	\item Two basic functions in fmt are print and format
+\begin{lstlisting}
+mt::format(string) --> std::string
+fmt::format(format-string, arguments...)--> std::string
+fmt::format_to(@output, format-string, arguments...)
+
+fmt::print(string)
+fmt::print(format-string, arguments...)
+fmt::print(file, format-string, arguments...)
+	
+\end{lstlisting}
+
+	\item placeHoder is \{\}. 
+\begin{lstlisting}
+fmt::print("{}, {}, {}\n", 'a', 'b', 'c');
+fmt::print("{0}, {1}, {2}\n", 'a', 'b', 'c');
+fmt::print("{2}, {1}, {0}\n", 'a', 'b', 'c');
+fmt::print("{0}{1}{0}\n", "XX", "abc");
+\end{lstlisting}
+
+	\item  The presence of a fill character is signaled by the character following it, which must be one of the alignment options. If the second character of format\_spec is not a valid alignment option, then it is assumed that both the fill character and the alignment option are absent.
+	
+	\item below picture illustrate the basic usage of fmt, it comes from hackingcpp.com and it's very good website. 
+	\begin{figure}
+		\centering
+		\includegraphics[width=0.7\linewidth]{pics/fmp}
+		\caption{}
+		\label{fig:fmp}
+	\end{figure}
+	
+\end{itemize}
 
 \section{JsonCpp}
 
@@ -22775,6 +22920,40 @@ constexpr bool b4{ noexcept(goo()) }; // true; goo() is explicitly noexcept(true
 constexpr bool b5{ noexcept(S{}) };   // true; a struct's default constructor is noexcept by default
 \end{lstlisting}
 
+\end{itemize}
+
+\subsection{regex}
+\begin{itemize}
+	\item match
+\begin{lstlisting}
+string s1 = "ab123cdef"; //
+string s2 = "123456789"; //
+
+regex ex("\\d+"); //
+
+cout << s1 << " is all digit: " << regex_match(s1, ex) << endl; // 
+cout << s2 << " is all digit: " << regex_match(s2, ex) << endl; // 
+\end{lstlisting}
+	\item search
+\begin{lstlisting}
+string s = "ab123cdef"; // 
+regex ex("\\d+");    // 
+
+smatch match; // 
+regex_search(s, match, ex); // 
+
+cout << s << " contains digit: " << match[0] << endl; // 
+\end{lstlisting}
+
+	\item replace
+\begin{lstlisting}
+	string s = "ab123cdef"; // 
+	regex ex("\\d+");    // 
+	
+	string r = regex_replace(s, ex, "xxx"); // 
+	
+	cout << r << endl; // 
+\end{lstlisting}
 \end{itemize}
 
 \subsection{Variadic Templates}
