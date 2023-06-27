@@ -11838,6 +11838,9 @@ cout<<s.getValue()<<endl;  //output 6.6 here.
 \end{itemize}
 
 \subsubsection{meta-programming}
+\begin{itemize}
+
+
 \item basic component.
 \begin{enumerate}
 	\item enum static, constexpr constant in compiling time
@@ -11901,9 +11904,8 @@ struct Fibo<1>{
 \end{lstlisting}
 	
 
-\begin{lstlisting}
-	
-\end{lstlisting}
+\end{itemize}
+
 
 \subsubsection{A practical example}
 \begin{itemize}
@@ -12939,6 +12941,7 @@ set<*string,  stringLess> ss;
 
 
 \subsection{string}
+\subsubsection{std::string}
 \begin{itemize}
 	\item In C++, we encourage you to use the string class more often, instead of \texttt{char[]} and \texttt{char *p = new}. It offers more functions, such as \texttt{compare, find, erase, replace,} and \texttt{insert}. The string class is a template specialization of \texttt{basic\_string<char>}. Understanding this will enable you to construct a string of type \texttt{w\_char}.
 	
@@ -13079,16 +13082,74 @@ while (found!=std::string::npos){
 }
 \end{lstlisting}
 
+\subsubsection{Common functions}
+
+	\item The common usage pattern about strings: 1) case converion, 2) number conversion, 3) trim, 4) predicate and category, 5) find and search  6)replace and erase 7) split and join.
+\begin{enumerate}
+	\item upper case and lower case conversion:
+\begin{lstlisting}
+std::string str = "Hello World";
+std::transform(str.begin(), str.end(), str.begin(), ::toupper);	
+\end{lstlisting}
+
+	\item number conversion: 
+\begin{lstlisting}
+stoi, stol, stof;
+std::string str_dec = "2001, A Space Odyssey";
+std::string str_hex = "40c3";
+std::string::size_type sz;   // alias of size_t
+int i_dec = std::stoi (str_dec,&sz);
+int i_hex = std::stoi (str_hex,nullptr,16);
+std::cout << str_dec << ": " << i_dec << " and [" << str_dec.substr(sz) << "]\n";
+
+float f{123.456};
+string str = std::to_string(f);
+\end{lstlisting}
 	\item trim all space characters on left side of string. 
 \begin{lstlisting}[numbers=none]
 std::string trimLeft(const std::string &s) {
-  auto temp = s;
-  temp.erase(std::begin(temp), std::find_if(std::begin(temp), std::end(temp), 
-    [](char c){return !std::isspace(c, std::locale()); }));
-  return temp;
-}
+	auto temp = s;
+	temp.erase(std::begin(temp), std::find_if(std::begin(temp), std::end(temp), 
+	[](char c){return !std::isspace(c, std::locale()); }));
+	return temp;
+}	
+\end{lstlisting}	
+	\item predicate and category
+\begin{lstlisting}
+isspace	isprint	iscntrl	
+isupper	islower	isalpha	isdigit	
+ispunct	isxdigit isalnum isgraph isblank
+
+unsigned char c = '\xdf'; // German letter B in ISO-8859-1
+std::cout << "isalnum(\'\\xdf\', default C locale) returned "
+<< std::boolalpha << static_cast<bool>(std::isalnum(c)) << '\n';
+
+if (std::setlocale(LC_ALL, "de_DE.iso88591"))
+std::cout << "isalnum(\'\\xdf\', ISO-8859-1 locale) returned "
+<< static_cast<bool>(std::isalnum(c)) << '\n';
 \end{lstlisting}
+
+	\item replace and erase
+\begin{lstlisting}
+string str = "123456";
+std::erase(cnt, '3'); //C++20 support, dont' need erase and remove idiom
+
+std::string base="this is a test string.";
+std::string str2="n example";
+str.replace(9,5,str2);  // "this is an example string." (1)
+\end{lstlisting}
+
+	\item find and search, can be found in the previous section.
 	
+	\item split and join, you can use C++20 view or boost if your compiler doesn't supports C++ 20. 
+\begin{lstlisting}
+std::string s = "1.2.3.4";
+auto ints = s | views::split('.')
+fmt::print("{}\n", std::views::join_with(ints,'#')); "1#2#3#4"
+\end{lstlisting}
+
+\end{enumerate}
+		
 \end{itemize}
 
 \section{Iterator}
@@ -19128,85 +19189,115 @@ ready_promise.set_value(); 	// signal all threads to go
 
 \subsection{time}
 \begin{itemize}
-	\item This section covers three topics: 1) clock, 2) time point, and 3) time duration. the core of the chrono library consists of the following types or concepts, which serve as abstract mechanisms to specify and deal with points in and durations of time. 
+	\item The core of the chrono library consists of the following types or concepts: 1) clock, 2) time point, 3) time duration. The time duration is defined based on \texttt{std::ratio}. Why do we need these abstract mechanisms to specify and deal with points in and durations of time? This design is not very intuitive, but it provice flexibility and avoid re-define a lot of classes in the future if we have more higher resolution. 
 	
-	\begin{figure}
+	\begin{figure}[ht]
 		\centering
-		\includegraphics[width=0.7\linewidth]{pics/chrono}
+		\includegraphics[width=0.4\linewidth]{pics/chrono}
 		\caption{}
 		\label{fig:chrono}
 	\end{figure}
 	
-	\begin{figure}
-		\centering
-		\includegraphics[width=0.7\linewidth]{pics/tm}
-		\caption{}
-		\label{fig:chrono}
-	\end{figure}
 	
 	\begin{enumerate}
-		\item A duration of time is defined as a specific number of ticks over a time unit. One example is a duration such as “3 minutes” (3 ticks of a “minute”). Other examples are “42 milliseconds” or “86,400 seconds,” which represents the duration of 1 day. This concept also allows specifying something like “1.5 times a third of a second,” where 1.5 is the number of ticks and “a third of a second” the time unit used.
+		
 	
-	
-		\item Three different clocks:
+		\item For clocks, three are three different clocks in std library:
 	\begin{enumerate}
-		\item \texttt{std::chrono::sytem\_clock:} Is the system-wide real-time clock (wall-clock). The clock has the auxiliary functions to\_time\_t and from\_time\_t to convert time points into dates.
+		\item \texttt{std::chrono::sytem\_clock:} Is the system-wide real-time clock (wall-clock). The clock has the auxiliary functions to\_time\_t and from\_time\_t to convert time points into dates in C language. 
+		\begin{figure}[ht]
+			\centering
+			\includegraphics[width=0.6\linewidth]{pics/tm}
+			\caption{}
+			\label{fig:chrono}
+		\end{figure}
 		
-		\item \texttt{std::chrono::steady\_clock:}  Provides as only a clock the guarantee that you can not adjust it. Therefore, \texttt{std::chrono::steady\_clock} is the preferred clock to wait for a time duration or until a time point.
+		\item \texttt{std::chrono::steady\_clock:}  Provides as only a clock the guarantee that you can not adjust it. Therefore, \texttt{std::chrono::steady\_clock} is the preferred clock to wait for a time duration or until a time point. 
 		
-		\item \texttt{std::chrono::high\_resolution\_clock:} Is the clock with the highest accuracy but it can be a synonym for the clocks \texttt{std::chrono::system\_clock} or \texttt{std::chrono::steady\_clock}.
+		\item \texttt{std::chrono::high\_resolution\_clock:} Is the clock with the highest accuracy but it can be a synonym for the clocks \texttt{std::chrono::system\_clock} or \\ \texttt{std::chrono::steady\_clock}.
+		
+		\item The clock has period, it is a \texttt{std::ratio} and represents the accuracy. 
+\begin{lstlisting}
+template <typename T>
+void printRatio(){ 
+	std::cout << "  precision: " << T::num << "/" << T::den << " second " << std::endl;
+	typedef typename std::ratio_multiply<T,std::kilo>::type MillSec;
+	typedef typename std::ratio_multiply<T,std::mega>::type MicroSec;
+	std::cout << static_cast<double>(MillSec::num)/MillSec::den << " milliseconds " << std::endl;
+	std::cout << static_cast<double>(MicroSec::num)/MicroSec::den << " microseconds " << std::endl;
+}
+
+
+printRatio<std::chrono::system_clock::period>(); //linux accuracy is 1 nano second. 
+\end{lstlisting}
+		
+		\item The \texttt{std::steady\_clock} is important to compare or compute the difference of two times in your program, where you processed the current point in time.  If you're holding a \texttt{std::system\_clock} in your hand, you would call it a watch, and it would tell you what time it is. If you're holding a \texttt{std::steady\_clock} in your hand, you would call it a stopwatch, and it would tell you how fast someone ran a lap, but it would not tell you what time it is. 
+		
+		\item The C++ standard provides no guarantee about the clocks' accuracy, starting point, or valid time range. Typically, the starting point of std::chrono:system\_clock is the 1.1.1970, the so-called UNIX-epoch. For \texttt{std::chrono::steady\_clock}, typically the boot time of your PC.
+	\end{enumerate}
+		
+	\item For duration, definition is below:
+\begin{lstlisting}
+template<
+class Rep,
+class Period = std::ratio<1>
+> class duration;
+
+std::chrono::nanoseconds duration</*signed integer  64 bits*/, std::nano>
+std::chrono::microseconds duration</*signed integer at least 55 bits*/, std::micro>
+std::chrono::seconds duration</*signed integer at least 35 bits*/>
+std::chrono::minutes duration</*signed integer at least 29 bits*/, std::ratio<60>>
+std::chrono::hours duration</*signed integer at least 23 bits*/, std::ratio<3600>>
+\end{lstlisting}
+	
+	The duration is based on a \texttt{std::ratio}. a duration of time is defined as a specific number of ticks over a time unit. One example is a duration such as “3 minutes” (3 ticks of a “minute”). 
+	
+	
+	\item For time point, A time point is defined as combination of a duration and a beginning of time (the so-called epoch). A typical example is a timepoint that represents “New Year’s Midnight 2000,” which is described as “1,262,300,400 seconds since January 1, 1970” (this day is the epoch of the system clock of UNIX and POSIX systems). In other words, timepoint is defined as a duration before or after an epoch, which is defined by a clock. The concept of a timepoint, however, is parametrized by a clock, which is the object that defines the epoch of a timepoint. Thus, different clocks have different epochs. In general, operations dealing with multiple timepoints, such as processing the duration/difference between two time-points, require using the same epoch/clock. A clock also provides a convenience function to yield the timepoint of now.
+	
 	\end{enumerate}
 	
 	
-	\item A timepoint is defined as combination of a duration and a beginning of time (the so-called epoch). A typical example is a timepoint that represents “New Year’s Midnight 2000,” which is described as “1,262,300,400 seconds since January 1, 1970” (this day is the epoch of the system clock of UNIX and POSIX systems). In other words, timepoint is defined as a duration before or after an epoch, which is defined by a clock.
-	
-	\item The concept of a timepoint, however, is parametrized by a clock, which is the object that defines the epoch of a timepoint. Thus, different clocks have different epochs. In general, operations dealing with multiple timepoints, such as processing the duration/difference between two time-points, require using the same epoch/clock. A clock also provides a convenience function to yield the timepoint of now.
-	
-	\end{enumerate}
-	
-	\item The steady\_clock is important to compare or compute the difference of two times in your program, where you processed the current point in time.  If you're holding a system\_clock in your hand, you would call it a watch, and it would tell you what time it is. If you're holding a steady\_clock in your hand, you would call it a stopwatch, and it would tell you how fast someone ran a lap, but it would not tell you what time it is.
-	
-	\item Usage of time point.
-	\begin{lstlisting}[numbers=none]
-		using namespace std::chrono;
-		system_clock::time_point tp_epoch;	// epoch value
-		time_point <system_clock, duration<int>> tp_seconds (duration<int>(1));
-		system_clock::time_point tp (tp_seconds);
-		
-		std::cout << "1 second since system_clock epoch = ";
-		std::cout << tp.time_since_epoch().count();
-		std::cout << " system_clock periods." << std::endl;
-		
-		std::time_t tt = system_clock::to_time_t(tp); // display time_point:
-		std::cout << "time_point tp is: " << ctime(&tt);
-	\end{lstlisting}
+	\item Usage of time point. 
+\begin{lstlisting}[numbers=none]
+using namespace std::chrono;
+system_clock::time_point tp_epoch;	// epoch value
+time_point <system_clock, duration<int>> tp_seconds (duration<int>(1));
+system_clock::time_point tp (tp_seconds);
+
+std::cout << "1 second since system_clock epoch = ";
+std::cout << tp.time_since_epoch().count();
+std::cout << " system_clock periods." << std::endl;
+
+std::time_t tt = system_clock::to_time_t(tp); // display time_point:
+std::cout << "time_point tp is: " << ctime(&tt);	
+\end{lstlisting}	
 	
 	\item Duration's type is decided by the clock. That is why the first duration return nanosecond. 
-	\begin{lstlisting}[numbers=none]
-		std::cout << std::fixed << std::endl;
-		std::cout << "Time since 1.1.1970:\n" << std::endl;	
-		auto timeNow= std::chrono::system_clock::now();
-		auto duration= timeNow.time_since_epoch();
-		std::cout << duration.count() << " nanoseconds " << std::endl;
-		
-		//typedef std::chrono::duration<long double,std::ratio<1,1000000>> MyMicroSecondTick;
-		//typedef std::chrono::duration<long double,std::ratio<1,1000>> MyMilliSecondTick;
-		//typedef std::chrono::duration<long double> MySecondTick;
-		//typedef std::chrono::duration<double, std::ratio<60>> MyMinuteTick;
-		//typedef std::chrono::duration<double, std::ratio<60*60>> MyHourTick;
-		MyHourTick myHour(duration);
-		std::cout << myHour.count() << " hours" << std::endl;
-	\end{lstlisting}
+\begin{lstlisting}[numbers=none]
+std::cout << std::fixed << std::endl;
+std::cout << "Time since 1.1.1970:\n" << std::endl;	
+auto timeNow= std::chrono::system_clock::now(); //timeNow is time point.
+auto duration= timeNow.time_since_epoch();  //change from time point to time duration.
+std::cout << duration.count() << " nanoseconds " << std::endl;
+
+//typedef std::chrono::duration<long double,std::ratio<1,1000>> MyMilliSecondTick;
+//typedef std::chrono::duration<double, std::ratio<60*60>> MyHourTick;
+MyHourTick myHour(duration);
+std::cout << myHour.count() << " hours" << std::endl;	
+\end{lstlisting}	
 	
-	\item A time function example. There are four concepts here: 1) clock, 2) time\_point 3) duration 4)ratio, milliseconds is ratio, and it's a type. 
-	\begin{lstlisting}
-		void func() {  
-			std::chrono::time_point<std::chrono::steady_clock> begin = steady_clock::now();
-			std::this_thread::sleep_for(std::chrono::milliseconds(20));
-			auto end = steady_clock::now();
-			cout << "time " << duration_cast<milliseconds>(end - begin).count() << endl;
-		}	
-	\end{lstlisting}
+	\item How long does your programme run? 1) select a clock, 2) get two time points, 3) change it to duration, 4) change clock duration to your own duration. 
+\begin{lstlisting}
+void func() {  
+	std::chrono::time_point<std::chrono::steady_clock> begin = steady_clock::now();
+	std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	auto end = steady_clock::now();
+	cout << "time " << duration_cast<milliseconds>(end - begin).count() << endl;
+	//cout << chrono::duration_cast<chrono::microseconds>(end - start).count()
+	//<< chrono::duration_cast<chrono::seconds>(end - start).count()
+}		
+\end{lstlisting}	
 	
 	\item There are two sorts of timeouts that you may wish to specify: a duration-based timeout and an absolute timeout. The variants that handle the duration-based timeouts have a \_for suffix, while those that handle the absolute timeouts have an \_until suffix." Durations and timepoints can be used to block threads or programs (i.e., the main thread). These blocks can be conditionless or can be used to specify a maximum duration when waiting for a lock, a condition variable, or another thread to end
 	
@@ -19216,53 +19307,14 @@ try_lock_for and try_lock_until
 wait_for and wait_until.
 \end{lstlisting}	
 	
-\begin{lstlisting}[numbers=none]
-std::cout << std::fixed << std::setprecision(9) << std::left;
-for (auto size = 1ull; size < 1000'000'000ull; size *= 100) {
-	auto start = std::chrono::system_clock::now(); 	// record start time
-	std::vector<int> v(size, 42); // do some work
-	sink = std::accumulate(v.begin(), v.end(), 0u); 
-	auto end = std::chrono::system_clock::now(); // record end time
-	std::chrono::duration<double> diff = end-start;
-	std::cout << "Time to fill and iterate a vector of " << std::setw(9)
-	<< size << " ints : " << diff.count() << " s\n";
-}
-\end{lstlisting}
-
-\item Following C++ program calculates the time elapsed for a simple code in seconds, milliseconds, microseconds, and nanoseconds. It includes the <chrono.h>
-\begin{lstlisting}
-auto start = chrono::steady_clock::now();
-
-// do some stuff here
-sleep(3);
-
-auto end = chrono::steady_clock::now();
-
-cout << "Elapsed time in nanoseconds: "
-<< chrono::duration_cast<chrono::nanoseconds>(end - start).count()
-<< " ns" << endl;
-
-cout << "Elapsed time in microseconds: "
-<< chrono::duration_cast<chrono::microseconds>(end - start).count()
-<< " micro second" << endl;
-
-cout << "Elapsed time in milliseconds: "
-<< chrono::duration_cast<chrono::milliseconds>(end - start).count()
-<< " ms" << endl;
-
-cout << "Elapsed time in seconds: "
-<< chrono::duration_cast<chrono::seconds>(end - start).count()
-<< " sec";
-\end{lstlisting}
-
- \item There is a simple rule I follow with the <chrono> library. The rule is actually not completely correct (thus it is a guideline). But it is close enough to correct to be a guideline that is nearly always followed: Don't use count(). and Don't use time\_since\_epoch(). The <chrono> library is designed around a type-safe system meant to protect you from units conversions mistakes. If you accidentally attempt an unsafe conversion, the error is caught at compile time (as opposed to it being a run time error). The member functions count() and time\_since\_epoch() are "escape hatches" out of this type-safe system ... to be used only in cases of emergency. 
+ 	\item There is a simple rule I follow with the <chrono> library. The rule is actually not completely correct (thus it is a guideline). But it is close enough to correct to be a guideline that is nearly always followed: Don't use count(). and Don't use time\_since\_epoch(). The <chrono> library is designed around a type-safe system meant to protect you from units conversions mistakes. If you accidentally attempt an unsafe conversion, the error is caught at compile time (as opposed to it being a run time error). The member functions count() and time\_since\_epoch() are "escape hatches" out of this type-safe system ... to be used only in cases of emergency. 
  
- 	\item There is no date type in c++ standard, you can use boost::date type. Detail can be see in the "common used libs" in this book. 
+ 	\item There is no date type in c++ standard, you can use boost::date type. Detail can be see in the "common used libs" in this book. Or you can use \texttt{std::system\_clock} and convert it to time\_t and tm in C language. 
 	
-
 	\item Three good article are "The C++ standard Library: Utilities" and "Difference between steady\_clock vs system\_clock?" and "https://paul.pub/cpp-date-time/"
 
 \end{itemize}
+
 
 \subsection{counting\_semaphore, latch and barrier}
 \begin{itemize}
@@ -21835,6 +21887,80 @@ A microcontroller UART can not generate such voltages levels by itself. This is 
 
 \chapter{Common used libs}
 
+\section{fmt}
+
+\begin{itemize}
+	\item Two basic functions in fmt are print and format. std also introduces \texttt{std::format} too. They share almost same format style. 
+\begin{lstlisting}
+fmt::format(string) --> std::string
+fmt::format(format-string, arguments...)--> std::string
+fmt::format_to(@output, format-string, arguments...)
+	
+fmt::print(string)
+fmt::print(format-string, arguments...)
+fmt::print(file, format-string, arguments...)	
+\end{lstlisting}	
+	
+	\item fmt supports placeHoder \{\} and index number. 
+\begin{lstlisting}
+fmt::print("{}, {}, {}\n", 'a', 'b', 'c');
+fmt::print("{0}, {1}, {2}\n", 'a', 'b', 'c');
+fmt::print("{2}, {1}, {0}\n", 'a', 'b', 'c');
+fmt::print("{0}{1}{0}\n", "XX", "abc");	
+\end{lstlisting}	
+	
+	\item Below picture illustrate the basic usage of fmt, it comes from hackingcpp.com and it's very good website. 
+	\begin{figure}
+		\centering
+		\includegraphics[width=0.7\linewidth]{pics/fmp}
+		\caption{}
+		\label{fig:fmp}
+	\end{figure}
+	
+	\item A little further explanation about width and local. 
+\begin{lstlisting}
+#include <fmt/format.h>
+std::string s = "abcde";
+fmt::print("{:.1}\n", s); //ab
+fmt::print("{:.{p}}\n", s, fmt::arg("p",3)); //embedded {} here!
+
+#include <fmt/format.h>
+int i = 10000000;
+fmt::print("{}\n", i);  //10000000
+auto s = fmt::format(
+std::locale("en_US.UTF-8"),"{:L}", i);
+fmt::print("{}\n", s); //10,000,000
+\end{lstlisting}
+	
+	\item  The presence of a fill character is signaled by the character following it, which must be one of the alignment options. If the second character of format\_spec is not a valid alignment option, then it is assumed that both the fill character and the alignment option are absent.
+	
+	\item Output the custom type. Any type \texttt{T} can be made formattable/printable by specializing template \texttt{fmt::formatter<T>}. For most of code, you can just copy these boilerplate code and it will works. 
+\begin{lstlisting}
+struct person{
+	std::string first_name;
+	std::string last_name;
+	size_t social_id;
+};
+
+// fmt::formatter full template specialization
+template <>
+struct fmt::formatter<person>{
+	// Parses the format specifier, if needed (in my case, only return an iterator to the context)
+	constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+	
+	// Actual formatting. The second parameter is the format specifier and the next parameters are the actual values from my custom type
+	template <typename FormatContext>
+	auto format(const person& p, FormatContext& ctx) {
+		return format_to(
+		ctx.out(), 
+		"[{}] {}, {}", p.social_id, p.last_name, p.first_name);
+	}
+};
+
+fmt::print("User: {}\n", person { "Juana", "Azurduy", 23423421 });
+\end{lstlisting}
+		
+\end{itemize}
 
 
 
@@ -21842,7 +21968,6 @@ A microcontroller UART can not generate such voltages levels by itself. This is 
 \subsection{install}
 \begin{itemize}
 	
-
 \begin{lstlisting}[]
 sudo apt-get install libboost-all-dev
 #include <iostream>
@@ -21865,12 +21990,12 @@ g++ -o s b.cpp
 	
 \end{itemize}
 
-\subsection{date and time}
-\subsubsection{date}
+\subsection{Date and time}
+\subsubsection{Date}
 \begin{itemize}
-	\item  The "boost:: timer::cpu\_timer" class is used to measure the execution time of a section of code.It alse calculates and prints the time taken to read the file using "cpu\_timer".
+	\item  The "boost:: timer::cpu\_timer" class is used to measure the execution time of a section of code. It also calculates and prints the time taken to read the file using "cpu\_timer".
 	"boost::timer::cpu\_timer" provides member functions "stop()" and "resume()",which stop and resume timers.
-	 
+	
 \begin{lstlisting}
  #include <boost/timer/timer.hpp>
 #include <iostream>
@@ -21882,8 +22007,12 @@ int main(){
 	std::pow(1.234, i);
 	std::cout << timer.format() << '\n';
 }
+
+//output is 5.713010s wall, 5.709637s user + 0.000000s system = 5.709637s CPU (99.9%)
 \end{lstlisting}
 
+	\item Knowing how long a program takes to execute is useful in both test and production environments. It may also be helpful if such timing information is broken down into wall clock time, CPU time spent by the user, and CPU time spent by the operating system servicing user requests.
+	
 %	\item clock() is defined to tell you how much \textbf{CPU} time is used; using more threads uses more CPU time, sleeping threads use less time.
 %	
 %	Secondly, not all platforms implement the same behavior; some platforms implement clock() as though it were supposed to give wall-clock time. Thus portable code can't use it for either purpose. The C++11 <chrono> API is much better about these things. The one problem is that <chrono> doesn't have a CPU time clock. If you want wall-clock time then std::chrono::steady\_clock is the best choice; It has a type-safe API and it's defined to advance 'at a steady rate with real time'.
@@ -21925,7 +22054,7 @@ assert(m2.number_of_months() == 29);
 assert((y * 2).number_of_years() == 4);	
 \end{lstlisting}
 
-	\item date\_period is left open, right close 
+	\item date\_period is left open, right close and includes two data\_points.
 \begin{lstlisting}
 date_period dp(date(2017,1,1), days(20));
 
@@ -22017,26 +22146,25 @@ assert(tp2.contains(p) && tp2.contains(tp1));
 
 \subsubsection{summary of date and time}
 \begin{itemize}
-	\item The basice concept is point, duration and period. 
+	\item The basice concept is time point, time duration and time period. period in boost is different with period in stl. Peroid in stl is tick accuracy. 
 	\item Date is a kind of integral.
 	\item Once we have time\_duration, we can define ptime(time point),  then time\_period.
 	\item Know the usage of time part, output, format and iterator.
-	
+	\item std library have chrono library. It doesn't support date. Detail information can be find in "Time" section in Concurrent chapter.  
 \end{itemize}
 
 \subsection{utility}
 \begin{itemize}
-	\item So no, they are not the same pattern. One is meant to re-use objects which are expensive to construct (threads, opengl resources, etc.). The other is meant to manage a lot of small objects, giving you more control than the standard allocator gives.
 	
-	As you pointed out, there are two ways of using pools:
+	\item There are two kinds of bool conception and they are not the same pattern. One is meant to re-use objects which are expensive to construct (threads, opengl resources, etc.). The other is meant to manage a lot of small objects, giving you more control than the standard allocator gives. pool in boost mainly deal with the second conception, not the first one. 
 	
-	1) As an allocator, calling malloc()/free() when appropriate. This is the basic pool-allocator usage, it helps to reduce memory fragmentation
+	\item pool and object\_bool. It is especially useful if many objects of the same size have to be created and destroyed frequently. In this case the required memory can be provided and released quickly.
+	\begin{enumerate}
+		\item As an allocator, calling malloc()/free() when appropriate. This is the basic pool-allocator usage, it helps to reduce memory fragmentation
+		
+		\item Construct a ton of temporary objects and don't bother to delete them.	
+	\end{enumerate}
 	
-	2) Construct a ton of temporary objects and don't bother to delete them.
-	
-	\item It is especially useful if many objects of the same size have to be created and destroyed frequently. In this case the required memory can be provided and released quickly.
-	
-	\item pool and object\_bool
 \begin{lstlisting}
 #include <boost/pool/pool.hpp>
 using namespace boost;
@@ -22045,46 +22173,43 @@ pool<> pl(sizeof(int));
 
 int *p = static_cast<int*>(pl.malloc());
 assert(pl.is_from(p));
-
 pl.free(p);
-for (int i = 0;i < 100; ++i)
-{   pl.ordered_malloc(10);  }	
+
+for (int i = 0;i < 100; ++i){   
+	pl.ordered_malloc(10);  
+}	
 \end{lstlisting}
 
 \begin{lstlisting}
-struct demo_class
-{
-	public:
+struct demo_class{
+public:
 	int a,b,c;
-	demo_class(int x = 1, int y = 2, int z = 3):
-	a(x),b(y),c(z){}
+	demo_class(int x = 1, int y = 2, int z = 3): a(x),b(y),c(z){}
 };
 	
 object_pool<demo_class> pl;
 
 auto p = pl.malloc();
 assert(pl.is_from(p));
-
 assert(p->a!=1 || p->b != 2 || p->c !=3);
 
 p = pl.construct(7, 8, 9);
 assert(p->a == 7);
 
 object_pool<string> pls;
-for (int i = 0; i < 10 ; ++i)
-{
+for (int i = 0; i < 10 ; ++i){
 	string *ps = pls.construct("hello object_pool");
 	cout << *ps << endl;
 }	
 \end{lstlisting}
-	\item Another good article is "boost::pool\_allocator significantly slower than std::allocator"
+	\item Two good articles is "boost::pool\_allocator significantly slower than std::allocator" and "what's the difference between boost::pool<>::malloc and boost::pool<>::ordered\_malloc"
 
-\item noncopyable and ignore\_unused.  You can public or private inherited from noncopyable, it doesn't matter. 
+	\item noncopyable and ignore\_unused.  You can public or private inherited from noncopyable, it doesn't matter. 
 \begin{lstlisting}
 #include <boost/noncopyable.hpp>
 #include <boost/core/ignore_unused.hpp>
 using namespace boost;
-class do_not_copy: boost::noncopyable
+class do_not_copy: boost::noncopyable //private inheritance 
 {};
 
 do_not_copy d2(d1); //fail
@@ -22092,14 +22217,25 @@ d3 = d1; //fail
 
 int func(int x, int y){
 	int i;
-	ignore_unused(x, i);
+	ignore_unused(x, i);  //supress the unuse warning.
 	return y;
 }
 \end{lstlisting}
 
-\item operator overload can be deducted from basic operator, for example, a>=b can be !(a<b) . \texttt{std::rel\_ops} provide four template operator overload: \texttt{!=, >, <=, >=}.  If you define \texttt{==, <}, then all other four can be implemented automatically. 
+	\item operator overload can be deducted from basic operator, for example, \texttt{a>=b} can be \texttt{!(a<b)} . \texttt{std::rel\_ops} provide four template operator overload: \texttt{!=, >, <=, >=}.  If you define \texttt{==, <}, then all other four can be implemented automatically. 
 
-\item Boost library apply the same idea, it supports totally\_ordered, additive, multiplicative, arithmetic, unit\_stoppable.
+	\item Basic usage: 1) It's private inheritance, represents "has a", not "is a" relationship. 2) It use CRTP design pattern to add functions to existing class.  
+\begin{lstlisting}
+class point : less_than_comparable<point>{
+	...
+	friend bool operator<(const point& l, const point& r){
+		return (l.x*l.x + l.y*l.y +l.z*l.z <
+		r.x*r.x + r.y*r.y +r.z*r.z);
+	}
+}
+	
+\end{lstlisting}	
+	\item Boost library apply the same idea, it supports totally\_ordered, additive, multiplicative, arithmetic, unit\_stoppable. 
 
 \begin{tabular}{|c|c|c|}
 	\hline
@@ -22107,7 +22243,7 @@ int func(int x, int y){
 	\hline
 	equality\_comparable & ==  & !=  \\
 	\hline
-	less\_than\_comparable& >, <=, >= &  \\
+	less\_than\_comparable& < & >, <=, >= \\
 	\hline
 	addable& += &  + \\
 	\hline
@@ -22117,92 +22253,62 @@ int func(int x, int y){
 	\hline
 	decrementable& prefix -- & postfix -- \\
 	\hline
-	equivalent& <  &  \\
+	equivalent& <  & == \\
 	\hline
 \end{tabular}
  
+	\item We can use inheritance chain to combine more operator. Below point class only provide 4 operators, but in the end, we can have 10 operators available. totally\_odered combines equality\_comparableand less\_than\_comparable\textbf{}. additive combines addable and subtractable.
 \begin{lstlisting}
-class point : totally_ordered<point, additive<point> >
-{
-	int x, y, z;
-	public:
-	explicit point(int a=0, int b=0, int c=0):x(a),y(b),z(c){}
-	void print()const
-	{   cout << x <<","<< y <<","<< z << endl;  }
-	
-	friend bool operator<(const point& l, const point& r)
-	{
+class point : totally_ordered<point, additive<point> >{
+	....
+	friend bool operator<(const point& l, const point& r){
 		return (l.x*l.x + l.y*l.y +l.z*l.z <
 		r.x*r.x + r.y*r.y +r.z*r.z);
 	}
-	
-	friend bool operator==(const point& l, const point& r)
-	{   return r.x == l.x && r.y == l.y && r.z == l.z;  }
-	
-	point& operator+=(const point& r)       //
-	{
-		x += r.x;
-		y += r.y;
-		z += r.z;
+	friend bool operator==(const point& l, const point& r){   
+		return r.x == l.x && r.y == l.y && r.z == l.z;  
+	}
+	point& operator+=(const point& r) {
+		x += r.x; y += r.y; z += r.z;
 		return *this;
 	}
-	
-	point& operator-=(const point& r)   //
-	{
-		x -= r.x;
-		y -= r.y;
-		z -= r.z;
+	point& operator-=(const point& r) {
+		x -= r.x; y -= r.y; z -= r.z;
 		return *this;
 	}
-	
 };
 \end{lstlisting}
 
-\item Usage of dereference and index operator
+	\item Usage of dereference and index operator. It must use public inheritance, because it's not friend member function, such as less than operator. 
 \begin{lstlisting}
 template<typename T>
-class my_smart_ptr:
-public dereferenceable<my_smart_ptr<T>, T* >
-{
+class my_smart_ptr: public dereferenceable<my_smart_ptr<T>, T* >{
 	T *p;
-	public:
-	my_smart_ptr(T *x):p(x){}
-	~my_smart_ptr(){delete p;}
-	T& operator*() const
-	{   return *p;  }
+public:
+	...
+	T& operator*() const {   
+		return *p;  
+	}
 };
 
-void case5()
-{
-	my_smart_ptr<string > p(new string("123"));
-	assert(p->size() == 3);
-}
+my_smart_ptr<string > p(new string("123"));
+assert(p->size() == 3);
 
 //////////////////////////////////////////
 template<typename T>
 class my_smart_array:
-public indexable<my_smart_array<T>, int, T& >
-{
+public indexable<my_smart_array<T>, int, T& >{
 	T *p;
-	public:
-	typedef my_smart_array<T> this_type;
-	typedef T*      iter_type;
-	
-	my_smart_array(T *x):p(x){}
-	~my_smart_array(){delete[] p;}
-	
-	friend iter_type operator+(const this_type& a, int n)
-	{
+	// it needs operator + semantic to make indexable.  	
+	friend iter_type operator+(const this_type& a, int n){
 		return a.p + n;
 	}
 };
 
 my_smart_array<double> ma(new double[10]);
-ma[0] = 1.0;
+ma[1] = 1.0;
 *(ma + 1) = 2.0;
-cout << ma[1] << endl;
 \end{lstlisting}
-
 
 \end{itemize}
 
@@ -22220,8 +22326,6 @@ join
 \end{lstlisting}
 	
 \begin{lstlisting}
-
-
 string str("Power Bomb");
 
 assert(iends_with(str, "bomb"));
@@ -22298,8 +22402,9 @@ trim_copy_if(str2, is_punct() || is_digit() || is_space());
 %	cout << regex_replace(str, reg1, "$1you") << endl;
 %	
 %\end{lstlisting}
-
 \end{itemize}
+
+
 
 \subsection{container}
 \begin{itemize}
@@ -22532,9 +22637,143 @@ int main()
 \end{itemize}
 
 \subsection{graph}
+\begin{itemize}
+	
+	\begin{figure}
+		\centering
+		\includegraphics[width=0.7\linewidth]{pics/bcl}
+		\caption{}
+		\label{fig:bcl}
+	\end{figure}
+	
+
+	\item There are three ways in which the STL is generic.
+
+Algorithm/Data-Structure Interoperability
+First, each algorithm is written in a data-structure neutral way, allowing a single template function to operate on many different classes of containers. The concept of an iterator is the key ingredient in this decoupling of algorithms and data-structures. The impact of this technique is a reduction in the STL's code size from O(M*N) to O(M+N), where M is the number of algorithms and N is the number of containers. Considering a situation of 20 algorithms and 5 data-structures, this would be the difference between writing 100 functions versus only 25 functions! And the differences continues to grow faster and faster as the number of algorithms and data-structures increase.
+
+Extension through Function Objects
+The second way that STL is generic is that its algorithms and containers are extensible. The user can adapt and customize the STL through the use of function objects. This flexibility is what makes STL such a great tool for solving real-world problems. Each programming problem brings its own set of entities and interactions that must be modeled. Function objects provide a mechanism for extending the STL to handle the specifics of each problem domain.
+
+Element Type Parameterization
+The third way that STL is generic is that its containers are parameterized on the element type. Though hugely important, this is perhaps the least “interesting” way in which STL is generic. Generic programming is often summarized by a brief description of parameterized lists such as std::list<T>. This hardly scratches the surface!
+
+
+	
+Like the STL, there are three ways in which the BGL is generic.
+
+Algorithm/Data-Structure Interoperability
+First, the graph algorithms of the BGL are written to an interface that abstracts away the details of the particular graph data-structure. Like the STL, the BGL uses iterators to define the interface for data-structure traversal. There are three distinct graph traversal patterns: traversal of all vertices in the graph, through all of the edges, and along the adjacency structure of the graph (from a vertex to each of its neighbors). There are separate iterators for each pattern of traversal.
+
+This generic interface allows template functions such as breadth\_first\_search() to work on a large variety of graph data-structures, from graphs implemented with pointer-linked nodes to graphs encoded in arrays. This flexibility is especially important in the domain of graphs. Graph data-structures are often custom-made for a particular application. Traditionally, if programmers want to reuse an algorithm implementation they must convert/copy their graph data into the graph library's prescribed graph structure. This is the case with libraries such as LEDA, GTL, Stanford GraphBase; it is especially true of graph algorithms written in Fortran. This severely limits the reuse of their graph algorithms.
+
+In contrast, custom-made (or even legacy) graph structures can be used as-is with the generic graph algorithms of the BGL, using external adaptation (see Section How to Convert Existing Graphs to the BGL). External adaptation wraps a new interface around a data-structure without copying and without placing the data inside adaptor objects. The BGL interface was carefully designed to make this adaptation easy. To demonstrate this, we have built interfacing code for using a variety of graph structures (LEDA graphs, Stanford GraphBase graphs, and even Fortran-style arrays) in BGL graph algorithms.
+
+Extension through Visitors
+Second, the graph algorithms of the BGL are extensible. The BGL introduces the notion of a visitor, which is just a function object with multiple methods. In graph algorithms, there are often several key “event points” at which it is useful to insert user-defined operations. The visitor object has a different method that is invoked at each event point. The particular event points and corresponding visitor methods depend on the particular algorithm. They often include methods like start\_vertex(), discover\_vertex(), examine\_edge(), tree\_edge(), and finish\_vertex().
+
+Vertex and Edge Property Multi-Parameterization
+The third way that the BGL is generic is analogous to the parameterization of the element-type in STL containers, though again the story is a bit more complicated for graphs. We need to associate values (called “properties”) with both the vertices and the edges of the graph. In addition, it will often be necessary to associate multiple properties with each vertex and edge; this is what we mean by multi-parameterization. The STL std::list<T> class has a parameter T for its element type. Similarly, BGL graph classes have template parameters for vertex and edge “properties”. A property specifies the parameterized type of the property and also assigns an identifying tag to the property. This tag is used to distinguish between the multiple properties which an edge or vertex may have. A property value that is attached to a particular vertex or edge can be obtained via a property map. There is a separate property map for each property.
+
+Traditional graph libraries and graph structures fall down when it comes to the parameterization of graph properties. This is one of the primary reasons that graph data-structures must be custom-built for applications. The parameterization of properties in the BGL graph classes makes them well suited for re-use.
+	
+	\item The adjacency\_list class is the general purpose “swiss army knife” of graph classes. It is highly parameterized so that it can be optimized for different situations: the graph is directed or undirected, allow or disallow parallel edges, efficient access to just the out-edges or also to the in-edges, fast vertex insertion and removal at the cost of extra space overhead, etc.
+	
+	\item build a graph with adjacency\_list.
+	\begin{lstlisting}
+		typedef boost::adjacency_list<boost::setS, boost::vecS,
+		boost::undirectedS> graph;
+		graph g;
+		
+		boost::adjacency_list<>::vertex_descriptor v1 = boost::add_vertex(g);
+		boost::adjacency_list<>::vertex_descriptor v2 = boost::add_vertex(g);
+		boost::add_vertex(g);
+		boost::add_vertex(g);
+		
+		std::pair<graph::edge_descriptor, bool> p =
+		boost::add_edge(v1, v2, g);
+		std::cout.setf(std::ios::boolalpha);
+		std::cout << p.second << '\n';
+		
+		p = boost::add_edge(v1, v2, g);
+		std::cout << p.second << '\n';
+		
+		p = boost::add_edge(v2, v1, g);
+		std::cout << p.second << '\n';
+		
+		std::pair<graph::edge_iterator,
+		graph::edge_iterator> es = boost::edges(g);
+		
+		std::copy(es.first, es.second,
+		std::ostream_iterator<graph::edge_descriptor>{std::cout, "\n"});
+	\end{lstlisting}
+	
+	\item Dijkstra's Shortest Paths, Bellman-Ford Shortest Paths, Johnson's All-Pairs Shortest Paths
+	Kruskal's Minimum Spanning Tree, Prim's Minimum Spanning Tree, Topological Sort, Transpose, Sequential Vertex Coloring, etc.. more can be google boost graph. They are generic and very flexible. However, it’s not always immediately clear how they should be used.
+	
+	\item breadth\_first\_search. 
+	
 \begin{lstlisting}
-	content...
+enum { topLeft, topRight, bottomRight, bottomLeft };
+
+std::array<std::pair<int, int>, 4> edges{{
+		std::make_pair(topLeft, topRight),
+		std::make_pair(topRight, bottomRight),
+		std::make_pair(bottomRight, bottomLeft),
+		std::make_pair(bottomLeft, topLeft)
+}};
+
+typedef boost::adjacency_list<boost::setS, boost::vecS,
+boost::undirectedS> graph;
+graph g{edges.begin(), edges.end(), 4};
+
+boost::array<int, 4> distances{{0}};
+
+boost::breadth_first_search(g, topLeft,
+boost::visitor(
+boost::make_bfs_visitor(
+boost::record_distances(distances.begin(),
+boost::on_tree_edge{}))));
+
+std::copy(distances.begin(), distances.end(),
+std::ostream_iterator<int>{std::cout, "\n"});
 \end{lstlisting}
+	
+	\item dijkstra\_shortest\_paths
+\begin{lstlisting}
+enum { topLeft, topRight, bottomRight, bottomLeft };
+
+std::array<std::pair<int, int>, 4> edges{{
+		std::make_pair(topLeft, topRight),
+		std::make_pair(topRight, bottomRight),
+		std::make_pair(bottomRight, bottomLeft),
+		std::make_pair(bottomLeft, topLeft)
+}};
+
+typedef boost::adjacency_list<boost::listS, boost::vecS,
+boost::undirectedS, boost::no_property,
+boost::property<boost::edge_weight_t, int>> graph;
+
+std::array<int, 4> weights{{2, 1, 1, 1}};
+
+graph g{edges.begin(), edges.end(), weights.begin(), 4};
+
+boost::array<int, 4> directions;
+boost::dijkstra_shortest_paths(g, bottomRight,
+boost::predecessor_map(directions.begin()));
+
+int p = topLeft;
+while (p != bottomRight)
+{
+	std::cout << p << '\n';
+	p = directions[p];
+}
+std::cout << p << '\n';
+\end{lstlisting}
+
+
+\end{itemize}
+
 
 \subsection{math}
 \begin{itemize}
@@ -22779,40 +23018,6 @@ int main()
 	
 \end{itemize}
 
-\section{fmt}
-
-\begin{itemize}
-	\item Two basic functions in fmt are print and format
-\begin{lstlisting}
-mt::format(string) --> std::string
-fmt::format(format-string, arguments...)--> std::string
-fmt::format_to(@output, format-string, arguments...)
-
-fmt::print(string)
-fmt::print(format-string, arguments...)
-fmt::print(file, format-string, arguments...)
-	
-\end{lstlisting}
-
-	\item placeHoder is \{\}. 
-\begin{lstlisting}
-fmt::print("{}, {}, {}\n", 'a', 'b', 'c');
-fmt::print("{0}, {1}, {2}\n", 'a', 'b', 'c');
-fmt::print("{2}, {1}, {0}\n", 'a', 'b', 'c');
-fmt::print("{0}{1}{0}\n", "XX", "abc");
-\end{lstlisting}
-
-	\item  The presence of a fill character is signaled by the character following it, which must be one of the alignment options. If the second character of format\_spec is not a valid alignment option, then it is assumed that both the fill character and the alignment option are absent.
-	
-	\item below picture illustrate the basic usage of fmt, it comes from hackingcpp.com and it's very good website. 
-	\begin{figure}
-		\centering
-		\includegraphics[width=0.7\linewidth]{pics/fmp}
-		\caption{}
-		\label{fig:fmp}
-	\end{figure}
-	
-\end{itemize}
 
 \section{JsonCpp}
 
