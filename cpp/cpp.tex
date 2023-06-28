@@ -12937,6 +12937,41 @@ set<*string,  stringLess> ss;
    \end{enumerate}
 \end{enumerate}
 
+	\item To support user-defined key types in \texttt{std::unordered\_set<Key>} and \texttt{std::unordered\_map<Key, Value>} one has to provide \texttt{operator==(Key, Key)} and a hash function(or functor).
+\begin{lstlisting}[numbers=none]
+struct X { int id; /* ... */ };
+	bool operator==(X a, X b) { return a.id == b.id; }
+	struct MyHash {
+		size_t operator()(const X& x) const { 
+			return std::hash<int>()(x.id); }
+	};
+}
+
+std::unordered_set<X, MyHash> s;
+\end{lstlisting}	
+	
+	\item Just like the swap function introduced earlier (you can find details in the previous OOP chapter), you are expressly allowed and encouraged to add specializations to the \texttt{std::} namespace. The correct (and basically only) way to add a hash function is like this:
+\begin{lstlisting}[frame=single, language=c++]
+namespace std {
+	template <> struct hash<Foo>{
+		size_t operator()(const Foo & x) const{
+			//your hash function code here
+		}
+	};
+}
+std::unordered_set<Foo> s;	
+\end{lstlisting}	
+	
+	\item About \texttt{std::unordered\_map}, Another property is bucket, 
+\begin{lstlisting}
+unordered_set<int> us;  
+for(size_t i = 0; i<us.bucket_count(); ++i){ //bucket number
+	cout<<us.bucket_size(i)  //element number in each bucket
+}
+us.rehash(200) // use 200 bucket.
+us.max_load_factor() //usually is 1, don't change it.
+\end{lstlisting}	
+
 \end{itemize}
 
 
@@ -14679,7 +14714,7 @@ va.push_back(A("aa",1)); //call constructor and move ctor.
 va.emplace_back("aa",1); //only call constructor, the most efficient.
 \end{lstlisting}
 
-\item Another example is \texttt{try\_emplace} and \texttt{insert\_or\_assign} in \texttt{std::map} in C++ 17. Detail can be found "C++17: try\_emplace() and insert\_or\_assign() as a solution to double lookup". 
+\item Another example is \texttt{try\_emplace} and \texttt{insert\_or\_assign} in \texttt{std::map} in C++ 17. Detail can be found in the articles: "Overview of std::map’s Insertion / Emplacement Methods in C++17" 
 
 \begin{lstlisting}
 auto m = std::map<int, A> {};
@@ -14693,6 +14728,14 @@ m.emplace(1, A("Ann", 63)): //constructor, move
 // m.emplace(1, "Ann", 63); //doens't work
 m.try_emplace(1, "Ann", 63); //Work, only constructor
 \end{lstlisting}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.7\linewidth]{pics/try_emplace}
+	\caption{}
+	\label{fig:tryemplace}
+\end{figure}
+
 
 \item From \texttt{std::vector} to \texttt{std::map}, you can use \texttt{std::copy} or range construction. 
 
@@ -22408,75 +22451,98 @@ trim_copy_if(str2, is_punct() || is_digit() || is_space());
 
 \subsection{container}
 \begin{itemize}
-	\item dyanmic\_bitset, The dynamic\_bitset class represents a set of bits. It provides accesses to the value of individual bits via an operator[] and provides all of the bitwise operators that one can apply to builtin integers, such as operator\& and operator<<. The number of bits in the set is specified at runtime via a parameter to the constructor of the dynamic\_bitset.
+	\item dynamic\_bitset, The dynamic\_bitset class represents a set of bits. It provides accesses to the value of individual bits via an operator[] and provides all of the bitwise operators that one can apply to builtin integers, such as operator\& and operator<<. The number of bits in the set is specified at runtime via a parameter to the constructor of the dynamic\_bitset.
 	
-	The dynamic\_bitset class is nearly identical to the std::bitset class. The difference is that the size of the dynamic\_bitset (the number of bits) is specified at run-time during the construction of a dynamic\_bitset object, whereas the size of a std::bitset is specified at compile-time through an integer template parameter.
+	The dynamic\_bitset class is nearly identical to the \texttt{std::bitset} class. The difference is that the size of the dynamic\_bitset (the number of bits) is specified at run-time during the construction of a dynamic\_bitset object, whereas the size of a \texttt{std::bitset} is specified at compile-time through an integer template parameter.
 	
 	
 	\item bimap is a kind of multi\_index\_container. In addition to the classes shown above, Boost.Bimap provides the following: boost::bimaps::unordered\_set\_of, boost::bimaps::unordered\_multiset\_of, boost::bimaps::list\_of, boost::bimaps::vector\_of, and boost::bimaps::unconstrained\_set\_of. Except for boost::bimaps::unconstrained\_set\_of, all of the other container types operate just like their counterparts from the standard library.  Because boost::bimaps::set\_of is used by default for containers of type boost::bimap, the header file boost/bimap/set\_of.hpp does not need to be included explicitly. However, when using other container types, the corresponding header files must be included.
+
+\begin{lstlisting}
+typedef boost::bimap<boost::bimaps::unordered_set_of<int>, int> bimap;
+bimap animals;
+animals.insert({1, 2});
+animals.insert({2, 3});
+animals.insert({3, 2}); //insert fail, because right is set_of
+
+for (auto it = animals.begin(); it != animals.end(); ++it)
+std::cout << it->left << " has " << it->right << " legs\n";
+\end{lstlisting}
+
+\begin{lstlisting}
+typedef boost::bimap<boost::bimaps::unordered_multiset_of<int>, int> bimap;
+bimap animals;
+animals.insert({1, 2});
+animals.insert({2, 3});
+animals.insert({1, 4});
+auto const [lb, ub] = animals.left.equal_range(1);
+for (auto it = lb; it != ub; ++it)
+std::cout << it->first << "  " << it->second << " \n";
+\end{lstlisting}
 	
 \begin{lstlisting}
 #include <boost/bimap.hpp>
 #include <boost/bimap/unconstrained_set_of.hpp>
 #include <boost/bimap/support/lambda.hpp>
-#include <string>
-#include <iostream>
 
-int main()
-{
-	typedef boost::bimap<std::string,
-	boost::bimaps::unconstrained_set_of<int>> bimap;
-	bimap animals;
-	
-	animals.insert({"cat", 4});
-	animals.insert({"shark", 0});
-	animals.insert({"spider", 8});
-	
-	auto it = animals.left.find("cat");
-	animals.left.modify_key(it, boost::bimaps::_key = "dog");
-	
-	std::cout << it->first << '\n';
-}
+typedef boost::bimap<std::string, boost::bimaps::unconstrained_set_of<int>> bimap;
+bimap animals;
+
+animals.insert({"cat", 4});
+animals.insert({"shark", 0});
+animals.insert({"spider", 8});
+auto it = animals.left.find("cat");
+animals.left.modify_key(it, boost::bimaps::_key = "dog");
+std::cout << it->first << '\n';	
 \end{lstlisting}
 	
 	
-	
-	
-	\item circular\_buffer. The capacity of the circular buffer is constant and set by you. The capacity doesn’t change automatically when you call a member function such as push\_back(). Only you can change the capacity of the circular buffer. The size of the circular buffer can not exceed the capacity you set.
-	
-	Despite constant capacity, you can call push\_back() as often as you like to insert elements into the circular buffer. If the maximum size has been reached and the circular buffer is full, elements are overwritten.
+	\item circular\_buffer. The capacity of the circular buffer is constant and set by you. The capacity doesn’t change automatically when you call a member function such as push\_back(). Only you can change the capacity of the circular buffer. The size of the circular buffer can not exceed the capacity you set. Despite constant capacity, you can call push\_back() as often as you like to insert elements into the circular buffer. If the maximum size has been reached and the circular buffer is full, elements are overwritten.
 	
 \begin{lstlisting}
-	
+typedef boost::circular_buffer<int> circular_buffer;
+circular_buffer cb{3};
+
+cb.push_back(0);
+cb.push_back(1);
+cb.push_back(2);
+cb.push_back(3);
+
+std::cout << std::boolalpha << cb.is_linearized() << '\n';
+
+circular_buffer::array_range ar1, ar2;
+
+ar1 = cb.array_one();
+ar2 = cb.array_two();
+std::cout << ar1.second << ";" << ar2.second << '\n';
+
+for (int i : cb)
+std::cout << i << '\n';
+
+cb.linearize();
+
+ar1 = cb.array_one();
+ar2 = cb.array_two();
+std::cout << ar1.second << ";" << ar2.second << '\n';	
 \end{lstlisting}
 	
-
 	\item multi\_array. a library that simplifies using arrays with multiple dimensions. The most important advantage is that multidimensional arrays can be used like containers from the standard library. For example, there are member functions, such as begin() and end(), that let you access elements in multidimensional arrays through iterators. Iterators are easier to use than the pointers normally used with C arrays, especially with arrays that have many dimensions.
 	
 \begin{lstlisting}
 #include <boost/multi_array.hpp>
-#include <algorithm>
-#include <iostream>
-#include <cstring>
+boost::multi_array<char, 2> a{boost::extents[2][6]};
 
-int main()
-{
-	boost::multi_array<char, 2> a{boost::extents[2][6]};
-	
-	typedef boost::multi_array<char, 2>::array_view<1>::type array_view;
-	typedef boost::multi_array_types::index_range range;
-	array_view view = a[boost::indices[0][range{0, 5}]];
-	
-	std::memcpy(view.origin(), "tsooB", 6);
-	std::reverse(view.begin(), view.end());
-	
-	std::cout << view.origin() << '\n';
-	
-	boost::multi_array<char, 2>::reference subarray = a[1];
-	std::memcpy(subarray.origin(), "C++", 4);
-	
-	std::cout << subarray.origin() << '\n';
-}
+typedef boost::multi_array<char, 2>::array_view<1>::type array_view;
+typedef boost::multi_array_types::index_range range;
+array_view view = a[boost::indices[0][range{0, 5}]];
+
+std::memcpy(view.origin(), "tsooB", 6);
+std::reverse(view.begin(), view.end());	
+std::cout << view.origin() << '\n';
+boost::multi_array<char, 2>::reference subarray = a[1];
+std::memcpy(subarray.origin(), "C++", 4);
+
+std::cout << subarray.origin() << '\n';	
 \end{lstlisting}
 
 	\item property\_tree. provides a tree structure to store key/value pairs. Tree structure means that a trunk exists with numerous branches that have numerous twigs. A file system is a good example of a tree structure. File systems have a root directory with subdirectories that themselves can have subdirectories and so on.
@@ -22494,38 +22560,31 @@ int main()
 		"clock_style": 24
 	}
 }	
-\end{lstlisting}
-	
-\begin{lstlisting}
-#include <boost/property_tree/json_parser.hpp>
-void case4()
-{
-	ptree pt;
-	read_json("conf.json", pt);
-	
-	cout << pt.get<string>("conf.theme") << endl;
-	cout << pt.get<int>("conf.clock_style") << endl;
-	cout << pt.get<long>("conf.gui")<< endl;
-	cout << pt.get("conf.no_prop", 100)<< endl; 
-	
-	for (auto& x : pt.get_child("conf.urls"))
-	{   cout <<  x.second.data() << ",";    }
-	
-}
 
+#include <boost/property_tree/json_parser.hpp>
+ptree pt;
+read_json("conf.json", pt);
+
+cout << pt.get<string>("conf.theme") << endl;
+cout << pt.get<int>("conf.clock_style") << endl;
+cout << pt.get<long>("conf.gui")<< endl;
+cout << pt.get("conf.no_prop", 100)<< endl; 
+
+for (auto& x : pt.get_child("conf.urls")){
+	cout <<  x.second.data() << ",";    
+}
 \end{lstlisting}
 	
 	\item multi\_index\_container. Below is example.
 	
 \begin{figure}
 	\centering
-	\includegraphics[width=0.7\linewidth]{pics/multi_index}
+	\includegraphics[width=0.5\linewidth]{pics/multi_index}
 	\caption{}
 	\label{fig:multiindex}
 \end{figure}
 
 	
-	 
 \begin{lstlisting}
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -22533,33 +22592,13 @@ void case4()
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 #include <boost/multi_index/member.hpp>
-#include <string>
-#include <utility>
-#include <iostream>
 
 using std::cout;
 using std::endl;
-
-//using namespace std;
-
-
+//using namespace std; // looks like conflict with std??
 using namespace boost::multi_index;
 
-/*class animal
-{
-	public:
-	//animal(std::string name, int legs) : name_{std::move(name)},
-	// legs_(legs) {}
-	bool operator<(const animal &a) const { return legs_ < a.legs_; }
-	const std::string &name() const { return name_; }
-	//private:
-	std::string name_;
-	int legs_;
-};
-*/
-
-class animal
-{
+class animal{
 	public:
 	std::string name1;
 	std::string name2;
@@ -22567,71 +22606,42 @@ class animal
 	//const std::string &name() const { return name1; }
 };
 
-/*
 typedef multi_index_container<
-animal,
-indexed_by<
-ordered_unique<
-identity<animal>
->,
-hashed_unique<
-const_mem_fun<
-animal, const std::string&, &animal::name
->
->
->
-> animal_multi;
-*/
+	animal,
 
-typedef multi_index_container<
-animal,
-/*indexed_by<
-ordered_unique<
-identity<sp> 
->,
-hashed_unique<
-const_mem_fun<
-sp, const std::string&, &sp::name
->
-> */
-
-indexed_by<
-ordered_unique<
-identity<animal>
->,
-hashed_non_unique<
-member<
-animal, std::string, &animal::name1
->
->, 
-hashed_non_unique<
-member<
-animal, std::string, &animal::name2
->
->
->
+	indexed_by<
+		ordered_unique< identity<animal>
+		>,
+	
+		hashed_non_unique<
+			member<
+				animal, std::string, &animal::name1
+			>
+		>, 
+	
+		hashed_non_unique<
+			member<
+				animal, std::string, &animal::name2
+			>
+		>
+	>
 > animal_multi;
 
+animal_multi animals;
 
-int main()
-{
-	animal_multi animals;
-	
-	animals.emplace("cat", "dog");
-	animals.emplace("shark", "dog");
-	animals.emplace("cat", "mouse");
-	
-	//std::cout << animals.begin()->name() << '\n';
-	
-	std::cout<< "zy="<<animals.size()<< '\n';
-	
-	const auto &name_index = animals.get<1>();
-	std::cout << name_index.count("cat") << '\n';
-	
-	const auto &name_index2 = animals.get<2>();
-	std::cout << name_index2.count("dog") << '\n';
-	
-}
+animals.emplace("cat", "dog");
+animals.emplace("shark", "dog");
+animals.emplace("cat", "mouse");
+
+//std::cout << animals.begin()->name() << '\n';
+
+std::cout<< "zy="<<animals.size()<< '\n';
+
+const auto &name_index = animals.get<1>();
+std::cout << name_index.count("cat") << '\n';
+
+const auto &name_index2 = animals.get<2>();
+std::cout << name_index2.count("dog") << '\n';	
 \end{lstlisting}	
 
 \end{itemize}
@@ -22657,8 +22667,6 @@ The second way that STL is generic is that its algorithms and containers are ext
 
 Element Type Parameterization
 The third way that STL is generic is that its containers are parameterized on the element type. Though hugely important, this is perhaps the least “interesting” way in which STL is generic. Generic programming is often summarized by a brief description of parameterized lists such as std::list<T>. This hardly scratches the surface!
-
-
 	
 Like the STL, there are three ways in which the BGL is generic.
 
@@ -23158,36 +23166,14 @@ int cranky(){
 
     \item New containers introduced in C++11 include \texttt{forward\_list}, \texttt{unordered\_map}, and \texttt{unordered\_set}. The latter two support implementing hash tables, and the standard library provides basic hash functions for some basic types, such as \texttt{int} and \texttt{string}. If you have your own class, you can use \texttt{boost::hash\_combine} to implement a hash function(or functor).
 
-    \item To support user-defined key types in \texttt{std::unordered\_set<Key>} and \texttt{std::unordered\_map<Key, Value>} one has to provide \texttt{operator==(Key, Key)} and a hash function(or functor).
-\begin{lstlisting}[numbers=none]
-struct X { int id; /* ... */ };
-	bool operator==(X a, X b) { return a.id == b.id; }
-	struct MyHash {
-		size_t operator()(const X& x) const { 
-			return std::hash<int>()(x.id); }
-	};
-}
-
-std::unordered_set<X, MyHash> s;
-\end{lstlisting}
-
-    \item Just like the swap function introduced earlier (you can find details in the previous OOP chapter), you are expressly allowed and encouraged to add specializations to the \texttt{std::} namespace. The correct (and basically only) way to add a hash function is like this:
-\begin{lstlisting}[frame=single, language=c++]
-namespace std {
-	template <> struct hash<Foo>{
-		size_t operator()(const Foo & x) const{
-			//your hash function code here
-		}
-	};
-}
-std::unordered_set<Foo> s;
-\end{lstlisting}
-
-    \item A good \texttt{std::hash} example can be found in cppreference.com 
-
     \item \texttt{std::array} is a class version of the classic C array, with the difference that its size is fixed at compile time and it will be allocated on the stack. On the other hand, \texttt{std::vector} is a small class containing pointers to the heap. This means that when you allocate a \texttt{std::vector}, it always calls \texttt{new}. While accessing elements in a \texttt{std::vector} is slightly slower due to chasing pointers to get to the arrayed data, they can be resized, and they only take a trivial amount of stack space no matter how large they are.
+    
+\begin{lstlisting}
+array<string, 3> arr_str = {"hello", "world", "!"};
+array<int, 10> arr_i = {0};
+\end{lstlisting}
 
-    \item array support copy and assignment between the same size. \texttt{at()} is slower (but safer) than \texttt{operator []}, because it does bounds checking. 
+    \item array support copy and assignment between the same size. \texttt{at()} is slower (but safer) than \texttt{operator []}, because it does bounds checking. std::array has no constructor, you can only specify size by template number. It has not push\_back function either, because it is fixed size. 
 \begin{lstlisting}[numbers=none]
 auto a3 = a2; //Making a new array via copy
 auto a4(a2); //same
@@ -23215,6 +23201,17 @@ void printLength(const std::array<double, 5> &myarray){
 
 std::array<double, 5> myarray { 9.0, 7.2, 5.4, 3.6, 1.8 };
 printLength(myarray);
+\end{lstlisting}
+	
+	\item basic functions of \texttt{std::bitset}.
+\begin{lstlisting}
+std::bitset<8> a, b;
+std::cout << b.set() << '\n'; //set to 1 all
+std::cout << b.reset() << '\n';  //set to 0 all
+std::cout << b.set(0)  // counting from 0, from least significant to most significant
+b.test(0);  b.flip(0);
+a &= b;
+//Note that &=, |=, and ^= are only defined for bitsets of the same size N.
 \end{lstlisting}
 
 \end{itemize}
