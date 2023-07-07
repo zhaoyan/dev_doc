@@ -12771,7 +12771,47 @@ for(vect<int>::iterator i = vect.begin();i!=vect.end(); ){
 	}
 	else  ++i;
 }			
+\end{lstlisting}
+
+	\item Effective STL item 22: Avoid in-place key modification in \texttt{std::set} and \texttt{std::multiset}.
+\begin{enumerate}
+	\item you can't change key in map because it's const default.
+\begin{lstlisting}[numbers=none]
+map.begin()->first = 10 //compile error
 \end{lstlisting}	
+	
+	\item For \texttt{std::set} or \texttt{std::map}, you can modify non-key part.
+\begin{lstlisting}[frame=single, language=c++]
+iterator i = set.find(employee);
+if( i != set.end())
+const_cast<Employee &> (*i).setTitle("manager")	
+\end{lstlisting}	
+	\begin{description}
+		\item[Line 3:]  \texttt{set.find} returns a const iterator, and you cannot change the value through it. To modify the value, you must first change it to a reference. Using \texttt{const\_cast<Employee>} alone is not correct as it creates a temporary object and modifies it, which is not what you want.
+	\end{description}
+	
+	\item If you want to modify the key part in \texttt{std::set} or \texttt{std::map}, erase it first, then insert it back.
+\begin{lstlisting}[frame=single, language=c++]
+iterator i = se.find(employee); 
+if(i ! = se.end()){   // 1) find the one
+	Employee e(*i);    //2) create temp one.
+	e.setKey("new key") //3) modify
+	se.erase(i++);  //4) delete the old one and keep iterator i;
+	se.insert(i,e); //5) insert new one
+}	
+\end{lstlisting}	
+	
+	\item C++ 17 provide a easier way to modify the key in associate container, use extract to transfer node without copying or moving.
+\begin{lstlisting}
+map<int,string> m {{2,"a"},{3,"x"}};
+auto n2 = m.extract(2);
+n2.key() = 5;
+
+m.insert(std::move(n2)); // move node back in	
+\end{lstlisting}	
+	
+\end{enumerate}
+	
 	
 \end{itemize}
 
@@ -12888,9 +12928,8 @@ v1.insert(v1.begin(),  v2,begin() , v2.end()); // a better method is here.
 	
 	\item Index containers. To have a main container hold the objects and access them using different sort orders without resorting the main container, you can set up secondary containers that "point into" the main one and sort the secondary containers in different ways using dereferenced compare predicates. But prefer a container of MainContainer::iterators (which are value-like) instead of a container of pointers.
 	
-	\item To have a container store and own objects of different but related types, such as types derived from a common Base class, prefer \texttt{container< shared\_ptr<Base> >}. An alternative is to store proxy objects whose nonvirtual functions pass through to corresponding virtual functions of the actual object.
+	\item To have a container store and own objects of different but related types, such as types derived from a common base class, prefer \texttt{container< shared\_ptr<Base> >}. An alternative is to store proxy objects whose nonvirtual functions pass through to corresponding virtual functions of the actual object.
 \end{enumerate}
-
 
 
 	\item When you use STL Container, you should realize that typedef are your best friends. 1) For a complex type, it can save typing. 2) keep good maintainable for future change. 
@@ -12919,18 +12958,18 @@ int find_it(std::string value, Record_t const& stuff){
 	\item[Line 4-5:] change \texttt{int} to \texttt{float}, code below line 5 don't need change at all.
 \end{description}
 
-	\item Basic syntax of usage of type defined in container.
+	\item Use :: to access the type defined in a container.
 \begin{lstlisting}[numbers=none]
 vector<uint> vecs;
 cout << sizeof(vecs.value_type)  //error usage
 cout<<sizeof(vector<uint>::value_type); //it's static class member.	
 \end{lstlisting}	
 	
-	\item You can use a type definition of a container inside a template function to achieve a more generic purpose. Alternatively, you can use an unknown container in a template class or support multiple containers at the same time to achieve greater flexibility and genericity.
+	\item You can use a type definition of a container inside a template function to achieve a more generic purpose. Alternatively, you can use an unknown container in a template class or support multiple containers at the same time to achieve greater flexibility and generic.
 	
 	\begin{enumerate}
 		
-		\item Having the commonly-used types available as a type on the container is useful when the container's type itself is unknown. For example, someone may want to write library code that works equally well with \texttt{std::map} and \texttt{std::unordered\_map}:
+		\item Having the commonly-used types available as a type inside the container is useful when the container's type itself is unknown. For example, someone may want to write library code that works equally well with \texttt{std::map} and \texttt{std::unordered\_map}:
 \begin{lstlisting}[numbers=none]
 template<typename TMap>
 void insert_default_pair(TMap& map){
@@ -12938,7 +12977,7 @@ void insert_default_pair(TMap& map){
 }	
 \end{lstlisting}		
 		
-		\item When using container types inside template code, it is important to use the \texttt{typename} keyword before \texttt{value\_type}. This has been introduced before in the generic programming chapter. The reason for this is that it can sometimes be unclear whether an identifier designates a type or a variable. For example, \texttt{T * p} may be interpreted as a multiplication or a pointer declaration. By explicitly marking it as a type with the prefix \texttt{typename}, we can avoid any ambiguity and ensure that the code is interpreted correctly.
+		\item When using container types inside template code, it is important to use the \texttt{typename} keyword before it. This has been introduced before in the "generic programming" chapter. The reason for this is that it can sometimes be unclear whether an identifier designates a type or a variable. For example, \texttt{T * p} may be interpreted as a multiplication or a pointer declaration. By explicitly marking it as a type with the prefix \texttt{typename}, we can avoid any ambiguity and ensure that the code is interpreted correctly.
 		
 \begin{lstlisting}[numbers=none]
 template <typename T>
@@ -12955,54 +12994,17 @@ public:
 		
 %	\item Never try to expect all the container has the same interface. Even a generic erase(), for sequence, It return next iterator,(because it will invalid the iterator).   But for associative, it return void(c++ 98) and return next iterator(C++ 11). If you just want to change a container in the future, you should put a container into a class: CustomCollection. then hide it from the class client. The detail can be seen in Effective STL item 2.
 
-	\item The standard associative containers are implemented as balanced binary search trees. They are optimized for a mixed combination of insertions, erasures, and lookups. However, if the container is used as a dictionary, it can fall into three distinct phases: setup, lookup, and modify. Modify is not very frequent, whereas lookup is very frequent. In such cases, the associative container may not be the best option. A sorted \texttt{vector} also supports logarithmic search time and has two advantages: 1) it uses less space, and 2) more space can cause page faults in memory, making the sorted \texttt{vector} faster than the associative container with the same logarithmic search complexity. Therefore, for a dictionary, it's better to use a sorted vector.
+	\item The standard associative containers are implemented as balanced binary search trees. They are optimized for a mixed combination of insertions, erasures, and lookups. However, if the container is used as a dictionary, it can fall into three distinct phases: setup, lookup, and modify. Modify is not very frequent, whereas lookup is very frequent. In such cases, the associative container may not be the best option. A sorted \texttt{std::vector} also supports logarithmic search time and has two advantages: 1) it uses less space, and 2) more space can cause page faults in memory, making the sorted \texttt{std::vector} faster than the associative container with the same logarithmic search complexity. Therefore, for a dictionary, it's better to use a sorted vector.
 
 
 	\item Avoid using \texttt{vector<bool>}, use \texttt{deque<bool>} or \texttt{bitset}.
 
 
-	\item Effective STL item 22: Avoid in-place key modification in \texttt{std::set} and \texttt{std::multiset}.
-\begin{enumerate}
-   \item you can't change key in map because it's const default.
-\begin{lstlisting}[numbers=none]
-map.begin()->first = 10 //compile error
-\end{lstlisting}
-
-   \item For \texttt{std::set} or \texttt{std::map}, you can modify non-key part.
-\begin{lstlisting}[frame=single, language=c++]
-iterator i = set.find(employee);
-if( i != set.end())
-   const_cast<Employee &> (*i).setTitle("manager")
-\end{lstlisting}
-\begin{description}
-	\item[Line 3:]  \texttt{set.find} returns a const iterator, and you cannot change the value through it. To modify the value, you must first change it to a reference. Using \texttt{const\_cast<Employee>} alone is not correct as it creates a temporary object and modifies it, which is not what you want.
-\end{description}
-
-	\item If you want to modify the key part in \texttt{std::set} or \texttt{std::map}, erase it first, then insert it back.
-\begin{lstlisting}[frame=single, language=c++]
-iterator i = se.find(employee); 
-if(i ! = se.end()){   // 1) find the one
-	Employee e(*i);    //2) create temp one.
-	e.setKey("new key") //3) modify
-	se.erase(i++);  //4) delete the old one and keep iterator i;
-	se.insert(i,e); //5) insert new one
-}
-\end{lstlisting}
-
-	\item C++ 17 provide extract to transfer node without copying or moving.
-\begin{lstlisting}
-map<int,string> m {{2,"a"},{3,"x"}};
-auto n2 = m.extract(2);
-n2.key() = 5;
-
-m.insert(std::move(n2)); // move node back in
-\end{lstlisting}
- \end{enumerate}
 
 	\item The book "effective STL item 19" introduces the difference between equality and equivalence in associative Containers.
 	
   \begin{enumerate}
-	  \item \textbf{equality} is based on \texttt{operator ==}. \textbf{equivalence} is based on \texttt{operator <}. Because associate container, \texttt{set}, \texttt{map}, they must sort their elements, so they must use \texttt{operator <}. Then it use \texttt{!if(a<b)\&\&!if(b<a)} to define equivalence, and associate container use equivalence to decide if a object exist in a container.
+	  \item \textbf{equality} is based on \texttt{operator ==}. \textbf{equivalence} is based on \texttt{operator <}. Because associate container, \texttt{set}, \texttt{map}, they must sort their elements, so they must use \texttt{operator <}. Then it use \texttt{!if(a<b)\&\&!if(b<a)} to define equivalence, and associate container use equivalence to decide if a object exist in a container, while unordered(hash) containers use equality \texttt(operator ==). 
 	  
 	  \item if you don't have custom compare function, most of time equivalence is equal to equality, but if you define your specific comparison function, you need to know below:
  
@@ -13017,7 +13019,7 @@ ss.find("aa"); //return true;
 find(ss.begin(),ss.end() , "aa") //false, find algorithm use operator ==
 \end{lstlisting}
 
-  		\item It will lead to item 20 in effective STL. For associative container of pointers, You need to specify comparison types, You want to order by pointers or want to order by objects pointed by pointer.(Most of time, the second option is what we want)
+  		\item It will lead to item 20 in effective STL. For associative container of pointers, You need to specify comparison types, You want to order by pointers or want to order by objects pointed by pointer. (Most of time, the second option is what we want)
 \begin{lstlisting}[frame=single, language=c++]
 struct stringLess{
    bool operator()(const string* s1 , const string * s2){
@@ -13055,7 +13057,7 @@ namespace std {
 std::unordered_set<Foo> s;	
 \end{lstlisting}	
 	
-	\item About \texttt{std::unordered\_map}, Another property is bucket. 
+	\item About \texttt{std::unordered\_map}, Another property is \texttt{bucket\_count} and \texttt{bucket\_number}. 
 \begin{lstlisting}
 unordered_set<int> us;  
 for(size_t i = 0; i<us.bucket_count(); ++i){ //bucket number
@@ -13084,9 +13086,9 @@ string(const string& str, size_type pos, size_type n = npos)
 	
 	\item The standard containers define \texttt{size\_type} as a typedef to \texttt{Allocator::size\_type} (where \texttt{Allocator} is a template parameter). For the default allocator (\texttt{std::allocator}), \texttt{size\_type} is defined to be \texttt{size\_t}. Therefore, in the standard case, they are the same. However, if you use a custom allocator, a different underlying type could be used. Thus, using \texttt{container::size\_type} is preferable for maximum portability."
 		
-	\item When it comes to the real size of a string, the string class usually manages its own memory. However, you can use the \texttt{string::capacity()} and \texttt{string::reserve()} functions to manipulate the memory allocation. If the size of the string is not enough, the string will allocate a new block twice the size and copy the old content. You can use the capacity function to determine the real block size, and the reserve function to specify the minimum size of the block needed. For example, if you call \texttt{str.reserve(50)}, \texttt{str.capacity()} will return 63. This is because 63 is the largest block size that can fit 50 characters, plus one extra character for the null terminator (\verb='\0'=) that marks the end of the string.
+	\item When it comes to the real size of a string, the string class usually manages its own memory. Just like \texttt{std::vector}, you can use the \texttt{string::capacity()} and \texttt{string::reserve()} functions to manipulate the memory allocation. For example, if you call \texttt{str.reserve(50)}, \texttt{str.capacity()} will return 63. This is because 63 is the largest block size that can fit 50 characters, plus one extra character for the null terminator (\verb='\0'=) that marks the end of the string.
 	
-	\item If you are using a string with some legacy C function, you should use the \texttt{string.c\_str()} function for read-only operations. This function returns a \texttt{const char*}, so you cannot modify the string using this pointer. If your legacy C function needs to modify the string, you should follow the steps below: 
+	\item If you are using a string with some legacy C function, you should use the \texttt{std::string.c\_str()} function for read-only operations. This function returns a \texttt{const char*}, so you cannot modify the string using this pointer. If your legacy C function needs to modify the string, you should follow the steps below: 
 	
 	 
 	
@@ -13096,8 +13098,8 @@ Old_c(str.c_str());  // legacy C function read a string
 	
 size_t Old_c(char *pArray, size_t arraySize);  // legacy C write a string.
 vector<char> vc(maxNumChars); // 1) create vector char
-size_t charsWritten = Old_c(&vc[0], vc.size()); //2) input it to legacy C
-string s(vc.begin(), vc.begin()+charsWritten); //3) copy it by range constructor
+size_t charsWritten = Old_c(&vc[0], vc.size()); //2) copy it to vc
+string s(vc.begin(), vc.begin()+charsWritten); //3) copy it from vc back to string by a range constructor.
 \end{lstlisting}
 
 	\item Another interesting topic regarding strings is SBO(small buffer optimization), which is used in the string implementation of all compilers. For short strings (less than 16 characters), we can save them in \_local memory instead of on the heap, which saves on heap allocation costs.
@@ -13114,26 +13116,17 @@ class string{
 };
 \end{lstlisting}
 	
-	\item string method lists are below:
+	\item Essentially, a \texttt{std::string} is just a \texttt{std::vector}, so it supports all the functionalities that \texttt{std::vector} provides. However, being a string, it also has additional interfaces specifically tailored for string operations, such as find, find\_first\_of, length, starts\_with, compare, substr, contains, and more. string method lists are below:
 	
 	\begin{tabular}{| p{0.2\textwidth} |p{0.7\textwidth}|}
 		\tophline
-		capacity(), reserve() & Returns the largest number of elements that could be stored in a string without increasing the memory allocation of the string.\\
-		\tophline
-		empty(),  size()& \\
-		\tophline
-		max\_size() & maximum number of characters \\
-		\tophline
-		length() & Returns the current number of elements in a string.\bottomhline
+		length, size  & Returns the current number of elements in a string. \\
 		
-	\end{tabular}
-	
-	\begin{tabular}{| p{0.2\textwidth} |p{0.7\textwidth}|}
 		\tophline
 		find(), rfind() & Search a string in a forward/backward direction for the first occurrence of a substring that matches a specified sequence of characters.\\
-		\tophline
-		substr() & Copies a substring of at most some number of characters from a string beginning from a specified position. \\
 		
+		\tophline
+		substr() & Copies a substring of at most some number of characters from a string beginning from a specified position. \\		
 		\tophline
 		find\_first\_not\_of()& Search through a string for the first character that is not any element of a specified string.\\
 		\tophline
@@ -13141,10 +13134,13 @@ class string{
 		\tophline
 		find\_last\_not\_of() & \\
 		\tophline
-		find\_last\_of() & .\bottomhline
+		find\_last\_of() & 
+		\bottomhline
 	\end{tabular}
 	
-	\item \texttt{find} function in the string return position. \texttt{vector} doesn't have \texttt{find} member function, you can use \texttt{std::find} function in algorithm category. \texttt{String::npos} is the maximum possible length of the string. Equal the maximum value of an unsigned int.
+	\item Don't confused with below names: \texttt{std::find/find\_if }, \texttt{std::search/find\_end} are generic algorithms based on iterators. \texttt{std::find} look for a value in a container, and \texttt{std::search} look for a sub range. In \texttt{std::string}, we use find and rfind two member functions, the names are more clearly. Prefer to use member function than generic algorithms. 
+	
+	\item \texttt{find} function in the string return position. \texttt{vector} doesn't have \texttt{find} member function, you can use \texttt{std::find} in algorithm category. \texttt{String::npos} is the maximum possible length of the string. Equal the maximum value of an unsigned int.
 	
 \begin{lstlisting}[frame=single, language=c++]
 size_t found;
@@ -13158,47 +13154,22 @@ if(it!=myints.end())
 	cout<< "find 30"<<endl;
 \end{lstlisting}
 	
-	
 	\begin{tabular}{| p{0.2\textwidth} |p{0.7\textwidth}|}
 		\tophline
-		begin(),end() & Returns an iterator addressing the first element in the string.\\
+		append() & Adds characters to the end of a string.\\
 		\tophline
-		rbegin(), rend() & \bottomhline
-		
-	\end{tabular}
-	
-	\begin{tabular}{| p{0.2\textwidth} |p{0.7\textwidth}|}
+		substr() & return sub string \\
 		\tophline
-		clear()& Erases all elements of a string.\\
-		\tophline
-		insert(), erase() & Inserts an element or a number of elements or a range of elements into the string at a specified position.\\
-		\tophline
-		append(), push\_back() & Adds characters to the end of a string.\\
-		\tophline
-		assign() &Assigns new character values to the contents of a string.\\
-		\tophline
-		replace() & \bottomhline
-	\end{tabular}
-	
-	\begin{tabular}{| p{0.2\textwidth} |p{0.7\textwidth}|}
-		
-		\tophline
-		at() & a reference to the element at a specified location \\
-		\tophline
-		c\_str(), data() & \\
+		c\_str(), data() & return pointer \\
 		\tophline
 		compare()& \\
 		\tophline
 		copy() & Copies at most a specified number of characters from an indexed position in a source string to a target character array.The function does not append a null character at the end of the copied content.
 		\\
 		\tophline
-		get\_allocator() & Returns a copy of the allocator object used to construct the string.\\
-		
-		\tophline
-		swap() & Exchange the contents of two strings. \bottomhline
+		get\_allocator() & Returns a copy of the allocator object used to construct the string.\\	
 	\end{tabular}
 	
-	\item \texttt{clear} will delete all the characters, and \texttt{erase} will remove character in certain position.
 	
 	\item position returned by \texttt{find} method can be used in loop. You should remember this useful string pattern.
 \begin{lstlisting}[numbers=none]
@@ -13212,22 +13183,15 @@ while (found!=std::string::npos){
 
 \subsubsection{Common functions}
 
-	\item The common usage pattern about strings: 1) case converion, 2) number conversion, 3) trim, 4) predicate and category, 5) find and search  6)replace and erase 7) split and join.
-\begin{enumerate}
-	\item upper case and lower case conversion:
+	\item The common usage pattern about strings: 1) case conversion, 2) number conversion, 3) predicate and category, 4) trim, 5) find and search  6)replace and erase 7) split and join.
+
+	\item upper case and lower case conversion. toupper is C language function which is not in std namespace, so we use :: to access it. 
 \begin{lstlisting}
 std::string str = "Hello World";
 std::transform(str.begin(), str.end(), str.begin(), ::toupper);	
 \end{lstlisting}
 
-	\item Some useful functions of \texttt{std::string}.
-\begin{lstlisting}[numbers=none]
-str=to_string(123);
-str.erase(0,1) //delete the first letter
-str.pop_back() //delete the last letter	
-\end{lstlisting}
-
-	\item number conversion: 
+	\item number conversion. 
 \begin{lstlisting}
 stoi, stol, stof;
 std::string str_dec = "2001, A Space Odyssey";
@@ -13238,17 +13202,9 @@ int i_hex = std::stoi (str_hex,nullptr,16);
 std::cout << str_dec << ": " << i_dec << " and [" << str_dec.substr(sz) << "]\n";
 
 float f{123.456};
-string str = std::to_string(f);
+string str = std::to_string(f);	
 \end{lstlisting}
-	\item trim all space characters on left side of string. 
-\begin{lstlisting}[numbers=none]
-std::string trimLeft(const std::string &s) {
-	auto temp = s;
-	temp.erase(std::begin(temp), std::find_if(std::begin(temp), std::end(temp), 
-	[](char c){return !std::isspace(c, std::locale()); }));
-	return temp;
-}	
-\end{lstlisting}	
+
 	\item predicate and category
 \begin{lstlisting}
 isspace	isprint	iscntrl	
@@ -13261,20 +13217,59 @@ std::cout << "isalnum(\'\\xdf\', default C locale) returned "
 
 if (std::setlocale(LC_ALL, "de_DE.iso88591"))
 std::cout << "isalnum(\'\\xdf\', ISO-8859-1 locale) returned "
-<< static_cast<bool>(std::isalnum(c)) << '\n';
-\end{lstlisting}
+<< static_cast<bool>(std::isalnum(c)) << '\n';	
+\end{lstlisting}	
 
-	\item replace and erase
-\begin{lstlisting}
+	\item There are two methods to trim a string. \texttt{ltrim} uses \texttt{find\_first\_not\_of} to determine the position to trim from and then returns that position. The first parameter of \texttt{substr} specifies the beginning position, and the second parameter specifies the length. \texttt{rtrim} uses the generic STL algorithm \texttt{find\_if} and returns an iterator. When assigning an iterator, use the \textbf{auto} type. It's important to learn how to write lambda functions. The \texttt{erase} function modifies the string in place."
+	
+\begin{lstlisting}[]
+const std::string WHITESPACE = " \n\r\t\f\v";
+string ltrim(const string& str){
+	size_t pos = str.find_first_not_of(WHITESPACE);
+	if (pos == string::npos){
+		return "";
+	}
+	else{
+		return str.substr(pos); // left side use substr
+	}
+}
+string rtrim(string& str){
+	auto pos = find_if(str.rbegin(),str.rend(), [](char c){ 
+		return !isspace(c, locale::classic());}
+	);
+	str.erase(pos.base(), str.end()); //right side use erase.
+	return str;
+}		
+\end{lstlisting}
+	
+
+	\item Modify a \texttt{std::string}. 
+\begin{lstlisting}[numbers=none]
+str=to_string(123);
+str.erase(0,1) //delete the first letter
+str.pop_back() //delete the last letter	
+
 string str = "123456";
-std::erase(cnt, '3'); //C++20 support, dont' need erase and remove idiom
+std::erase(str, '3'); //C++20 support, dont' need erase and remove idiom
+                      //std::erase(std::string, char);
 
 std::string base="this is a test string.";
 std::string str2="n example";
-str.replace(9,5,str2);  // "this is an example string." (1)
+str.replace(9,5,str2);  // "this is an example string." (1)	
 \end{lstlisting}
 
-	\item find and search, can be found in the previous section.
+	\item How to token? In C++, we usually use \texttt{stringstream} and \texttt{getline} to make token much easier. In C++, you can use \texttt{std::views::split}.
+\begin{lstlisting}[numbers=none]
+str1="zhao,yao,c++";
+stringstream s1(str1);
+unordered_set<string> sv2;
+
+string str_part;
+while(getline(s1, str_part, ',')){
+	sv2.insert(str_part)
+}		
+\end{lstlisting}
+
 	
 	\item split and join, you can use C++20 view or boost if your compiler doesn't supports C++ 20. 
 \begin{lstlisting}
@@ -13282,9 +13277,7 @@ std::string s = "1.2.3.4";
 auto ints = s | views::split('.')
 fmt::print("{}\n", std::views::join_with(ints,'#')); "1#2#3#4"
 \end{lstlisting}
-
-\end{enumerate}
-		
+	
 \end{itemize}
 
 \section{Iterator}
@@ -16423,39 +16416,6 @@ do {
 } while (next_permutation(str.begin(), str.end()));	
 \end{lstlisting}	
 
-	\item There are two methods to trim a string. \texttt{ltrim} uses \texttt{find\_first\_not\_of} to determine the position to trim from and then returns that position. The first parameter of \texttt{substr} specifies the beginning position, and the second parameter specifies the length. \texttt{rtrim} uses the generic STL algorithm \texttt{find\_if} and returns an iterator. When assigning an iterator, use the \textbf{auto} type. It's important to learn how to write lambda functions. The \texttt{erase} function modifies the string in place."
-
-\begin{lstlisting}[]
-const std::string WHITESPACE = " \n\r\t\f\v";
-string ltrim(const string& str){
-	size_t pos = str.find_first_not_of(WHITESPACE);
-	if (pos == string::npos){
-		return "";
-	}
-	else{
-		return str.substr(pos);
-	}
-}
-string rtrim(string& str){
-	auto pos = find_if(str.rbegin(),str.rend(), [](char c){ 
-		return !isspace(c, locale::classic());}
-	);
-	str.erase(pos.base(), str.end());
-	return str;
-}
-\end{lstlisting}
-
-	\item How to token? In C++, we usually use \texttt{stringstream} and \texttt{getline} to make token much easier. In C++, you can use \texttt{std::views::split}.
-\begin{lstlisting}[numbers=none]
-str1="zhao,yao,c++";
-stringstream s1(str1);
-unordered_set<string> sv2;
-
-string str_part;
-while(getline(s1, str_part, ',')){
-	sv2.insert(str_part)
-}	
-\end{lstlisting}
 
 
 	\item A implementation of push\_back in \texttt{std::vector} based on \texttt{std::unique\_ptr}. 
@@ -21967,7 +21927,7 @@ A microcontroller UART can not generate such voltages levels by itself. This is 
 	
 \end{itemize}
 
-\chapter{Common used libs}
+\chapter{Commonly used libs}
 
 A complete list of awesome cpp librarys lsit is:  \\
 \verb|https://github.com/fffaraz/awesome-cpp#logging|
@@ -24701,7 +24661,7 @@ struct Name {
 };
 \end{lstlisting}	
 
-    \item Usage of \texttt{std::format}. Basic format syntax can be found in cppreference in \texttt{std::format} page.
+    \item Usage of \texttt{std::format}. Basic format syntax can be found in cppreference in \texttt{std::format} page. The basic usage is just like fmt, you can find fmt section in "Commonly used libs" chapters. 
 \begin{lstlisting}[]
 cout<<std::format("Default:\t{} {:g} {:g}\n", 1.5, 1.5, 1e20);
 cout<<std::format("Rounding:\t{:f} {:.0f} {:.22f}\n", 1.5, 1.5, 1.3);
@@ -24715,6 +24675,13 @@ Padding:        01.50 1.50  1.50
 Scientific:     1.500000E+00 1.500000e+00
 Hexadecimal:    0x1.8p+0 0X1.4CCCCCCCCCCCDP+0
 \end{lstlisting}
+
+	\item C++20 add some bit manipulation functions, such as \texttt{std::rotl}, \texttt{std::rotl}, \texttt{std::bit\_ceil}, they are defined in <bit> header file. They only accept an unsigned integer type as input. 
+\begin{lstlisting}
+ const std::uint8_t i = 0b00011101;
+std::cout << "i          = " << std::bitset<8>(i) << '\n';
+std::cout << "rotr(i,1)  = " << std::bitset<8>(std::rotr(i, 1)) << '\n';
+\end{lstlisting}	
 
 \end{itemize}
 
