@@ -12201,7 +12201,7 @@ assert(y == 4);
 \chapter{STL}
 \section{Four components and design idioms in STL}
 \begin{itemize}
-	\item The main principle of STL library is: Use \textbf{functors} to customize \textbf{algorithms}, and then apply the algorithm on \textbf{containers} by \textbf{iterators}. For example, algorithms such as \texttt{std::for\_each} take two iterators as input and do not care about the container they operate on. 
+	\item The main principle of design of STL library is: Use \textbf{functors} to customize \textbf{algorithms}, and then apply the algorithm on \textbf{containers} using \textbf{iterators}. For example, algorithms such as \texttt{std::for\_each} take two iterators as input and do not care about the container they operate on. 
 \begin{lstlisting}[frame=single, language=c++]
 struct Sum{ //functors are usually struct, not class
 	Sum(): sum{0} { }
@@ -12209,9 +12209,10 @@ struct Sum{ //functors are usually struct, not class
 	int sum;
 };
 
-std::vector<int> nums{3, 4, 2, 8, 15, 267};
-std::for_each(nums.begin(), nums.end(), [](int &n){ n++; }) //lambda syntax
-Sum s = std::for_each(nums.begin(), nums.end(), Sum());  //return Sum struct
+std::vector<int> nums_v{3, 4, 2, 8, 15, 267};
+std::list<int> nums_l{3, 4, 2, 8, 15, 267};
+std::for_each(nums_v.begin(), nums_v.end(), [](int &n){ n++; }) //lambda syntax
+Sum s = std::for_each(nums_l.begin(), nums_l.end(), Sum());  //return Sum struct
 cout<<s.sum<<endl;	
 \end{lstlisting}	
 	
@@ -12349,7 +12350,7 @@ ranges::for_each(c, fun1);  //best style, support in C++20 standard
 \item sequence: \texttt{std::array, std::vector, std::list, std::forward\_list, std::string, std::deque}.
 \item associative: \texttt{std::map, std::set, std::multiset, std::multimap}.
 \item adaptor: \texttt{std::stack, std::queue and std::priority\_queue}.
-\item unordered: \texttt{std::unordered\_map, std::unordered\_set,  std::unordered\_multimap}, \\ \texttt{std::unordered\_multiset}.
+\item unordered(hash): \texttt{std::unordered\_map, std::unordered\_set,  std::unordered\_multimap}, \\ \texttt{std::unordered\_multiset}.
 \end{enumerate}
 
 
@@ -12374,7 +12375,7 @@ bool result = alice > bob;
 bool result = alice < bob;
 \end{lstlisting}	
 
-	\item all containers contain 4 member functions: \texttt{empty()}, \texttt{size()}, \texttt{max\_size()}, and \texttt{swap()}. \texttt{max\_size() }is just theoretical value. 
+	\item all containers contain 4 member functions: \texttt{empty()}, \texttt{size()}, \texttt{max\_size()}, and \texttt{swap()}. \texttt{max\_size() }is just theoretical value.  \texttt{std::forward\_list} has no size member function.
 
 	\item First class container includes \texttt{begin()}, \texttt{end()}, \texttt{rbegin()}, \texttt{rend()}. \texttt{insert()} and \texttt{erase()}. There are no such six functions in container adapter, and \texttt{insert} and \texttt{erase} exist in both sequenced and associative container. 
 
@@ -12386,23 +12387,51 @@ bool result = alice < bob;
 
 	\item \texttt{std::vector} supports \texttt{reserve()}, \texttt{std::list} has \texttt{reverse()}(\textbf{not reserve}) and \texttt{splice()}. 
 
-	\item \texttt{std::list} support it's own  version \texttt{sort()}, \texttt{merge()}, \texttt{remove()/unique()}. For other container, you can use the generic algorithm, Why \texttt{std::list} has its own? For \texttt{sort()}, \texttt{list} doesn't support random access iterator. For \texttt{merge(), remove()} and \texttt{unique()}, generic algorithm just use copy method, but \texttt{list} has high efficient pointer implementation, So \texttt{std::list} offer its own version \texttt{merge()}, \texttt{remove()},\texttt{sort()}, \texttt{unique()}.
+	\item \texttt{std::list} support it's own  version \texttt{sort()}, \texttt{merge()}, \texttt{remove()/unique()}, \texttt{reverse and splice}. For other container, you can use the generic algorithm, Why \texttt{std::list} has its own \texttt{sort()}? \texttt{list} doesn't support random access iterator. For \texttt{merge(), remove()} and \texttt{unique()}, generic algorithms just use copy method, but \texttt{list} has high efficient pointer implementation, So \texttt{std::list} offer its own version algorithms: \texttt{merge()}, \texttt{remove()},\texttt{sort()}, \texttt{unique()}.
+	
+	\item There are three \texttt{merge} functions. member function merge in \texttt{std::list}, generic algorithm \texttt{std::merge} and \texttt{std::inplace\_merge}. The member function merge in \texttt{std::list} doesn't have sorted requirement. Generic merge algorithms need sorted range input. 
 	
 	\item  If you can find same name member functions in container, prefer to use member function than generic algorithm. Such as \texttt{sort, merge, remove, reverse, unique} in \texttt{std::list}, and \texttt{find, count, lower\_bound} in \texttt{std::set} and \texttt{std::map}.
 
-	\item All first class containers support \texttt{begin()} and \texttt{end()}. Only sequence containers support \texttt{push\_front()} or \texttt{push\_back()}. begin is not equal front, begin can be used for all first class containers, but front only be used for sequence containers.
+	\item All first class containers support \texttt{begin()} and \texttt{end()}. Only sequence containers support \texttt{push\_front()} or \texttt{push\_back()}. begin is different with front:
 
+	
 \begin{enumerate}
 	\item \texttt{begin()} and \texttt{end()} return iterator, and all first container support them, beside adaptor.
 
-	\item \texttt{front()} and \texttt{back()} return reference, and all sequenced container support them, \textbf{associative container don't support it.} For a container \texttt{c}, the expression \texttt{c.front()} is equivalent to \texttt{*c.begin()}.
+	\item \texttt{front()} and \texttt{back()} are element access functions, just like operator [] and \texttt{at} function.  They return reference, for a container \texttt{c}, the expression \texttt{c.front()} is equivalent to \texttt{*c.begin()}. 
+	
+	\item \texttt{begin()} can be used for all first class containers(such as \texttt{std::vector}, \texttt{std::map}), but front only be used for sequence containers(such as \texttt{std::vector}).
 
-	\item \texttt{push\_front()} and \texttt{push\_back()} add element, and \texttt{vector} only support \texttt{push\_back()}. \texttt{deque} and \texttt{list} support both.
+	\item \texttt{push\_front()} and \texttt{push\_back()} add element, and \texttt{std::vector} only support \texttt{push\_back()}. \texttt{std::deque} and \texttt{std::list} support both.
 \end{enumerate}
 
-	\item Associative containers support their own \texttt{find()}, \texttt{count()},  \texttt{lower\_bound()}, \texttt{upper\_bound()} , \texttt{equal\_range()}. They share the same name with generic algorithm, Don't confuse them. When you deal with associative container, just use container member function, don't use generic algorithm. 
+	\item Associative containers support their own \texttt{find()}, \texttt{count()},  \texttt{lower\_bound()}, \texttt{upper\_bound()} , \texttt{equal\_range()}. They share the same name with generic algorithm, Don't confuse them. When you deal with associative container, just use container member function, don't use generic algorithms. 
+\begin{lstlisting}
+auto [fi, si] = map.equal_range(1); // struct bind, first iterator
+for(auto p = fi; p!= si; ++p){
+	auto [fe, se] = *p;  //struct bind, first element
+	cout<<fe <<" "<<se<<endl;
+}
+\end{lstlisting}
 
-	\item A deque is the data structure of choice when most insertions and deletions take place at the beginning or end of the sequence at the same time. However, it does not guarantee continuity within memory and has a higher constant factor cost than a vector. One possible memory layout for a deque is shown in Fig. 9.1. Although both offer random access to elements and linear-time insertion and removal from the middle of a sequence, a vector is faster.
+	\item To judge if an element is present in a container, you can use the following approaches:
+\begin{enumerate}
+	\item For a sequential container, such as a \texttt{std::vector} or \texttt{std::list}, you can use the \texttt{std::find()} algorithm. You can check if the returned iterator is not equal to the container.end() iterator to determine if the element is present. Additionally, you can use \texttt{std::count()} to find out how many elements are present in the container.
+	
+	\item For an associative container, such as a map or set, you have different options based on your requirements: you can use the contains() member function introduced in C++20 to directly check if the element exists (returns a boolean value). To check how many element exists, you can use the count() member function, which returns the number of occurrences of the element (0 or 1 for a map/set, and any non-negative number for a multimap/multiset). If you need to find the element's value or position, you can use find() or lower\_bound() member functions.
+		
+	\item Another useful algorithms are std::any\_of, std::all\_of and std::none\_of, they need a predicating functor to perform more complex look up function.
+\begin{lstlisting}
+std::vector<int> v = {1, 2, 3, 4, 5};
+bool anygt = std::any_of(v.begin(), v.end(), [](int i) { return i > 10; });
+bool allPositive = std::all_of(v.begin(), v.end(), [](int i) { return i > 0; });
+bool noneNegative = std::none_of(v.begin(), v.end(), [](int i) { return i >= 0; });
+\end{lstlisting} 
+
+\end{enumerate}
+
+	\item \texttt{std::deque} is the data structure of choice when most insertions and deletions take place at the beginning or end of the sequence at the same time. However, it does not guarantee continuity within memory and has a higher constant factor cost than a vector. One possible memory layout for a deque is shown in Fig. 9.1. Although both offer random access to elements and linear-time insertion and removal from the middle of a sequence, a \texttt{std::vector} is maybe faster.
 
 \begin{figure}[ht]
 	\centering
@@ -12412,18 +12441,18 @@ bool result = alice < bob;
 \end{figure}
 
 
-\item Difference between \texttt{std::vector} and \texttt{std::deque}:
-\begin{enumerate}
-\item \texttt{std::vector} has relocation problem, if \texttt{std::vector} has 1000 elements, It probably need log(1000) = 10 times relocation. that is a little costly. On the contrary, \texttt{std::deque} just allocate a new place then insert pointer of new place to pointer map. It's relatively cheaper.
+	\item Difference between \texttt{std::vector} and \texttt{std::deque}:
+		\begin{enumerate}
+		\item \texttt{std::vector} has relocation problem, if \texttt{std::vector} has 1000 elements, It probably need log(1000) = 10 times relocation. that is a little costly. On the contrary, \texttt{std::deque} just allocate a new place then insert pointer of new place to pointer map. It's relatively cheaper.
+		
+		
+		\item Elements in a \texttt{std::deque} are not contiguous in memory; \texttt{std::vector} elements are guaranteed to be. So if you need to interact with a plain C library that needs contiguous arrays, or if you care (a lot) about spatial locality, then you might prefer vector.
+		
+		\item For stack and queue default use \texttt{std::deque} as container inside. Why, because for a large amount of element, \texttt{std::vector} has relocation problem.
+		\end{enumerate}
 
 
-\item Elements in a \texttt{std::deque} are not contiguous in memory; \texttt{std::vector} elements are guaranteed to be. So if you need to interact with a plain C library that needs contiguous arrays, or if you care (a lot) about spatial locality, then you might prefer vector.
-
-\item For stack and queue default use \texttt{std::deque} as container inside. Why, because for a large amount of element, \texttt{std::vector} has relocation problem.
-\end{enumerate}
-
-
-\item All the container adapters support \texttt{push()}, \texttt{pop()}. \texttt{std::stack} and \texttt{std::priority\_queue} support \texttt{top()}. \texttt{std::queue} has \texttt{front()} and \texttt{back()}. They don't have any iterators.
+	\item All the container adapters support \texttt{push()}, \texttt{pop()}. \texttt{std::stack} and \texttt{std::priority\_queue} support \texttt{top()}. \texttt{std::queue} has \texttt{front()} and \texttt{back()}. They don't support iterator, so no begin() and end() function. 
 
 
 
@@ -12486,7 +12515,7 @@ bool result = alice < bob;
 	
 	\item Associative containers: \texttt{[multi]\{set,map\}}: only iterators and references to the erased elements are invalidated
 	
-	\item Container adaptors: stack, queue and priority\_queue: inherited from underlying container
+	\item Container adaptors: \texttt{std::stack}, \texttt{std::queue} and \texttt{std::priority\_queue}: inherited from underlying container. 
 \end{itemize}
 
 \begin{lstlisting}[]
@@ -17363,14 +17392,8 @@ for (auto const& [index, value] : std::views::enumerate(s)) {
 
 	\item The main ideas about views and ranges, you can see code example of how to input a view to different algorithms. 
 
-\begin{center}
-	\includegraphics[width=0.8\linewidth]{pics/range.drawio.png}
-\end{center}
-
-
 \begin{lstlisting}
-struct MySentinel {}; // Empty type.
-
+struct MySentinel {}; // Empty type.	
 bool operator==(const auto i, MySentinel) { // Are we done?
 	return *i == 2;
 }
@@ -17383,14 +17406,21 @@ auto common = std::views::common(firstFive);
 auto output = std::ostream_iterator<int>(std::cout, " ");
 std::copy(common.begin(), common.end(), output); //1) to traditional algorithm
 std::ranges::copy(firstFive, output);            //2) to constraint algorithm
-std::ranges::copy(firstFive.begin(), MySentinel{}, output); //3) sentinel.
+std::ranges::copy(firstFive.begin(), MySentinel{}, output); //3) sentinel.	
 \end{lstlisting}
+
+
+\begin{center}
+	\includegraphics[width=0.8\linewidth]{pics/range.drawio.png}
+\end{center}
+
+
 
 \end{itemize}
 
 \subsubsection{Sequence View}
 \begin{itemize}
-	\item Two main sequence views are \texttt{std::string\_view} and \texttt{std::span}.
+	\item Two main sequence views are \texttt{std::string\_view} and \texttt{std::span} in C++20.
 	
 	\item How to build \texttt{std::string\_view}? 
 \begin{lstlisting}
@@ -17404,11 +17434,15 @@ using namespace std::string_view_literals; //method 2, use literals.
 auto literal_view = "C-String Literal"sv;
 \end{lstlisting}
 
-	\item Be careful with dangling reference problem. So you should use \texttt{std::string\_view} mainly as function parameter!
+	\item \texttt{std::string\_view} is a borrowed range, it means that if \texttt{std::string\_view} is temporary, the iterator from it is OK, but if the embedded container is temporary, it still has dangling problem. So you should use \texttt{std::string\_view} mainly as function parameter!
 \begin{lstlisting}
-using namespace std::string_literals;
+using namespace std::string_literals; //embedded container is temporary
 std::string_view sv2 {"Hello"s}; //""s return a string., ""sv return view.
 cout<<sv2 //string object has been destroyed. 
+
+std::string str = "Hello world";  //string_view itself is temporary.
+auto iter = std::string_view{str}.begin(); //iter's parent object is string_view.
+*iter = 'h'; // Weird, but okay:
 \end{lstlisting}
 
 	\item For read-only string parameter, difference between const reference and \texttt{std::string\_view} is: If we pass an object as function argument that is not a string itself, but something that can be used to construct a string, e.g., a string literal or an iterator range, a new temporary string object will be allocated and bound to the const reference.
@@ -17431,7 +17465,6 @@ f_view(cStr);       //  no copy
 f_view("Literal");  //  no copy
 f_view({begin(v),end(v)});  //  no copy
 \end{lstlisting}
-
 	
 	
 	\item Usage of \texttt{std::span}. You can think that \texttt{std::span} is also a view type.
@@ -17463,7 +17496,7 @@ cout << s[0]; //  w might hold new memory, bad
 \end{lstlisting}
 
 
-	\item \texttt{std::string\_view} and \texttt{std::span} as a function parameters.
+	\item The advantages of \texttt{std::string\_view} and \texttt{std::span} as a function parameters.
 	
 \begin{enumerate}
 	\item Decouple function implementations from the data representation/container type.
@@ -17473,6 +17506,7 @@ cout << s[0]; //  w might hold new memory, bad
 	\item Make it easy to apply functions to sequence subranges.
 	
 	\item Can almost never be dangling, i.e., refer to memory that has already been destroyed (because parameters outlive all function-local variables).
+	
 	\item Views can speed up accesses by avoiding a level of indirection:
 
 \end{enumerate}
@@ -17485,7 +17519,6 @@ cout << s[0]; //  w might hold new memory, bad
 
 \begin{itemize}
 	
-
 	\item Count word frequency. 
 \begin{lstlisting}
 #include <range/v3/view.hpp>
@@ -18927,6 +18960,8 @@ void wait_for_flag(){
 	}
 }	
 \end{lstlisting}	
+
+	\item The basic idea of conditional variable is easy, youcould in theory implement something like a conditional variable with nothing more than atomic accesses and timed thread suspension. However, it would perform extremely poorly. Modern OS's know when a thread is waiting on a condition and can wake that thread up "immediately" when the condition is satisfied. Your mechanism requires that the waiting thread wait until some specific time has passed. Plus, you'd have a whole bunch of spurious wake-ups that you have to check for, thus using thread time for no reason. The OS-based implementation will have far fewer spurious wake-ups.
 	
 	\item Basic usage pattern of conditional variable:
 
@@ -24565,7 +24600,7 @@ Coroutines let you create a structure that mirrors the actual program logic. Asy
 
 \subsubsection{usage of coroutine}
 \begin{itemize}
-	\item the first example is ge generateo, let us to see the client code first. 
+	\item The first example is ge generateo, let us to see the client code first. 
 	
 \begin{lstlisting}
 Generator sequence() {
@@ -24628,7 +24663,7 @@ struct Generator {
 	
 	\item In a true asynchronous application, it is not necessary to synchronize between threads after every task is executed like this. Instead, new work should be appended onto existing tasks, and the return value of the preceding task should be passed as a parameter to the next task after it finishes.
 	
-	\item use call back implement async
+	\item Use call back implement async.
 \begin{lstlisting}
 template <std::invocable<int> F>
 void async_sqr_cbk(const int value, F&& continuation)
@@ -24694,7 +24729,7 @@ task<void> power_8_async(const int value){
 
 \begin{itemize}
 	
-	\item Three way comparison operator, also call spaceship operator. Difference between strong\_ordering and weak\_ordering. What are the differences between them? For an object of a certain type, if you want to "strictly compare" all of its members, you should use strong\_ordering. Otherwise, use weak\_ordering. There are two conditions. The first condition is "strict comparison". For example, in the Name implementation I showed earlier, each character is compared, so I choose strong\_ordering. If I want to perform a case-insensitive comparison, the return type should be weak\_ordering. The second condition is "all members". I have included all three members first\_name, mid\_name, and last\_name of Name in the comparison scope, so it is strong\_ordering. If only one or two of them are compared, use weak\_ordering. With the C++20 operator<=>, you will most likely always implement this as a member function
+	\item Three way comparison operator, also call spaceship operator. Difference between strong\_ordering and weak\_ordering. What are the differences between them? For an object of a certain type, if you want to "strictly compare" all of its members, you should use strong\_ordering. Otherwise, use weak\_ordering. There are two conditions. The first condition is "strict comparison". For example, in the \texttt{hg} implementation in below code, each character is compared, so I choose strong\_ordering. If I want to perform a case-insensitive comparison, the return type should be weak\_ordering. The second condition is "all members". I have included all three members first\_name, mid\_name, and last\_name of Name in the comparison scope, so it is strong\_ordering. If only one or two of them are compared, use weak\_ordering. With the C++20 operator<=>, you will most likely always implement this as a member function.
 	
 	
 \begin{lstlisting}
@@ -24713,7 +24748,7 @@ struct Name {
 };
 \end{lstlisting}	
 
-    \item Usage of \texttt{std::format}. Basic format syntax can be found in cppreference in \texttt{std::format} page. The basic usage is just like fmt, you can find fmt section in "Commonly used libs" chapters. 
+    \item Usage of \texttt{std::format}. Basic format syntax can be found in cppreference in \texttt{std::format} page. The basic usage is just like \texttt{fmt}, you can find fmt section in "Commonly used libs" chapters. 
 \begin{lstlisting}[]
 cout<<std::format("Default:\t{} {:g} {:g}\n", 1.5, 1.5, 1e20);
 cout<<std::format("Rounding:\t{:f} {:.0f} {:.22f}\n", 1.5, 1.5, 1.3);
@@ -24741,54 +24776,59 @@ std::cout << "rotr(i,1)  = " << std::bitset<8>(std::rotr(i, 1)) << '\n';
 \begin{itemize}
     
 	\item Below table give corresponding rules you should follow when you write modern C++.
- \begin{tabular}{|c|c|}
-\hline 
-Old C++ & Modern C++  \\ 
 
-\hline 
-manual data strucure or for loop & container(tuple, variant.) or algorithem \\ 
-
-\hline 
-new & std::uniqu\_ptr, std::shared\_ptr \\ 
-
-\hline 
-return null, union, void* & std::optional, std::variant, std::any \\ 
-
-\hline 
-function pointer & std::function or lambda  \\ 
-
-\hline 
-initialization  & auto, list initialization, member initialization, template deduction  \\ 
-
-\hline 
-const  & constexpr \\ 
-
-\hline 
-typedef & alias \\ 
-
-\hline 
-enum & scope enum \\ 
-
-\hline 
-tie & struct bind \\ 
-
-\hline 
-random &  mt19937 \\ 
-
-\hline 
-ctime &  std::chrono, duration \\ 
-
-\hline 
-recursive template function &  fold expression \\ 
-
-\hline 
-reference &  std::span and std::string\_view \\ 
-
-\hline 
- &  std::filesystem \\ 
-
-\hline 
+\begin{center}
+\begin{tabular}{|c|c|}
+	\hline 
+	\textbf{Old C++} & \textbf{Modern C++}  \\ 
+	
+	\hline 
+	manual data strucure or for loop & container(tuple, variant.) or algorithem \\ 
+	
+	\hline 
+	new & std::uniqu\_ptr, std::shared\_ptr \\ 
+	
+	\hline 
+	return null, union, void* & std::optional, std::variant, std::any \\ 
+	
+	\hline 
+	function pointer & std::function or lambda  \\ 
+	
+	\hline 
+	initialization  & auto, list initialization, member initialization, template deduction  \\ 
+	
+	\hline 
+	const  & constexpr \\ 
+	
+	\hline 
+	typedef & alias \\ 
+	
+	\hline 
+	enum & scope enum \\ 
+	
+	\hline 
+	tie & struct bind \\ 
+	
+	\hline 
+	random &  mt19937 \\ 
+	
+	\hline 
+	ctime &  std::chrono, duration \\ 
+	
+	\hline 
+	recursive template function &  fold expression \\ 
+	
+	\hline 
+	reference &  std::span and std::string\_view \\ 
+	
+	\hline 
+	&  std::filesystem \\ 
+	
+	\hline 
 \end{tabular} 
+	
+\end{center}
+
 
 	\item We want to build a function to make an array, the basic idea is just like \texttt{std::make\_pair}. One implementation looks like below: We mainly use three features in C++11/14: 1) \texttt{std::array}, 2) list initilization(return \{\} ) 3) variadic templates.
 
@@ -24814,7 +24854,7 @@ auto get_data(const auto& ...params){
 \end{description}
 
 
-	\item Print a map. It demonstrates some very useful modern C++ features, Based on these feature, you can find that it make you to write the code much easier. 
+	\item It demonstrates some very useful modern C++ features, based on these features, yyhou can find that it make you to write the code much easier. 
 \begin{lstlisting}
 void print_map(const auto& map, const std::string_view key_desc = "key",
 							   const std::string_view value_desc = "value"){
@@ -24824,31 +24864,39 @@ void print_map(const auto& map, const std::string_view key_desc = "key",
 }
 \end{lstlisting}	
 
+	
 \begin{lstlisting}
 void print_map(const auto& map, const std::string_view key_desc = "key",
 							const std::string_view value_desc = "value"){
+								
 	const auto print_key_value = [&](const auto &data){
 		const auto &[key, value] = data;
 		puts(std::format("{}: '{}' {}: '{}'", key_desc, key, value_desc, value).c_str());
 	}
+	
 	ranges::for_each(map, print_key_value)		   
 }	
 \end{lstlisting}	
 
     \item In above code, I mainly demonstrate below C++ language features:
-
-\begin{enumerate}
-    \item C++ 98: const, template and STL
-    \item C++ 11: \texttt{std::array}, list initialization, variadic template, constexpr, auto, lambdas, range-base for loops, rvalue references, default and deleted functions, smart pointers
-    \item c++ 14: generic and variadic lambdas, return type deducitons, std::make\_unique.
-    \item C++ 17: structured bindings, \texttt{std::string\_view}, class template argument deduction, guaranteed copy elision, fold Expressions.
-    \item C++ 20: format, range, concept. 
-\end{enumerate}
+    
+    \begin{enumerate}
+    	\item C++ 98: const, template and STL container.
+    	
+    	\item C++ 11: \texttt{std::array}, list initialization, variadic template, constexpr, auto, lambdas, range-base for loops, rvalue references, default and deleted functions, smart pointers.
+    	
+    	\item c++ 14: generic and variadic lambdas, return type deducitons, std::make\_unique.
+    	
+    	\item C++ 17: structured bindings, \texttt{std::string\_view}, class template argument deduction, guaranteed copy elision, fold Expressions.
+    	
+    	\item C++ 20: format, range, concept. 
+    \end{enumerate}
+    
 
 \end{itemize}
 
 \section{To be continue...}
-In 2020, as I write this book, the latest C++ standard has just been released: \textbf{C++20}. Therefore, the upcoming eighty edition of this book will cover additional features in C++20, such as Concepts, Ranges, Modules, and Concurrency. Additionally, I will add one chapters on "Embedded Systems". Furthermore, I will enhance the Modern C++ chapter with more detailed explanations and additional content. Moving forward, I plan to publish a new edition each year to incorporate the latest advancements in the language.
+In 2020, as I wrote this book, the latest C++ standard C++20 has just been released. Therefore, the upcoming eighty edition of this book will cover additional features in C++20, such as Concepts, Ranges, Modules, and Concurrency. Additionally, I will add one chapters on "Embedded Systems". Furthermore, I will enhance the Modern C++ chapter with more detailed explanations and additional content. Moving forward, I plan to publish a new edition each year to incorporate the latest advancements in the language.
 \newline
 \textbf{"I'll be back"}
 
