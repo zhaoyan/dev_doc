@@ -11352,8 +11352,26 @@ class MyClass{
 	3) \texttt{is\_reference\_v} is variable template. 
 	4) Why do we need \texttt{T\_}? f must be a template function, although it's inside another template class. These two template need to use different template parameter. 
 	5) \texttt{enable\_if} should be used in template parameter deduction first; don't use it for function parameters or function return types unless you have a strong reason.
-	
 \end{description}
+
+	\item A common pattern to select a function according to input type.
+\begin{lstlisting}
+template<typename T,
+std::enable_if_t<std::is_same<int, T>::value>* = nullptr>
+void f() { }
+
+template<typename T,
+std::enable_if_t<std::is_same<double, T>::value>* = nullptr>
+void f() { }
+//-----------------------------
+template<typename T,
+typename = std::enable_if_t<std::is_same<int, T>::value>>
+void g() { }
+
+template<typename T,
+typename = std::enable_if_t<std::is_same<double, T>::value>>
+void g() { }
+\end{lstlisting}
 
 	\item In C++17, we can also use \texttt{if constexpr}, that make our code looks clean and simple. But the basic idea is the same. If your compiler support \texttt{if constexpr} or \texttt{concept}, please use it instead of \texttt{std::enable\_if}. I am afraid that this will be deprecated in the future version of C++ standard. 
 
@@ -12225,7 +12243,7 @@ cout<<s.sum<<endl;
 
 	\item Standard functors, such as \texttt{less<T>} and functor adapters like \texttt{not1} and \texttt{bind2nd}, are declared in \texttt{<functional>}. However, it is not recommended to use these functor adapters in C++11 because C++11 introduced the \texttt{function} and \texttt{bind} templates.
 
-	\item For most of time, you need algorithm, numeric, range, iostream, format, iterator , functional and utility eight header files, besides the corresponding container header file. 
+	\item For most of time, you need \texttt{algorithm, numeric, range, iostream, format, iterator , functional and utility} eight header files, besides the corresponding container header file. 
 \end{enumerate}
 
 	\item Below are some commonly used idioms in STL:
@@ -12321,22 +12339,6 @@ getMutexFor(v); // do something on v.
 releaseMutexFor(v);
 \end{lstlisting}
 
-	\item There are three kinds of for-loop container syntax; \texttt{std::for\_each} is a tool for raising the level of abstraction of a range-based for loop.  Using lambda within the call to \texttt{std::for\_each} is not good style. An informative article on the topic can be found by searching " Why You Should Use \texttt{std::for\_each} over Range-based For Loops"
-\begin{lstlisting}
-for(auto it = con.begin(), itend = con.end();it !=itend ; ++it){ //method 1
-   foo(*it);
-}
-
-for(auto & e : con){ //method 2, range-based for loop
-	foo(e);
-}
-
-for_each(con.begin(), con.end(), fun1) //method 3
-for_each(begin(c),end(c), fun1); //good style, but it also adds begin and end
-ranges::for_each(c, fun1);  //best style, support in C++20 standard
-\end{lstlisting}
-
-
 	\item With the assistance of an allocator, a container can optimize its behavior. For instance, in the case of Plain Old Data (POD), calling a constructor may not be necessary. Similarly, for small objects, they can be stored in a memory pool. Further information on this topic can be found in the book "source code of STL". In fact, an allocator can be customized, as demonstrated in "Effective STL" with two examples. Nevertheless, in most cases, it is not essential to replace the default allocator. Please also note that there is another perspective which argues that the allocator design might not be optimal from the outset, as it can result in \texttt{vector<int, allocA>} and \texttt{vector<int, allocB>} being treated as two different types. 
 \end{itemize}
 
@@ -12354,15 +12356,12 @@ ranges::for_each(c, fun1);  //best style, support in C++20 standard
 \item unordered(hash): \texttt{std::unordered\_map, std::unordered\_set,  std::unordered\_multimap}, \\ \texttt{std::unordered\_multiset}.
 \end{enumerate}
 
-
-
 \begin{figure}[ht]
 	\centering
 	\includegraphics[width=0.7\linewidth]{pics/container.png}
 	\caption{Containers in STL}
 	\label{fig:container}
 \end{figure}
-
 
 	\item Some interesting characteristics about STL containers:
 
@@ -12378,11 +12377,11 @@ bool result = alice < bob;
 
 	\item all containers contain 4 member functions: \texttt{empty()}, \texttt{size()}, \texttt{max\_size()}, and \texttt{swap()}. \texttt{max\_size() }is just theoretical value.  \texttt{std::forward\_list} has no size member function.
 
-	\item First class container includes \texttt{begin()}, \texttt{end()}, \texttt{rbegin()}, \texttt{rend()}. \texttt{insert()} and \texttt{erase()}. There are no such six functions in container adapter, and \texttt{insert} and \texttt{erase} exist in both sequenced and associative container. 
+	\item First class container includes \texttt{begin()}, \texttt{end()}, \texttt{rbegin()}, \texttt{rend()}. \texttt{insert()} ,\texttt{erase()} and \texttt{clear}. There are no such 7 functions in container adapter. These seven functions exist in both sequenced and associative containers. 
 
 	\item Sequence containers support \texttt{pop\_back()}, \texttt{push\_back()},\texttt{front()} and \texttt{back()}. There are no these 4 functions in associative containers.
  
-	\item \texttt{std::vector} supports \texttt{operator[]}, \texttt{std::list} support \texttt{push\_front} and \texttt{pop\_front}. and \texttt{std::deque} support both. (3 function.)  By now \texttt{deque} support (4+6+4+3 = 17 functons) \textbf{container(4)--> first container(6)-->sequence container(4)-->deque(3)}
+	\item \texttt{std::vector} supports \texttt{operator[]}, \texttt{std::list} support \texttt{push\_front} and \texttt{pop\_front}. and \texttt{std::deque} support both. (3 function.)  By now \texttt{deque} support (4+7+4+3 = 18 functons) \textbf{container(4)--> first container(7)-->sequence container(4)-->deque(3)}
 
 	\item Associate containers don't support \texttt{push\_back} and \texttt{pop\_back}, we can only use \texttt{insert} and \texttt{erase} to add or delete an element. Although we can't \texttt{push\_back}, but we can use \texttt{begin} and \texttt{end} on associate container to get iterators.
 
@@ -12398,11 +12397,11 @@ bool result = alice < bob;
 
 	
 \begin{enumerate}
-	\item \texttt{begin()} and \texttt{end()} return iterator, and all first container support them, beside adaptor.
+	\item \texttt{begin()} and \texttt{end()} return iterators, and all first container support them, beside adaptor.
 
-	\item \texttt{front()} and \texttt{back()} are element access functions, just like operator [] and \texttt{at} function.  They return reference, for a container \texttt{c}, the expression \texttt{c.front()} is equivalent to \texttt{*c.begin()}. 
+	\item \texttt{front()} and \texttt{back()} are \textbf{element access} functions, just like operator [] and \texttt{at} function.  They return reference, for a container \texttt{c}, the expression \texttt{c.front()} is equivalent to \texttt{*c.begin()}. 
 	
-	\item \texttt{begin()} can be used for all first class containers(such as \texttt{std::vector}, \texttt{std::map}), but front only be used for sequence containers(such as \texttt{std::vector}).
+	\item \texttt{begin()} can be used for all first class containers(such as \texttt{std::vector}, \texttt{std::map}), but front only be used for sequential containers(such as \texttt{std::vector}). Only sequential container has "front" and "back" conception. 
 
 	\item \texttt{push\_front()} and \texttt{push\_back()} add element, and \texttt{std::vector} only support \texttt{push\_back()}. \texttt{std::deque} and \texttt{std::list} support both.
 \end{enumerate}
@@ -12416,21 +12415,6 @@ for(auto p = fi; p!= si; ++p){
 }
 \end{lstlisting}
 
-	\item To judge if an element is present in a container, you can use the following approaches:
-\begin{enumerate}
-	\item For a sequential container, such as a \texttt{std::vector} or \texttt{std::list}, you can use the \texttt{std::find()} algorithm. You can check if the returned iterator is not equal to the container.end() iterator to determine if the element is present. Additionally, you can use \texttt{std::count()} to find out how many elements are present in the container.
-	
-	\item For an associative container, such as a map or set, you have different options based on your requirements: you can use the contains() member function introduced in C++20 to directly check if the element exists (returns a boolean value). To check how many element exists, you can use the count() member function, which returns the number of occurrences of the element (0 or 1 for a map/set, and any non-negative number for a multimap/multiset). If you need to find the element's value or position, you can use find() or lower\_bound() member functions.
-		
-	\item Another useful algorithms are std::any\_of, std::all\_of and std::none\_of, they need a predicating functor to perform more complex look up function.
-\begin{lstlisting}
-std::vector<int> v = {1, 2, 3, 4, 5};
-bool anygt = std::any_of(v.begin(), v.end(), [](int i) { return i > 10; });
-bool allPositive = std::all_of(v.begin(), v.end(), [](int i) { return i > 0; });
-bool noneNegative = std::none_of(v.begin(), v.end(), [](int i) { return i >= 0; });
-\end{lstlisting} 
-
-\end{enumerate}
 
 	\item \texttt{std::deque} is the data structure of choice when most insertions and deletions take place at the beginning or end of the sequence at the same time. However, it does not guarantee continuity within memory and has a higher constant factor cost than a vector. One possible memory layout for a deque is shown in Fig. 9.1. Although both offer random access to elements and linear-time insertion and removal from the middle of a sequence, a \texttt{std::vector} is maybe faster.
 
@@ -12457,8 +12441,7 @@ bool noneNegative = std::none_of(v.begin(), v.end(), [](int i) { return i >= 0; 
 
 
 
-%\item Using a \texttt{vector} for small amount of items is almost always superior to using \texttt{list}. Even though insertion in the middle of the sequence is a linear-time operation for \texttt{vector} and a constant-time operation for list. \texttt{vector} usually outperforms \texttt{list} because of its better constant factor. \textbf{list's Big-Oh advantage doesn't kick in until data sizes get larger}
-
+	\item Using a \texttt{vector} for small amount of items is almost always superior to using \texttt{list}. Even though insertion in the middle of the sequence is a linear-time operation for \texttt{vector} and a constant-time operation for list. \texttt{vector} usually outperforms \texttt{list} because of its better constant factor. \textbf{list's Big-Oh advantage doesn't kick in until data sizes get larger(more than 1k)}
 
 \end{enumerate}
 
@@ -12472,12 +12455,10 @@ bool noneNegative = std::none_of(v.begin(), v.end(), [](int i) { return i >= 0; 
 \begin{enumerate}
 	\item All the contiguous-base container has invalidation of iterator(pointer, reference) problem. 
 
-	\item All the node-base containers only support bidirectional iterators. 
-
-	\item All the node-base containers don't have \texttt{reserve()} function and need NOT to worry reallocation problem. \texttt{deque} doesn't have \texttt{reserve()} function either. 
+	\item All the node-base containers only support bidirectional iterators, and all the node-base containers don't have \texttt{reserve()} function and need NOT to worry reallocation problem. \texttt{deque} doesn't have \texttt{reserve()} function either. 
 \end{enumerate}
 
-	\item About the iterator invalidation problem,  First, you need to know the invalidation rules below: 
+	\item About the iterator invalidation problem, you need to know the invalidation rules below: 
 
 \begin{description}
 	
@@ -12544,7 +12525,7 @@ std::cout<<(*it)<<"  "; //Unpredicted Behavior
 	\item If you want strongly error-safe code, such as transnational semantics for inserting and erasing, or need to minimize iterator invalidation, prefer a node-based container.
 \end{itemize}
 
-\subsection{New containers and features in C++11}
+\subsection{New containers and features in modern C++}
 \begin{itemize}
 	
 	\item New containers introduced in C++11 include \texttt{std::forward\_list}, \texttt{std::unordered\_map}, and \texttt{std::unordered\_set}. The latter two support implementing hash tables, and the standard library provides basic hash functions for some basic types, such as \texttt{int} and \texttt{string}. If you have your own class, you can use \texttt{boost::hash\_combine} to implement a hash function(or functor).
@@ -12564,7 +12545,7 @@ a5 = a2 // a2 and a5 must have the same size.
 \end{lstlisting}	
 	
 	
-	\item Fixed C arrays decay into pointers, losing the array length information when passed to a function. Unlike C arrays, \texttt{std::array} and \texttt{std::vector} don't implicitly decay into a raw pointer. If you want to use the underlying pointer of an \texttt{std::array}, you must use the \texttt{data()} member function for an API with a C-style buffer interface. When you use an \texttt{std::array\&} as a function parameter, this ensures that the array length information is preserved.
+	\item Fixed size C arrays decay into pointers, losing the array length information when passed to a function. Unlike C arrays, \texttt{std::array} and \texttt{std::vector} don't implicitly decay into a raw pointer. If you want to use the underlying pointer of an \texttt{std::array}, you must use the \texttt{data()} member function for an API with a C-style buffer interface. When you use an \texttt{std::array\&} as a function parameter, this ensures that the array length information is preserved.
 	
 \begin{lstlisting}[numbers=none]
 void carr_func(int * arr, size_t size){
@@ -12679,16 +12660,16 @@ v1.shrink_to_fit(); //new feature in C++11
 	\begin{description}
 		\item[Line 1:] \texttt{vector<class>(v1)} copy constructor create a temp vector. temp just copy real object, so it's capacity (maybe 8) is small. \texttt{temp.swap(v1)} then \texttt{temp} has 1000 space,  \texttt{v1} capacity is 8 now. in the end of statement, \texttt{temp} is destroyed.
 	\end{description}
-	
-
-	
+		
 \end{itemize}
 
 \subsubsection{Modify}
 \begin{itemize}
-	\item The primary modification interface for sequential containers is \texttt{push\_*}. However, please note that \texttt{std::forward\_list} does not have push\_back, pop\_bcak and size functions. Additionally, \texttt{std::forward\_list} does not have \texttt{insert} but instead has \texttt{insert\_after}.
+	\item The primary modification interface for sequential containers is \texttt{push\_*}. However, please note that \texttt{std::forward\_list} does not have push\_back, pop\_bcak and size functions. Additionally, \texttt{std::forward\_list} does not have \texttt{insert} function either,  but instead has \texttt{insert\_after}.
 	
 	\item \texttt{clear} only changes size to 0, doesn't effect capacity. 
+	
+	\item \texttt{resize} will construct obj in the container, it's different with \texttt{reserve}. 
 	
 \begin{lstlisting}[frame=single, language=c++]
 vector<Foo> vcFoo;
@@ -12699,7 +12680,7 @@ vcFoo.resize(10);  // beside alloate space, also construct object.
 vcFoo[2] = foo;    // OK here.	
 \end{lstlisting}		
 	
-	\item Both associative and sequential containers support the common interfaces of the STL containers, which include the insert and erase functions. In sequential containers, these functions are less prominent since we typically use \texttt{push\_*} and \texttt{pop\_*} operations instead. However, in associative containers, the insert and erase functions play a crucial role as essential APIs for modifying the container.
+	\item Both associative and sequential containers support the common interfaces of the STL containers, which include the \texttt{insert}, \texttt{erase} and \texttt{emplace} functions. In sequential containers, these functions are less prominent since we typically use \texttt{push\_*} and \texttt{pop\_*} operations instead. However, in associative containers, the insert and erase functions play a crucial role as essential APIs for modifying the container.
 	
 	\item For an associative container, you don't need to use \texttt{find} before using \texttt{insert}. The \texttt{insert} function has three versions:
 \begin{lstlisting}[]
@@ -12710,7 +12691,7 @@ void insert( InputIt first, InputIt last );  //insert range.
 	\begin{description}
 		\item[Line 1:] If you insert a value directly using \texttt{insert}, it will return a pair where the second element is a boolean value that indicates whether the insertion was successful or not.
 		
-		\item[Line 2:] When you insert a value with a hint iterator using \texttt{insert}, it returns an iterator pointing to either the element that was successfully inserted or the equivalent element that already existed in the container. Unlike the direct value insertion method, this version of \texttt{insert} does not return a boolean value to indicate success, as this would not be signature-compatible with positional insertions in sequential containers such as \texttt{std::vector::insert}. This compatibility allows the creation of generic inserters such as \texttt{std::inserter}. One way to check the success of a hinted insertion is to compare the container's size before and after the insertion.
+		\item[Line 2:] When you insert a value with a hint iterator, it returns an iterator pointing to either the element that was successfully inserted or the equivalent element that already existed in the container. Unlike the direct value insertion method, this version of \texttt{insert} does not return a boolean value to indicate success, as this would not be signature-compatible with positional insertions in sequential containers such as \texttt{std::vector::insert}. This compatibility allows the creation of generic inserters such as \texttt{std::inserter}. One way to check the success of a hinted insertion is to compare the container's size before and after the insertion.
 	\end{description}
 	
 	\item For sequential containers, if you use an iterator after performing an insert or erase operation, it is important \textbf{NOT} to continue using the same iterator. Instead, you should use the new valid iterator returned by the insert or erase function.
@@ -12753,7 +12734,7 @@ void erase( InputIt first, InputIt last ); //erase range.
 		\item[Line 2:] return the next iterator. Why? because it supports using erase in a loop, demonstrated below.
 	\end{description}
 	
-	\item Generally, it is not advisable to delete items from a \texttt{std::list} while iterating through it, as this action can invalidate the iterator and potentially lead to program crashes. However, if you are absolutely certain that the items being deleted are not the values referenced by any of the iterators used at the moment of deletion, it is safe to proceed with the deletion. It's important to note that for other STL containers such as \texttt{std::vectors}, the constraint is even stricter: deleting items from the container not only invalidates iterators pointing to the deleted item but can also affect other iterators. Therefore, deleting from these containers while iterating through them is even more problematic.
+	\item Generally, it is not advisable to delete items from a container while iterating through it, as this action can invalidate the iterator and potentially lead to program crashes. However, if you are absolutely certain that the items being deleted are not the values referenced by any of the iterators used at the moment of deletion, it is safe to proceed with the deletion. It's important to note that for other STL containers such as \texttt{std::vectors}, the constraint is even stricter: deleting items from the container not only invalidates iterators pointing to the deleted item but can also affect other iterators. Therefore, deleting from these containers while iterating through them is even more problematic.
 	
 	\item Choose carefully among erasing options:  To eliminate all objects in a container that have a particular value.
 	\begin{enumerate}
@@ -12836,7 +12817,7 @@ map<int,string> m {{2,"a"},{3,"x"}};
 auto n2 = m.extract(2);
 n2.key() = 5;
 
-m.insert(std::move(n2)); // move node back in	
+m.insert(std::move(n2)); // move node back in, whey we use move here?
 \end{lstlisting}	
 	
 \end{enumerate}
@@ -12848,6 +12829,25 @@ m.insert(std::move(n2)); // move node back in
 
 \subsubsection{Search in a container}
 \begin{itemize}
+
+
+
+	\item To judge if an element is present in a container, you can use the following functions:
+\begin{enumerate}
+	\item For a sequential container, such as a \texttt{std::vector} or \texttt{std::list}, you can use the generic \texttt{std::find()} algorithm. You can check if the returned iterator is not equal to the container.end() to determine if the element is present. Additionally, you can use \texttt{std::count()} to find out how many elements are present in the container.
+	
+	\item For an associative container, such as a map or set, you have different options based on your requirements: you can use the contains() member function introduced in C++20 to directly check if the element exists (returns a boolean value). To check how many element exists, you can use the count() member function, which returns the number of occurrences of the element (0 or 1 for a map/set, and any non-negative number for a multimap/multiset). If you need to find the element's value or position, you can use find() or lower\_bound() member functions.
+	
+	\item Another useful algorithms are \texttt{std::any\_of}, \texttt{std::all\_of} and \texttt{std::none\_of}, they need a predicating functor to perform more complex look up function.
+\begin{lstlisting}
+std::vector<int> v = {1, 2, 3, 4, 5};
+bool anygt = std::any_of(v.begin(), v.end(), [](int i) { return i > 10; });
+bool allPositive = std::all_of(v.begin(), v.end(), [](int i) { return i > 0; });
+bool noneNegative = std::none_of(v.begin(), v.end(), [](int i) { return i >= 0; });	
+\end{lstlisting} 	
+	
+\end{enumerate}
+
 	\item Distinguish among the following algorithms: \texttt{count}, \texttt{find}, \texttt{binary\_search}, \texttt{lower\_bound}, \\ \texttt{upper\_bound}, and \texttt{equal\_range}.
 
 \begin{figure}[ht]
@@ -12856,8 +12856,6 @@ m.insert(std::move(n2)); // move node back in
 	\caption{Search algorithms}
 	\label{fig:search}
 \end{figure}
-
-
 
 	\begin{enumerate}
 	\item For an unsorted range, the generic \texttt{find()} or \texttt{find\_if()} algorithm, or the \texttt{count()} algorithm can be used. If the element is not found in the range, these algorithms return the \texttt{end()} iterator.
@@ -12945,7 +12943,7 @@ v1.insert(v1.begin(),  v2,begin() , v2.end()); // a better method is here.
 \subsubsection{Other usage suggestions}
 \begin{itemize}
 		
-	\item Store only values and smart pointers(\texttt{unique\_ptr} or \texttt{shared\_ptr}) in container, because smart pointer is also kind of value semantic. 
+	\item Store only values or smart pointers(\texttt{unique\_ptr} or \texttt{shared\_ptr}) in container, because smart pointer is also kind of value semantic. 
 
 \begin{enumerate}
 	\item If you need to store objects that are not copyable or not value-like (such as DatabaseLocks and TcpConnections), it is recommended to store them indirectly using smart pointers. For example, you could use a container of \texttt{shared\_ptr<DatabaseLock>} or \\ \texttt{shared\_ptr<TcpConnection>}.
@@ -13022,10 +13020,7 @@ public:
 
 	\item The standard associative containers are implemented as balanced binary search trees. They are optimized for a mixed combination of insertions, erasures, and lookups. However, if the container is used as a dictionary, it can fall into three distinct phases: setup, lookup, and modify. Modify is not very frequent, whereas lookup is very frequent. In such cases, the associative container may not be the best option. A sorted \texttt{std::vector} also supports logarithmic search time and has two advantages: 1) it uses less space, and 2) more space can cause page faults in memory, making the sorted \texttt{std::vector} faster than the associative container with the same logarithmic search complexity. Therefore, for a dictionary, it's better to use a sorted vector.
 
-
 	\item Avoid using \texttt{vector<bool>}, use \texttt{deque<bool>} or \texttt{bitset}.
-
-
 
 	\item The book "effective STL item 19" introduces the difference between equality and equivalence in associative Containers.
 	
@@ -13097,7 +13092,7 @@ us.max_load_factor() //usually is 1, don't change it.
 
 
 \subsection{string}
-\subsubsection{std::string}
+\subsubsection{std::string class}
 \begin{itemize}
 	\item In C++, we encourage you to use the string class more often, instead of \texttt{char[]} and \texttt{char *p = new}. It offers more functions, such as \texttt{compare, find, erase, replace,} and \texttt{insert}. The string class is a template specialization of \texttt{basic\_string<char>}. Understanding this will enable you to construct a string of type \texttt{w\_char}.
 	
@@ -13207,7 +13202,7 @@ while (found!=std::string::npos){
 }
 \end{lstlisting}
 
-\subsubsection{Common functions}
+\subsubsection{member  functions in std::string}
 
 	\item The common usage pattern about strings: 1) case conversion, 2) number conversion, 3) predicate and category, 4) trim, 5) find and search  6)replace and erase 7) split and join.
 
@@ -13305,6 +13300,26 @@ fmt::print("{}\n", std::views::join_with(ints,'#')); "1#2#3#4"
 \end{lstlisting}
 	
 \end{itemize}
+
+\subsection{Summary}
+About size of container, all container support size() and empty(), \texttt{std::vector} and \texttt{std::string} also support reserve and shrink\_to\_fit. 
+\\
+There are four main operations: adding, deleting, searching, and modifying in C++ container. 
+\\
+For adding elements, in sequential containers, the main operations are using \texttt{push\_} and \texttt{pop\_} at the front or back. In associative containers, the main operation is using insert. It is also important to understand the usage of emplace for direct construction, avoiding unnecessary copying.
+\\
+For deleting elements, All first class containers support clear. In vector containers, the combination of erase and remove is commonly used. For linked lists, remove is used directly. For associative containers, erase is used directly, and it is important to update the iterator using the return value of erase.
+\\
+For searching, the basic distinction is whether the container is sorted. For unordered containers, the main methods used are std::find and std::count, you also need to know the difference between \texttt{std::find}, \texttt{std::search} and \texttt{std::find\_first\_of}.  For sorted containers, you can use \texttt{std::binary_search} or the container's provided methods such as find, count, or contains.
+\\
+For modifying, it is important to pay attention to associative containers. Specifically, focus on modifying the non-key part of the element. Usage of insert\_or\_assign of \texttt{std::map}. Additionally, be aware of the usage of \texttt{extract} combined with moving back for efficient modifications.
+\\ 
+For \texttt{std::string}, the STL provides some special interfaces specifically designed for strings, such as replace, substr, find\_last\_of, append, length. 
+\\
+\\Take note of the range insert, erase, construct and assignment operations.
+
+Finally, know the difference between equality and equivalence, \texttt{std::map} is based on equivalence, but \texttt{std::unordered\_map} is based on equality.
+
 
 \section{Iterator}
 \subsection{Normal iterator}
@@ -13643,7 +13658,21 @@ Sum s = for_each(nums.begin(), nums.end(), Sum());
 
 \texttt{std::for\_each} requires a functor as input, working with lambda with \texttt{std::for\_each} is not a good style. For \texttt{fun} example, a better way is \texttt{for(auto e: nums)\{cout<<e<<" ";\}}. Here just demonstrate that  you can input fun.
 			
-		
+	There are three kinds of for-loop container syntax; \texttt{std::for\_each} is a tool for raising the level of abstraction of a range-based for loop.  Using lambda within the call to \texttt{std::for\_each} is not good style. An informative article on the topic can be found by searching " Why You Should Use \texttt{std::for\_each} over Range-based For Loops"
+\begin{lstlisting}
+for(auto it = con.begin(), itend = con.end();it !=itend ; ++it){ //method 1
+	foo(*it);
+}
+
+for(auto & e : con){ //method 2, range-based for loop
+	foo(e);
+}
+
+for_each(con.begin(), con.end(), fun1) //method 3
+for_each(begin(c),end(c), fun1); //good style, but it also adds begin and end
+ranges::for_each(c, fun1);  //best style, support in C++20 standard	
+\end{lstlisting}
+
 			
 	
 			
