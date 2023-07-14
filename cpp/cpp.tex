@@ -12411,10 +12411,11 @@ bool result = alice < bob;
 auto [fi, si] = map.equal_range(1); // struct bind, fi is first iterator
 for(auto p = fi; p!= si; ++p){
 	auto &[fe, se] = *p;  //struct bind, fe is first element
+						//p.first is const key, fe is const & key, 
+						// you don't need specify fe as const auto &
 	cout<<fe <<" "<<se<<endl;
 }
 \end{lstlisting}
-
 
 	\item \texttt{std::deque} is the data structure of choice when most insertions and deletions take place at the beginning or end of the sequence at the same time. However, it does not guarantee continuity within memory and has a higher constant factor cost than a vector. One possible memory layout for a deque is shown in Fig. 9.1. Although both offer random access to elements and linear-time insertion and removal from the middle of a sequence, a \texttt{std::vector} is maybe faster.
 
@@ -13310,7 +13311,7 @@ For adding elements, in sequential containers, the main operations are using \te
 \\
 For deleting elements, All first class containers support clear. In vector containers, the combination of erase and remove is commonly used. For linked lists, remove is used directly. For associative containers, erase is used directly, and it is important to update the iterator using the return value of erase.
 \\
-For searching, the basic distinction is whether the container is sorted. For unordered containers, the main methods used are std::find and std::count, you also need to know the difference between \texttt{std::find}, \texttt{std::search} and \texttt{std::find\_first\_of}.  For sorted containers, you can use \texttt{std::binary_search} or the container's provided methods such as find, count, or contains.
+For searching, the basic distinction is whether the container is sorted. For unordered containers, the main methods used are std::find and std::count, you also need to know the difference between \texttt{std::find}, \texttt{std::search} and \texttt{std::find\_first\_of}.  For sorted containers, you can use \texttt{std::binary\_search} or the container's provided methods such as find, count, or contains.
 \\
 For modifying, it is important to pay attention to associative containers. Specifically, focus on modifying the non-key part of the element. Usage of insert\_or\_assign of \texttt{std::map}. Additionally, be aware of the usage of \texttt{extract} combined with moving back for efficient modifications.
 \\ 
@@ -13488,9 +13489,6 @@ foo.erase((++ri).base()); //adjust ri before you want to erase too.
 \end{itemize}
 
 \section{Algorithms}
-
-
-
 
 \subsection{STL algorithms list}
 \subsubsection{Basic notation}
@@ -17051,10 +17049,28 @@ std::string_view sv = str;
 std::cout << sv.substr(5, 15) << '\n';		
 \end{lstlisting}
 
-	\item View doesn't store element, so each element all are r-value, in the below loop, you have to use \texttt{auto} or \texttt{const auto /&}, You can't use \texttt{auto/& e} 
-for(auto & e: dic|views::values<0>|views::stride(2)){ //Error
-        cout<<e;        //use const auto &e or use auto e 
-    }
+	\item \texttt{views::transform} doesn't store element, so each element all are r-value(return by a function), in the below loop, you have to use \texttt{auto} or \texttt{const auto \&} to catch rvalue from \texttt{view::transform}. 
+	
+\begin{lstlisting}
+for(auto & e: dic|views::values<0>|views::transform(....)){ 
+//auto &e is not correct, 
+	
+for(auto & e: dic|views::values<0>|views::stride(2)){ //with -std=c++23
+	cout<<e;        //using auto &e is OK here, because stride return lvalue. 
+}
+\end{lstlisting}
+	
+	\item views::search and std::search don't return the same value. views version return subrange, while std version return iterator.
+\begin{lstlisting}
+constexpr auto haystack {"abcd abcd"sv};
+constexpr auto needle {"bcd"sv};
+auto found = std::ranges::search(haystack, needle); //found is subrange.
+std::distance(haystack.begin(), found.begin());
+
+auto found = std::search(haystack.being(), haystack.end(), //found is iterator
+						 needle.begin(), needle.end() );
+std::distance(haystack.begin(), found); 
+\end{lstlisting}	
 
 
 	\item Constrained algorithms only accept a range, not two iterators. It looks like that it's not very flexible, but we can use \texttt{std::views} to get the same result. Comparison between iterator version and view version.
