@@ -12616,28 +12616,26 @@ m.try_emplace(1, "Ann", 63); //Work, only constructor
 \end{itemize}
 
 
-\subsection{Container Practical Usage}
+\subsection{Container Practical Usages}
 
 \subsubsection{Size and capacity of vector}
 \begin{itemize}
 	\item When checking if a container is empty, it is recommended to use the \texttt{empty()} function rather than checking the \texttt{size()} against zero. This is easier to understand. For a vector, the \texttt{size()}, \texttt{capacity()}, and \texttt{max\_size()} functions can be used as shown below: the \texttt{capacity()} is always equal to or greater than the \texttt{size()}.
 \begin{lstlisting}[frame=single, language=c++]
 std::vector<int> myvector;
-for (int i=0; i<100; i++) myvector.push_back(i);
+for (int i=0; i<100; i++)
+	myvector.push_back(i);
 
 std::cout << (int) myvector.size() << '\n'; // 100
 std::cout  << (int) myvector.capacity() << '\n';//128
 std::cout << (int) myvector.max_size() << '\n';//1073741823
 \end{lstlisting}
 
-	\item \texttt{reserve} will not change size of vector. 
+	\item \texttt{reserve()} will not change size of vector. 
 \begin{lstlisting}
 vector<int> vi;
 vi.reserve(10);
 cout<<vi.size() //output 0
-for(auto a :vi){
-	cout<< a; //output nothing here.
-}
 \end{lstlisting}
 		
 	\item \texttt{resize} and \texttt{reserve} are different. \texttt{resize} forces the container to change to \texttt{n}, if \texttt{n} is less than \texttt{size()}, objects in the end will be lost. If \texttt{n} is greater than \texttt{size()}, the default constructor of the element will be called. After \texttt{resize(n)}, \texttt{size} will return \texttt{n}. \texttt{resize} to a smaller size doesn't change the capacity. Pay attention to this: \texttt{resize} will call the default constructor, so there might be a performance issue here.
@@ -12647,9 +12645,11 @@ size()   //how many are in NOW
 resize(n) //initial or fill with default constructor.
 reserve(n) //cause the container's capacity() to at lease n.
 
-vector<class> v1;
-v1.reserve(1000); 
-v1.size(); // only 5
+vector<Foo> vcFoo;
+vcFoo.reserve(10); // just allocate space, don't construct object.
+//vcFoo[2] = foo;  // Fail here. 
+vcFoo.resize(10);  // beside alloate space, also construct object.
+vcFoo[2] = foo;    // OK here.		
 \end{lstlisting}	
 	
 	\item To avoid allocation, follow these guidelines: 1), if you know the number, then use \texttt{reserve}, 2) if you don't know the number, you can reserve maximum space, then you can trim off any excess capacity. You can use \texttt{shrink\_to\_fit()} function here. 
@@ -12667,31 +12667,23 @@ v1.shrink_to_fit(); //new feature in C++11
 
 \subsubsection{Modify}
 \begin{itemize}
-	\item The primary modification interface for sequential containers is \texttt{push\_*} and \texttt{pop\_*}. However, please note that \texttt{std::forward\_list} does not have \texttt{push\_back()}, \texttt{pop\_bcak()} and \texttt{size()} functions. Additionally, \texttt{std::forward\_list} does not have \texttt{insert} function either,  but instead has \texttt{insert\_after}. Below code is how to push back an element to the \texttt{std::forward\_list}. 
+	\item The primary modification interface for sequential containers is \texttt{push\_*} and \texttt{pop\_*}. However, please note that \texttt{std::forward\_list} does not have \texttt{push\_back()}, \texttt{pop\_bcak()} and \texttt{size()} functions. Additionally, \texttt{std::forward\_list} does not have \texttt{insert()} function either,  but instead has \texttt{insert\_after()}. Below code is how to push back an element to the end of \texttt{std::forward\_list}. 
 \begin{lstlisting}
 auto before_end = forward_list.before_begin();
 for (auto& _ : forward_list)
 	++ before_end;
 	
-forward_list.insert_after(before_end, 1234);
+forward_list.insert_after(before_end, 1234); //use insert_after instead of insert. 
 \end{lstlisting}
 	
-	\item \texttt{clear} only changes size to 0, doesn't effect capacity. \texttt{resize} will construct obj in the container, it's different with \texttt{reserve}. 
+	\item \texttt{clear} only changes size to 0, doesn't effect capacity. 
 	
-\begin{lstlisting}[frame=single, language=c++]
-vector<Foo> vcFoo;
-vcFoo.reserve(10); // just allocate space, don't construct object.
-//vcFoo[2] = foo;  // Fail here. 
-
-vcFoo.resize(10);  // beside alloate space, also construct object.
-vcFoo[2] = foo;    // OK here.	
-\end{lstlisting}		
 	
 	\item Both associative and sequential containers support the common interfaces of the STL containers, which include the \texttt{insert}, \texttt{erase} and \texttt{emplace} functions. In sequential containers, these functions are less prominent since we typically use \texttt{push\_*} and \texttt{pop\_*} operations instead. However, in associative containers, the insert and erase functions play a crucial role as essential APIs for modifying the container.
 	
-	\item For an associative container, you don't need to use \texttt{find} before using \texttt{insert}. The \texttt{insert} function has three versions:
+	\item For an associative container, you don't need to use \texttt{find} before using \texttt{insert}. \texttt{insert} will do nothing when the element exists in \texttt{std::map} or \texttt{std::set}. The \texttt{insert} function has three versions:
 \begin{lstlisting}[]
-std::pair<iterator, bool> insert( P& value ); 
+std::pair<iterator, bool> insert( P& value );  // dirct insert
 iterator insert( iterator hint, const value_type& value ); //hint insert
 void insert( InputIt first, InputIt last );  //insert range.	
 \end{lstlisting}	
@@ -12704,13 +12696,13 @@ void insert( InputIt first, InputIt last );  //insert range.
 	\item For sequential containers, if you use an iterator after performing an insert or erase operation, it is important \textbf{NOT} to continue using the same iterator. Instead, you should use the new valid iterator returned by the insert or erase function.
 \begin{lstlisting}
 v.insert(i, 8);
-cout<<*i; //danerous, 
+cout<<*i; //danerous, i is maybe invalidated.
 
 i = v.insert(i, 8);
 cout<<*i ; //good	
 \end{lstlisting}	
 	
-	\item Because we want to use \texttt{std::inserter}, so all insert member function in all sequence container and associate conatainer has the same API format. Adaptor container doesn't support insert at all. 
+	\item Because we want to use \texttt{std::inserter}, so all insert member function in all sequence container and associate conatainer has the same API format. Adaptor container doesn't support \texttt{insert} at all. 
 \begin{lstlisting}[numbers=none]
 std::multiset<int> s {1, 2, 3};
 std::fill_n(std::inserter(s, s.end()), 5, 2);	
@@ -12731,7 +12723,7 @@ std::copy(d.begin(), d.end(), std::inserter(v, std::next(v.begin())));
 	\end{enumerate}
 	
 	
-	\item For an associative container, you don't need to use \texttt{find()} before using \texttt{erase()}. The \texttt{erase()} function has three versions:
+	\item For an associative container, you don't need to use \texttt{find()} before using \texttt{erase()}. The \texttt{erase()} function has three versions. For sequential container, \texttt{erase()} has only two versions, it only accept iterator input, not value. If you want to delete a value, you need to use generic remove algorithm for \texttt{std::vector} or remove member function for \texttt{std::list}, that is the different with associative container. 
 \begin{lstlisting}[numbers=none]
 size_t erase( P& value );   //return number of you have deleted.
 iterator erase ( iterator pos ); // return the next iterator.
@@ -12743,9 +12735,9 @@ void erase( InputIt first, InputIt last ); //erase range.
 	
 	\item Choose carefully among erasing options:  To eliminate all objects in a container that have a particular value.
 	\begin{enumerate}
-		\item For a \texttt{std::vector}, \texttt{std::string} or \texttt{std::deque}: use erase-remove idiom. Don't use for loop, it will invalid the iterators.
-		\item For a \texttt{std::list}: use it's own remove member function.
-		\item For an associative container: use its erase member function.		
+		\item For a \texttt{std::vector}, \texttt{std::string} or \texttt{std::deque}: use \texttt{erase-remove} idiom. Don't use for loop, it will invalid the iterators.
+		\item For a \texttt{std::list}: use it's own \texttt{remove} member function.
+		\item For an associative container: use its \texttt{erase} member function.		
 	\end{enumerate}
 	
 \begin{lstlisting}[numbers=none]
@@ -12836,21 +12828,22 @@ m.insert(std::move(n2)); // move node back in, why we use move here?
 \begin{itemize}
 
 
+	\item \texttt{std::set}, \texttt{std::map} use equivalent(<), and \texttt{std::unordered\_set}, \texttt{std::unordered\_map} use equal. Equal (identical and interchangeable) and equivalent (not interchangeable but close enough for some purpose). For example, two instances of the same string "hello" are equal, in that they represent the same string and are fully interchangeable. On the other hand, two people with the same security clearance are equivalent from a security perspective (they have access to the same things), but they are not equal (they are nevertheless different people).
 
 	\item To judge if an element is present in a container, you can use the following functions:
 \begin{enumerate}
 	\item For a sequential container, such as a \texttt{std::vector} or \texttt{std::list}, you can use the generic \texttt{std::find()} algorithm. You can check if the returned iterator is not equal to the container.end() to determine if the element is present. Additionally, you can use \texttt{std::count()} to find out how many elements are present in the container.
 	
-	\item For an associative container, such as a map or set, you have different options based on your requirements: you can use the contains() member function introduced in C++20 to directly check if the element exists (returns a boolean value). To check how many element exists, you can use the count() member function, which returns the number of occurrences of the element (0 or 1 for a map/set, and any non-negative number for a multimap/multiset). If you need to find the element's value or position, you can use find() or lower\_bound() member functions.
+	\item For an associative container, such as a map or set, you have different options based on your requirements: you can use the \texttt{contains()} member function introduced in C++20 to directly check if the element exists (returns a boolean value). To check how many element exists, you can use the \texttt{count()} member function, which returns the number of occurrences of the element (0 or 1 for a map/set, and any non-negative number for a multimap/multiset). If you need to find the element's value or position, you can use \texttt{find()} or \texttt{lower\_bound()} member functions.
 	
 	\item Another useful algorithms are \texttt{std::any\_of}, \texttt{std::all\_of} and \texttt{std::none\_of}, they need a predicating functor to perform more complex look up function.
 \begin{lstlisting}
 std::vector<int> v = {1, 2, 3, 4, 5};
 bool anygt = std::any_of(v.begin(), v.end(), [](int i) { return i > 10; });
-bool allPositive = std::all_of(v.begin(), v.end(), 
-										[](int i) {return i > 0; });
-bool noneNegative = std::none_of(v.begin(), v.end(), 
-										[](int i) {return i >= 0; });	
+
+bool ap = all_of(v.begin(), v.end(),[](int i) {return i > 0; });
+										
+bool nn = none_of(v.begin(), v.end(), [](int i) {return i >= 0; });	
 \end{lstlisting} 	
 	
 \end{enumerate}
@@ -12865,13 +12858,11 @@ bool noneNegative = std::none_of(v.begin(), v.end(),
 \end{figure}
 
 	\begin{enumerate}
-	\item For an unsorted range, the generic \texttt{find()} or \texttt{find\_if()} algorithm, or the \texttt{count()} algorithm can be used. If the element is not found in the range, these algorithms return the \texttt{end()} iterator.
+	\item For an unsorted range, the generic \texttt{find()} or \texttt{find\_if()} algorithm, or the \texttt{count()} algorithm can be used. If the element is not found in the range, \texttt{find()} algorithms return the \texttt{end()} iterator.
 	
-	\item Only four algorithms: \texttt{binary\_search}, \texttt{lower\_bound}, \texttt{upper\_bound}, and \texttt{equal\_range} are used on a sorted range.
+	\item Don't use generic \texttt{find()} algorithm on a sorted range,  use \texttt{binary\_search()}. \texttt{binary\_search} just return bool, not position. Beside \texttt{binary\_search}, \texttt{lower\_bound}, \texttt{upper\_bound}, and \texttt{equal\_range} are also used on a sorted range. 
 	
-	\item For \texttt{std::set} or \texttt{std::map}, It has own version, \texttt{find()}, \texttt{count()} and \texttt{lower\_bound()}, \texttt{upper\_bound()}, and \texttt{equal\_range()}
-	
-	\item Don't use generic \texttt{find()} algorithm on a sorted range,  use \texttt{binary\_search()}. \texttt{binary\_search} just return bool, not position.
+	\item For \texttt{std::set} or \texttt{std::map}, It has own version, \texttt{find()}, \texttt{count()} and \texttt{lower\_bound()}, \texttt{upper\_bound()}, and \texttt{equal\_range()}. You should not use \texttt{binary\_search} generic algorithm on the \texttt{std::map}, but use its own \texttt{find()}.
 	
 	\item  \texttt{find()} will return a match iterator, if no match, it will return \texttt{end()} (for map or set) or last iterator (for generic algorithm). but \texttt{Lower\_bound}  will return a position anyway, match position or insert position(no match).
 	
@@ -12896,7 +12887,7 @@ if(distance(p.first, p.second)  >=1){  //or code below:
 	
 	\end{enumerate}
 	
-	\item \texttt{std::set}, \texttt{std::map} use equivalent(<), and \texttt{std::unordered\_set}, \texttt{std::unordered\_map} use equal. Equal (identical and interchangeable) and equivalent (not interchangeable but close enough for some purpose). For example, two instances of the same string "hello" are equal, in that they represent the same string and are fully interchangeable. On the other hand, two people with the same security clearance are equivalent from a security perspective (they have access to the same things), but they are not equal (they are nevertheless different people).
+	
 \end{itemize}
 
 
@@ -13127,7 +13118,7 @@ Old_c(str.c_str());  // legacy C function read a string
 size_t Old_c(char *pArray, size_t arraySize);  // legacy C write a string.
 vector<char> vc(maxNumChars); // 1) create vector char
 size_t charsWritten = Old_c(&vc[0], vc.size()); //2) copy it to vc
-string s(vc.begin(), vc.begin()+charsWritten); //3) copy it from vc back to string by a range constructor.
+string s(vc.begin(), vc.begin()+charsWritten); //3) copy it to string
 \end{lstlisting}
 
 	\item Another interesting topic regarding strings is SBO(small buffer optimization), which is used in the string implementation of all compilers. For short strings (less than 16 characters), we can save them in \_local memory instead of on the heap, which saves on heap allocation costs.
@@ -13144,7 +13135,7 @@ class string{
 };
 \end{lstlisting}
 	
-	\item Essentially, a \texttt{std::string} is just a \texttt{std::vector}, so it supports all the functionalities that \texttt{std::vector} provides. However, being a string, it also has additional interfaces specifically tailored for string operations, such as find, find\_first\_of, length, starts\_with, compare, substr, contains, and more. string method lists are below:
+	\item Essentially, a \texttt{std::string} is just a \texttt{std::vector}, so it supports all the functionalities that \texttt{std::vector} provides. However, being a string, it also has additional interfaces specifically tailored for string operations, such as \texttt{find()}, \texttt{find\_first\_of()}, \texttt{length}, \texttt{starts\_with(), compare(), substr(), contains()}, and more. string method lists are below:
 	
 	\begin{tabular}{| p{0.2\textwidth} |p{0.7\textwidth}|}
 		\tophline
@@ -13166,10 +13157,15 @@ class string{
 		\bottomhline
 	\end{tabular}
 	
-	\item Don't confused with below names: \texttt{std::find/find\_if }, \texttt{std::search/find\_end} are generic algorithms based on iterators. \texttt{std::find} look for a value in a container, and \texttt{std::search} look for a sub range. In \texttt{std::string}, we use find and rfind two member functions, the names are more clearly. Prefer to use member function than generic algorithms. 
-	
-	\item \texttt{find} function in the string return position. \texttt{vector} doesn't have \texttt{find} member function, you can use \texttt{std::find} in algorithm category. \texttt{String::npos} is the maximum possible length of the string. Equal the maximum value of an unsigned int.
-	
+	\item Don't confused with below names: 
+	\begin{enumerate}
+		\item \texttt{std::find/find\_if }, \texttt{std::search/find\_end} are generic algorithms based on iterators. \texttt{std::find} look for a value in a container, and \texttt{std::search} look for a sub range. \texttt{vector} doesn't have \texttt{find} member function, you should use \texttt{std::find} for it.
+		
+		\item In \texttt{std::string}, we use \texttt{find()} and \texttt{rfind()} two member functions, the names are more clearly. \texttt{find} member function in the string return position. If there is no match, it will return \texttt{String::npos}, it is the maximum possible length of the string. Equal the maximum value of an unsigned int.
+		
+		\item \texttt{find()} in \texttt{std::map} look for a specific value in the map. If there is no match, it will return \texttt{end()} iterator,
+	\end{enumerate}
+	 	
 \begin{lstlisting}[frame=single, language=c++]
 size_t found;
 found=str.find("haystack"); // or found=str.find('.');
@@ -13181,6 +13177,17 @@ auto  it = std::find (myints.begin(), myints.end(), 30);
 if(it!=myints.end())
 	cout<< "find 30"<<endl;
 \end{lstlisting}
+
+	\item position returned by \texttt{find} method can be used in loop. You should remember this useful string pattern.
+\begin{lstlisting}[numbers=none]
+std::string str ("Please, replace the vowels with asterisks.");
+std::size_t found = str.find_first_of("aeiou");
+while (found!=std::string::npos){
+	str[found]='*';
+	found=str.find_first_of("aeiou",found+1); //See found+1 here
+}	
+\end{lstlisting}
+
 	
 	\begin{tabular}{| p{0.2\textwidth} |p{0.7\textwidth}|}
 		\tophline
@@ -13195,31 +13202,19 @@ if(it!=myints.end())
 		copy() & Copies at most a specified number of characters from an indexed position in a source string to a target character array.The function does not append a null character at the end of the copied content.
 		\\
 		\tophline
-		get\_allocator() & Returns a copy of the allocator object used to construct the string.\\	
 	\end{tabular}
 	
-	
-	\item position returned by \texttt{find} method can be used in loop. You should remember this useful string pattern.
-\begin{lstlisting}[numbers=none]
-std::string str ("Please, replace the vowels with asterisks.");
-std::size_t found = str.find_first_of("aeiou");
-while (found!=std::string::npos){
-	str[found]='*';
-	found=str.find_first_of("aeiou",found+1); //See found+1 here
-}
-\end{lstlisting}
-
-\subsubsection{member  functions in std::string}
+\subsubsection{Common std::string functions}
 
 	\item The common usage pattern about strings: 1) case conversion, 2) number conversion, 3) predicate and category, 4) trim, 5) find and search  6)replace and erase 7) split and join.
 
-	\item upper case and lower case conversion. toupper is C language function which is not in std namespace, so we use :: to access it. 
+	\item Upper case and lower case conversion. toupper is C language function which is not in std namespace, so we use :: to access it. 
 \begin{lstlisting}
 std::string str = "Hello World";
 std::transform(str.begin(), str.end(), str.begin(), ::toupper);	
 \end{lstlisting}
 
-	\item number conversion. 
+	\item Number conversion. Pay attention to \texttt{std::stoi} and \texttt{std::to\_string}.
 \begin{lstlisting}
 stoi, stol, stof;
 std::string str_dec = "2001, A Space Odyssey";
@@ -13233,7 +13228,7 @@ float f{123.456};
 string str = std::to_string(f);	
 \end{lstlisting}
 
-	\item predicate and category
+	\item Predicate and category. 
 \begin{lstlisting}
 isspace	isprint	iscntrl	
 isupper	islower	isalpha	isdigit	
@@ -13277,16 +13272,15 @@ str=to_string(123);
 str.erase(0,1) //delete the first letter
 str.pop_back() //delete the last letter	
 
-string str = "123456";
-std::erase(str, '3'); //C++20 support, dont' need erase and remove idiom
-                      //std::erase(std::string, char);
-
+string str = "123456"; //std::erase(std::string, char);
+std::erase(str, '3');  //C++20 support, dont' need erase and remove idiom
+                      
 std::string base="this is a test string.";
 std::string str2="n example";
 str.replace(9,5,str2);  // "this is an example string." (1)	
 \end{lstlisting}
 
-	\item How to token? In C++, we usually use \texttt{stringstream} and \texttt{getline} to make token much easier. In C++, you can use \texttt{std::views::split}.
+	\item How to token? In C++, we usually use \texttt{stringstream} and \texttt{getline} to make token much easier. 
 \begin{lstlisting}[numbers=none]
 str1="zhao,yao,c++";
 stringstream s1(str1);
@@ -13299,7 +13293,7 @@ while(getline(s1, str_part, ',')){
 \end{lstlisting}
 
 	
-	\item split and join, you can use C++20 view or boost if your compiler doesn't supports C++ 20. 
+	\item In C++20, you can use \texttt{std::views::split}. If your compiler doesn't supports C++ 20, you can use boost library.
 \begin{lstlisting}
 std::string s = "1.2.3.4";
 auto ints = s | views::split('.')
@@ -13309,23 +13303,26 @@ fmt::print("{}\n", std::views::join_with(ints,'#')); "1#2#3#4"
 \end{itemize}
 
 \subsection{Summary}
-About size of container, all container support size() and empty(), \texttt{std::vector} and \texttt{std::string} also support reserve and shrink\_to\_fit. 
-\\
-There are four main operations: adding, deleting, searching, and modifying in C++ container. 
-\\
-For adding elements, in sequential containers, the main operations are using \texttt{push\_} and \texttt{pop\_} at the front or back. In associative containers, the main operation is using insert. It is also important to understand the usage of emplace for direct construction, avoiding unnecessary copying.
-\\
-For deleting elements, All first class containers support clear. In vector containers, the combination of erase and remove is commonly used. For linked lists, remove is used directly. For associative containers, erase is used directly, and it is important to update the iterator using the return value of erase.
-\\
-For searching, the basic distinction is whether the container is sorted. For unordered containers, the main methods used are std::find and std::count, you also need to know the difference between \texttt{std::find}, \texttt{std::search} and \texttt{std::find\_first\_of}.  For sorted containers, you can use \texttt{std::binary\_search} or the container's provided methods such as find, count, or contains.
-\\
-For modifying, it is important to pay attention to associative containers. Specifically, focus on modifying the non-key part of the element. Usage of insert\_or\_assign of \texttt{std::map}. Additionally, be aware of the usage of \texttt{extract} combined with moving back for efficient modifications.
-\\ 
-For \texttt{std::string}, the STL provides some special interfaces specifically designed for strings, such as replace, substr, find\_last\_of, append, length. 
-\\
-\\Take note of the range insert, erase, construct and assignment operations.
-
-Finally, know the difference between equality and equivalence, \texttt{std::map} is based on equivalence, but \texttt{std::unordered\_map} is based on equality.
+\begin{itemize}
+	\item About size of container, all container support size() and empty(), \texttt{std::vector} and \texttt{std::string} also support \texttt{reserve()} and \texttt{shrink\_to\_fit()}. 
+	
+	\item There are four main operations: adding, deleting, searching, and modifying in C++ container. 
+	\begin{enumerate}
+		\item For adding elements, in sequential containers, the main operations are using \texttt{push\_} and \texttt{pop\_} at the front or back. In associative containers, the main operation is using insert. It is also important to understand the usage of emplace for direct construction, avoiding unnecessary copying.
+		
+		\item For deleting elements, All first class containers support clear. In vector containers, the combination of erase and remove is commonly used. For linked lists, remove is used directly. For associative containers, erase is used directly, and it is important to update the iterator using the return value of erase.
+		
+		\item For searching, the basic distinction is whether the container is sorted. For unordered containers, the main methods used are std::find and std::count, you also need to know the difference between \texttt{std::find}, \texttt{std::search} and \texttt{std::find\_first\_of}.  For sorted containers, you can use \texttt{std::binary\_search} or the container's provided methods such as \texttt{find}, \texttt{count}, or \texttt{contains} member functions.
+		
+		\item For modifying, it is important to pay attention to associative containers. Specifically, focus on modifying the non-key part of the element. Usage of insert\_or\_assign of \texttt{std::map}. Additionally, be aware of the usage of \texttt{extract} combined with moving back for efficient modifications.
+		
+	\end{enumerate}
+	
+	\item For \texttt{std::string}, the STL provides some special interfaces specifically designed for strings, such as \texttt{replace}, \texttt{substr}, \texttt{find\_last\_of}, \texttt{append}, \texttt{length}. 
+	
+	\item Take note of the range insert, erase, construct and assignment operations. Finally, know the difference between equality and equivalence, \texttt{std::map} is based on equivalence, but \texttt{std::unordered\_map} is based on equality.
+	
+\end{itemize}
 
 
 \section{Iterator}
@@ -13803,11 +13800,9 @@ o partial\_sum(i,i,o, bfunc)   } & Fill a range with running totals and return a
 
 \begin{lstlisting}[numbers=none]
 std::vector<int>v(10, 2); // new initialize method
-std::partial_sum(v.begin(), v.end(), std::ostream_iterator<int>(std::cout, " "));
-    //2 4 6 8 10 12
-
-std::partial_sum(v.begin(), v.end(), v.begin(), std::multiplies<int>());
-   //2 4 8 16 32
+partial_sum(v.begin(), v.end(), ostream_iterator<int>(std::cout, " "));//2 4 6..
+    
+partial_sum(v.begin(), v.end(), v.begin(), std::multiplies<int>()); //2 4 8..
 \end{lstlisting}
 \item An example about \texttt{accumulate}.
 
@@ -13816,8 +13811,7 @@ std::vector<int> v{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 int sum = std::accumulate(v.begin(), v.end(), 0);
 int product = std::accumulate(v.begin(), v.end(), 1, multiplies<int>());
 
-string s=accumulate(v.begin(), v.end(),std::string{},
-    [](string a, int b) {
+string s=accumulate(v.begin(), v.end(),std::string{}, [](string a, int b) {
     	return a.empty() ? to_string(b): std::move(a) + '-' + to_string(b); 
     });
 \end{lstlisting}
@@ -13909,6 +13903,13 @@ do {
 
 \end{itemize}
 
+
+
+\begin{center}
+	\includegraphics[width=1.0\linewidth]{pics/stl2.png}
+\end{center}
+
+
 \textbf{Rotate}\\
 \begin{tabular}{| p{0.35\textwidth} |p{0.6\textwidth}|}
 \tophline rotate(f,f,f)  & Rotate a range of values by n positions.  \\
@@ -13927,23 +13928,6 @@ for (int i=1; i<10; ++i) myvector.push_back(i); // 1 2 3 4 5 6 7 8 9
 rotate(myvector.begin(), myvector.begin()+3,myvector.end()); // 4 5 6 7 8 9 1 2 3
 \end{lstlisting}
 
-\item you can use rotate in insert sort method. also use in slide. Detail can be found in "Top 5 Beautiful C++ std Algorithms Examples"
-
-\begin{lstlisting}[breaklines, basicstyle=\scriptsize]
-for (auto i = v.begin(); i != v.end(); ++i)  //insertion sort
-	std::rotate(std::upper_bound(v.begin(), i, *i), i, std::next(i));
-
-template <typename It> 
-auto slide(It f, It l, randIter p) -> std::pair<It, It>{
-	if (p < f) return { p, std::rotate(p, f, l) };
-	if (l < p) return { std::rotate(f, l, p), p };
-	return { f, l };
-}	
-\end{lstlisting}
-\begin{description}
-	\item[line 2:] rotate(a, b, c) is [a,b) and [b,c) scope. they are all left close, right open scope. In this way, you can understand why we need \texttt{std::next(i)} here.
-	\item[line 6-7:] when p <f, p is the first element position, when p>l, p is the last element position. That will help you to understand slide algorithm. 
-\end{description}
 
 \end{itemize}
 
@@ -13973,7 +13957,7 @@ remove\_copy\_if(i,i,o,upred)}  & Copy a range of values, removing all values th
 \end{tabular}
 
 \begin{itemize}
-\item These algorithms cannot be used with associative containers such as \texttt{std::set} and \texttt{std::map} because ForwardIt does not dereference to a MoveAssignable type (the keys in these containers are not modifiable) remove only can be used in erase remove idiom in \texttt{vector} and string.
+\item Remove algorithms cannot be used with associative containers such as \texttt{std::set} and \texttt{std::map} because ForwardIt does not dereference to a MoveAssignable type (the keys in these containers are not modifiable) remove only can be used in erase remove idiom in \texttt{vector} and string.
 \end{itemize}
 
 \textbf{Unique is another kind of remove, should used on sorted container} \\
@@ -14013,9 +13997,6 @@ Copy  replacing one specified value with another value.  \\
 \tophline
 \end{tabular}
 
-\begin{center}
-	\includegraphics[width=1.0\linewidth]{pics/stl2.png}
-\end{center}
 
 	\begin{center}
 	\includegraphics[width=0.9\linewidth]{pics/std3.png}
@@ -14049,15 +14030,13 @@ Working with a \texttt{std::priority\_queue} is similar to managing a heap in so
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 vector<int> vi = {2, 4, 1, 3, 5,6,7};
 make_heap(begin(vi),end(vi)); // inpace modify
-//after you pop_heap, you need to use v.pop_back()
-//to make begin(vi), end(vi) is still heap. 
+//after pop_heap, need to use v.pop_back() to make begin(vi), end(vi) is still heap. 
 v.pop_heap(begin(vi),end(vi));
 v.pop_back();  //pop_back and pop_heap must appear together.
 //if you want to use push_heap, you have to call push_back first. 
 v.push_back(10);  //push_back and push_heap must appear together
 v.push_heap(v.begin(vi) ,end(vi));
-sort_heap(v.begin(vi) ,end(vi)); //still inpace modify
-//output 1, 2, 3, 4, 5, 6, 7	
+sort_heap(v.begin(vi) ,end(vi)); //still inpace modify, 1, 2, 3, 4, 5, 6, 7	
 \end{lstlisting}
 
 \textbf{Merging} \\
@@ -14076,7 +14055,7 @@ sort_heap(v.begin(vi) ,end(vi)); //still inpace modify
 \textbf{binary search} \\
 \begin{tabular}{| p{0.3\textwidth} |p{0.45\textwidth}|p{0.2\textwidth}|}
 \tophline \specialcell[t]{(f,f) equal\_range(f,f,\&) \\
-(f,f) equal\_range(f,f,\&,bpred) }& Find the lower bound and upper bound of a value within a range and return a pair of iterators  .
+(f,f) equal\_range(f,f,\&,bpred) }& Find the lower bound and upper bound of a value, return a pair of iterators  .
 & \multirow{3}{*}{ \parbox{0.2\textwidth}{1)container should be sorted firstly,  2) order by default < or bpred. 3) Sorted by bpred, find by bpred. } } \\
 
 \ifdefined\pdfbook \cline{1-2} \fi  \specialcell[t]{f lower\_bound(f,f,\&) \\
@@ -14118,11 +14097,6 @@ o set\_symmetric\_difference(i1,i1,i2,i2,o,bpred) } &
 	\includegraphics[width=0.25\linewidth]{pics/set_sys_diff.png}
 \end{center}
 
-All search methods in the below figure must applied into sorted container. 
-
-\begin{center}
-	\includegraphics[width=0.9\linewidth]{pics/std4.png}
-\end{center}
 
 
 
@@ -14177,6 +14151,11 @@ nth_element(vf.begin(),vf.begin()+20,vf.end(), compare);
 bool good(const Foo &f1)
 partition(vf.begin(), vf.end(), good);		
 \end{lstlisting}	
+
+\begin{center}
+	\includegraphics[width=0.9\linewidth]{pics/std4.png}
+\end{center}
+
 
 \end{itemize}
 
@@ -14559,7 +14538,7 @@ run_within_for_each(lambda1);
 	
 \end{itemize}
 
-\subsection{Adaptable}
+\subsection{Use lambda as adaptable}
 
 
 %\begin{itemize}
@@ -14668,7 +14647,7 @@ run_within_for_each(lambda1);
 %\end{description}
 %	
 
-\subsubsection{Use lambda as adaptable}
+%\subsubsection{}
 \begin{itemize}
 	\item \texttt{std::mem\_fn} and \texttt{std::bind} were introduced in C++11, but for various reasons, they are considered inferior to lambdas and should be avoided in future use. More details can be found in Effective Modern C++ Item 34. When you use a lambda, the entire source code is cleaner, clearer, and more efficient.
 	
@@ -14742,6 +14721,7 @@ std::sort(vec.begin(), vec.end(), [&compCounter](int a, int b) {
 	return a < b;
 });
 \end{lstlisting}
+	\item Lambda is also Functor, but it's unnamed type. \texttt{std::function} is a kind of callable container. it also support invoke. The type of a lambda object is not \texttt{std::function}! Instead, it has "unique unnamed non-union non-aggregate class type, known as closure type". The upshot of this is that creating a \texttt{std::function} from a lambda is not free:\texttt{ std::function} has a non-trivial constructor and destructor. 
 
 \end{itemize}
 
@@ -14760,14 +14740,34 @@ std::sort(vec.begin(), vec.end(), [&compCounter](int a, int b) {
 	1) function pointer, 
 	2) \texttt{std::function},
 	3) template parameter,
-I will introduce and compare them in this section.
-	
+I will introduce and compare them in this section.	
 \begin{lstlisting} 
 host(fp*){fp();}  //funciton pointer
 host(std::function fo){fo();} //std::function
 template<typename T>  //template, T must be callable.
 host(T v){v();}
 \end{lstlisting}
+\begin{center}
+\begin{tabular}{| p{0.35\textwidth}| c | c| c |}
+	\hline
+	& function pointer  & std::function  & template param  \\
+	\hline
+	can capture context variable & no  & yes  & yes  \\
+	\hline
+	no call overhead & yes & no  & yes \\
+	\hline
+	can be inline& no &  no & yes \\
+	\hline
+	can store in class& yes & yes & no \\
+	\hline
+	can be implemented outside header& yes  & yes & no \\
+	\hline
+	supported without C++11& yes & no  & yes \\
+	\hline
+	readable & no(ugly) & yes  & yes  \\
+	\hline
+\end{tabular}
+\end{center}
 	
 	\item If you are facing a design situation that gives you a choice, use templates. the choice of templates is just an instance of a wider principle: try to specify as many constraints as possible at compile-time. There are three advantage:
 	\begin{enumerate}
@@ -14787,32 +14787,13 @@ host(T v){v();}
 	\item Last, let's say function pointer, Function pointers have the disadvantage of not being able to capture some context. You won't be able to pass a lambda function to function pointer. 
 	
 	
- 	\begin{tabular}{| p{0.35\textwidth}| c | c| c |}
-		\hline
-		 & function pointer  & std::function  & template param  \\
-		\hline
-		can capture context variable & no  & yes  & yes  \\
-		\hline
-		no call overhead & yes & no  & yes \\
-		\hline
-		can be inline& no &  no & yes \\
-		\hline
-		can store in class& yes & yes & no \\
-		\hline
-		can be implemented outside header& yes  & yes & no \\
-		\hline
-		supported without C++11& yes & no  & yes \\
-		\hline
-		readable & no(ugly) & yes  & yes  \\
-		\hline
-	\end{tabular}
+ 	
 	
 	%\begin{center}
 	%	\includegraphics[scale=0.9]{pics/function.png} 
 	%\end{center}
 	
-	\item Lambda is also Functor, but it's unnamed type. \texttt{std::function} is a kind of callable container. it also support invoke. The type of a lambda object is not \texttt{std::function}! Instead, it has "unique unnamed non-union non-aggregate class type, known as closure type". The upshot of this is that creating a \texttt{std::function} from a lambda is not free:\texttt{ std::function} has a non-trivial constructor and destructor. 
-	
+
 	
 		
 \begin{center}
@@ -14879,6 +14860,24 @@ std::map<std::string, int> m2((values.begin()), values.end());
 \begin{itemize}
 	\item There are a few famous algorithm examples to remember. You can see them in the previous sections and below.  1) quick sort(std::partition), 2)merge sort(std::inplace\_merge) 3) insert sort(std::rotate) 4) selection sort(std::iter\_swap) 5)palindrome(std::equal) 6)fibonacci(std::adjacent\_difference) \\ 7) trim\_string (std::erase+std::find) 8)gather(std::partition) 9)slide(std::rotate) 
 
+	\item you can use rotate in insert sort method. also use in slide. Detail can be found in "Top 5 Beautiful C++ std Algorithms Examples"
+	
+\begin{lstlisting}[breaklines, basicstyle=\scriptsize]
+for (auto i = v.begin(); i != v.end(); ++i)  //insertion sort
+std::rotate(std::upper_bound(v.begin(), i, *i), i, std::next(i));
+
+template <typename It> 
+auto slide(It f, It l, randIter p) -> std::pair<It, It>{
+	if (p < f) return { p, std::rotate(p, f, l) };
+	if (l < p) return { std::rotate(f, l, p), p };
+	return { f, l };
+}		
+\end{lstlisting}	
+	\begin{description}
+		\item[line 2:] rotate(a, b, c) is [a,b) and [b,c) scope. they are all left close, right open scope. In this way, you can understand why we need \texttt{std::next(i)} here.
+		\item[line 6-7:] when p <f, p is the first element position, when p>l, p is the last element position. That will help you to understand slide algorithm. 
+	\end{description}
+	
 
 	\item Filter and transform example. A container, filter some items and get the name of it.
 \begin{lstlisting}
