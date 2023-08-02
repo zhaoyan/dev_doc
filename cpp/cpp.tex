@@ -19360,134 +19360,6 @@ ready_promise.set_value(); 	// signal all threads to go
 
 \end{itemize}
 
-\subsection{time}
-\begin{itemize}
-	\item The core of the chrono library consists of the following types or concepts: 1) clock, 2) time point, 3) time duration. The time duration is defined based on \texttt{std::ratio}. Why do we need these abstract mechanisms to specify and deal with points in and durations of time? This design is not very intuitive, but it provide flexibility and avoid re-define a lot of classes in the future if we have more higher resolution. 
-	
-	\begin{figure}[ht]
-		\centering
-		\includegraphics[width=0.4\linewidth]{pics/chrono}
-		\caption{}
-		\label{fig:chrono}
-	\end{figure}
-	
-	
-	\begin{enumerate}
-		
-	
-		\item For clocks, three are three different clocks in std library:
-	\begin{enumerate}
-		\item \texttt{std::chrono::sytem\_clock:} Is the system-wide real-time clock (wall-clock). The clock has the auxiliary functions to\_time\_t and from\_time\_t to convert time points into dates in C language. 
-		\begin{figure}[ht]
-			\centering
-			\includegraphics[width=0.6\linewidth]{pics/tm}
-			\caption{}
-			\label{fig:chrono1}
-		\end{figure}
-		
-		\item \texttt{std::chrono::steady\_clock:}  Provides as only a clock the guarantee that you can not adjust it. Therefore, \texttt{std::chrono::steady\_clock} is the preferred clock to wait for a time duration or until a time point. 
-		
-		\item \texttt{std::chrono::high\_resolution\_clock:} Is the clock with the highest accuracy but it can be a synonym for the clocks \texttt{std::chrono::system\_clock} or \\ \texttt{std::chrono::steady\_clock}.
-		
-		\item The clock has period, it is a \texttt{std::ratio} and represents the accuracy. 
-\begin{lstlisting}
-template <typename T>
-void printRatio(){ 
-	std::cout << "  precision: " << T::num << "/" << T::den << " second " << std::endl;
-	typedef typename std::ratio_multiply<T,std::kilo>::type MillSec;
-	typedef typename std::ratio_multiply<T,std::mega>::type MicroSec;
-	std::cout << static_cast<double>(MillSec::num)/MillSec::den << " milliseconds " << std::endl;
-	std::cout << static_cast<double>(MicroSec::num)/MicroSec::den << " microseconds " << std::endl;
-}
-
-
-printRatio<std::chrono::system_clock::period>(); //linux accuracy is 1 nano second. 
-\end{lstlisting}
-		
-		\item The \texttt{std::steady\_clock} is important to compare or compute the difference of two times in your program, where you processed the current point in time.  If you're holding a \texttt{std::system\_clock} in your hand, you would call it a watch, and it would tell you what time it is. If you're holding a \texttt{std::steady\_clock} in your hand, you would call it a stopwatch, and it would tell you how fast someone ran a lap, but it would not tell you what time it is. 
-		
-		\item The C++ standard provides no guarantee about the clocks' accuracy, starting point, or valid time range. Typically, the starting point of std::chrono:system\_clock is the 1.1.1970, the so-called UNIX-epoch. For \texttt{std::chrono::steady\_clock}, typically the boot time of your PC.
-	\end{enumerate}
-		
-	\item For duration, definition is below:
-\begin{lstlisting}
-template<
-class Rep,
-class Period = std::ratio<1>
-> class duration;
-
-std::chrono::nanoseconds duration</*signed integer  64 bits*/, std::nano>
-std::chrono::microseconds duration</*signed integer at least 55 bits*/, std::micro>
-std::chrono::seconds duration</*signed integer at least 35 bits*/>
-std::chrono::minutes duration</*signed integer at least 29 bits*/, std::ratio<60>>
-std::chrono::hours duration</*signed integer at least 23 bits*/, std::ratio<3600>>
-\end{lstlisting}
-	
-	The duration is based on a \texttt{std::ratio}. a duration of time is defined as a specific number of ticks over a time unit. One example is a duration such as “3 minutes” (3 ticks of a “minute”). 
-	
-	
-	\item For time point, A time point is defined as combination of a duration and a beginning of time (the so-called epoch). A typical example is a timepoint that represents “New Year’s Midnight 2000,” which is described as “1,262,300,400 seconds since January 1, 1970” (this day is the epoch of the system clock of UNIX and POSIX systems). In other words, timepoint is defined as a duration before or after an epoch, which is defined by a clock. The concept of a timepoint, however, is parametrized by a clock, which is the object that defines the epoch of a timepoint. Thus, different clocks have different epochs. In general, operations dealing with multiple timepoints, such as processing the duration/difference between two time-points, require using the same epoch/clock. A clock also provides a convenience function to yield the timepoint of now.
-	
-	\end{enumerate}
-	
-	
-	\item Usage of time point. 
-\begin{lstlisting}[numbers=none]
-using namespace std::chrono;
-system_clock::time_point tp_epoch;	// epoch value
-time_point <system_clock, duration<int>> tp_seconds (duration<int>(1));
-system_clock::time_point tp (tp_seconds);
-
-std::cout << "1 second since system_clock epoch = ";
-std::cout << tp.time_since_epoch().count();
-std::cout << " system_clock periods." << std::endl;
-
-std::time_t tt = system_clock::to_time_t(tp); // display time_point:
-std::cout << "time_point tp is: " << ctime(&tt);	
-\end{lstlisting}	
-	
-	\item Duration's type is decided by the clock. That is why the first duration return nanosecond. 
-\begin{lstlisting}[numbers=none]
-std::cout << std::fixed << std::endl;
-std::cout << "Time since 1.1.1970:\n" << std::endl;	
-auto timeNow= std::chrono::system_clock::now(); //timeNow is time point.
-auto duration= timeNow.time_since_epoch();  //change from time point to time duration.
-std::cout << duration.count() << " nanoseconds " << std::endl;
-
-//typedef std::chrono::duration<long double,std::ratio<1,1000>> MyMilliSecondTick;
-//typedef std::chrono::duration<double, std::ratio<60*60>> MyHourTick;
-MyHourTick myHour(duration);
-std::cout << myHour.count() << " hours" << std::endl;	
-\end{lstlisting}	
-	
-	\item How long does your programme run? 1) select a clock, 2) get two time points, 3) change it to duration, 4) change clock duration to your own duration. 
-\begin{lstlisting}
-void func() {  
-	std::chrono::time_point<std::chrono::steady_clock> begin = steady_clock::now();
-	std::this_thread::sleep_for(std::chrono::milliseconds(20));
-	auto end = steady_clock::now();
-	cout << "time " << duration_cast<milliseconds>(end - begin).count() << endl;
-	//cout << chrono::duration_cast<chrono::microseconds>(end - start).count()
-	//<< chrono::duration_cast<chrono::seconds>(end - start).count()
-}		
-\end{lstlisting}	
-	
-	\item There are two sorts of timeouts that you may wish to specify: a duration-based timeout and an absolute timeout. The variants that handle the duration-based timeouts have a \_for suffix, while those that handle the absolute timeouts have an \_until suffix." Durations and timepoints can be used to block threads or programs (i.e., the main thread). These blocks can be conditionless or can be used to specify a maximum duration when waiting for a lock, a condition variable, or another thread to end
-	
-\begin{lstlisting}
-sleep_for and sleep_until
-try_lock_for and try_lock_until
-wait_for and wait_until.
-\end{lstlisting}	
-	
- 	\item There is a simple rule I follow with the <chrono> library. The rule is actually not completely correct (thus it is a guideline). But it is close enough to correct to be a guideline that is nearly always followed: Don't use count(). and Don't use time\_since\_epoch(). The <chrono> library is designed around a type-safe system meant to protect you from units conversions mistakes. If you accidentally attempt an unsafe conversion, the error is caught at compile time (as opposed to it being a run time error). The member functions count() and time\_since\_epoch() are "escape hatches" out of this type-safe system ... to be used only in cases of emergency. 
- 
- 	\item There is no date type in c++ standard, you can use boost::date type. Detail can be see in the "common used libs" in this book. Or you can use \texttt{std::system\_clock} and convert it to time\_t and tm in C language. 
-	
-	\item Three good article are "The C++ standard Library: Utilities" and "Difference between steady\_clock vs system\_clock?" and "https://paul.pub/cpp-date-time/"
-
-\end{itemize}
-
 
 \subsection{counting\_semaphore, latch and barrier}
 \begin{itemize}
@@ -23304,11 +23176,13 @@ g++ profile.cpp -o profile -ljsoncpp
 	
 \end{itemize}
 
+
+
 \fi
 
 \chapter{Modern C++}
 \section{C++14}
-\subsection{New int and syntax}
+\subsection{New type and language features}
 \begin{itemize}
 
     \item C++ standard doesn't define the accurate bit size for arithmetic types. It only defines that \texttt{int} must be at least 16 bits, \texttt{long} must be at least 32 bits, and \texttt{long long} must be at least 64 bits. In modern C++, new data types have been added with specified sizes, such as "\texttt{char16\_t}" and "\texttt{char32\_t}". If you need a specific integer size for a particular application, rather than trusting the compiler to pick the size you want, include <stdint.h> (or <cstdint>) so you can use these types. All of these types end with \texttt{\_t}.
@@ -23326,9 +23200,16 @@ int64_t and uint64_t
 	
 	\item \texttt{int} should be preferred when the size of the integer doesn't matter, for example when the number will always fit within the range of a 2-byte signed integer. For tasks such as asking the user to enter their age or counting from 1 to 10, it doesn't matter whether \texttt{int} is 16 or 32 bits as the numbers will fit either way. This will cover the vast majority of cases you're likely to encounter.
 	
-	\item If you require a variable guaranteed to be a particular size and want to prioritize performance, use \texttt{std::int\_fast\_t}.
+	\item If you require a variable guaranteed to be a particular size and want to prioritize performance, use \texttt{std::int\_fast*\_t}.
 	
-	\item If you require a variable guaranteed to be a particular size and prioritize memory conservation over performance, use \texttt{std::int\_least\_t}. This is most often used when allocating numerous variables.
+	\item If you require a variable guaranteed to be a particular size and prioritize memory conservation over performance, use \texttt{std::int\_least*\_t}. This is most often used when allocating numerous variables.
+\begin{lstlisting}
+#include <cstdint>
+int_fast16_t a = 100'000;
+int_least16_t b = 0b10001000;
+cout<<sizeof(a)<<endl;  //output 8
+cout<<sizeof(b)<<endl;  //output 2
+\end{lstlisting}
 	
 	\item Don't use unsigned types unless you have a compelling reason, such as when performing bit operations.
 \end{enumerate}
@@ -23354,16 +23235,55 @@ int cranky(){
 }
 \end{lstlisting}
 
-\end{itemize}
+	\item There are six major categories of literals in C++: integer, character, floating-point, string, boolean, and pointer. Starting in C++ 11, you can define your own literals based on these categories, to provide syntactic shortcuts for common idioms and increase type safety. For example, let's say you have a Distance class. You could define a literal for kilometers and another one for miles, and encourage the user to be explicit about the units of measure by writing: auto d = 42.0\_km or auto d = 42.0\_mi. There's no performance advantage or disadvantage to user-defined literals; they're primarily for convenience or for compile-time type deduction. 
+\begin{lstlisting}
+struct Distance{
+private:
+	explicit Distance(long double val) : kilometers(val){}
+	friend Distance operator"" _km(long double val);
+	friend Distance operator"" _mi(long double val);
+	long double kilometers{ 0 };
+public:
+	const static long double km_per_mile;
+};
 
+const long double Distance::km_per_mile = 1.609344L;
+Distance operator"" _km(long double val){
+	return Distance(val);
+}
 
-\subsection{Range base for}
-\begin{itemize}
+Distance operator"" _mi(long double val){
+	return Distance(val * Distance::km_per_mile);
+}
+
+Distance d1 = 402.0_km ; // construct using kilometers
+Distance d2 = 402.0_mi; // construct using miles
+Distance d3 = 36.0_mi + 42.0_km; 
+\end{lstlisting}
+	
+	\item The Standard Library has user-defined literals for std::string, for std::complex, and for units in time and duration operations in the <chrono> header. Only the Standard Library is allowed to define literals without the underscore.
+\begin{lstlisting}
+ReturnType operator "" _a(unsigned long long int);   
+ReturnType operator "" _b(long double);         
+ReturnType operator "" _r(const char*);  // Raw literal operator, char* 
+\end{lstlisting}
+
+	\item Given cooked and raw version, cooked will be called first. Cook version only accept limited argument. Detail can be found CPP reference.
+\begin{lstlisting}
+int operator""_yan(unsigned long long i){ //cooked
+	return i; //only unsigned long long, or long double for arithemtic.
+}
+int operator""_yan(const char* p){ //const char*p is raw literal operator.
+	return stoi(p); 
+}
+
+auto k = 12_yan; //will call cooked first.
+\end{lstlisting}
 	
 	\item A range-based for loop was introduced in C++11. To avoid copying each element, use \texttt{auto\&}. The following patterns are highly recommended when using STL containers:
 	
 	\begin{enumerate}
-		\item  When observing the elements in generic code, since we cannot assume that the generic type T is cheap to copy, it is safe to always use \texttt{(const auto\& elem : container)} in for loops. This will avoid potentially expensive and unnecessary copies, work well for cheap-to-copy types like int, and also for containers using proxy-iterators, like \texttt{std::vector<bool>}.
+		\item  When observing the elements in generic code, since we cannot assume that the generic type \texttt{T} is cheap to copy, it is safe to always use \texttt{(const auto\& elem : container)} in for loops. This will avoid potentially expensive and unnecessary copies, work well for cheap-to-copy types like \texttt{int}, and also for containers using proxy-iterators, like \texttt{std::vector<bool>}.
 \begin{lstlisting}[numbers=none]
 for (const auto& elem : container)    
 	// capture by const reference
@@ -23384,8 +23304,9 @@ for (auto& elem : container)
 		
 		\item Although you don't need to use the star symbol explicitly, it can provide more information about the variable, especially when dealing with pointers inside the container. Therefore, I recommend using this style.
 \begin{lstlisting}[numbers=none]
-for(auto *ptr: Container){ ptr->change();} //make sure Container contain pointer
+for(auto *ptr: Container){ ptr->change();} 
 for(const auto *ptr: Container){ ptr->read();}
+//make sure Container contain pointer
 \end{lstlisting}
 		
 	\end{enumerate}
@@ -23402,15 +23323,38 @@ for(const auto *ptr: Container){ ptr->read();}
 %\end{lstlisting}
 	
 	
-	\item The range-based version is for: You want to do something with every element in the container, but \textbf{without mutating the container(insert or erase).} 
+	\item The range-based version is for: You want to do something with every element in the container, but \textbf{without mutating the container itself (insert or erase).} If you really want to change a container, for a sequential container, you can use range-based function to change elements. For any associate container, only visit each element. If you want to change a key, delete it first, then modify, in the end insert new key again. The detail can be seen in STL chapter. 
 	
-	\begin{enumerate}
-		\item For any container, you should \textbf{NOT} mutating container by calling insert or erase inside loop.
+	
+	
+	\item C++98-style enums are now known as unscoped enums.
 		
-		\item If you really want to change a container, for a sequential container, you can use range-based function to change elements. For any associate container, only visit each element. If you want to change a key, delete it first, then modify, in the end insert new key again. The detail can be seen in STL chapter. 
-	\end{enumerate}
-	
+\begin{lstlisting}[frame=single, language=c++]
+enum Color { black, white, red };
+auto white = false; // error! 
+
+enum class Color { black, white, red }; //has class after enum
+auto white = false; // fine, 
+
+Color c = white; // error!
+Color c = Color::white; // fine
+auto c = Color::white; //fine
+
+if (c < 14.5) { // this will fail 
+	if (static_cast<double>(c) < 14.5) { // this will be OK! 			
+\end{lstlisting}
+				\begin{description}
+					\item[Line 1:] black, white, red are all in same scope as Color, That is why when you define the duplicated variable name "white" again in line 2, compiler report error.
+					\item[Line 4-5:]black, white, red are scoped to Color. You have to use scope qualifier \texttt{Color::} here.
+					\item[Line 11-12:] Implicit conversion is not legale any more, unless you explicit convert it.
+				\end{description}
+				
+		\item Both scoped and unscoped enums support specification of the underlying type.  The default underlying type for scoped enums is \texttt{int}. Unscoped enums have no default underlying type.
+				
+		\item Scoped enums may always be forward-declared. Unscoped enums may be forward-declared only if their declaration specifies an underlying type. 
+				
 \end{itemize}
+
 
 \subsection{alias declaration}
 
@@ -23430,10 +23374,9 @@ struct MyAllocList {
 	typedef std::list<T, MyAlloc<T>> type;
 };
 
-MyAllocList<Widget>::type lw; // client code
+MyAllocList<Widget>::type lw; // client code, must have ::type here.
 template<typename T> 
 class Foo { 
-private:
 	typename MyAllocList<T>::type list;  //Don't forget typename 
 };
 \end{lstlisting}
@@ -23448,16 +23391,15 @@ private:
 template<typename T>  //C++ 14 style, use template alias,
 using MyAllocList = std::list<T, MyAlloc<T>>;
 
-MyAllocList<Widget> lw; // client code, no ::type
+MyAllocList<Widget> lw; // client code, no ::type here
 template<typename T>
 class Widget {
-private:
 	MyAllocList<T> list; //no typename here, no ::type either
 };
 \end{lstlisting}
 
 
-	\item Another advantage of alias name is below. The first source code uses typedef inside a struct; The second source code uses "using alias". You can see the code become clear and not compiling error.
+	\item Another advantage of alias name is below. The first source code uses typedef inside a struct; The second source code uses "using alias". You can see the code become clear and has not compiling error.
 
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T> //Old C++ style
@@ -23499,43 +23441,11 @@ using add_lvalue_reference_t=typename add_lvalue_reference<T>::type;
 
 \end{itemize}
 
-\subsection{scoped enums}
-\begin{itemize}
-	
-	\item C++98-style enums are now known as unscoped enums.
-	
-\begin{lstlisting}[frame=single, language=c++]
-enum Color { black, white, red };
-auto white = false; // error! 
-
-enum class Color { black, white, red }; //has class after enum
-auto white = false; // fine, 
-
-Color c = white; // error!
-Color c = Color::white; // fine
-auto c = Color::white; //fine
-
-if (c < 14.5) { // this will fail 
-if (static_cast<double>(c) < 14.5) { // this will be OK! 
-\end{lstlisting}
-\begin{description}
-	\item[Line 1:] black, white, red are in same scope as Color, That is why when you define the duplicated variable name "white" again in line 2, compiler report error.
-	\item[Line 4-5:]black, white, red are scoped to Color. You have to use scope qualifier here.
-    \item[Line 10-11:] Implicit conversion is not legale any more, unless you explicit convert it.
-\end{description}
-
-	\item Both scoped and unscoped enums support specification of the underlying type.  The default underlying type for scoped enums is \texttt{int}. Unscoped enums have no default underlying type.
-
-	\item Scoped enums may always be forward-declared. Unscoped enums may be forward-declared only if their declaration specifies an underlying type. 
-
-\end{itemize}
 
 \subsection{noexcept}
 
 \begin{itemize}
-    \item Usually, copy constructor, move constructor, copy assignment operator, move assignment operator and destructors should not throw exception in principle. 
-       
-    \item However, if any of the listed functions call (explicitly or implicitly) another function which is potentially throwing, then the listed function will be treated as potentially throwing as well. For example, if a class has a data member with a potentially throwing constructor, then the class’s constructors will be treated as potentially throwing as well. 
+    \item Usually, copy constructor, move constructor, copy assignment operator, move assignment operator and destructors should not throw exception in principle. However, if any of the listed functions call (explicitly or implicitly) another function which is potentially throwing, then the listed function will be treated as potentially throwing as well. For example, if a class has a data member with a potentially throwing constructor, then the class’s constructors will be treated as potentially throwing as well. 
     
     \item The following are potentially throwing:
         \begin{enumerate}
@@ -23611,7 +23521,7 @@ while(iter != end){
 	
 \end{lstlisting}
 
-	\item replace
+	\item Replace by using \texttt{regex\_replace}.
 \begin{lstlisting}
 string s = "ab123cdef"; // 
 regex ex("\\d+");    // 
@@ -23635,8 +23545,8 @@ cout << r << endl; //
 
     
 \begin{lstlisting}
-template <template <typename, typename...> class ContainerType,
-          typename ValueType, typename... Args> // typename... Args is template parameter pack
+template < template <typename, typename...> class ContainerType,
+          typename ValueType, typename... Args>  // typename... Args is template parameter pack
 void print_container(const ContainerType<ValueType, Args...>& c) {
     for (const auto& v : c) {
         std::cout << v << ' ';
@@ -23669,7 +23579,7 @@ function(std::forward<Tys>(params...)) //expands to
 function(std::forward<Tys>(param1, param2, ..., paramN)) //Error here.
 \end{lstlisting}
 
-    \item There's a way to write functions that take an arbitrary number of arguments in a type-safe way and have all the argument handling logic resolved at compile-time, rather than run-time. Below are two examples. The whole idea is like the recursive function.
+    \item There's a way to write functions that take an arbitrary number of arguments in a type-safe way and have all the argument handling logic resolved at compile-time, rather than run-time. Below are two examples. The whole idea is like the recursive function. But after C++ 17, we can use fold expression to replace recursive function definition. 
 
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T> //Basic condition
@@ -23683,19 +23593,8 @@ T adder(T first, Args... args) {
 }
 \end{lstlisting}
 
-    \item Another example to demonstrate how to use \texttt{cout}. In the next section, you will learn how to use \textbf{fold expression} to write these two function easily.
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T>
-show_list(const T& value){cout<<value<<endl;}
-
-template<typename T, typename... Args>
-show_list(const T& value, const Args&... args){
-	cout<<value<<endl;
-	show_list(args...);
-}
-\end{lstlisting}
-
-    \item Variadic templates make it possible to define data structures with an arbitrary number of fields, whose number can be configured per use. One prime example of this is a \texttt{std::tuple} class, which uses the same recursive idea as the previous examples.
+    
+    \item Variadic templates make it possible to define data structures with an arbitrary number of fields, whose number can be configured per use. One primary example of this is a \texttt{std::tuple} class, which uses the same recursive idea as the previous examples.
 \begin{lstlisting}
 template <typename... Ts> struct tuple {};
 
@@ -23713,12 +23612,14 @@ tuple<double, uint64_t, const char*> t1(12.2, 42, "big");
 struct tuple<double, uint64_t, const char* >: tuple<uint64_t, const char*> {
   double tail;
 }
+
 struct tuple<uint64_t, const char*> : tuple<const char*> {
   uint64_t tail;
 }
 struct tuple<const char*> : tuple {
   const char* tail;
 }
+
 struct tuple {  
 }
 \end{lstlisting}
@@ -24392,12 +24293,61 @@ class WrappedNumber {
 	\item Advantages of module are below:
 	\begin{enumerate}
 		\item No need to write separate files for the interface (.h) and the implementation (.cpp). 
-		\item Faster compile / recompile times.
+		\item Faster compile / recompile.
 		\item No need for include guards.	
 		\item Modules don’t have ‘side-effects’ so the order in which modules are imported is not important.
 		\item Precompiled headers can be a very effective way of speeding up compile times. Also, removing implementation details from the interface file (e.g. using the PIMPL idiom) reduces the ‘ripple effect’ and prevents unnecessary recompilation when small changes are introduced.
 	\end{enumerate}
+	
+	\item C++ Modules introduce a new type of translation unit called a module unit. The definition is fairly simple: A module unit is a translation unit that contains a module-declaration
+\begin{lstlisting}
+module-declaration:
+["export"] "module" module-name [module-partition] [attribute-specifier-seq] ";" ;
 
+module-partition:
+":" module-name ;
+\end{lstlisting}
+
+	\item There are a lot of grammar restriction when you use module partition, you can follow below the pattern as a good start point. 
+\begin{lstlisting}
+// speech.cpp, primary module interface unit
+export module speech;
+export import :english; //use export import here.
+export import :spanish; //Don't add module name before :
+
+// speech_english.cpp //module partition interface
+export module speech:english;  //must use export, otherwise line 2 fail.
+export const char* get_phrase_en() {
+	return "Hello, world!";
+}
+
+// main.cpp,  client code
+import speech;
+std::cout << get_phrase_en() << '\n';
+\end{lstlisting}
+
+\begin{lstlisting}
+// speech.cpp, This is module interface unit
+export module speech;
+import :english;
+import :spanish;
+export const char* get_phrase_en();
+export const char* get_phrase_es();
+
+// speech_english.cpp, This is module (partition) implementation unit.
+module speech:english;  //module partition, has  :
+const char* get_phrase_en() { //no export, so it's implementation unit
+	return "Hello, world!";
+}
+
+// speech_spanish.cpp
+module speech:spanish;
+const char* get_phrase_es() {
+	return "Hola Mundo";
+}
+\end{lstlisting}
+
+	\item A good article is "Understanding C++ Modules: Part 1: Hello Modules, and Module Units"
 	
 	\item A module is a set of source code files that are compiled independently of the translation units that import them. Modules eliminate or greatly reduce many of the problems associated with the use of header files, and also potentially reduce compilation times. 
 	
@@ -24420,7 +24370,7 @@ export namespace math {
 }	
 \end{lstlisting}	
 	
-    \item The first module example based on previous module structure. This is file func.cxx. compile with: g++ -c -std=c++20 -fmodules-ts func.cxx. g++ generates func.o and a gcm.cache/mod.gcm.
+    \item The first module example based on previous module structure. This is a file func.cxx. compile with: g++ -c -std=c++20 -fmodules-ts func.cxx. g++ generates func.o and a gcm.cache/mod.gcm.
 \begin{lstlisting}
 module; // 1) global module fragment
 #include <iostream> //put #include statement here.
@@ -24429,9 +24379,12 @@ export module mod; //2) main module
 import <vector>    
 export void func() {
 	vector<int> vi = {1, 2, 3}
+	invisible_fun();
     std::cout << "hello, world!\n"<<vi[0]<<endl;
 }
-export void func2();
+export void func2(); only declaration, on implementation.
+invisible_fun(){..} //this function is invisible from outside. 
+
 
 module :private; // 3) private module fragment
 void func2(){
@@ -24481,12 +24434,12 @@ export { //use export block
 	
 \end{itemize}
 
-\subsection{coroutine}
-\subsubsection{basic implementation of coroutine}
+\subsection{Coroutine}
+\subsubsection{Basic implementation of coroutine}
 \begin{itemize}
 	\item In C++, coroutines are a language feature introduced in C++20 that allows a function to be executed asynchronously and cooperatively. Coroutines provide a way to write code that can be suspended and resumed later, allowing for non-blocking I/O operations and efficient event-driven programming. A coroutine is a special type of function that can be paused at any point during its execution and resumed later. The main difference between a coroutine and a regular function is that a coroutine can be paused and resumed without losing its state. This allows a coroutine to perform I/O operations without blocking the thread or process, which makes them particularly useful for writing high-performance network servers and other event-driven applications.
 	
-	\item Four important concepts in the coroutine.
+	\item Four important concepts in the coroutine: invoke, suspend, resume, finalize.
 	
 	\begin{center}
 		\includegraphics[width=.5\linewidth]{pics/cor2.png}
@@ -24497,7 +24450,7 @@ export { //use export block
 			\hline
 			concept	& c++ coroutine  \\
 			\hline
-			invoke	&  call coroutine directly \\
+			Invoke	&  call coroutine directly \\
 			\hline
 			Finalize & con\_return \\
 			\hline
@@ -24520,7 +24473,7 @@ export { //use export block
 	\item We need to make the \texttt{coroutine\_handle} available to caller. To do that, we pass it through the \texttt{get\_return\_object()} call where we create it from the promise instance. Then the caller can either call resume() or destroy() on the suspended coroutine. Note that calling these methods on a coroutine that isn't suspended is undefined behaviour. It also makes sense to make the caller-level type move-only to avoid confusion over the handle ownership.
 	
 \begin{lstlisting}
-struct ReturnType { //This is user-defined return type
+struct Task { //This is user-defined return type
 	struct promise_type { 	// user-defined coroutine level promise type
 		using Handle = std::coroutine_handle<promise_type>;
 		Task get_return_object() {
@@ -24535,10 +24488,10 @@ struct ReturnType { //This is user-defined return type
 	void destroy() { coro_.destroy(); }
 	void resume() { coro_.resume(); }
 	// Making Task move-only:
-	ReturnType(const ReturnType&) = delete;
-	ReturnType& operator=(const ReturnType&) = delete;
-	ReturnType(ReturnType&& t) noexcept : coro_(t.coro_) { t.coro_ = {} }
-	ReturnType& operator=(ReturnType&& t) noexcept {
+	Task(const ReturnType&) = delete;
+	Task& operator=(const ReturnType&) = delete;
+	Task(ReturnType&& t) noexcept : coro_(t.coro_) { t.coro_ = {} }
+	Task& operator=(ReturnType&& t) noexcept {
 		if (this == &t) return *this;
 		if (coro_) coro_.destroy();
 		coro_ = t.coro_;
@@ -24548,7 +24501,7 @@ struct ReturnType { //This is user-defined return type
 private:
 	promise_type::Handle coro_;
 };
-ReturnType myCoroutine() {
+Task myCoroutine() {
 	co_return; // make it a coroutine
 }
 int main() {
@@ -24557,7 +24510,7 @@ int main() {
 }
 \end{lstlisting}
 
-	\item ReturnType, \texttt{promise\_type}, and coroutine\_handle are the main tools of the coroutine mechanism. \texttt{promise\_type} is a type within ReturnType.
+	\item Task, \texttt{promise\_type}, and coroutine\_handle are the main tools of the coroutine mechanism. \texttt{promise\_type} is a type within ReturnType.
 	
 	\item The programmer's design for a coroutine (such as what type of value it returns, whether it suspends or continues execution after initialization, how it handles exceptions, etc.) is passed to the compiler through \texttt{promise\_type}, which is responsible for instantiating the promise object. The compiler fills the coroutine handle (coroutine\_handle) into the future object, exposing control of the coroutine to the caller.
 
@@ -24766,7 +24719,7 @@ void async_sqr_cbk(const int value, F&& continuation)
 }	
 \end{lstlisting}
 
-\item if you want to sync, use future. 
+	\item if you want to sync, use future. 
 \begin{lstlisting}
 void sync_func()
 {
@@ -24813,9 +24766,185 @@ task<void> power_8_async(const int value){
 }		
 \end{lstlisting}
 
+	\item there is github project, which includes a good coroutine exmple, you can found link here: https://github.com/zhaoyan/study
+	
+
 \end{itemize}
 
+
 \subsection{others}
+
+\subsubsection{time}
+
+\begin{itemize}
+	\item The core of the chrono library consists of the following types or concepts: 1) clock, 2) time point, 3) time duration, 4)timed zone and 5)calendar. The time duration is defined based on \texttt{std::ratio}. Why do we need these abstract mechanisms to specify and deal with points in and durations of time? This design is not very intuitive, but it provide flexibility and avoid re-define a lot of classes in the future if we have more higher resolution. 
+	
+	\begin{figure}[ht]
+		\centering
+		\includegraphics[width=0.4\linewidth]{pics/chrono}
+		\caption{}
+		\label{fig:chrono}
+	\end{figure}
+	
+	\item The whole chrono library begins with clocks, there are three clock, each clocks includes default, \texttt{std::duration},  here \texttt{std::duration} is a type, represent precision of clock. 
+	
+	\begin{enumerate}
+		
+		\item For clocks, there are three different clocks in std library:
+		\begin{enumerate}
+			\item \texttt{std::chrono::sytem\_clock:} Is the system-wide real-time clock (wall-clock). The clock has the auxiliary functions to\_time\_t and from\_time\_t to convert time points into dates in C language. 
+			\begin{figure}[ht]
+				\centering
+				\includegraphics[width=0.6\linewidth]{pics/tm}
+				\caption{}
+				\label{fig:chrono1}
+			\end{figure}
+			
+			\item \texttt{std::chrono::steady\_clock:}  Provides as only a clock the guarantee that you can not adjust it. Therefore, \texttt{std::chrono::steady\_clock} is the preferred clock to wait for a time duration or until a time point. 
+			
+			\item \texttt{std::chrono::high\_resolution\_clock:} Is the clock with the highest accuracy but it can be a synonym for the clocks \texttt{std::chrono::system\_clock} or \\ \texttt{std::chrono::steady\_clock}.
+			
+			\item The clock has period, it is a \texttt{std::ratio} and represents the accuracy. 
+\begin{lstlisting}
+template <typename T>
+void printRatio(){ 
+	std::cout << "  precision: " << T::num << "/" << T::den << " second " << std::endl;
+	typedef typename std::ratio_multiply<T,std::kilo>::type MillSec;
+	typedef typename std::ratio_multiply<T,std::mega>::type MicroSec;
+	std::cout << static_cast<double>(MillSec::num)/MillSec::den << " milliseconds " << std::endl;
+	std::cout << static_cast<double>(MicroSec::num)/MicroSec::den << " microseconds " << std::endl;
+}
+
+
+printRatio<std::chrono::system_clock::period>(); //linux accuracy is 1 nano second. 	
+\end{lstlisting}			
+			
+			\item The \texttt{std::steady\_clock} is important to compare or compute the difference of two times in your program, where you processed the current point in time.  If you're holding a \texttt{std::system\_clock} in your hand, you would call it a watch, and it would tell you what time it is. If you're holding a \texttt{std::steady\_clock} in your hand, you would call it a stopwatch, and it would tell you how fast someone ran a lap, but it would not tell you what time it is. 
+			
+			\item The C++ standard provides no guarantee about the clocks' accuracy, starting point, or valid time range. Typically, the starting point of std::chrono:system\_clock is the 1.1.1970, the so-called UNIX-epoch. For \texttt{std::chrono::steady\_clock}, typically the boot time of your PC.
+		\end{enumerate}
+		
+		\item For duration, definition is below:
+\begin{lstlisting}
+template<class Rep, class Period = std::ratio<1> > 
+class duration;
+
+std::chrono::nanoseconds duration</*signed integer  64 bits*/, std::nano>
+std::chrono::microseconds duration</*signed integer at least 55 bits*/, std::micro>
+std::chrono::seconds duration</*signed integer at least 35 bits*/>
+std::chrono::minutes duration</*signed integer at least 29 bits*/, std::ratio<60>>
+std::chrono::hours duration</*signed integer at least 23 bits*/, std::ratio<3600>>
+\end{lstlisting}		
+		
+		The duration is based on a \texttt{std::ratio}. a duration of time is defined as a specific number of ticks over a time unit. One example is a duration such as “3 minutes” (3 ticks of a “minute”). 
+		
+		
+		\item Once we have clock, based on clock, we can define time\_point.  For time point, A time point is defined as combination of a duration and a beginning of time (the so-called epoch). A typical example is a timepoint that represents “New Year’s Midnight 2000,” which is described as “1,262,300,400 seconds since January 1, 1970” (this day is the epoch of the system clock of UNIX and POSIX systems). In other words, timepoint is defined as a duration before or after an epoch, which is defined by a clock. The concept of a timepoint, however, is parametrized by a clock, which is the object that defines the epoch of a timepoint. Thus, different clocks have different epochs. In general, operations dealing with multiple timepoints, such as processing the duration/difference between two time-points, require using the same epoch/clock. A clock also provides a convenience function to yield the timepoint of now.
+\begin{lstlisting}
+const std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+const auto end = std::chrono::steady\_clock::now();  //end is time\_point, type has been deduct automatically.
+\end{lstlisting}
+
+	\end{enumerate}
+	
+	
+	\item Usage of time point. You can define time point based on certain duration, such as second. Default is corresponding clock precision(duration).
+\begin{lstlisting}[numbers=none]
+using namespace std::chrono;
+system_clock::time_point tp_epoch;	// epoch value
+time_point <system_clock, duration<int>> tp_seconds (duration<int>(1)); //point based on second
+system_clock::time_point tp (tp_seconds);  //point based on system clock period
+
+std::cout << "1 second since system_clock epoch = ";
+std::cout << tp.time_since_epoch().count();
+std::cout << " system_clock periods." << std::endl;
+
+std::time_t tt = system_clock::to_time_t(tp); // display time_point:
+std::cout << "time_point tp is: " << ctime(&tt);		
+\end{lstlisting}		
+	
+	\item Duration's type is decided by the clock. That is why the first duration return nanosecond. 
+\begin{lstlisting}[numbers=none]
+std::cout << std::fixed << std::endl;
+std::cout << "Time since 1.1.1970:\n" << std::endl;	
+auto timeNow= std::chrono::system_clock::now(); //timeNow is time point.
+auto duration= timeNow.time_since_epoch();  //change from time point to time duration.
+std::cout << duration.count() << " nanoseconds " << std::endl;
+
+//typedef std::chrono::duration<long double,std::ratio<1,1000>> MyMilliSecondTick;
+//typedef std::chrono::duration<double, std::ratio<60*60>> MyHourTick;
+MyHourTick myHour(duration);
+std::cout << myHour.count() << " hours" << std::endl;		
+\end{lstlisting}		
+	
+	\item How long does your programme run? 1) select a clock, 2) get two time points, 3) change it to duration, 4) change clock duration to your own duration. 
+\begin{lstlisting}
+void func() {  
+	std::chrono::time_point<std::chrono::steady_clock> begin = steady_clock::now();
+	std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	auto end = steady_clock::now();
+	cout << "time " << duration_cast<milliseconds>(end - begin).count() << endl;
+	//cout << chrono::duration_cast<chrono::microseconds>(end - start).count()
+	//<< chrono::duration_cast<chrono::seconds>(end - start).count()
+}			
+\end{lstlisting}		
+
+
+	\item From time\_point, we can change it to different time\_zone. 
+\begin{lstlisting}
+const std::chrono::zoned_time zt{locate_zone("Europe/Rome", std::chrono::system_clock::now()}; 
+std::cout <<"- Zoned Time:" << zt <<'\n';
+\end{lstlisting}
+	
+	
+
+	\item From time\_point, we can also deduct calendar time.
+\begin{lstlisting}
+using sys_time = std::chrono::time_point<std::chrono::system_clock, Duration>;
+using sys_days = sys_time<std::chrono::days>;
+	
+const std::chrono::time_point now{std::chrono::system_clock::now()};
+const std::chrono::year_month_day ymd{std::chrono::floor<std::chrono::days>(now)};
+
+std::cout << "Current Year: " << static_cast<int>(ymd.year())
+<< ", Month: " << static_cast<unsigned>(ymd.month())
+<< ", Day: " << static_cast<unsigned>(ymd.day()) << '\n';	
+
+\end{lstlisting}
+
+use system\_time here, and also floors accept one time\_point(mill seconds duration(precision) ), and return another time\_point(days duration(precision) ) with different duration.
+At the same time, year\_month\_day accept std::sys\_days as input argument. 
+
+
+	\item we can also from clock to get std::time\_t. then use C language time functions.  
+\begin{lstlisting}
+const std::time_t t_c = std::chrono::system_clock::to_time_t(now - 24h);
+std::cout << "24 hours ago, the time was "
+<< std::put_time(std::localtime(&t_c), "%F %T.\n") << std::flush;
+\end{lstlisting}
+	
+	\item There are two sorts of timeouts that you may wish to specify: a duration-based timeout and an absolute timeout. The variants that handle the duration-based timeouts have a \_for suffix, while those that handle the absolute timeouts have an \_until suffix." Durations and timepoints can be used to block threads or programs (i.e., the main thread). These blocks can be conditionless or can be used to specify a maximum duration when waiting for a lock, a condition variable, or another thread to end
+	
+\begin{lstlisting}
+sleep_for and sleep_until 
+try_lock_for and try_lock_until
+wait_for and wait_until.	
+\end{lstlisting}		
+	
+	\item There is a simple rule I follow with the <chrono> library. The rule is actually not completely correct (thus it is a guideline). But it is close enough to correct to be a guideline that is nearly always followed: Don't use count(). and Don't use time\_since\_epoch(). The <chrono> library is designed around a type-safe system meant to protect you from units conversions mistakes. If you accidentally attempt an unsafe conversion, the error is caught at compile time (as opposed to it being a run time error). The member functions count() and time\_since\_epoch() are "escape hatches" out of this type-safe system ... to be used only in cases of emergency. 
+	
+	\item There is no date type in c++ standard, you can use boost::date type. Detail can be see in the "common used libs" in this book. Or you can use \texttt{std::system\_clock} and convert it to time\_t and tm in C language. 
+	
+	\item Three good article are "The C++ standard Library: Utilities" and "Difference between steady\_clock vs system\_clock?" and "https://paul.pub/cpp-date-time/"
+	
+\end{itemize}
+
+
+
+
+
+
+
 
 \begin{itemize}
 	
@@ -24876,13 +25005,13 @@ std::cout << "rotr(i,1)  = " << std::bitset<8>(std::rotr(i, 1)) << '\n';
 	manual data structure or for loop & container(tuple, variant) or algorithem \\ 
 	
 	\hline 
-	new & std::uniqu\_ptr, std::shared\_ptr \\ 
+	new & \texttt{std::uniqu\_ptr}, \texttt{std::shared\_ptr} \\ 
 	
 	\hline 
-	return null, union, void* & std::optional, std::variant, std::any \\ 
+	return null, union, \texttt{void*} & \texttt{std::optional, std::variant, std::any} \\ 
 	
 	\hline 
-	function pointer & std::function or lambda  \\ 
+	function pointer & \texttt{std::function} or lambda  \\ 
 	
 	\hline 
 	initialization  & auto, list initialization, member initialization, template deduction  \\ 
@@ -24897,28 +25026,28 @@ std::cout << "rotr(i,1)  = " << std::bitset<8>(std::rotr(i, 1)) << '\n';
 	enum & scope enum \\ 
 	
 	\hline 
-	tie & struct bind \\ 
+	tie & structured binding \\ 
 	
 	\hline 
 	random &  mt19937 \\ 
 	
 	\hline 
-	ctime &  std::chrono, duration \\ 
+	ctime &  \texttt{std::chrono}, duration \\ 
 	
 	\hline 
 	recursive template function &  fold expression \\ 
 	
 	\hline 
-	reference &  std::span and std::string\_view \\ 
+	reference &  \texttt{std::span} and \texttt{std::string\_view} \\ 
 	
 	\hline 
 	N/A &  override and final, deleted or defaulted \\ 
 	
 	\hline 
-	N/A &  std::filesystem, std::format, std::regex \\ 
+	N/A &  \texttt{std::filesystem, std::format, std::regex} \\ 
 	
 	\hline 
-	N/A &  R"", std::quoted and user-defined literals. \\ 
+	N/A &  R"", \texttt{std::quoted} and user-defined literals. \\ 
 	
 	\hline 
 \end{tabular} 
