@@ -10355,20 +10355,69 @@ Stack<std::string,std::list> aStack2; // Cont is List
 
 \subsection{Template feature used in STL}
 \begin{itemize}
-	\item Variable template.
+	\item Variable template. A variable template is a template that defines a series of variables, based on one or more template parameters:
 \begin{lstlisting}[]
 template<class T>
 constexpr T pi = T(3.1415926535897932385L);  // variable template	
 
+template<typename T>
+bool flag{true};
+
+cout<<flag<int> <<endl; //flag<int> is variable
+flag<float> = false;
+cout<<flag<float><<endl; //flag<float> is also a variable. 
+\end{lstlisting}
+
+
+	\item In fact, the most often used of variable template is \texttt{*\_v} template to avoid slightly awkward ::value syntax.
+\begin{lstlisting}
 template< class T >
 inline constexpr bool is_integral_v = is_integral<T>::value;
 \end{lstlisting}
 
-	\item Alias template.
+	\item Alias template. Detail can be found in "alias declaration" section of "Modern C++" chapter.
 \begin{lstlisting}[]
 template< bool B, class T = void >
 using enable_if_t = typename enable_if<B,T>::type;
 \end{lstlisting}
+
+	\item \texttt{std::integral\_constant} template define a type, One of the usage examples is tag-dispatching
+\begin{lstlisting}
+true_type	std::integral_constant<bool, true> 
+false_type	std::integral_constant<bool, false>
+
+int foo_impl(T value, std::true_type) ...
+double foo_impl(T value, std::false_type)...
+
+template<typename T>
+auto foo(T value)
+	return foo_impl(value, std::is_arithmetic<T>{});
+}
+
+template<class T>
+struct is_arithmetic : std::integral_constant<bool,
+							std::is_integral<T>::value ||
+							std::is_floating_point<T>::value> {};
+\end{lstlisting}
+	
+	\item Difference between alias template, variable template and \texttt{std::integral\_constant.}
+\begin{enumerate}
+	\item They are all template, template is important component in metaprogramming, it manipulate type in compiling time. For example, you can input a type, template will return another type(std::remove\_const) or another constexpr (is\_integral\_v). template also support input integer, so you can input integer into the template, then it return a type(std::integral\_constant<bool, true>)
+	
+	\item Input type T into variable template, it return a constexpr. (T-->value)
+	
+	\item Input integer(true) into integral\_constant, it return a type (true\_type) (value-->T)
+	
+	\item in metaprogramming, you can think template as a function,  it only manipuate type and limited integer(such as true or false.)
+	
+	\item alias template is just a alias, it's still template essential. remove\_const\_t is still a template,  you need to use <> to input T, then it can be used as 1) define class, 2) define function, 3) get a new type, 4) get a new variable.
+\begin{lstlisting}
+template< class T >
+using remove_const_t = typename remove_const<T>::type;
+\end{lstlisting}
+
+
+\end{enumerate}
 	
 	\item Specialization templates have default template arguments automatically provided. This feature makes it easier to use \texttt{enable\_if}, as shown in line 7 of the code below.
 \begin{lstlisting}
@@ -12575,15 +12624,7 @@ carr_func(a2.data(), a2.size()); //OK
 %printLength(myarray);	
 %\end{lstlisting}	
 	
-	\item Basic member functions of \texttt{std::bitset}.
-\begin{lstlisting}
-std::bitset<8> a, b;
-std::cout << b.set() << '\n'; //set to 1 all
-std::cout << b.reset() << '\n';  //set to 0 all
-std::cout << b.set(0); //from 0, from least significant to most significant
-b.test(0);  b.flip(0);
-a &= b; //Note that &=, |=, and ^= are only defined for bitsets of the same size N.	
-\end{lstlisting}
+	
 
 	\item \texttt{emplace\_back} is used to build object in container directly to avoid the need for copying.
 \begin{lstlisting}
@@ -13022,8 +13063,7 @@ public:
 
 	\item The standard associative containers are implemented as balanced binary search trees. They are optimized for a mixed combination of insertions, erasures, and lookups. However, if the container is used as a dictionary, it can fall into three distinct phases: setup, lookup, and modify. Modify is not very frequent, whereas lookup is very frequent. In such cases, the associative container may not be the best option. A sorted \texttt{std::vector} also supports logarithmic search time and has two advantages: 1) it uses less space, and 2) more space can cause page faults in memory, making the sorted \texttt{std::vector} faster than the associative container with the same logarithmic search complexity. Therefore, for a dictionary, it's better to use a sorted vector.
 
-	\item Avoid using \texttt{vector<bool>}, use \texttt{deque<bool>} or \texttt{bitset}.
-
+	
 	\item The book "effective STL item 19" introduces the difference between equality and equivalence in associative Containers.
 	
   \begin{enumerate}
@@ -23181,17 +23221,24 @@ g++ profile.cpp -o profile -ljsoncpp
 \fi
 
 \chapter{Modern C++}
-\section{C++14}
+\section{C++11/C++14}
 \subsection{New type and language features}
 \begin{itemize}
 
     \item C++ standard doesn't define the accurate bit size for arithmetic types. It only defines that \texttt{int} must be at least 16 bits, \texttt{long} must be at least 32 bits, and \texttt{long long} must be at least 64 bits. In modern C++, new data types have been added with specified sizes, such as "\texttt{char16\_t}" and "\texttt{char32\_t}". If you need a specific integer size for a particular application, rather than trusting the compiler to pick the size you want, include <stdint.h> (or <cstdint>) so you can use these types. All of these types end with \texttt{\_t}.
     
 \begin{lstlisting}[numbers=none]
+#include <limits>
 int8_t and uint8_t
 int16_t and uint16_t
 int32_t and uint32_t
 int64_t and uint64_t
+
+cout<<numeric_limits<uint16_t>::min()<<endl;  //output 0
+cout<<numeric_limits<uint16_t>::max()<<endl;  //output 65535
+cout<<numeric_limits<uint16_t>::digits10<<endl; //output 4
+//why min is function? because class static member must be int. 
+//numeric_limits<float>::min should return float. 
 \end{lstlisting}
 
     \item The fixed-width integers have two downsides: First, they may not be supported on architectures where those types can't be represented. Second, they may also have lower performance than the built-in types on some architectures. To help address these downsides, C++11 also defines two alternative sets of integers: \texttt{int\_least} and \texttt{int\_fast}. Below are some usage suggestions for integers:
@@ -23207,8 +23254,8 @@ int64_t and uint64_t
 #include <cstdint>
 int_fast16_t a = 100'000;
 int_least16_t b = 0b10001000;
-cout<<sizeof(a)<<endl;  //output 8
-cout<<sizeof(b)<<endl;  //output 2
+cout<<sizeof(a)<<endl;  //output 8 in 64 platform
+cout<<sizeof(b)<<endl;  //output 2 
 \end{lstlisting}
 	
 	\item Don't use unsigned types unless you have a compelling reason, such as when performing bit operations.
@@ -23235,7 +23282,15 @@ int cranky(){
 }
 \end{lstlisting}
 
-	\item There are six major categories of literals in C++: integer, character, floating-point, string, boolean, and pointer. Starting in C++ 11, you can define your own literals based on these categories, to provide syntactic shortcuts for common idioms and increase type safety. For example, let's say you have a Distance class. You could define a literal for kilometers and another one for miles, and encourage the user to be explicit about the units of measure by writing: auto d = 42.0\_km or auto d = 42.0\_mi. There's no performance advantage or disadvantage to user-defined literals; they're primarily for convenience or for compile-time type deduction. 
+	\item There are six major categories of literals in C++: integer, character, floating-point, string, boolean, and pointer. integer can have prefix and suffix
+\begin{lstlisting}
+int i = 0xAA;  //prefix
+long int i = 124L;  //suffix
+bool flag = true; //true is literals.
+int* p = nullptr //nullptr is literals.
+\end{lstlisting}	
+	
+	\item Starting in C++ 11, you can define your own literals based on these categories, to provide syntactic shortcuts for common idioms and increase type safety. For example, let's say you have a Distance class. You could define a literal for kilometers and another one for miles, and encourage the user to be explicit about the units of measure by writing: auto d = 42.0\_km or auto d = 42.0\_mi. There's no performance advantage or disadvantage to user-defined literals; they're primarily for convenience or for compile-time type deduction. 
 \begin{lstlisting}
 struct Distance{
 private:
@@ -23261,7 +23316,7 @@ Distance d2 = 402.0_mi; // construct using miles
 Distance d3 = 36.0_mi + 42.0_km; 
 \end{lstlisting}
 	
-	\item The Standard Library has user-defined literals for std::string, for std::complex, and for units in time and duration operations in the <chrono> header. Only the Standard Library is allowed to define literals without the underscore.
+	\item The Standard Library has user-defined literals for \texttt{std::string,} for \texttt{std::complex}, and for units in time and duration operations in the <chrono> header. Only the Standard Library is allowed to define literals without the underscore.
 \begin{lstlisting}
 ReturnType operator "" _a(unsigned long long int);   
 ReturnType operator "" _b(long double);         
@@ -23279,6 +23334,8 @@ int operator""_yan(const char* p){ //const char*p is raw literal operator.
 
 auto k = 12_yan; //will call cooked first.
 \end{lstlisting}
+	
+	\item The range-based version is for: You want to do something with every element in the container, but \textbf{without mutating the container itself (insert or erase).} If you really want to change a container, for a sequential container, you can use range-based function to change elements. For any associate container, only visit each element. If you want to change a key, delete it first, then modify, in the end insert new key again. The detail can be seen in STL chapter. 
 	
 	\item A range-based for loop was introduced in C++11. To avoid copying each element, use \texttt{auto\&}. The following patterns are highly recommended when using STL containers:
 	
@@ -23312,22 +23369,37 @@ for(const auto *ptr: Container){ ptr->read();}
 	\end{enumerate}
 	
 	
-%	\item For \texttt{vector<bool>}, below code doesn't work, because \texttt{std::vector} template is specialized for bool, with an implementation that packs the bools to optimize space (each boolean value is stored in one bit, eight "boolean" bits in a byte). Because of that (since it's not possible to return a reference to a single bit), \texttt{vector<bool>} uses a so called "proxy iterator" pattern. A "proxy iterator" is an iterator that, \textbf{when dereferenced, does not yield an ordinary bool \&, but instead returns (by value) a temporary object}, which is a proxy class convertible to bool. \textbf{The proxy class returned is prvalue}, so we can't use \texttt{auto \&} to refer prvalue. You can use const or rvalue reference to refer it.
-%\begin{lstlisting}[numbers=none]
-%vector<bool> v = {true, false, false, true};
-%for (auto& x : v) //Error
-%    x = !x;
-%
-%for (auto&& elem : container) //OK
-%for (const auto& elem : container) //also OK
-%\end{lstlisting}
+	\item For \texttt{vector<bool>}, below code doesn't work, because \texttt{std::vector} template is specialized for bool, with an implementation that packs the bools to optimize space (each boolean value is stored in one bit, eight "boolean" bits in a byte). Because of that (since it's not possible to return a reference to a single bit), \texttt{vector<bool>} uses a so called "proxy iterator" pattern. A "proxy iterator" is an iterator that, \textbf{when dereferenced, does not yield an ordinary bool \&, but instead returns (by value) a temporary object}, which is a proxy class convertible to bool. \textbf{The proxy class returned is prvalue}, so we can't use \texttt{auto \&} to refer prvalue. You can use const or rvalue reference to refer it.
+\begin{lstlisting}[numbers=none]
+vector<bool> v = {true, false, false, true};
+auto &x = v[1] //error
+auto &x = *v.begin() //error 
+    
+for (auto&& elem : container) //OK
+for (const auto& elem : container) //also OK
+\end{lstlisting}
+
+	\item In order to resolve vector<bool> problem, you can use \texttt{std::deque<bool>} it has normal container behavior. C++11 also introduces the \texttt{std::bitset} for fixed number bool bit. boost library also provides \texttt{dynamic\_bitset}.
+
+	\item Basic member functions of \texttt{std::bitset}.
+\begin{lstlisting}
+std::bitset<8> a, b;
+std::cout << b.set() << '\n'; //set to 1 all
+std::cout << b.reset() << '\n';  //set to 0 all
+std::cout << b.set(0); //from 0, from least significant to most significant
+b.test(0);  b.flip(0);
+a &= b; //Note that &=, |=, and ^= are only defined for bitsets of the same size N.		
+\end{lstlisting}
+
+	\item C++20 add some bit manipulation functions, such as \texttt{std::rotl}, \texttt{std::rotl}, \texttt{std::bit\_ceil}, they are defined in <bit> header file. They only accept an unsigned integer type as input. 
+\begin{lstlisting}
+const std::uint8_t i = 0b00011101;
+std::cout << "i          = " << std::bitset<8>(i) << '\n';
+std::cout << "rotr(i,1)  = " << std::bitset<8>(std::rotr(i, 1)) << '\n';	
+\end{lstlisting}	
 	
-	
-	\item The range-based version is for: You want to do something with every element in the container, but \textbf{without mutating the container itself (insert or erase).} If you really want to change a container, for a sequential container, you can use range-based function to change elements. For any associate container, only visit each element. If you want to change a key, delete it first, then modify, in the end insert new key again. The detail can be seen in STL chapter. 
-	
-	
-	
-	\item C++98-style enums are now known as unscoped enums.
+		
+	\item C++98-style enums are now known as unscoped enums. C++11 introduces scoped enums. 
 		
 \begin{lstlisting}[frame=single, language=c++]
 enum Color { black, white, red };
@@ -23346,7 +23418,7 @@ if (c < 14.5) { // this will fail
 				\begin{description}
 					\item[Line 1:] black, white, red are all in same scope as Color, That is why when you define the duplicated variable name "white" again in line 2, compiler report error.
 					\item[Line 4-5:]black, white, red are scoped to Color. You have to use scope qualifier \texttt{Color::} here.
-					\item[Line 11-12:] Implicit conversion is not legale any more, unless you explicit convert it.
+					\item[Line 11-12:] Implicit conversion is not legal any more, unless you explicit convert it.
 				\end{description}
 				
 		\item Both scoped and unscoped enums support specification of the underlying type.  The default underlying type for scoped enums is \texttt{int}. Unscoped enums have no default underlying type.
@@ -23420,14 +23492,14 @@ template<typename T> //C++ 14, new style, use using alias.
 using sometype = std::vector<T>;
 
 template<typename T>
-void someFunction(sometype<T> &myArg );
+void someFunction(sometype<T> &myArg ); don't need typename here.
 
 std::vector<int> a;
-someFunction(a); //OK, can deduce int
+someFunction(a); //OK, can deduce int directly.
 \end{lstlisting}
 
 
-	\item Based on alias advantage, C++14 offers alias templates for all the C++11 type traits transformations.
+	\item Based on alias template advantage, C++14 offers alias templates for all the C++11 type traits transformations.
 \begin{lstlisting}[numbers=none]
 template <class T>
 using remove_const_t = typename remove_const<T>::type;
@@ -23475,6 +23547,11 @@ constexpr bool b2{ noexcept(foo()) }; // false; foo() throws an exception
 constexpr bool b3{ noexcept(boo()) }; // false; boo() is implicitly noexcept(false)
 constexpr bool b4{ noexcept(goo()) }; // true; goo() is explicitly noexcept(true)
 constexpr bool b5{ noexcept(S{}) };   // true; a struct's default constructor is noexcept by default
+\end{lstlisting}
+
+	\item A good example is vector::size(). You can see three specifier there: constexpr, const and noexcept. These three specifier should be used more if you can make sure them to satisfy you semantic requirements. Another reason of usage of specifier is STL interface will not change frequently, so use these three specifier will not break interface of function in the future in client code side.  
+\begin{lstlisting}
+constexpr size_type size() const noexcept;
 \end{lstlisting}
 
 \end{itemize}
@@ -24982,12 +25059,7 @@ Scientific:     1.500000E+00 1.500000e+00
 Hexadecimal:    0x1.8p+0 0X1.4CCCCCCCCCCCDP+0
 \end{lstlisting}
 
-	\item C++20 add some bit manipulation functions, such as \texttt{std::rotl}, \texttt{std::rotl}, \texttt{std::bit\_ceil}, they are defined in <bit> header file. They only accept an unsigned integer type as input. 
-\begin{lstlisting}
- const std::uint8_t i = 0b00011101;
-std::cout << "i          = " << std::bitset<8>(i) << '\n';
-std::cout << "rotr(i,1)  = " << std::bitset<8>(std::rotr(i, 1)) << '\n';
-\end{lstlisting}	
+	
 
 \end{itemize}
 
