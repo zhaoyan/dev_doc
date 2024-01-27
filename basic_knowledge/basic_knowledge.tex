@@ -2730,10 +2730,9 @@ vimtex and emmet & plugin or <C-j> to insert snippet\\
 \chapter{git}
 
 \subsection{Basic introduction}
+\subsubsection{main usages}
 \begin{itemize}
 	\item \emph{A basic rule:  For single person, always pull (fetch and merge) before you work,  commit and push after you work.  For multi person, fetch and merge even before each commit.  Maybe other people have committed a new version on the remote repository. }
-	
-	\item Run \linuxcommand{git gc} every month to run it to optimize.
 	
 	\item In Linux, you can \linuxcommand{sudo apt-get install git-all} and meld(merge tools), In windows, you can download msysGit and P4Merge. You need edit your .gitconfig file, showed in the next section. you can use meld or P4Merge to visualize conflicts in source code. In Mac, you can download git from git home website. or install Xcode, when you install Xcode, It will install git in /usr/bin. but it will not install gitk GUI tool, so you can download git from home website and install another git on /usr/local/bin directory and use gitk in this directory. 
 	
@@ -2752,15 +2751,100 @@ vimtex and emmet & plugin or <C-j> to insert snippet\\
 	\item When a command can be followed by <paths>, then <paths> can be:
 	\begin{enumerate}
 		\item a file 
-		\item *.ext  Only current level directory, not recursive child directory.
+		\item *.ext  Only current level directory, not recursive child directory. because * has been interpreted by shell
+
+\begin{lstlisting}[mathescape=false]]
+	git add Documentation/\*.txt  //this will add certain pattern recursive.
+
+git ls-files -co --exclude-standard | grep '\.java$' | xargs git add   //another way to add pattern recrusively
+
+\end{lstlisting}
+
+			
 		\item . (all file) All files recursively under child directory.
 		\item /path\_name(path\_name and recursive) 
 		\item /path\_name/*(no recursive). 
 	\end{enumerate}
-	\item When you read manual, you need to know, the same command has different usage when followed by different objects. For example, when checkout followed by a branch name, followed by a commit or followed by a <paths>, detail can be seen in git book p103.  reset followed by <paths> or followed by a commit is also different, detail can be seen git book p96. The main points is \textbf{checkout commit with path will change HEAD ref, and reset without path will change branch ref(such as master).}
+	
+	\item When you read manual, you need to know, the same command has different usage when followed by different objects. 
+\begin{enumerate}
+	\item If there is path? if yes, it will not change HEAD, just overwrite index or workspace
+	\item if there is no path?  to see if there is branch,  if it's not branch, but a commit,  it will cause detached head and it's not good practice. 
+\end{enumerate}
+\begin{lstlisting}
+git checkout [commit] -- path  
+//overwrite workspace, no commit means from index
+//with commit, it also overwrite index
+
+git checkout branch
+git checkout -b branch.
+\end{lstlisting}
+
+		\includegraphics[scale=0.6]{pics/check.png}
+
+	\item reset command 
+\begin{enumerate}
+	\item reset follow path, it will not change reference(HEAD and branch),  just overwrite index.  With new git restore command, this usage become obsolete. 
+	
+\begin{lstlisting}
+reset HEAD -- a.cpp
+//just oppsite operation git add a.cpp
+\end{lstlisting}
+	\item if no path.  it will follow a commit, pay more attention to --soft, --mixed and --hard. 
+\end{enumerate}
+
+	\item both reset and commit has key point. \textbf{See if they follow path?} , if follow path, the main purpurse is overwrite. 
+	Without path,  \textbf{ checkout commit will change HEAD ref, and reset without path will change branch ref(such as master). }
 	
 	\item You need to understand difference between tree-ish and commit-ish. commit-ish can be used as tree-ish, but tree-ish can't be used as commit-ish. 
-	\item git cat-file and git show-ref are two useful commands, show-ref can give you big pictures of whole git project, and cat-file can help you to see deeply into each sha value. Detail information can be found in git document.                 
+	
+	\item git cat-file and git show-ref are two useful commands, show-ref can give you big pictures of whole git project, and cat-file can help you to see deeply into each sha value. Detail information can be found in git document.     
+\begin{lstlisting}
+git cat-file -t e695606
+commit
+git cat-file -t f58d
+tree
+
+//tree object
+git cat-file -p f58da9a
+100644 blob fd3c069c1de4f4bc9b15940f490aeb48852f3c42    welcome.txt
+\end{lstlisting}
+
+	\item diff main usages.
+\begin{lstlisting}
+git diff            //work<-->index
+git diff HEAD    //work<-->HEAD
+git diff --cached   //index<-->HEAD
+\end{lstlisting}
+
+	\item 
+\begin{lstlisting}
+git reflog   <refname>@{<n>}  //HEAD@{1} , this is used by time travel. 
+git rev-parse
+git rev-list
+\end{lstlisting}
+
+\item  
+
+\begin{lstlisting}
+
+git remote add bhanu git@github.com:aleti-bhanu-infovision/vizio_sdk.git
+
+git fetch bhanu
+
+git checkout DEV-13932_6.0
+\end{lstlisting}
+
+
+\begin{lstlisting}
+git checkout vo-1255  //checkout remote branch
+git checkout -b vo-1255-yan --track origin/vo-1255  //change branch name. 
+\end{lstlisting}
+	
+	\includegraphics[scale=0.6]{pics/revision.png}
+	
+	\includegraphics[scale=0.6]{pics/git-transport} \\
+	
 \end{itemize}
 
 \subsubsection{git configure}
@@ -2818,7 +2902,7 @@ vimtex and emmet & plugin or <C-j> to insert snippet\\
 		ui = auto
 	\end{verbatim}
 	
-	\includegraphics[scale=0.6]{pics/git-transport} \\
+
 	
 \end{itemize}
 
@@ -3585,6 +3669,23 @@ vimtex and emmet & plugin or <C-j> to insert snippet\\
 \end{itemize}
 
 \subsection{Daily usage}
+\begin{itemize}
+		\item Run \linuxcommand{git gc} every month to run it to optimize.
+		
+		\item use below command to know which branch you are in.
+\begin{lstlisting}
+cat .git/HEAD
+// show something like this ref: refs/heads/TVPF-34751-6.0-34
+
+git rev-parse HEAD master  //check each reference sha value.  
+e695606fc5e31b2ff9038a48a3d363f4c21a3d86
+4902dc375672fbf52a226e0354100b75d4fe31e3
+\end{lstlisting}
+
+	\item 
+
+\end{itemize}
+
 \subsubsection{Clone a project from github}
 \begin{enumerate}
 	\item  \linuxcommand{git clone git@github.com:zhaoyan/hello-worl.git}  you can copy the address from github website. I think that it will produce origin alias automatically.
