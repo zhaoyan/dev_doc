@@ -24515,14 +24515,14 @@ export { //use export block
 \subsection{Coroutine}
 \subsubsection{Basic implementation of coroutine}
 \begin{itemize}
-	\item In C++, coroutines are a language feature introduced in C++20 that allows a function to be executed asynchronously and cooperatively. Coroutines provide a way to write code that can be suspended and resumed later, allowing for non-blocking I/O operations and efficient event-driven programming. A coroutine is a special type of function that can be paused at any point during its execution and resumed later. The main difference between a coroutine and a regular function is that a coroutine can be paused and resumed without losing its state. This allows a coroutine to perform I/O operations without blocking the thread or process, which makes them particularly useful for writing high-performance network servers and other event-driven applications.
+	\item In C++, coroutines are a language feature introduced in C++20 that allows a function to be executed asynchronously and cooperatively. Coroutines enable writing code that can be suspended and resumed later, facilitating non-blocking I/O operations and efficient event-driven programming. A coroutine is a special type of function that can be paused at any point during its execution and resumed later. The main difference between a coroutine and a regular function is that a coroutine can be paused and resumed without losing its state. This capability allows a coroutine to perform I/O operations without blocking the thread or process, making them particularly useful for writing high-performance network servers and other event-driven applications.
 	
-	\item Four important concepts in the coroutine: invoke, suspend, resume, finalize.
+	\item Four important concepts in the coroutine: \textbf{invoke, suspend, resume, finalize}.
 	
 	\begin{center}
 		\includegraphics[width=.5\linewidth]{pics/cor2.png}
 	\end{center}
-
+	
 	\begin{center}
 		\begin{tabular}{|c|c|}
 			\hline
@@ -24540,36 +24540,38 @@ export { //use export block
 	\end{center}
 	
 	
-	
-	\item In implementation level, The compiler will generate a coroutine framework of code around your coroutine. This code relies on \textbf{user-defined return and promise types}. Until we get some standard types in C++23, you will need to write these yourself. The coroutine frame includes three important component, they are handle, promise and awaitable. 
+	\item In implementation level, The compiler will generate a coroutine framework of code around your coroutine. This code relies on \textbf{user-defined return and promise types}. Until we get some standard types in C++23, you will need to write these yourself. The coroutine frame includes three important component, they are \textbf{handle, promise and awaitable}. 
 	
 	\begin{center}
 		\includegraphics[width=.63\linewidth]{pics/cor1.png}
 	\end{center}
-	
-	
+
+\subsubsection{coroutin handle}
+
+	\item coroutin is a function, which current state of it is bundled up somewhere on the heap and creates a callable object whose invocation continues execution of the current function. The callable object is of type \texttt{std::coroutine\_handle<>}. A coroutine handle behaves a lot like a C pointer. It can be easily copied, but it doesn’t have a destructor to free the memory associated with coroutine state. To avoid leaking memory, you must generally destroy coroutine state by calling the \texttt{coroutine\_handle::destroy} method (though in certain cases a coroutine can destroy itself on completion). Also like a C pointer, once a coroutine handle has been destroyed, coroutine handles referencing that same coroutine will point to garbage and exhibit undefined behavior when invoked. On the plus side, a coroutine handle is valid for the entire execution of a coroutine, even as control flows in and out of the coroutine many times.
+
 	\item We need to make the \texttt{coroutine\_handle} available to caller. To do that, we pass it through the \texttt{get\_return\_object()} call where we create it from the promise instance. Then the caller can either call resume() or destroy() on the suspended coroutine. Note that calling these methods on a coroutine that isn't suspended is undefined behaviour. It also makes sense to make the caller-level type move-only to avoid confusion over the handle ownership.
-	
+
 \begin{lstlisting}
-struct Task { //This is user-defined return type
+struct ReturnType { //This is user-defined return type
 	struct promise_type { 	// user-defined coroutine level promise type
 		using Handle = std::coroutine_handle<promise_type>;
-		Task get_return_object() {
-			return Task{Handle::from_promise(*this)};
+		ReturnType get_return_object() {
+			return ReturnType{Handle::from_promise(*this)};
 		}
 		std::suspend_always initial_suspend() { return {}; }
 		std::suspend_never final_suspend() noexcept { return {}; }
 		void return_void() { }
 		void unhandled_exception() { }
 	};
-	explicit Task(promise_type::Handle coro) : coro_(coro) {}
+	explicit ReturnType(promise_type::Handle coro) : coro_(coro) {}
 	void destroy() { coro_.destroy(); }
 	void resume() { coro_.resume(); }
 	// Making Task move-only:
-	Task(const ReturnType&) = delete;
-	Task& operator=(const ReturnType&) = delete;
-	Task(ReturnType&& t) noexcept : coro_(t.coro_) { t.coro_ = {} }
-	Task& operator=(ReturnType&& t) noexcept {
+	ReturnType(const ReturnType&) = delete;
+	ReturnType& operator=(const ReturnType&) = delete;
+	ReturnType(ReturnType&& t) noexcept : coro_(t.coro_) { t.coro_ = {}; }
+	ReturnType& operator=(ReturnType&& t) noexcept {
 		if (this == &t) return *this;
 		if (coro_) coro_.destroy();
 		coro_ = t.coro_;
@@ -24579,18 +24581,19 @@ struct Task { //This is user-defined return type
 private:
 	promise_type::Handle coro_;
 };
-Task myCoroutine() {
+
+ReturnType myCoroutine() {
 	co_return; // make it a coroutine
 }
 int main() {
 	auto c = myCoroutine();
 	c.resume();
-}
+}	
 \end{lstlisting}
 
-	\item Task, \texttt{promise\_type}, and coroutine\_handle are the main tools of the coroutine mechanism. \texttt{promise\_type} is a type within ReturnType.
-	
-	\item The programmer's design for a coroutine (such as what type of value it returns, whether it suspends or continues execution after initialization, how it handles exceptions, etc.) is passed to the compiler through \texttt{promise\_type}, which is responsible for instantiating the promise object. The compiler fills the coroutine handle (coroutine\_handle) into the future object, exposing control of the coroutine to the caller.
+\item Task, \texttt{promise\_type}, and coroutine\_handle are the main tools of the coroutine mechanism. \texttt{promise\_type} is a type within ReturnType.
+
+\item The programmer's design for a coroutine (such as what type of value it returns, whether it suspends or continues execution after initialization, how it handles exceptions, etc.) is passed to the compiler through \texttt{promise\_type}, which is responsible for instantiating the promise object. The compiler fills the coroutine handle (coroutine\_handle) into the future object, exposing control of the coroutine to the caller.
 
 \begin{center}
 	\begin{tabular}{| p{0.25\textwidth} |p{0.5\textwidth}|p{0.1\textwidth}|}
@@ -24610,33 +24613,37 @@ int main() {
 	
 \end{center}
 
-	
-	
+
+
 	\item \texttt{coroutine\_handle} also exposes multiple interfaces for controlling coroutine behavior and accessing its state. Unlike \texttt{promise\_type}, where we need to provide implementations for the interfaces since they are called by the compiler, \texttt{coroutine\_handle} interfaces do not require us to provide implementations as we can directly call them.
+
+\begin{tabular}{|c|c|}
+	\hline
+	\textbf{coroutine\_handle Interface} & \textbf{Function} \\ \hline
+	from\_promise() & Create a coroutine\_handle from a promise object \\ \hline
+	done() & Check if the coroutine has completed \\ \hline
+	operator bool & Check if the current handle is a coroutine \\ \hline
+	operator() & Resume the execution of a coroutine \\ \hline
+	resume() & Resume the execution of a coroutine \\ \hline
+	destroy() & Destroy a coroutine \\ \hline
+	promise() & Get the promise object associated with the coroutine \\ \hline
+	address() & Return a pointer to the coroutine\_handle \\ \hline
+	from\_address() & Import a coroutine\_handle from a pointer \\ \hline
+\end{tabular}
+
+\item The execution process of a coroutine follows a basic pattern, but there are some customizable points (such as \texttt{initial\_suspend}) where you can input your own behaviors to control the behavior of the coroutine. The basic pattern is illustrated by below figure.
+
+\begin{center}
+	\includegraphics[width=.66\linewidth]{pics/cor3.png}
+\end{center}
+
+
+\subsubsection{awaitable}
+\begin{itemize}
+	\item The co\_await operator is a new unary operator that can be applied to a value. For example: co\_await someValue. The co\_await operator can only be used within the context of a coroutine. This is somewhat of a tautology though, since any function body containing use of the co\_await operator, by definition, will be compiled as a coroutine. A type that supports the co\_await operator is called an awaitable type.
 	
-	\begin{tabular}{|c|c|}
-		\hline
-		\textbf{coroutine\_handle Interface} & \textbf{Function} \\ \hline
-		from\_promise() & Create a coroutine\_handle from a promise object \\ \hline
-		done() & Check if the coroutine has completed \\ \hline
-		operator bool & Check if the current handle is a coroutine \\ \hline
-		operator() & Resume the execution of a coroutine \\ \hline
-		resume() & Resume the execution of a coroutine \\ \hline
-		destroy() & Destroy a coroutine \\ \hline
-		promise() & Get the promise object associated with the coroutine \\ \hline
-		address() & Return a pointer to the coroutine\_handle \\ \hline
-		from\_address() & Import a coroutine\_handle from a pointer \\ \hline
-	\end{tabular}
-
-	\item The execution process of a coroutine follows a basic pattern, but there are some customizable points (such as \texttt{initial\_suspend}) where you can input your own behaviors to control the behavior of the coroutine. The basic pattern is illustrated by below figure.
-	
-	\begin{center}
-		\includegraphics[width=.66\linewidth]{pics/cor3.png}
-	\end{center}
-
-
-
 	\item Similarly to the promise type, the compiler will generate code around the awaitable type. If the promise type provides a await\_transform(expr); method, the co\_await expr; call will be transformed into co\_await promise.await\_transform(expr);. Therefore, the promise type can control which awaitable types are allowed to appear inside the coroutine body and potentially return different awaitables based on the expression (note that expr here doesn't have to be awaitable).
+
 	\begin{enumerate}
 		\item 	Returning void or true indicates that the coroutine will yield back to the function that originally called or resumed it after suspension. 
 		
@@ -24646,11 +24653,24 @@ int main() {
 		
 		\item 	Throwing an exception will resume the execution of the current coroutine and throw the exception within the coroutine."
 	\end{enumerate}
-
 		
+	\item It provide three functions which you can customize your personal logic there. The most important function is \texttt{awaitable.await\_suspend}. You will note that there are two other methods on Awaiter, because these are required by the language. await\_ready is an optimization. If it returns true, then co\_await does not suspend the function. Of course, you could achieve the same effect in await\_suspend, by resuming (or not suspending) the current coroutine, but before calling await\_suspend, the compiler must bundle all state into the heap object referenced by the coroutine handle, which is potentially expensive. Finally, the method await\_resume here returns void, but if instead it returned a value, this value would be the value of the co\_await expression.
+	
+	\item c++ provide two default simple awaitable type. \texttt{std::suspend\_always} and \texttt{std::suspend\_never}. As their names imply, suspend\_always::await\_ready always returns false, while suspend\_never::await\_ready always returns true. The other methods on these classes are empty and do nothing. 
+	
+	
 	\begin{center}
 		\includegraphics[width=.76\linewidth]{pics/cor4.png}
 	\end{center}
+	
+	
+\end{itemize}
+
+
+	
+	
+\begin{itemize}
+	
 
 	\item Based on the previous introduction, below is a concise version of the code that the compiler generates when it expands your coroutine code.
 
@@ -24741,29 +24761,23 @@ int main() {
 
 \begin{lstlisting}
 struct Generator {
-	// return type must includes promise_type.
-	struct promise_type {
+	struct promise_type {  // return type must includes promise_type.
 		int value;
-		
-		// for co_await 
-		std::suspend_always await_transform(int value) {
+	
+		std::suspend_always await_transform(int value) { // for co_await 
 			this->value = value;
 			return {};
 		}
 		//boiler plate code, will call Cenerator constructor in 
-		//
 		 Generator get_return_object() {
 			return Generator{ std::coroutine_handle<promise_type>::from_promise(*this) };
 		}
-		//suspend in the beginning
-		std::suspend_always initial_suspend() { return {}; };
-		//don't suspend in the end.
-		std::suspend_never final_suspend() noexcept { return {}; }
-		//suppose has not exception, so keep it empty here.
-		void unhandled_exception() { }
 		
-		//no return value
-		void return_void() { }
+		std::suspend_always initial_suspend() { return {}; }; //suspend in the beginning
+		std::suspend_never final_suspend() noexcept {return {};} //no suspend in the end.
+		void unhandled_exception() { } //suppose has not exception, keep it empty here.
+		
+		void return_void() { } //no return value
 	};
 	std::coroutine_handle<promise_type> handle;
 	explicit Generator(std::coroutine_handle<promise_type> handle) noexcept
@@ -24780,7 +24794,7 @@ struct Generator {
 };	
 \end{lstlisting}
 
-	
+
 	
 	\item In a true asynchronous application, it is not necessary to synchronize between threads after every task is executed like this. Instead, new work should be appended onto existing tasks, and the return value of the preceding task should be passed as a parameter to the next task after it finishes.
 	
@@ -24836,13 +24850,82 @@ void power_8(const int value){
 \item Coroutine implementation, much better now.
 
 \begin{lstlisting}
+int slow_sqr(const int value){
+	std::cout<<"thread ID in slow_sqr"<<std::this_thread::get_id()<<std::endl;
+	std::this_thread::sleep_for(2s); 
+	std::cout<<" Yan "<<value*value<<std::endl;
+	return value * value;
+}
+
+template <std::invocable<int> F>
+void async_sqr_cbk(const int value, F&& continuation){
+	std::thread thr([v = value, c = std::forward<F>(continuation)]() mutable{
+		int i = slow_sqr(v);
+		c(i);
+	});
+	thr.detach();
+}
+
+class sqr_awaitable final{
+private:
+	int value_ = 0;
+	int result_ = 0;	
+public:	
+	explicit sqr_awaitable(const int value): value_(value) {}
+	bool await_ready() const noexcept { return false; }
+	
+	void await_suspend(const std::coroutine_handle<> awaiting){
+		async_sqr_cbk(value_, [this, awaiting](const int result)
+		{
+			result_ = result; 
+			awaiting(); // resume coroutine，awaiting.resume() is also ok
+		});
+	}
+	
+	// co_await return this value when resume.
+	int await_resume() const noexcept { return result_; }
+};	
+
+
 task<void> power_8_async(const int value){
-	const int squared = co_await async_sqr_coro(value);
-	const int fourth = co_await async_sqr_coro(squared);
-	const int result = co_await async_sqr_coro(fourth);
+	std::cout<<"thread ID in power 1"<<std::this_thread::get_id()<<std::endl;
+	const int squared = co_await sqr_awaitable{value};
+	std::cout<<"thread ID in power 2"<<std::this_thread::get_id()<<std::endl;
+	const int fourth = co_await sqr_awaitable{squared};
+	std::cout<<"thread ID in power 3"<<std::this_thread::get_id()<<std::endl;
+	const int result = co_await sqr_awaitable{fourth};
 	std::cout << "result = " << result;
 }		
 \end{lstlisting}
+
+\begin{lstlisting}
+std::cout<<"thread ID in main"<<std::this_thread::get_id()<<std::endl;
+power_8_async(3);
+for(int i = 0;i<8;i++){
+	std::this_thread::sleep_for(1s);
+	cout<<"in main thread"<<endl;
+}
+thread ID in main140461981677376
+thread ID in power1 140461981677376
+thread ID in slow_sqr140461979203136
+in main thread
+Yan 9
+thread ID in power2 140461979203136
+in main thread
+thread ID in slow_sqr140461970810432
+in main thread
+Yan 81
+thread ID in powe3 140461970810432
+in main thread
+thread ID in slow_sqr140461979203136
+in main thread
+Yan 6561
+result = 6561
+in main thread
+in main thread
+in main thread
+\end{lstlisting}
+	\item above code is good example about async, The code can be found https://github.com/zhaoyan/coroutine\_examples. It can be run in the compiler exploare. It avoid call back hell. But you can see the thread ID is messy. The same coroutine can be run in the different threads. 
 
 	\item there is github project, which includes a good coroutine exmple, you can found link here: https://github.com/zhaoyan/study
 	
@@ -24855,7 +24938,7 @@ task<void> power_8_async(const int value){
 \subsubsection{time}
 
 \begin{itemize}
-	\item The core of the chrono library consists of the following types or concepts: 1) clock, 2) time point, 3) time duration, 4) time zone, and 5) calendar. The time duration is defined based on \texttt{std::ratio}. These abstract mechanisms are needed to specify and deal with points in time and durations of time. Although this design may not seem very intuitive, it provides flexibility and avoids the need to redefine many classes in the future if we require higher resolution.
+	\item The core of the chrono library consists of the following types or concepts: 1) clock, 2) time point, 3) time duration, 4) time zone, and 5) calendar. Time duration is defined based on \texttt{std::ratio}. These abstract mechanisms are essential for specifying and handling points in time and durations. Although this design may not seem very intuitive at first, it offers flexibility and prevents the need to redefine many classes in the future if higher resolution is required.
 	
 	\begin{figure}[ht]
 		\centering
@@ -24864,13 +24947,13 @@ task<void> power_8_async(const int value){
 		\label{fig:chrono}
 	\end{figure}
 	
-	\item The entire chrono library begins with clocks. There are three types of clocks, each of which includes a default \texttt{std::duration}. Here, \texttt{std::duration} is a type that represents the precision of the clock. 
+	\item The entire chrono library begins with clocks. There are three types of clocks, each of which includes a default \texttt{std::duration}. This \texttt{std::duration} type represents the precision of the clock. 
 	
 	\begin{enumerate}
 		
-		\item For clocks, there are three different clocks in std library:
+		\item There are three different kind of clocks in std library:
 		\begin{enumerate}
-			\item \texttt{std::chrono::sytem\_clock:} Is the system-wide real-time clock (wall-clock). The clock has the auxiliary functions \texttt{to\_time\_t} and \texttt{from\_time\_t} to convert time points into dates in C language. 
+			\item \texttt{std::chrono::sytem\_clock} is the system-wide real-time clock (wall-clock). The clock has the auxiliary functions \texttt{to\_time\_t} and \texttt{from\_time\_t} to convert time points into dates in C language. 
 			\begin{figure}[ht]
 				\centering
 				\includegraphics[width=0.6\linewidth]{pics/tm}
@@ -24878,17 +24961,18 @@ task<void> power_8_async(const int value){
 				\label{fig:chrono1}
 			\end{figure}
 			
-			\item \texttt{std::chrono::steady\_clock}: This clock provides the guarantee that it cannot be adjusted. Therefore, \texttt{std::chrono::steady\_clock} is the preferred clock to use when waiting for a time duration or until a specific time point.
+			\item \texttt{std::chrono::steady\_clock} provides the guarantee that it cannot be adjusted. Therefore, \texttt{std::chrono::steady\_clock} is the preferred clock to use when waiting for a time duration or until a specific time point.
 			
-			\item \texttt{std::chrono::high\_resolution\_clock}: Has the highest accuracy but it can be a synonym for the clocks \texttt{std::chrono::system\_clock} or \\ \texttt{std::chrono::steady\_clock}.
+			\item \texttt{std::chrono::high\_resolution\_clock} has the highest accuracy but it can be a synonym for the clocks \texttt{std::chrono::system\_clock} or \texttt{std::chrono::steady\_clock}.
 			
-			\item The clock has period, it is a \texttt{std::ratio} and represents the accuracy. 
+			\item The clock has period, it is a \texttt{std::ratio} and represents the accuracy. \texttt{std::ratio} is a type, not a value.
 \begin{lstlisting}
 template <typename T>
 void printRatio(){ 
 	cout << "precision:" << T::num << "/" << T::den << "second";
 	typedef typename std::ratio_multiply<T,std::kilo>::type MillSec;
 	typedef typename std::ratio_multiply<T,std::mega>::type MicroSec;
+	//1 second equals 1*1000 millsecond. 
 	cout<<static_cast<double>(MillSec::num)/MillSec::den<<"milliseconds";
 	cout<<static_cast<double>(MicroSec::num)/MicroSec::den <<"microseconds";
 }
@@ -24914,9 +24998,10 @@ chrono::minutes is duration</*signed int at least 29 bits*/, std::ratio<60>>
 chrono::hours is duration</*signed int at least 23 bits*/, std::ratio<3600>>
 \end{lstlisting}		
 		
-		The duration is based on a \texttt{std::ratio}. A duration of time is defined as a specific number of ticks over a time unit. One example is a duration such as “3 minutes” (3 ticks of a “minute”). 
-			
-		\item Once we have clock, based on clock, we can define time\_point. A time point is defined as combination of a duration and a beginning of time (the so-called epoch). A typical example is a timepoint that represents “New Year’s Midnight 2000,” which is described as “1,262,300,400 seconds since January 1, 1970” (this day is the epoch of the system clock of UNIX and POSIX systems). In other words, timepoint is defined as a duration before or after an epoch, which is defined by a clock. The concept of a timepoint, however, is parametrized by a clock, which is the object that defines the epoch of a timepoint. Thus, different clocks have different epochs. In general, operations dealing with multiple timepoints, such as processing the duration/difference between two time-points, require using the same epoch/clock. A clock also provides a convenience function to yield the timepoint of now.
+		The duration is based on a \texttt{std::ratio}. A duration of time is defined as a specific number of ticks over a time unit. One example is a duration such as “3 minutes” (3 ticks of a “minute”). 		
+		
+		
+		\item Once we have a clock, we can define a time point based on it. A time point is a combination of a duration and a starting point in time (the so-called epoch). A typical example is a time point representing "New Year's Midnight 2000," described as "1,262,300,400 seconds since January 1, 1970" (the epoch of the UNIX and POSIX system clocks). In other words, a time point is defined as a duration before or after an epoch, which is determined by a clock. The concept of a time point is parameterized by a clock, which defines the epoch of the time point. Thus, different clocks have different epochs. In general, operations dealing with multiple time points, such as processing the duration or difference between two time points, require using the same epoch/clock. A clock also provides a convenient function to yield the current time point.
 \begin{lstlisting}
 const std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
 const auto end = std::chrono::steady_clock::now();  //end is time_point
@@ -24942,20 +25027,18 @@ std::cout << "time_point tp is: " << ctime(&tt);
 \end{lstlisting}		
 	
 	\item Duration's type is decided by the clock. That is why the first duration return nanosecond. 
-\begin{lstlisting}[numbers=none]
-std::cout << std::fixed << std::endl;
-std::cout << "Time since 1.1.1970:\n" << std::endl;	
+\begin{lstlisting}[numbers=none]	
 auto timeNow= std::chrono::system_clock::now(); //timeNow is time point.
 auto duration= timeNow.time_since_epoch();  //change from time point to time duration.
 std::cout << duration.count() << " nanoseconds " << std::endl;
 
-//typedef std::chrono::duration<long double,std::ratio<1,1000>> MyMilliSecondTick;
-//typedef std::chrono::duration<double, std::ratio<60*60>> MyHourTick;
-MyHourTick myHour(duration);
+typedef std::chrono::duration<long double,std::ratio<1,1000>> MyMilliSecondTick;
+typedef std::chrono::duration<double, std::ratio<60*60>> MyHourTick;
+MyHourTick myHour{duration}; //change nano seconds to hour
 std::cout << myHour.count() << " hours" << std::endl;		
 \end{lstlisting}		
 	
-	\item How long does your programme run? 1) select a clock, 2) get two time points, 3) change it to duration, 4) change clock duration to your own duration. 
+	\item How long does your programme run? 1) select a clock, 2) get two time points, 3) change it to duration, 4) change clock duration to your own duration. Pay attention to the usage of \texttt{chrono::duration\_cast}. 
 \begin{lstlisting}
 void func() {  
 	std::chrono::time_point<std::chrono::steady_clock> begin = steady_clock::now();
@@ -24976,7 +25059,8 @@ std::cout <<"- Zoned Time:" << zt <<'\n';
 	
 	
 
-	\item From time\_point, we can also deduct calendar time.
+	\item From time\_point, we can also deduct calendar time. Use system\_time here, and also floors accept one time\_point(mill seconds duration(precision) ), and return another time\_point(days duration(precision) ) with different duration.
+	At the same time, year\_month\_day accept \texttt{std::sys\_days} as input argument. 
 \begin{lstlisting}
 using sys_time = std::chrono::time_point<std::chrono::system_clock, Duration>;
 using sys_days = sys_time<std::chrono::days>;
@@ -24987,14 +25071,10 @@ const std::chrono::year_month_day ymd{std::chrono::floor<std::chrono::days>(now)
 std::cout << "Current Year: " << static_cast<int>(ymd.year())
 << ", Month: " << static_cast<unsigned>(ymd.month())
 << ", Day: " << static_cast<unsigned>(ymd.day()) << '\n';	
-
 \end{lstlisting}
 
-use system\_time here, and also floors accept one time\_point(mill seconds duration(precision) ), and return another time\_point(days duration(precision) ) with different duration.
-At the same time, year\_month\_day accept \texttt{std::sys\_days} as input argument. 
 
-
-	\item we can also from clock to get \texttt{std::time\_t}. then use C language time functions.  
+	\item we can also from clock to get \texttt{std::time\_t}, then use C language time functions.  
 \begin{lstlisting}
 const std::time_t t_c = std::chrono::system_clock::to_time_t(now - 24h);
 std::cout << "24 hours ago, the time was "
@@ -25009,9 +25089,38 @@ try_lock_for and try_lock_until
 wait_for and wait_until.	
 \end{lstlisting}		
 	
-	\item There is a simple rule to follow with the <chrono> library. The rule is actually not completely correct (thus it is a guideline). But it is close enough to correct to be a guideline that is nearly always followed: Don't use count(). and Don't use time\_since\_epoch(). The <chrono> library is designed around a type-safe system meant to protect you from units conversions mistakes. If you accidentally attempt an unsafe conversion, the error is caught at compile time (as opposed to it being a run time error). The member functions count() and time\_since\_epoch() are "escape hatches" out of this type-safe system ... to be used only in cases of emergency. 
+
 	
 	\item There is no date type in c++ standard, you can use \texttt{boost::date} type. Detail can be see in the "common used libs" in this book. Or you can use \texttt{std::system\_clock} and convert it to \texttt{time\_t} and \texttt{tm} in C language. 
+	
+	\item Summary: the main components in the chrono library illustrated by following diagram. 
+	
+	\begin{figure}[ht]
+		\centering
+		\includegraphics[width=0.7\linewidth]{pics/time.drawio.png}
+		\caption{}
+		\label{fig:chrono}
+	\end{figure}
+	
+	\item There is a simple rule to follow with the <chrono> library. The rule is actually not completely correct (thus it is a guideline). But it is close enough to correct to be a guideline that is nearly always followed: Don't use count(). and Don't use time\_since\_epoch(). The <chrono> library is designed around a type-safe system meant to protect you from units conversions mistakes. If you accidentally attempt an unsafe conversion, the error is caught at compile time (as opposed to it being a run time error). The member functions count() and time\_since\_epoch() are "escape hatches" out of this type-safe system ... to be used only in cases of emergency or IO. In another word, both duration and time\_point are type safe, you can't mix the wrong type together, such as add int to string.   
+\begin{lstlisting}
+uint64_t now = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+bool is_old = (120 * 1000 < (now - data_holder->getTimestamp()));
+//above is bad code, below is correct code
+
+struct DataHolder{
+	std::chrono::system_clock::time_point
+	getTimestamp(){
+		using namespace std::chrono;
+		return system_clock::time_point{milliseconds{1437520382241}};
+	}
+};
+
+auto data_holder = std::unique_ptr<DataHolder>(new DataHolder);
+auto now = system_clock::now();
+bool is_old = minutes{2} < now - data_holder->getTimestamp();
+//after C++14, minutes{2} can be written as 2min
+\end{lstlisting}
 	
 	\item Three good article are "The C++ standard Library: Utilities" and "Difference between steady\_clock vs system\_clock?" and "https://paul.pub/cpp-date-time/"
 	
