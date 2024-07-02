@@ -23342,7 +23342,7 @@ auto k = 12_yan; //will call cooked first.
 	\item A range-based for loop was introduced in C++11. To avoid copying each element, use \texttt{auto\&}. The following patterns are highly recommended when using STL containers:
 	
 	\begin{enumerate}
-		\item  When observing the elements in generic code, since we cannot assume that the generic type \texttt{T} is cheap to copy, it is safe to always use \texttt{(const auto\& elem : container)} in for loops. This will avoid potentially expensive and unnecessary copies, work well for cheap-to-copy types like \texttt{int}, and also for containers using proxy-iterators, like \texttt{std::vector<bool>}.
+		\item When iterating through elements in generic code, since we cannot assume that the generic type \texttt{T} is cheap to copy, it is safe to always use \texttt{(const auto\& elem : container)} in for loops. This approach avoids potentially expensive and unnecessary copies, works well for cheap-to-copy types like \texttt{int}, and also handles containers using proxy-iterators, such as \texttt{std::vector<bool>}.
 \begin{lstlisting}[numbers=none]
 for (const auto& elem : container)    
 	// capture by const reference
@@ -23361,7 +23361,7 @@ for (auto& elem : container)
 	// capture by (non-const) reference
 \end{lstlisting}
 		
-		\item Although you don't need to use the star symbol explicitly, it can provide more information about the variable, especially when dealing with pointers inside the container. Therefore, I recommend using this style for the pointer type element.
+		\item Although you don't need to use the star symbol explicitly, it can provide more clarity about the variable, especially when dealing with pointers inside a container. Therefore, I recommend using this style for pointer-type elements.
 \begin{lstlisting}[numbers=none]
 for(auto *ptr: Container){ ptr->change();} 
 for(const auto *ptr: Container){ ptr->read();} 
@@ -23370,8 +23370,7 @@ for(const auto *ptr: Container){ ptr->read();}
 		
 	\end{enumerate}
 	
-	
-	\item For \texttt{vector<bool>}, below code doesn't work, because \texttt{std::vector} template is specialized for bool, with an implementation that packs the bools to optimize space (each boolean value is stored in one bit, eight "boolean" bits in a byte). Because of that (since it's not possible to return a reference to a single bit), \texttt{vector<bool>} uses a so called "proxy iterator" pattern. A "proxy iterator" is an iterator that, \textbf{when dereferenced, does not yield an ordinary bool \&, but instead returns (by value) a temporary object}, which is a proxy class convertible to bool. \textbf{The proxy class returned is prvalue}, so we can't use \texttt{auto \&} to refer prvalue. You can use const or rvalue reference to refer it.
+	\item For \texttt{vector<bool>}, the below code doesn't work because the \texttt{std::vector} template is specialized for \texttt{bool}, optimizing space by storing each boolean value in one bit within a byte. Due to this optimization (where returning a reference to a single bit isn't possible), \texttt{vector<bool>} uses a 'proxy iterator' pattern. A 'proxy iterator' is an iterator that, when dereferenced, doesn't yield an ordinary \texttt{bool \&}, but instead returns a temporary object—a proxy class convertible to \texttt{bool}. The proxy class returned is a prvalue, so we can't use \texttt{auto \&} to refer to it. Instead, you can use \texttt{const \&} or an rvalue reference to refer to it.
 \begin{lstlisting}[numbers=none]
 vector<bool> v = {true, false, false, true};
 auto &x = v[1] //error
@@ -23381,9 +23380,7 @@ for (auto&& elem : container) //OK
 for (const auto& elem : container) //also OK
 \end{lstlisting}
 
-	\item In order to resolve vector<bool> problem, you can use \texttt{std::deque<bool>} it has normal container behavior. C++11 also introduces the \texttt{std::bitset} for fixed number bool bit. boost library also provides \texttt{dynamic\_bitset}.
-
-	\item Basic member functions of \texttt{std::bitset}.
+	\item In order to resolve \texttt{vector<bool>} problem, you can use \texttt{std::deque<bool>} it has normal container behavior. C++11 also introduces the \texttt{std::bitset} for fixed number bool bit. Boost library also provides \texttt{dynamic\_bitset}.
 \begin{lstlisting}
 std::bitset<8> a, b;
 std::cout << b.set() << '\n'; //set to 1 all
@@ -23393,7 +23390,7 @@ b.test(0);  b.flip(0);
 a &= b; //Note that &=, |=, and ^= are only defined for bitsets of the same size N.		
 \end{lstlisting}
 
-	\item C++20 add some bit manipulation functions, such as \texttt{std::rotl}, \texttt{std::rotl}, \texttt{std::bit\_ceil}, they are defined in <bit> header file. They only accept an unsigned integer type as input. 
+	\item C++20 introduces several new bit manipulation functions, such as \texttt{std::rotl}, \texttt{std::rotr}, and \texttt{std::bit\_ceil}, which are defined in the <bit> header file. These functions specifically accept unsigned integer types as input.
 \begin{lstlisting}
 const std::uint8_t i = 0b00011101;
 std::cout << "i          = " << std::bitset<8>(i) << '\n';
@@ -23423,9 +23420,7 @@ if (c < 14.5) { // this will fail
 					\item[Line 11-12:] Implicit conversion is not legal any more, unless you explicit convert it.
 				\end{description}
 				
-		\item Both scoped and unscoped enums support specification of the underlying type.  The default underlying type for scoped enums is \texttt{int}. Unscoped enums have no default underlying type.
-				
-		\item Scoped enums may always be forward-declared. Unscoped enums may be forward-declared only if their declaration specifies an underlying type. 
+		\item Both scoped and unscoped enums support specification of the underlying type. The default underlying type for scoped enums is \texttt{int}, while unscoped enums have no default underlying type. Scoped enums can always be forward-declared. However, unscoped enums can only be forward-declared if their declaration specifies an underlying type.
 				
 \end{itemize}
 
@@ -23433,7 +23428,7 @@ if (c < 14.5) { // this will fail
 \subsection{alias declaration}
 
 \begin{itemize}
-    \item Alias declaration is better than typedef when you declare a function pointer; it's more clear and direct.
+    \item Alias declaration is often preferred over typedef when declaring a function pointer because it's more clear and direct.
 \begin{lstlisting}[frame=single, language=c++]
 typedef void (*FP)(int, const std::string&); //FP is function pointer type
 typedef void (FP)(int, const std::string&); //FP is function type
@@ -23441,7 +23436,7 @@ typedef void (FP)(int, const std::string&); //FP is function type
 using FP = void (*)(int, const std::string&); //looks clean and simple.
 \end{lstlisting}
 
-    \item C++98 doesn't support typedef template directly, only can be put inside a struct. 
+    \item In C++98, typedef templates are not supported directly; they can only be used inside a struct. 
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T> //C++ 98 style
 struct MyAllocList { 
@@ -23455,11 +23450,11 @@ class Foo {
 };
 \end{lstlisting}
 \begin{description}
-	\item[Line 10:] \texttt{MyAllocList<T>::type} is thus a dependent type, and one of C++'s many endearing rules is that the names of dependent types must be preceded by typename.
+	\item[Line 9:] \texttt{MyAllocList<T>::type} is thus a dependent type, and one of C++'s many endearing rules is that the names of dependent types must be preceded by typename.
 \end{description}
 
 
-	\item In C++14, A better way is to use alias template.
+	\item In C++ 14, A better way is to use alias template.
 
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>  //C++ 14 style, use template alias,
@@ -23473,28 +23468,13 @@ class Widget {
 \end{lstlisting}
 
 
-	\item Another advantage of alias name is below. The first source code uses typedef inside a struct; The second source code uses "using alias". You can see the code become clear and has not compiling error.
-
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T> //Old C++ style
-struct type{ 
-	typedef std::vector<T> sometype; 
-}
-
-template<typename TT>
-void someFunction(typename type<TT>::sometype& myArg); //has typename here
-
-std::vector<int> a;
-someFunction(a); // error, cannot deduce int
-someFunction<int>(a); //have to explicit do it 
-\end{lstlisting}
-
+	\item Another advantage of alias template is illustrated below. You can see the code become clear and has not compiling error.
 \begin{lstlisting}[numbers=none]
 template<typename T> //C++ 14, new style, use using alias.
 using sometype = std::vector<T>;
 
 template<typename T>
-void someFunction(sometype<T> &myArg ); don't need typename here.
+void someFunction(sometype<T> &myArg ); //don't need typename here.
 
 std::vector<int> a;
 someFunction(a); //OK, can deduce int directly.
@@ -23511,6 +23491,8 @@ using remove_reference_t=typename remove_reference<T>::type;
 
 template <class T>
 using add_lvalue_reference_t=typename add_lvalue_reference<T>::type;
+
+int *p = (std::remove_const_t<const int>*)0;
 \end{lstlisting}
 
 \end{itemize}
@@ -23519,7 +23501,7 @@ using add_lvalue_reference_t=typename add_lvalue_reference<T>::type;
 \subsection{noexcept}
 
 \begin{itemize}
-    \item Usually, copy constructor, move constructor, copy assignment operator, move assignment operator and destructors should not throw exception in principle. However, if any of the listed functions call (explicitly or implicitly) another function which is potentially throwing, then the listed function will be treated as potentially throwing as well. For example, if a class has a data member with a potentially throwing constructor, then the class’s constructors will be treated as potentially throwing as well. 
+    \item Typically, copy constructors, move constructors, copy assignment operators, move assignment operators, and destructors should not throw exceptions in principle. However, if any of these functions call (explicitly or implicitly) another function that is potentially throwing, then the calling function will also be treated as potentially throwing. For instance, if a class has a data member with a potentially throwing constructor, then the class's constructors will also be treated as potentially throwing.
     
     \item The following are potentially throwing:
         \begin{enumerate}
@@ -23537,7 +23519,7 @@ using add_lvalue_reference_t=typename add_lvalue_reference<T>::type;
     \item Why \texttt{vector::operator[]} is not noexcept? The standard's policy on noexcept is to only mark functions that cannot or must not fail, Functions that get marked are things like swap (must not fail, because exception safety often relies on that) and \texttt{numeric\_limits::min} (cannot fail, returns a constant of a primitive type). But not those that simply are specified not to throw exceptions. In other words, all functions that have a limited domain (pass the wrong arguments and you get undefined behavior) are not noexcept, even when they are not specified to throw. In another word, operator[] will fail if it out-of-bound. At this time, maybe you want to throw an exception, in this way, make it noexcept is not suitable.
 
 
-    \item The noexcept operator can be used inside functions. It takes an expression as an argument, and returns true or false if the compiler thinks it will throw an exception or not. The noexcept operator is checked statically at compile-time, and doesn’t actually evaluate the input expression.
+    \item The \texttt{noexcept} operator can be used inside functions. It takes an expression as an argument and returns \texttt{true} or \texttt{false} based on whether the compiler believes the expression will throw an exception. The \texttt{noexcept} operator is evaluated statically at compile-time and does not actually execute the input expression.
 \begin{lstlisting}
 void foo() {throw -1;}
 void boo() {};
@@ -23551,7 +23533,7 @@ constexpr bool b4{ noexcept(goo()) }; // true; goo() is explicitly noexcept(true
 constexpr bool b5{ noexcept(S{}) };   // true; a struct's default constructor is noexcept by default
 \end{lstlisting}
 
-	\item A good example is vector::size(). You can see three specifier there: constexpr, const and noexcept. These three specifier should be used more if you can make sure them to satisfy you semantic requirements. Another reason of usage of specifier is STL interface will not change frequently, so use these three specifier will not break interface of function in the future in client code side.  
+	\item A good example is \texttt{vector::size()}. You can observe three specifiers there: \texttt{constexpr}, \texttt{const}, and \texttt{noexcept}. These specifiers should be utilized whenever they can satisfy your semantic requirements. Another reason to use these specifiers is that the STL interface does not change frequently, so using them will not break the function's interface in client code in the future.
 \begin{lstlisting}
 constexpr size_type size() const noexcept;
 \end{lstlisting}
