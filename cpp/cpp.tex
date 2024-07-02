@@ -24205,15 +24205,15 @@ foo(bar()); // use returned temporary to init parameter.
     
 \begin{lstlisting}
 template < template-parameters>
-concept _conceptName_ = _conceptExpression_;
+concept _conceptName_ = _conceptExpression_; //concept expression
 
-template < template-parameters>  //require expression
-concept _conceptName_ = requires(_arguments_) {
+template < template-parameters> 
+concept _conceptName_ = requires(_arguments_) { //requires expression
    _conceptExpression_;
 };
 \end{lstlisting}
 
-	\item Below is a simple example using the C++ keyword '\texttt{concept}', which is mainly used in templates. We define a new concept based on an existing concept.
+	\item Below is a simple example using the C++ keyword '\texttt{concept}', which is mainly used in templates. In this example, We define a new concept based on an existing concept.
 \begin{lstlisting}
 template<typename T> 
 concept Any = true;
@@ -24223,7 +24223,7 @@ concept Number = std::integral<T> || std::floating_point<T>; //concept expressio
 \end{lstlisting}
 
     
-    \item We can express our requirement for a template parameter to support a certain operation or operator through wishful writing. For example, if you require template parameters to be addable, you can create a concept for that.
+    \item We can express our requirement for a template parameter to support a certain operation or operator through wishful writing. For example, if you require template parameters to be addable, you can create a concept for that using a requires expression.
 
 \begin{lstlisting}
 template <typename T>
@@ -24238,7 +24238,7 @@ concept HasPower = requires (T t, int exponent) {
 };
 \end{lstlisting}
 
-    \item We can also use a requires-expression for other purposes than declaring a concept, such as define a constexpr variable. In this way, we can combine if constexpr and require expression together. Below code is very interesting, please remember it. 
+    \item We can also use a requires expression for purposes other than declaring a concept, such as defining a constexpr variable. In this way, we can combine if constexpr and requires expressions together. The code below is very interesting; please remember it. Pay attention to the usage \texttt{constexpr} here. 
 
 \begin{lstlisting}
 template <typename T>
@@ -24257,7 +24257,7 @@ void clever_swap(T& a, T& b) {
 }
 \end{lstlisting}
 
-    \item In order for these expressions to work, function \texttt{square()} doesn't need to return precisely \texttt{int}. If it returns \texttt{short} it will work for us too. If you want the type to be convertible to \texttt{int}, the syntax for it is:
+    \item For these expressions to work, the function \texttt{square()} doesn't need to return precisely \texttt{int}. It will work for us if it returns \texttt{short} as well. If you want the type to be convertible to \texttt{int}, the syntax is:
 
 \begin{lstlisting}
 template <typename T>
@@ -24278,21 +24278,24 @@ concept HasSquare = requires (T t) {
 template <typename T>
 concept Number = std::integral<T> || std::floating_point<T>;
 
-//1) Use requires clause
 template <typename T>
-requires Number<T>   
+requires Number<T>   //1) Use requires clause
 auto addRequiresClause(T a, T b) {
 	return a+b;
 }
 
-//2) trailing position
-template <typename T> 
+template <typename T>
+requires std::integral<T> || std::floating_point<T> //1) requires clause
+class WrappedNumber {
+	// ...
+};
+
+template <typename T>  //2) trailing position
 auto addTrailingRequiresClause(T a, T b) requires Number<T> {
 	return a+b;
 }
 
-//3) use concept directly to define template argument
-template <Number T> 
+template <Number T>  //3) use concept directly to define template argument
 auto addConstrainedTemplate(T a, T b) {
 	return a+b;
 }
@@ -24303,7 +24306,7 @@ auto addAbbreviatedFunctionTemplate(Number auto a, Number auto b) {
 }	 
 \end{lstlisting}	
 	
-	\item continuous.. a more complicated example.
+	\item continuous.. some more complicated examples about \texttt{std::convertible\_to}.
 \begin{lstlisting}
 template <typename T>
 requires std::convertible_to<T, std::string>
@@ -24334,18 +24337,18 @@ void func_with_auto_inline(const std::convertible_to<std::string> auto& x) {
 \begin{lstlisting}
 #include <concepts>
 
-static_assert(std::is_same_v<int, long> );
-static_assert(std::same_as<int, long> ) 
+static_assert(std::is_same_v<int, long> ); //std::is_same_v is type trait
+static_assert(std::same_as<int, long> )  // std::same_as is concept
 \end{lstlisting}
 
 
-	\item You can use concept to constraint function return value beside function parameter.
+	\item You can use concepts to constrain function return values as well as function parameters.
 \begin{lstlisting}
 template<typename T>
 concept IntCon = std::integral<T>;
 
-template<typename T> //pay attention to auto usage here. 
-constexpr IntCon auto returnInt(){ 
+template<typename T>               //pay attention to auto usage here. 
+constexpr IntCon auto returnInt(){ //use IntCon before auto
 	T t{};
 	return t;
 }
@@ -24354,31 +24357,23 @@ cout<<returnInt<int>()<<endl;  //OK
 cout<<returnInt<float>()<<endl; //compile error
 \end{lstlisting}
 
-	\item In template class, you can use require clause directly without define a new concept.
-
-\begin{lstlisting}
-template <typename T>
-requires std::integral<T> || std::floating_point<T>
-class WrappedNumber {
-	// ...
-};
-\end{lstlisting}
-
 \end{itemize}
 
 \subsection{Module}
 \begin{itemize}
 	
-	\item Advantages of module are below:
+	\item Advantages of module:
 	\begin{enumerate}
 		\item No need to write separate files for the interface (.h) and the implementation (.cpp). 
 		\item Faster compile / recompile.
-		\item No need for include guards.	
-		\item Modules don’t have ‘side-effects’ so the order in which modules are imported is not important.
-		\item Precompiled headers can be a very effective way of speeding up compile times. Also, removing implementation details from the interface file (e.g. using the PIMPL idiom) reduces the ‘ripple effect’ and prevents unnecessary recompilation when small changes are introduced.
+		\item Include guards are not necessary.	
+		\item Modules don’t have "side-effects" so the order in which modules are imported is not important.
+		\item Precompiled headers can significantly speed up compile times. Additionally, removing implementation details from the interface file (e.g. using the PIMPL idiom) reduces the "ripple effect" and prevents unnecessary recompilation when small changes are introduced.
 	\end{enumerate}
 	
-	\item C++ Modules introduce a new type of translation unit called a module unit. The definition is fairly simple: A module unit is a translation unit that contains a module-declaration
+	\item A module is a set of source code files that are compiled independently of the translation units that import them. Modules eliminate or greatly reduce many of the problems associated with using header files and can also potentially reduce compilation times. We recommend that new projects use modules rather than header files whenever possible. For larger existing projects under active development, we suggest experimenting with converting legacy headers to modules to determine if this leads to a significant reduction in compilation times.	
+	
+	\item C++ Modules introduce a new type of translation unit called a module unit. The definition is fairly simple: a module unit is a translation unit that contains a module declaration. In other words, it must include the keyword '\textbf{module}' in the module unit. 
 \begin{lstlisting}
 module-declaration:
 ["export"] "module" module-name [module-partition] [attribute-specifier-seq] ";" ;
@@ -24387,14 +24382,41 @@ module-partition:
 ":" module-name ;
 \end{lstlisting}
 
+\begin{figure}[ht]
+	\centering
+	\includegraphics[width=0.7\linewidth]{pics/module.drawio}
+	\caption{}
+	\label{fig:module}
+\end{figure}
+
+	
+
+	\item If we have multiple functions that we want to export, the standard allows us to use an export block.
+
+\begin{lstlisting}
+export module mod;
+export { //use export block
+	void func();
+	void func(int);
+}	
+\end{lstlisting}
+
 	\item There are a lot of grammar restriction when you use module partition, you can follow below the pattern as a good start point. 
+	\begin{enumerate}
+		\item The primary interface unit for a module(\texttt{export module speech}) must export all of the interface partitions for the module (either directly or indirectly) via export import :<part-name>. Otherwise, the program is ill-formed, no diagnostic required.
+		
+		\item \texttt{export import} is only allowed for interface partitions, such as \texttt{export import :english}.
+		
+		\item All interface partitions must be re-exported from the primary interface unit.
+	\end{enumerate}
+	
 \begin{lstlisting}
 // speech.cpp, primary module interface unit
 export module speech;
 export import :english; //use export import here.
 export import :spanish; //Don't add module name before :
 
-// speech_english.cpp //module partition interface
+// speech_english.cpp, module partition interface
 export module speech:english;  //must use export, otherwise line 2 fail.
 export const char* get_phrase_en() {
 	return "Hello, world!";
@@ -24404,6 +24426,8 @@ export const char* get_phrase_en() {
 import speech;
 std::cout << get_phrase_en() << '\n';
 \end{lstlisting}
+
+	\item Just like the above code, but we don't use module partition interface(no export in speech\_english.cpp file.)
 
 \begin{lstlisting}
 // speech.cpp, This is module interface unit
@@ -24425,16 +24449,10 @@ const char* get_phrase_es() {
 	return "Hola Mundo";
 }
 \end{lstlisting}
-
-	\item A good article is "Understanding C++ Modules: Part 1: Hello Modules, and Module Units"
 	
-	\item A module is a set of source code files that are compiled independently of the translation units that import them. Modules eliminate or greatly reduce many of the problems associated with the use of header files, and also potentially reduce compilation times. 
+	\item 
 	
-	\item We recommend that new projects use modules rather than header files as much as possible. For larger existing projects under active development, we suggest that you experiment with converting legacy headers to modules to see whether you get a meaningful reduction in compilation times.
-	
-	\item To enable support for modules, compile with \texttt{experimental:module} and \texttt{std:c++20} or later (such as \texttt{std:c++latest}). In a Visual Studio project, right-click the project node in Solution Explorer and choose Properties. Set the Configuration drop-down to All Configurations, then choose Configuration Properties > C/C++ > Language > Enable C++ Modules (experimental).
-	
-	\item Guideline for a module structure
+	\item Guideline for a module structure.
 	
 \begin{lstlisting}
 module;                      // global module fragment
@@ -24447,15 +24465,24 @@ import <importing of other modules>
 export namespace math {
 	<exported declarations>  // exported names 
 }	
-\end{lstlisting}	
+\end{lstlisting}
+
+	\item To enable support for modules, compile with \texttt{experimental:module} and \texttt{std:c++20} or later (such as \texttt{std:c++latest}). In a Visual Studio project, right-click the project node in Solution Explorer and choose Properties. Set the Configuration drop-down to All Configurations, then choose Configuration Properties > C/C++ > Language > Enable C++ Modules (experimental).	
 	
-    \item The first module example based on previous module structure. This is a file func.cxx. compile with: g++ -c -std=c++20 -fmodules-ts func.cxx. g++ generates func.o and a gcm.cache/mod.gcm.
+    \item A module example based on previous module structure. 
+\begin{enumerate}
+	\item global module fragment, that is where we include things we need. 
+	
+	\item main module, which we can export type and behavior. 
+	
+	\item private fragment. Purpose of private fragment is to separate implementation with interface. If we change implementation in the private module, client code doesn't need to re-compile. We can also put interface and module implementation into different files. 
+
 \begin{lstlisting}
 module; // 1) global module fragment
 #include <iostream> //put #include statement here.
 
 export module mod; //2) main module
-import <vector>    
+import <vector> ; //don't forget ; here
 export void func() {
 	vector<int> vi = {1, 2, 3}
 	invisible_fun();
@@ -24465,23 +24492,20 @@ export void func2(); only declaration, on implementation.
 invisible_fun(){..} //this function is invisible from outside. 
 
 
-module :private; // 3) private module fragment
+module :private; // 3) private module fragment, no export here. 
 void func2(){
 	cout<<"func2"<<endl;
 }
 \end{lstlisting}
-\begin{description}
-    \item[Source code] There are three parts: 1) global module fragment, that is where we include things we need. 2) main module, which we can export type and behavior. 3) private fragment. Purpose of private fragment is to separate implementation with interface. If we change implementation in the private module, client code doesn't need to re-compile. We can also put interface and module implementation into different files. 
-    
-\end{description}
-
-	\item That is our client code. g++ -c -std=c++20 -fmodules-ts main.cpp, then g++ main.o func.o -o App. You will get App executable application.
+	\item client code:
 \begin{lstlisting}
 import mod; // client code 
 int main(){
     func();
 }
 \end{lstlisting}
+
+\end{enumerate}
 
     \item Separate module interface and module implementation, put them into the different files. 
 \begin{lstlisting}
@@ -24495,21 +24519,12 @@ void func() {
     std::cout << "hello, world!\n";
 }
 
-g++ -c -std=c++20 -fmodules-ts func.cxx
+g++ -c -std=c++20 -fmodules-ts func.cxx, g++ generates gcm.cache/mod.gcmthen
 g++ -c -std=c++20 -fmodules-ts func_impl.cxx 
 g++ main.o func.o func_impl.o -o App
 \end{lstlisting}
 
-    \item If we have multiple functions that we want to export, the standard allows us to use an export block.
-
-\begin{lstlisting}
-export module mod;
-export { //use export block
-    void func();
-    void func(int);
-}
-\end{lstlisting}
-
+	\item A good article is "Understanding C++ Modules: Part 1: Hello Modules, and Module Units"
 	
 \end{itemize}
 
