@@ -20619,10 +20619,8 @@ write	& send buffer not avail  & wait it avail & return immediate, EWOULDBLOCK o
 	\item The "n" in these functions represents network, "h" represents host, "s" represents short, and "l" represents long, indicating 16-bit and 32-bit integers respectively. These functions can help us flexibly convert between the formats of host and network. When using these functions, we do not need to be concerned about the byte order of the host, as long as we use the given values to convert between network byte order and host byte order.
 	
 \begin{lstlisting}
-uint16_t htons (uint16_t hostshort)
-uint16_t ntohs (uint16_t netshort)
-uint32_t htonl (uint32_t hostlong)
-uint32_t ntohl (uint32_t netlong)
+uint16_t htons (uint16_t hostshort)  uint16_t ntohs (uint16_t netshort)
+uint32_t htonl (uint32_t hostlong)   uint32_t ntohl (uint32_t netlong)
 \end{lstlisting}
 	
 	
@@ -20636,8 +20634,7 @@ struct {
 } message;
 
 size_t read_message(int fd, char *buffer, size_t length) {
-	u_int32_t msg_length;
-	u_int32_t msg_type;
+	u_int32_t msg_length, msg_type;
 	int rc;
 	rc = readn(fd, (char *) &msg_length, sizeof(u_int32_t));
 	if (rc != sizeof(u_int32_t))
@@ -20651,7 +20648,7 @@ size_t read_message(int fd, char *buffer, size_t length) {
 	}
 	rc = readn(fd, buffer, msg_length);
 	if (rc != msg_length)
-	return rc < 0 ? -1 : 0;
+		return rc < 0 ? -1 : 0;
 	return rc;
 }	
 \end{lstlisting}	
@@ -20738,13 +20735,8 @@ while (1) {
 		error(1, 0, "client closed \n");
 	}
 	...
-}	
-\end{lstlisting}	
-	\item Another method is to use multiplexing IO method.
-\begin{lstlisting}
-struct timeval tv;
-tv.tv_sec = 5;
-tv.tv_usec = 0;
+}
+//Another method is to use multiplexing IO method.
 FD_ZERO(&allreads);
 FD_SET(socket_fd, &allreads);
 for (;;) {
@@ -20758,8 +20750,8 @@ for (;;) {
 		onClientTimeout(socket_fd);
 	}
 	...
-}	
-\end{lstlisting}
+}
+\end{lstlisting}	
 	
 	
 	\item If a program initiates a write operation to send a stream of data and subsequently blocks in a read call, the outcome can vary significantly. The Linux TCP protocol stack will continually attempt to send the data stored in the send buffer. After approximately 12 re-transmissions, totaling about 9 minutes, the protocol stack will flag the connection as abnormal. At this point, the blocked read call will return a "TIMEOUT" error message. If the program continues to attempt writing data to this connection, the write operation will immediately fail and trigger a SIGPIPE signal to the application.
@@ -20776,14 +20768,50 @@ for (;;) {
 	
 	\item After a blocking read operation completes reading the expected data, the FIN packet is acknowledged by returning an EOF to complete the notification. At this point, the return value of the read operation is 0. It should be emphasized that the read operation does not return immediately upon receiving the FIN packet. You can think of receiving the FIN packet as placing an EOF marker in the receive buffer, which does not affect the previously received data in the receive buffer.
 	
+	
+	
 	\item The below figure illustrate the above various exceptions when you perform socket I/O. 
+\begin{enumerate}
+	\item No FIN from opposite:
+	\begin{enumerate}
+		\item If the program only performs a read operation and it blocks, it will get stuck waiting indefinitely. Therefore, you should consider using non-blocking mode or manually setting a timeout by using setsockopt.
+		
+		\item When the network breaks without sending a FIN signal, the write operation will put data into the buffer. The TCP protocol stack will attempt to send the data 12 times over about 9 minutes. If unsuccessful, it will mark the connection as abnormal. If the program is blocking on a read operation, read will return a timeout error.
+		
+		\item Unreachable is indicated by ICMP protocol messages, which are sent by routers. However, it is not guaranteed to occur in every instance of a network issue.
+		
+		\item When the system crashes without sending a FIN signal, the behavior is similar to a network disconnection: the connection times out. The read operation will return a timeout error.
+		
+		\item When the server restarts and receives a packet, it will send a RST (reset) signal. The client will feel it.
+	\end{enumerate}
+	
+	\item Has FIN from opposite:
+	\begin{enumerate}
+		\item When the server sends a FIN signal, the client’s read operation will not immediately return. Instead, the FIN signal indicates the end of the data stream. The client’s read function will read all remaining data in the buffer and then return 0, indicating EOF (end of file).
+		
+		\item If the server sends a FIN signal and the client continues to write, the server will respond with a RST signal. The client’s read operation will detect this and the system will indicate "Connection reset by peer" on macOS, while on Linux, it will place EOF into the read buffer.
+		
+		\item If the client continues to write after receiving a FIN and then a RST from the server, the system will send a SIGPIPE signal to the client, indicating that the connection is broken.
+	\end{enumerate} 
+\end{enumerate}
 	\begin{center}
-	\includegraphics[width=0.66\linewidth]{pics/net_ex.png}
+	\includegraphics[width=0.75\linewidth]{pics/net_ex.drawio.png}
 	\end{center}
-
-
-
-
+	
+	\item Summary of this section.
+	\begin{enumerate}
+		\item To handle different network abnormalities effectively, you need to combine write and read operations while checking for the aforementioned errors. 
+		
+		\item The read function in network programming returns three possible values: -1, 0, and a positive number. All errors encountered during read operations are detected and reported through the error handling mechanism. Main types of errors:
+		\begin{enumerate}
+			\item Unreachable: Indicates that the destination is unreachable.
+			\item Timeout: Occurs when the operation takes too long and exceeds the specified timeout period.
+			\item FIN: Signals that the other side has finished sending data.
+			\item RST: Indicates that the connection has been reset.
+			\item SIGPIPE: Generated when attempting to write to a socket that has been closed on the other side.
+		\end{enumerate}	
+		
+	\end{enumerate}
 
 \end{itemize}
 
@@ -20791,23 +20819,18 @@ for (;;) {
 \begin{itemize}
 	\item Only close sender can go into TIME\_WAIT state. It's 60 second default. Why do we need TIME\_WAIT? There are two reasons behind it.
 	\begin{enumerate}
-		\item When I get FIN, then send out ACK, then wait, if other side didn't get ACK, I will wait 2MSL to get another FIN from other side.
+		\item When client A get FIN, then send out ACK, then wait, if server B didn't get ACK, client A will wait 2MSL to get another FIN from server B.
 		
-		\item On close sender, if we don't wait, there is another Avatar connection will receive old segment from previous connection.
+		\item On closing sender, if we don't wait, there is another Avatar connection will receive old segment from previous connection.
 	\end{enumerate}
 
 	\begin{center}
-		\includegraphics[width=0.66\linewidth]{pics/tcp2.png}
+		\includegraphics[width=0.56\linewidth]{pics/tcp2.png}
 	\end{center}
 
-	\item The second issue is the consumption of port resources. A TCP connection consumes at least one local port. It should be noted that port resources are also limited. Generally, ports 32768 to 61000 can be opened, or they can be specified by using the net.ipv4.ip\_local\_port\_range parameter. If there are too many connections in the TIME\_WAIT state, it can lead to the inability to create new connections. In order to resolve this problem, we can use net.ipv4.tcp\_tw\_reuse option, but at the same time, you must net.ipv4.tcp\_timestamps=1 (default is 1)
+	\item A TCP connection consumes at least one local port. Generally, ports 32768 to 61000 can be opened, or they can be specified by using the net.ipv4.ip\_local\_port\_range parameter. If there are too many connections in the TIME\_WAIT state, it can lead to the inability to create new connections. In order to resolve this problem, we can use net.ipv4.tcp\_tw\_reuse option, but at the same time, you must net.ipv4.tcp\_timestamps=1 (default is 1)
 	
-	\item close function closes two directions data stream.
-	\begin{enumerate}
-		\item When you call close, In input kernel will make this socket unreadable,  any read will return exception. For output, kernel will send all data in buffer to opposite, then send out FIN. Then, any write to this socket will return exception.
-		
-		\item If opposite doesn't detect you have closed socket and continue send out data, it will received RST. 
-	\end{enumerate}
+	\item \texttt{close} function closes two directions data stream. In input direction, kernel will make this socket unreadable,  any read will return exception. For output, kernel will send all data in buffer to opposite, then send out FIN. Then, any write to this socket will return exception. If opposite doesn't detect you have closed socket and continue send out data, it will received RST. 
 
 
 	\item Suppose that a client initiates the connection interruption, which closes the data flow direction from itself to the server. At this time, the client no longer writes data to the server, and after the server reads the client's data, there will be no new packets arriving. However, this does not mean that the TCP connection has been completely closed. It is very likely that the server is processing the final packets from the client, such as accessing the database and storing some data or calculating a value that the client needs. After completing these operations, the server writes the result through the socket to the client, and we say that the state of the socket is "half-closed" at this time. Finally, the server calmly closes the remaining half of the connection and ends this TCP connection mission.
@@ -20817,24 +20840,20 @@ for (;;) {
 int shutdown(int sockfd, int howto)
 //howto can be : SHUT_RD(0), SHUT_WR(1) and SHUT_RDWR(2)
 
-//client
-shutdown(socket_fd, 1) // I can still read, send out FIN to server
+shutdown(socket_fd, 1) //client side, send out FIN to server, but can still read.
 for(;;){
 	n = read(socket_fd, recv_line, MAXLINE);
 }
 
-//server
-sleep(5s);
-write() // write to client, client use shutdown, 
-        // so it still can recieve the data from server. 
+sleep(5s); //server side code
+write() // client use shutdown(SHUT_WR),  so client still can receive.
 for(;;){
 	n = read(socket_fd, recv_line, MAXLINE);
-	if (n==0) exit; //get FIN from client, 
-	                //Send out FIN to client by exit.
+	if (n==0) exit; //get FIN from client, Send out FIN to client by exit.
 }
 \end{lstlisting}
 	\begin{center}
-		\includegraphics[width=0.7\linewidth]{pics/shutdown}
+		\includegraphics[width=0.72\linewidth]{pics/shutdown}
 	\end{center}
 	
 	
