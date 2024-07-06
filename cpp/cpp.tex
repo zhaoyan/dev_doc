@@ -17712,18 +17712,41 @@ else if (a.type() == typeid(int)) {
 
 
 \chapter{Concurrent}
+\section{Principal}
+\begin{itemize}
+	\item If we have only one processor, we can still achieve task switching. However, this will only improve responsiveness and won't reduce execution time. In fact, task switching may prolong execution time due to the context switch overhead. On the other hand, if we have multiple processors or multiple cores within a processor, we can achieve hardware concurrency.
+	
+	\item There are several reasons to use concurrency in software development. One of the main reasons is to improve responsiveness by separating concerns into different threads. For example, a GUI thread and a working thread can run concurrently to give the user a more responsive experience. However, to achieve performance improvements, true hardware concurrency is needed, which requires multiple cores. It's important to note that concurrency should not be used aggressively. Instead, it should be used only in performance-critical parts of the application where there is potential for measurable gain. Additionally, it's important to prioritize accuracy over speed, as concurrent execution can introduce race conditions and other synchronization issues that can lead to incorrect results.
+	
+	\item Reasons to Use Concurrency in Software Development.
+	\begin{enumerate}
+		\item Improved Responsiveness: One of the main reasons to use concurrency is to improve responsiveness by separating concerns into different threads. For example, a GUI thread and a worker thread can run concurrently to give the user a more responsive experience.
+		
+		\item True Hardware Concurrency: To achieve performance improvements, true hardware concurrency is needed, which requires multiple cores.
+		
+		\item Selective Use of Concurrency: Concurrency should not be used aggressively. It should be applied only in performance-critical parts of the application where there is potential for measurable gain.
+		
+		\item Prioritizing Accuracy Over Speed: Concurrent execution can introduce race conditions and other synchronization issues. Therefore, it's important to prioritize accuracy over speed when implementing concurrency.
+	\end{enumerate}
+	
+	\item Concurrent execution can improve performance in three fundamental ways: it can reduce latency (that is, make a unit of work execute faster); it can hide latency (that is, allow the system to continue doing work during a long-latency operation); or it can increase throughput (that is, make the system able to perform more work). Consider a web server handling incoming HTTP requests from clients.
+	\begin{enumerate}
+		\item Reducing Latency: Each incoming request is handled by a new thread, allowing multiple requests to be processed in parallel.
+		
+		\item Hiding Latency: If any request involves waiting for I/O operations, other threads can continue processing other requests.
+		
+		\item Increasing Throughput: By leveraging threads, the server can handle many more requests simultaneously, improving the overall capacity and efficiency of the web server.
+	\end{enumerate}
+	
+	
+\end{itemize}
+
 \section{Thread}
 
 \subsection{Joinable}
 \begin{itemize}
-	\item If we have only one processor, we can still achieve task switching. However, this will only improve responsiveness and won't reduce execution time. In fact, task switching may prolong the execution time due to the context switch overhead. On the other hand, if we have multiple processors or multiple cores within a processor, we can achieve hardware concurrency.
-
-	\item There are several reasons to use concurrency in software development. One of the main reasons is to improve responsiveness by separating concerns into different threads. For example, a GUI thread and a working thread can run concurrently to give the user a more responsive experience. However, to achieve performance improvements, true hardware concurrency is needed, which requires multiple cores. It's important to note that concurrency should not be used aggressively. Instead, it should be used only in performance-critical parts of the application where there is potential for measurable gain. Additionally, it's important to prioritize accuracy over speed, as concurrent execution can introduce race conditions and other synchronization issues that can lead to incorrect results.
 	
-	
-	\item Concurrent execution can improve performance in three fundamental ways: it can reduce latency (that is, make a unit of work execute faster); it can hide latency (that is, allow the system to continue doing work during a long-latency operation); or it can increase throughput (that is, make the system able to perform more work). 
-
-	\item You can pass different \textbf{callable object or functor} to thread. 
+	\item You can pass different \textbf{callable object or functor} to thread. This allows for greater flexibility and modularity in how tasks are executed concurrently. 
 \begin{lstlisting}[frame=single, language=c++]
 class Callable{
 	operator()(){
@@ -17739,7 +17762,12 @@ t.join(); t1.join(); t2.join();
 \end{lstlisting}
 
 
-	\item Once you've started your thread, you need to explicitly decide whether to wait for it to finish (by \texttt{joining}) or leave it to run on its own (by \texttt{detaching}). Usually, detaching is not good style. This is the non-intuitive behavior of \texttt{std::thread.} If a \texttt{std::thread} is still joinable, \texttt{std::terminate} is called in its destructor. A thread is joinable if neither \texttt{join()} nor \texttt{detach()} was called. joinable is false if there is no corresponding execution. After you join or detach, thread is not joinable.
+	\item Once you've started your thread, you need to explicitly decide whether to wait for it to finish (by calling \texttt{join()}) or let it run on its own (by calling \texttt{detach()}). Usually, detaching a thread is not considered good practice. This is due to the non-intuitive behavior of \texttt{std::thread}. If a \texttt{std::thread} is still joinable, \texttt{std::terminate} is called in its destructor. A thread is joinable if neither \texttt{join()} nor \texttt{detach()} has been called. A thread becomes non-joinable if there is no corresponding execution. After you join or detach a thread, it is no longer joinable.
+\begin{enumerate}
+	\item Detaching Threads: Calling \texttt{detach()} on a thread allows it to run independently from the main program execution. This means the main thread will not wait for it to finish, and the detached thread's resources are automatically reclaimed when it finishes execution.
+	
+	\item Calling \texttt{join()} on a thread makes the main thread wait until the thread's execution is complete. This is usually the preferred method to ensure proper synchronization and resource management.
+\end{enumerate}
 
 \begin{lstlisting}[frame=single, language=c++]
 void foo(){
@@ -17755,7 +17783,7 @@ std::cout << "after joining, joinable: " << t.joinable() //return false
 \end{lstlisting}
 
 
-	\item Even when the execution of a thread is finished, the thread can still be joinable. In other words, whether it is joinable does not depend on whether it has finished.
+	\item Even after a thread has finished executing its task, it can still be joinable. Therefore, whether a thread is joinable does not depend on whether it has finished its execution.
 
 \begin{lstlisting}[frame=single, language=c++]
 void foo(){
@@ -17767,7 +17795,7 @@ std::this_thread::sleep_for(std::chrono::seconds(5));
 std::cout << "after joining, joinable: " << t.joinable() 
 \end{lstlisting}
 
-	\item Thread is not exception safe, you have to use catch to make sure to call join. You can see the source code is a little ugly, there are two join here. That is why we add jthread in C++ 20 and it's based on RAII principle. 
+	\item Threads in C++ are not exception-safe, requiring careful handling to ensure join() is called properly. Failing to do so can lead to code that's difficult to maintain, with multiple join() calls that clutter the source. To address these issues, C++20 introduced jthread, which follows the RAII (Resource Acquisition Is Initialization) principle for safer thread management.
 
 \begin{lstlisting}[frame=single, language=c++]
 void f(){
@@ -17784,9 +17812,14 @@ void f(){
 
 	\item jthread in c++20 is RAII style thread, it can resolve this problem. At the same time, it also support interrupt. You can see the detail about interruption in the following chapters. Prefer to use jthread if your compiler support it. 
 \begin{lstlisting}
-std::jthread thr{[]{ std::cout << "Joinable std::thread" << std::endl; }};
-std::cout << "thr.joinable(): " << thr.joinable() << std::endl;
-//jthread destructor will call join automatically.
+int main() {
+	try {
+		std::jthread t(threadFunction); // Using jthread in C++20		
+		std::cout << "Main thread continues..." << std::endl;
+	} catch (const std::exception& e) {
+		std::cerr << "Exception caught: " << e.what() << std::endl;
+	}
+}
 \end{lstlisting}
 
 	\item Exceptions thrown in one thread can't be caught in another thread. Let's assume we have a function that can throw an exception. If we execute this function in a seperate thread forked from main and expect to catch any exception from this thread in the main thread, it's not going to work. Here's an example:
@@ -17806,7 +17839,7 @@ int main() {
 }
 \end{lstlisting}
 
-The solution is to use the C++11 feature \texttt{std::exception\_ptr} to capture exception thrown in a background thread. The idea is simple, just use a global variable to communicate between thread and main.  Here are the steps you need to do:
+	\item The solution is to use the C++11 feature \texttt{std::exception\_ptr} to capture exception thrown in a background thread. The idea is simple, just use a global variable to communicate between thread and main. Here are the steps you need to do:
 \begin{lstlisting}[]
 static std::exception_ptr globalExceptionPtr = nullptr;
 void LaunchRocket() {
@@ -17838,18 +17871,19 @@ int main() {
 
 \begin{itemize}
 
-	\item When should we use detach? "C++ Concurrency in Action" provides a good example in section 2.1.4. For instance, if we have completed the initial part of a calculation and have enough results to generate a report, we may want to generate the report concurrently with the rest of the calculation by creating a new thread to "send the email"."
+	\item In C++ threading, detach() should be used judiciously. One suitable scenario is illustrated in "C++ Concurrency in Action" (section 2.1.4): imagine completing the initial stages of a computation where enough results are gathered to generate a report. To concurrently handle generating and sending an email report while continuing the calculation, you might spawn a new thread using detach() for this specific task.
 
+
+	\item Suppose we have a calculateAndReport function that performs a computation and send a report. Here are a few comparisons of different strategies to execute this function:
 \begin{lstlisting}[frame=single, language=c++]
 void calculateAndReport() {
 	const auto topLevelResult = TopLeve();
 	std::thread t(sendEmail, topLevelResult);
 	continuteCalculation(topLevelResult);
-	//join or detach here? talk about it in the next item.
+	....
 }
 \end{lstlisting}	
 
-	\item  A few comparisons of different strategies:
 	\begin{enumerate}
 		\item join immediately, not good. 
 \begin{lstlisting}[frame=single, language=c++]
@@ -17861,7 +17895,7 @@ void calculateAndReport(){
 }		
 \end{lstlisting}	
 
-		\item You can use detach anywhere, and there's a good chance it will work fine, but it can be dangerous if you need access to local information. The problem is that the sendEmail function cannot be completely independent of the application; it must depend on other objects or resources that have their own lifetimes. If we were to pass topLevelResults by reference, the main thread might go out of scope and destruct topLevelResults while the new thread is still using it (which can happen if sending an email takes longer than the calculation). 
+		\item You can use detach anywhere, and there's a good chance it will work fine, but it can be dangerous if you need access to local information. If the sendEmail function cannot be entirely independent of the application, using detach poses risks. For instance, if topLevelResults were passed by reference, the main thread might go out of scope and destruct topLevelResults while the new thread is still using it. This scenario can occur if sending an email takes longer than the calculation.
 \begin{lstlisting}[frame=single, language=c++]
 void calculateAndReport(){
 	const auto topLevelResult = TopLeve();
@@ -17871,7 +17905,7 @@ void calculateAndReport(){
 }			
 \end{lstlisting}
 
-		\item join in the end.
+		\item join in the end. If sendEmail is very slow, the calculateAndReport will stuck inside calculateAndReport fucntion, while previous detach doesn't. 
 \begin{lstlisting}[frame=single, language=c++]
 void calculateAndReport(){
 	const auto topLevelResult = TopLeve();
@@ -17881,7 +17915,7 @@ void calculateAndReport(){
 }			
 \end{lstlisting}			
 
-		\item use jthread in C++ 20
+		\item use jthread in C++ 20, The same as previous join.
 \begin{lstlisting}[frame=single, language=c++]
 void calculateAndReport(){
 	const auto topLevelResult = TopLeve();
@@ -17892,7 +17926,7 @@ void calculateAndReport(){
 \end{lstlisting}		
 	\end{enumerate} 
 
-		\item Detaching is not a no-no. It’s legal, a lot of high-quality production code have it, it just might be dangerous. So, think carefully when choosing between join and detach.
+		\item Detaching threads is not forbidden. It's legal, and a lot of high-quality production code uses it. However, it can be risky. Therefore, carefully consider your choice between using join and detach.
 \end{itemize}
 
 	
@@ -17908,7 +17942,7 @@ std::pair<int&, int> p1(m, n); //OK
 auto p2 = std::make_pair(std::ref(m), n); //OK, better
 \end{lstlisting}
 
-    \item Unlike a reference, a \texttt{std::reference\_wrapper} is an object and thus satisfies the STL container element requirements (Erasable, to be precise). Therefore, \texttt{std::reference\_wrapper} can be used as a \texttt{vector} element type.  A \texttt{std::reference\_wrapper<T>} could be a safe alternative to a pointer type (\texttt{T*}) for storing in a vector:
+    \item In C++, you cannot directly create a vector of references (\texttt{std::vector<T\&>}), because references are not objects that can be stored in containers like vectors. References in C++ are meant to alias existing objects and cannot be rebound once initialized. Unlike a reference, a \texttt{std::reference\_wrapper} is an object and thus satisfies the STL container element requirements (Erasable, to be precise). Therefore, \texttt{std::reference\_wrapper} can be used as a \texttt{vector} element type.  A \texttt{std::reference\_wrapper<T>} could be a safe alternative to a pointer type (\texttt{T*}) for storing in a vector:
 \begin{lstlisting}
 using namespace std;
 vector<reference_wrapper<int>> v;  //OK
@@ -17935,7 +17969,7 @@ void process() {
 }
 \end{lstlisting}
 
-	\item \texttt{std::thread} does not provide an easy way to return a value from a thread. We could get the return value of the tasks/functions via references, variable pointers or global variables but these approaches share data between multiple threads and look a bit cumbersome.
+	\item \texttt{std::thread} does not provide a straightforward mechanism to return a value from a thread. While it's possible to retrieve the return value of tasks or functions using references, pointers to variables, or global variables, these approaches involve sharing data between multiple threads and can appear cumbersome.
 	
 	\item The arguments are copied into internal storage, where they can be accessed by the newly created thread of execution, and then passed to the callable object or function as rvalues as if they were temporaries. \texttt{std::decay\_copy} used to finish copy. it is used mainly in thread context and isn't used very often in other places in STL.
 	
@@ -17955,7 +17989,7 @@ typename decay<T>::type decay_copy(T&& v){
 	\item  If you study \texttt{decay\_copy} closely, you will find that it returns by value (because its return type is \texttt{std::decay} of something). So the function f is called with rvalue arguments (prvalue arguments, in fact). If the f has reference parameter, when you input it into the \texttt{std::thread}, you need to use \texttt{std::ref} to wrap the parameter.  The basic idea is just like \texttt{std::bind}. 
 
 \begin{lstlisting}[frame=single, language=c++]
-void f(int& a);
+void f(int& a); //reference parameter here
 
 int a;
 //std::thread t(&f, a); //this will fail
@@ -17983,20 +18017,23 @@ unique_ptr<obj> p(new obj);
 thread(f1, move(p));
 \end{lstlisting}
 
-    \item Summary of thread construct:
-	1) When you can't copy, use move, such as \texttt{unique\_ptr.}
-	2) Want to change, use \texttt{std::ref}.
-	3) Inside thread constructor, they use \texttt{decay\_copy}. Pay more attention to avoid dangling pointer.  
+    \item Summary of thread sonstruction:
+    \begin{enumerate}
+    	\item When copying is not possible, use move semantics, such as with \texttt{unique\_ptr}.
+    	\item To modify parameters, \texttt{use std::ref}.
+    	\item Inside the thread constructor, parameters are passed through \texttt{decay\_copy}. Pay careful attention to avoid dangling pointers.
+    \end{enumerate}
+	
 
 \end{itemize}
 
 \subsubsection{decay\_copy inside of thread}
 \begin{itemize}
 
-    \item The std::thread's interface looks like this:
+    \item The interface of \texttt{std::thread} looks like this:
 \begin{lstlisting}[frame=single, language=c++]
 thread(Function&& f, Arg&& arg) {
-	// something happening
+	// ....
 	std::invoke(decay_copy(std::forward<Function>(f)),
             	decay_copy(std::forward<Arg>(arg)));
 }
@@ -18007,7 +18044,7 @@ typename decay<T>::type decay_copy(T&& v){
 }
 \end{lstlisting}
 
-		\item How to understand \texttt{std::decy\_copy}? It's long story, so please buckle up.
+		\item Understanding \texttt{std::decay\_copy} requires delving into some detail, so brace yourself for a deeper dive. Feel free to skip ahead if you're not interested in the intricacies.
 
 		\begin{enumerate}
 			\item \texttt{arg} is forwarding reference, for lvalue, T is lvalue reference, arg is also lvalue reference. For rvalue, T is lvalue, arg is rvalue reference. 
@@ -18091,8 +18128,8 @@ inline std::pair<char *, int> make_y<char [10], int>(char (&&x)[10], int && y) {
 \end{enumerate}
 
     \item The similarity between \texttt{std::make\_pair} and \texttt{std::thread} when deal with input argument.
+    
 \begin{center}
-
     \includegraphics[width=0.85\linewidth]{pics/make_pair.png}
 \end{center}
 
@@ -18104,7 +18141,7 @@ inline std::pair<char *, int> make_y<char [10], int>(char (&&x)[10], int && y) {
 
 \begin{itemize}
 
-	\item The code below demonstrates what a thread id is and how to obtain it. It is important to note that the return type is \texttt{std::thread::id}. A mutex is used to avoid overlapping output contents.
+	\item The following code demonstrates the concept of a thread ID and how to obtain it. Note that the return type of the thread ID is \texttt{std::thread::id}. A mutex is utilized to prevent concurrent threads from overlapping output content.
 \begin{lstlisting}[frame=single, language=c++]
 std::mutex g_display_mutex;
 void foo(){
@@ -18121,7 +18158,7 @@ t1.join(); t2.join();
 \end{lstlisting}		
 
 	
-	\item Thread IDs could be used as keys into associative containers where specific data needs to be associated with a thread and alternative mechanism.  \texttt{sleep()} causes the thread to definitely stop executing for a given amount of time; if no other thread or process needs to be run, the CPU will be idle (and probably enter a power saving mode). \texttt{yield()} basically means that the thread is not doing anything particularly important and if any other threads or processes need to be run, they should. Otherwise, the current thread will continue to run.
+	\item Thread IDs can be used as keys in associative containers to associate specific data with each thread. Alternatively, mechanisms like \texttt{sleep()} cause a thread to pause execution for a specified duration. During this period, if no other threads or processes require execution, the CPU may enter a power-saving mode. On the other hand, \texttt{yield()} indicates that the thread is not performing critical tasks, allowing other threads or processes that need CPU time to run. If no such tasks exist, the current thread will continue its execution.
 	
 	\item just like \texttt{ifstream} and \texttt{unique\_ptr}, thread is movable but not copyable. 
 \begin{lstlisting}[frame=single, language=c++]
@@ -18137,11 +18174,11 @@ t.join();
 t3.join();
 \end{lstlisting}	
 	
-	\item There is a good example in the second chapter in"C++ Concurrent in Action". It introduces how to choosing the number of threads at run time.
+	\item There is a notable example in the second chapter of "C++ Concurrency in Action". It introduces how to dynamically choose the number of threads at runtime.
 	\begin{enumerate}
-		\item If the size of the task is too small (e.g., a vector is smaller than 25), there is no need to use multiple threads. This is because every thread incurs an overhead cost.
+		\item If the task size is small, such as when a vector has fewer than 25 elements, using multiple threads is unnecessary due to the overhead cost associated with each thread.
 		
-		\item \texttt{std::thread::hardware\_concurrency} is ceiling. \texttt{hardware\_concurrency} is true multi thread, so we should make full use of it.
+		\item \texttt{std::thread::hardware\_concurrency} represents the ceiling for available threads. Since it reflects true multi-threading capabilities, it's advisable to utilize it fully.
 	\end{enumerate}
 
 \begin{lstlisting}[frame=single, language=c++]
@@ -18166,16 +18203,16 @@ T parallel_accumulate(Iterator first, Iterator last, T init) {
 \subsubsection{cooperative interruption}
 
 \begin{itemize}
-	\item Can a thread be killed?. Before C++20, the answer is no. With C++20, you can ask a thread politely for its interruption. First of all. Why is it no good idea to kill a thread? The answer is quite easy. You don't know in which state the thread is when you kill it. Here are two possible malicious outcomes.
+	\item Can a thread be terminated? Before C++20, the answer was no. However, with C++20, you can politely request a thread to stop executing. Why is it generally not a good idea to forcefully terminate a thread? The answer is straightforward: when you forcibly terminate a thread, you cannot predict its current state. This uncertainty can lead to two potential undesirable outcomes:
 
 	\begin{enumerate}
-		\item 	The thread is only half-done with its job. Consequently, you don't know the state of that job and, hence, the state of your program. You end with undefined behavior, and all bets are open.
+		\item The thread might only be halfway through its task. Therefore, you cannot determine the state of that task or the overall state of your program. This uncertainty leads to undefined behavior, making the outcome unpredictable
 		
-		\item 	The thread may be in a critical section and locks a \texttt{std::mutex}. Killing a thread while it locks a mutex ends with a high probability in a deadlock.
+		\item If the thread is in a critical section and holds a \texttt{std::mutex}, terminating the thread while it holds the mutex significantly increases the risk of causing a deadlock.
 		
 	\end{enumerate}
 	
-	\item Okay, killing a thread is not a good idea. Maybe, you can ask a thread friendly if it is willing to stop. This is exactly what cooperative interruption in C++20 means. You ask the thread, and the thread can accept or ignore your wish for the interruption.
+	\item Terminating a thread forcefully is not advisable. Instead, in C++20, you can politely ask a thread if it is willing to stop. This approach, known as cooperative interruption, allows the thread to either accept or ignore the interruption request.
 	
 	\item For clear separation, the functionality of receiving stop notifications and requesting a stop is divided into two types — \texttt{std::stop\_token} and \texttt{std::stop\_source}. A \texttt{std::stop\_token} instance can be queried for stop notifications. And, \texttt{std::stop\_source} provides functions to get a \texttt{std::stop\_token} instance and send a stop notification to its associated tokens. \texttt{std::stop\_source}, \texttt{std::stop\_token}, and \texttt{std::stop\_callback} are lightweight objects that refer to a shared stop-state. A new stop-state is created when a \texttt{std::stop\_source} is default constructed. Any further copies of a \texttt{std::stop\_source}, associated \texttt{std::stop\_token(s)}, and \texttt{std::stop\_callback(s)} refer to the same stop-state. A stop-state records a stop event and maintains the callback registrations. It stays alive as long as there is at least one object referring to it. The following schematic shows the typical relationship among these objects:
 	
@@ -18279,7 +18316,7 @@ void worker_cv_any(std::stop_token stoken) {
 }	
 \end{lstlisting}
 
-	\item \texttt{jthread} creates and owns a \texttt{std::stop\_source},  Detail can be found in jthread constructor in cppreference.com.  If initialized with a function that accepts a \texttt{std::stop\_token,} \texttt{std::jthread} gets a stop token from its stop source and passes it to the function.
+	\item \texttt{jthread} creates and owns a \texttt{std::stop\_source}, detail can be found in jthread constructor in cppreference.com. If initialized with a function that accepts a \texttt{std::stop\_token,} \texttt{std::jthread} gets a stop token from its stop source and passes it to the function.
 
 \begin{lstlisting}[frame=single, language=c++]
 std::jthread sleepy_worker( [] (std::stop_token stoken) {
@@ -18313,16 +18350,16 @@ sleepy_worker.join();
 \end{lstlisting}
 
 
-	\item A good paper about it is "std::jthread and cooperative cancellation with stop token"
+	\item A good reference is "std::jthread and cooperative cancellation with stop token"
 \end{itemize}
 
 \subsubsection{thread pool}
 
 \begin{itemize}
 
-	\item In this implementation, the \texttt{ThreadPool} class creates a fixed number of threads upon construction and keeps them alive until the object is destroyed. Tasks are added to the thread pool using the \texttt{enqueue} method, which creates a closure that captures the function and arguments provided and adds it to a task queue. The threads in the pool pick up tasks from the queue as they become available, executing them one by one. 
+	\item In this implementation, the \texttt{ThreadPool} class initializes a fixed number of threads upon construction and maintains them until the object is destructed. Tasks are added to the thread pool using the \texttt{enqueue} method, which generates a closure capturing the provided function and arguments, then adds it to a task queue. Threads in the pool retrieve tasks from this queue as they become available, executing them sequentially.
 	
-	\item We create a thread pool with 4 threads and enqueue 8 tasks to be executed concurrently. Each task simply waits for 1 second and then prints a message to the console to indicate that it has completed. After a delay of 5 seconds, the main thread returns and the thread pool is destroyed, causing all the threads to be joined and terminated.
+	\item We create a thread pool with 4 threads and enqueue 8 tasks to be executed concurrently. Each task waits for 1 second and then prints a completion message to the console. After a 5-second delay, the main thread returns, leading to the destruction of the thread pool. This causes all threads to be joined and terminated. To understand how a thread pool deals with tasks of different signatures (varying numbers and types of parameters) by using \texttt{std::queue<std::function<void()>>}.
 
 \begin{lstlisting}
 class ThreadPool {
@@ -18334,11 +18371,12 @@ public:
 					std::unique_lock<std::mutex> lock(mutex_);
 					condition_.wait(lock, [this]() { return !tasks_.empty() || stop_; });
 					if (stop_ && tasks_.empty())
-					return;
+						return;
 					std::function<void()> task = tasks_.front();
 					tasks_.pop();
 					lock.unlock();
-					task();
+					
+					task(); //run every task here. 
 				}
 			});
 		}
@@ -18362,7 +18400,7 @@ public:
 		condition_.notify_one();
 	}
 	
-	private:
+private:
 	std::vector<std::thread> threads;
 	std::queue<std::function<void()>> tasks_;
 	std::mutex mutex_;
@@ -18377,7 +18415,7 @@ void task(int i) {
 }
 
 int main() {
-	ThreadPool pool(4);
+	ThreadPool pool{4};
 	for (int i = 0; i < 8; ++i) {
 		pool.enqueue(task, i);
 	}
@@ -18386,7 +18424,6 @@ int main() {
 }	
 \end{lstlisting}	
 	
-
 \end{itemize}
 
 \section{Sharing data}
@@ -18394,50 +18431,49 @@ int main() {
 \subsection{Invariant}
 
 \begin{itemize}
-	\item In the context of computer programming, invariant can be seen as a set of assumptions a piece of code takes before it is able to perform any computation of importance. And if those assumptions aren’t actually true the result of the computation is meaningless, or more appropriately, it can't be guaranteed that the result is correct. An invariant (in common sense) means some conditions that must be true at some point in time or even always while your program is executing. e.g. PreConditions and PostConditions can be used to assert some conditions that must be true when a function is called and when it returns. Object invariants can be used to assert that a object must have a valid state throughout the time it exists. This is the design by contract principle.
+	\item In computer programming, an invariant can be defined as a set of assumptions that a piece of code relies on before it can execute any significant computation. If these assumptions are not true, the resulting computation may be meaningless, or more accurately, its correctness cannot be guaranteed. An invariant typically refers to conditions that must hold true at certain points during program execution, or even continuously. For example, PreConditions and PostConditions ensure that specific conditions are met when a function is called and when it returns, respectively. Object invariants, on the other hand, assert that an object maintains a valid state throughout its existence. This adherence to conditions is foundational to the design by contract principle in programming.
 	
-	\item Understand invariants. Firstly, it is essential to ensure that only one thread can observe a broken invariant (location base). Secondly, when designing a data structure, its invariants should be such that modifications are made as a series of indivisible changes, with each change preserving the invariants. For instance, in the case of a shared pointer, the invariant it holds is that the underlying object exists only as long as the reference count to it is greater than zero.
+	\item Understanding invariants involves two critical aspects. Firstly, it's crucial that only one thread can observe a broken invariant at any given time (location-based). Secondly, when designing a data structure, its invariants should ensure that modifications occur as a series of indivisible changes, with each change preserving these invariants. For example, consider a shared pointer: its invariant dictates that the underlying object exists only as long as the reference count to it is greater than zero.
 	
-	\item In languages such as C++, a constructor-destructor pair becomes the best tool for introducing invariants. The proverbial life cycle of an object, begins when the class’ constructor returns and it ends only when the destructor is called.  It is okay if the invariants are destroyed while the method is executing, only that they need to be restored before the method returns. Also, this restriction does not apply to private methods that are inaccessible from outside the class. Externally accessible object fields that take part in the object’s invariants are an absolute no-no.
+	In languages like C++, constructors and destructors play a pivotal role in establishing and maintaining invariants. An object's life cycle begins when its constructor returns and ends when its destructor is called. It's permissible for invariants to be temporarily violated during method execution, as long as they are restored before the method returns. This caveat does not extend to private methods that are inaccessible from outside the class. Additionally, object fields involved in an object's invariants should not be externally accessible.
 	
-	\item Argument checking in release build is good way to maintain invariant. Should argument checking and assertions go into release build as well?. The answer is — it depends.
+	\item Argument checking and assertions in release builds are a matter of careful consideration, and whether to include them depends on several factors:
+\begin{enumerate}
+	\item Input Validation: If the argument checking serves as input validation from end users, it should definitely be kept in the release build to ensure the integrity of data flowing into the system.
 	
-	\begin{enumerate}
-		\item Is the argument checking actually input validation from the end user? If yes, definitely keep it in.
-		
-		\item Is performance critical to your system and have you run profilers on your code? And have those profilers pointed at argument checking to be the bottleneck? If no, keep it in.
-		
-		\item Is your automated test suite actually good? Code coverage is a factor but not the only one. If no, keep it in.
-		
-		\item Do you have balls of steel and weekends to spare for prod issues? If yes, do what you gotta do.
-	\end{enumerate}
+	\item Performance Impact: In performance-critical systems, it's essential to profile the code using profilers. If argument checking is identified as a bottleneck affecting performance significantly, it might be considered for removal in release builds. However, caution should be exercised as this impacts robustness.
 	
-	\item A race condition is a situation, in which the result of an operation depends on the interleaving of certain individual operations. If race condition break the invariant, usually we call it as data race. thread-safety is just the ability to maintain an object’s invariants in a multi-threaded environment.
+	\item Test Coverage: The effectiveness of the automated test suite is crucial. If the test suite is thorough and covers various scenarios, including edge cases caught by argument checking, it provides confidence in removing them from release builds. However, complete reliance on code coverage alone may not suffice.
+	
+	\item Risk Tolerance: Consider the organization's risk tolerance. If there is a high tolerance for handling potential production issues without the safety net of argument checking and assertions, it may influence the decision to omit them in release builds.
+\end{enumerate}
+	In summary, while argument checking and assertions are beneficial for maintaining invariants and ensuring robustness during development, their inclusion in release builds should be carefully evaluated based on these factors to strike a balance between reliability and performance.
+	
+	\item A race condition occurs when the outcome of an operation depends on the sequence or timing of individual operations. If a race condition disrupts an invariant, it is often referred to as a data race. Thread safety refers to the capability of preserving an object’s invariants in a multi-threaded environment.
 \end{itemize}
 
 
 \subsection{Mutex and lock}
 \subsubsection{data race}
 \begin{itemize}
-
-	\item Why do we need mutex? Even the increment operator is not an atomic operation. It will be translated into three assembly statements. Therefore, if there are two threads, and thread 1 moves to register while thread 2 finishes incrementing, then thread 1 changes back, the value will be overwritten in memory. The result is that although two threads called \texttt{op++}, the value of \texttt{op} is only incremented by 1. The value in memory is still 1, which is the result of a data race.
+	
+	\item Why do we need mutexes? Even the increment operator (\texttt{op++}) is not an atomic operation. It translates into three assembly statements. Therefore, if two threads execute \texttt{op++} concurrently, Thread 1 may fetch the value of \texttt{op} into a register, then Thread 2 increments it before Thread 1 stores back its value. As a result, although both threads called \texttt{op++}, the value of \texttt{op} might only increment by 1. This discrepancy in memory updates is what we call a data race.
 \begin{lstlisting}[frame=single, language=c++]
 op++; //not a atomic operation.
 
 move mem reg
-// Thread 1 switch thread 2 here. 
 add reg 1
 move reg mem
 \end{lstlisting}		
 
-    \item Even if one thread reads and another thread writes, it can still cause a data race. Assigning a value to \texttt{i} using \texttt{i = 2} is not an atomic operation. If \texttt{i} is 64 bits, some CPUs will write the low 32 bits first and the high 32 bits second. If another thread interrupts in the middle, then \texttt{a = i} will result in a "torn write" result. This is another negative consequence of a data race.
+    \item Even when one thread reads and another writes, a data race can occur. Assigning a value to \texttt{i} using \texttt{i = 2} is not atomic. On 64-bit systems, some CPUs may write the lower 32 bits first and then the upper 32 bits, or vice versa. If another thread interrupts in between, a situation known as a 'torn write' can result when accessing \texttt{i}. This is another detrimental consequence of a data race.
 \begin{lstlisting}[]
 i = 2; //one thread 
 
 a = i;//another thread
 \end{lstlisting}
 
-    \item \texttt{share\_ptr} is not thread safe, because it includes ptr and reference count, so you can't read and write the same \texttt{share\_ptr} at the same time. 
+    \item \texttt{share\_ptr} is not thread safe, because it includes ptr and reference count, so you should not read and write the same \texttt{share\_ptr} in different thread without lock. 
     
     \begin{center}
     	\includegraphics[width=0.80\linewidth]{pics/shared_ptr_con.png}
@@ -18496,31 +18532,29 @@ count = reg //in the end, it will modify the count
 
 \begin{itemize}
 	
-	\item We can make an analogy that \texttt{std::mutex} is like a raw pointer, where you need to lock and unlock, just like how you need to use new and delete with pointers. If an exception is thrown between new and delete, we won't have a chance to run delete. Therefore, we invented smart pointers and RAII to deal with this problem. Similarly, relationship between \texttt{std::lock\_guard} and \texttt{std::mutex} is like relationship between smart pointer and raw pointer. That is why we usually don't use \texttt{std::mutex} directly. \texttt{std::unique\_lock}, \texttt{std::lock\_guard}, or  
-	\texttt{std::scoped\_lock} (since C++17) manage locking in a more exception-safe manner. The difference is that you can lock and unlock a \texttt{std::unique\_lock.} many time, \texttt{std::lock\_guard} will be locked only once on construction and unlocked on destruction. 
+	\item We can make an analogy that \texttt{std::mutex} is like a raw pointer, where you need to manually lock and unlock, similar to how you use \texttt{new} and \texttt{delete} with pointers. If an exception is thrown between \texttt{new} and \texttt{delete}, we won't have a chance to run \texttt{delete}. Therefore, we invented smart pointers and RAII to handle this problem. Similarly, the relationship between \texttt{std::lock\_guard} and \texttt{std::mutex} is like the relationship between smart pointers and raw pointers. That is why we usually don't use \texttt{std::mutex} directly. \texttt{std::unique\_lock}, \texttt{std::lock\_guard}, or \texttt{std::scoped\_lock} (since C++17) manage locking in a more exception-safe manner. The difference is that you can lock and unlock a \texttt{std::unique\_lock} multiple times, whereas \texttt{std::lock\_guard} will be locked only once on construction and unlocked on destruction. 
 \begin{lstlisting}[frame=single, language=c++]
 std::mutex mx
 std::lock_guard<std::mutex> lg(mx); //specify type.
 std::scoped_lock guard(mx);  //C++ 17 template argument deduction
 \end{lstlisting}
 
-	\item It is common to group the mutex and the protected data together in a class instead of using global variables. This is a standard application of object-oriented design principles. However, if one of the member functions returns a pointer or reference to the protected data, then it is irrelevant that the member function locks the mutex because it opens a backdoor, which should be avoided.
+	\item It is common to group the mutex and the protected data together in a class instead of using global variables. This is a standard application of object-oriented design principles. However, if one of the member functions returns a pointer or reference to the protected data, it becomes irrelevant that the member function locks the mutex because it opens a backdoor, which should be avoided.
 
-	\item There are three main kinds of mutex: \texttt{mutex}, \texttt{recursive\_mutex} and \texttt{shared\_mutex.}
+	\item There are three main kinds of mutex: \texttt{mutex}, \texttt{recursive\_mutex}, and \texttt{shared\_mutex}. \texttt{shared\_mutex} allows multiple threads to read shared data simultaneously, but provides exclusive access for writing. \texttt{std::recursive\_mutex} is a type of mutex that can be locked multiple times by the same thread without causing a deadlock. This is useful in scenarios where a function that locks the mutex may be called recursively, either directly or indirectly.
 	
-	   \item When trying to acquire a mutex, the lock will first spin for a while. If it is unable to acquire the mutex during the spinning period, it will then suspend.
+	\item A simple implementation of \texttt{std::mutex} is based on a kind of "spin lock", detail can be found in the "atomic and memory order" section. When trying to acquire a mutex, the lock will first spin for a while. If it is unable to acquire the mutex during the spinning period, it will then suspend.
+		
+	\item The basic usage guidelines for locks are as follows:
+\begin{enumerate}	
+	\item \texttt{lock\_guard}: Use this when you need to lock exactly one mutex for the entire scope.
 	
-
+	\item \texttt{scoped\_lock}: Use this when you need to lock multiple mutexes (not just one). This helps to avoid deadlock problems.
 	
-	\item The basic usage guideline of lock are:
-\begin{enumerate}
-	\item \texttt{lock\_guard} if you need to lock exactly 1 mutex for an entire scope.
-	\item \texttt{scoped\_lock} if you need to lock a number of mutexes that is not exactly 1. It will avoid dead lock problem.
-	\item \texttt{unique\_lock} if you need to unlock within the scope of the block (which includes use with a condition\_variable) or transfer mutex ownership between scopes.
+	\item \texttt{unique\_lock}: Use this when you need to unlock within the scope of the block (such as with a condition variable) or transfer mutex ownership between scopes.
 \end{enumerate}
 
-
-    \item \texttt{scoped\_lock} is an improved version of \texttt{lock\_guard} that can lock multiple mutexes at once using the same deadlock-avoidance algorithm as \texttt{std::lock}. Therefore, in new code, it is recommended to use \texttt{scoped\_lock} instead of \texttt{lock\_guard}. However, \texttt{lock\_guard} still exists for compatibility reasons and cannot be deleted because it is used in current code. 
+    \item \texttt{scoped\_lock} is an enhanced version of \texttt{lock\_guard} that can lock multiple mutexes simultaneously using the same deadlock-avoidance algorithm as \texttt{std::lock}. Therefore, for new code, it is recommended to use scoped\_lock instead of \texttt{lock\_guard}. However, \texttt{lock\_guard} still exists for compatibility reasons and cannot be removed, as it is used in existing code.
 
 	\item The \texttt{scoped\_lock} class template is a variadic template supporting any number of mutexes. The declaration of the \texttt{scoped\_lock} can be simplified thanks to C++17 template argument deduction for constructors:
 \begin{lstlisting}[frame=single, language=c++]	
@@ -18530,7 +18564,7 @@ std::recursive_mutex mutex2;
 std::scoped_lock sl(mutex1, mutex2);
 \end{lstlisting}	
 	
-    \item \texttt{unique\_lock} can be used to lock a mutex in a function and then transfer ownership of that lock to the caller, allowing the caller to perform additional actions under the protection of the same lock.
+    \item \texttt{unique\_lock} in C++ provides flexibility in managing mutex locks, including the ability to transfer ownership of the lock. This allows a function to lock a mutex and then transfer the ownership of that lock to its caller, enabling the caller to perform additional actions under the protection of the same lock.
 
 \begin{lstlisting}[frame=single, language=c++]	
 std::unique_lock<std::mutex> get_lock(){
@@ -18549,23 +18583,22 @@ void process_data{
 
 	\item \texttt{std::mutex} is a commonly used synchronization primitive in C++ that provides mutual exclusion to shared resources. Here are some typical applications of \texttt{std::mutex}:
 	\begin{enumerate}
-		\item Protecting shared data structures: If multiple threads need to access and modify the same data structure, a \texttt{std::mutex} can be used to ensure that only one thread can access the data structure at a time. This helps prevent race conditions and other concurrency issues.
-	
-		\item Implementing thread-safe queues: A thread-safe queue is a data structure that allows multiple threads to insert and remove elements without causing synchronization issues. std::mutex can be used to implement thread-safe queues by ensuring that only one thread can access the queue at a time.
-	
-		\item Synchronizing access to I/O streams: If multiple threads need to write to the same I/O stream, a \texttt{std::mutex} can be used to ensure that the output is not interleaved, leading to unexpected behavior.
-	
-		\item Protecting global variables: If multiple threads need to read or modify the same global variable, a \texttt{std::mutex} can be used to ensure that only one thread can access the variable at a time. This helps prevent race conditions and other synchronization issues.
-	
-		\item Controlling access to resources: If multiple threads need to access the same resource, such as a network connection or a database, a std::mutex can be used to ensure that only one thread can access the resource at a time. This helps prevent synchronization issues and ensures that the resource is used efficiently.
+		
+		\item Protecting shared data structures: When multiple threads need to access and modify the same data structure concurrently, \texttt{std::mutex} ensures that only one thread accesses the structure at a time, preventing race conditions.
+		
+		\item Implementing thread-safe queues: Thread-safe queues allow multiple threads to insert and remove elements without synchronization issues. \texttt{std::mutex} ensures exclusive access to the queue, maintaining its integrity.
+		
+		\item Synchronizing access to I/O streams: For scenarios where multiple threads write to the same I/O stream, \texttt{std::mutex} prevents interleaved output, which can cause unexpected behavior.
+		
+		\item Protecting global variables: When multiple threads read from or modify the same global variable, \texttt{std::mutex} ensures that only one thread accesses the variable at any given time, avoiding synchronization issues.
+		
+		\item Controlling access to resources: Shared resources like network connections or databases require controlled access. \texttt{std::mutex} ensures that only one thread accesses the resource, promoting efficient and safe usage.
+		
 		\end{enumerate}
 	
-		\item The implementation of std::mutex is based on a kind of "spin lock", detail can be found in the "atomic and memory order" section.
-
-
 		\item google "What's the best way to lock multiple std::mutex'es?" in stackoverflow. 
 	
-		\item Usage of \texttt{std::call\_once} can be found below:
+		\item \texttt{std::call\_once} is a C++11 feature that ensures a function is called exactly once by multiple threads, even if called concurrently by different threads. It is typically used to initialize resources that should only be initialized once throughout the lifetime of a program, such as global data structures or singletons.
 	
 \begin{lstlisting}[frame=single, language=c++]	
 std::once_flag flag1, flag2;
@@ -18598,14 +18631,26 @@ t1.join();
 t2.join();	
 \end{lstlisting}	
 	
-	
 \end{itemize}
 
-\subsubsection{read and write mutex}
+\subsubsection{shared\_mutex}
 
 \begin{itemize}
 
-    \item In C++, the \texttt{shared\_mutex} can be used for read and write locking. If a thread acquires the exclusive lock (through \texttt{lock} or \texttt{try\_lock}), no other threads can acquire any lock (including shared locks). If a thread acquires a shared lock (through \texttt{lock\_shared} or \texttt{try\_lock\_shared}), other threads can acquire shared locks but not the exclusive lock.
+    \item In C++, the \texttt{shared\_mutex} can be used for read and write locking. If a thread acquires the exclusive lock (through \texttt{lock} or \texttt{try\_lock}), no other threads can acquire any lock (including shared locks). If a thread acquires a shared lock (through \texttt{lock\_shared} or \texttt{try\_lock\_shared}), other threads can acquire shared locks but not the exclusive lock. When a thread acquires the exclusive lock using lock() or try\_lock(), it gains exclusive access to the resource. No other threads can acquire any locks (neither shared nor exclusive) while the exclusive lock is held. When a thread acquires a shared lock using lock\_shared() or try\_lock\_shared(), it gains shared access to the resource. Other threads can also acquire shared locks simultaneously, allowing multiple threads to read the resource concurrently. However, no thread can acquire an exclusive lock while any shared locks are held.
+ 
+\begin{lstlisting}
+std::shared_mutex mtx;
+mtx.lock(); // Acquires exclusive lock
+// critical section
+mtx.unlock(); // Releases exclusive lock
+
+mtx.lock_shared(); // Acquires shared lock
+// read-only critical section
+mtx.unlock_shared(); // Releases shared lock
+\end{lstlisting}
+
+	\item The class \texttt{std::shared\_lock} is a general-purpose shared mutex ownership wrapper allowing deferred locking, timed locking and transfer of lock ownership. Locking a \texttt{std::shared\_lock} locks the associated shared mutex in shared mode (to lock it in exclusive mode, \texttt{std::unique\_lock} can be used).
 
 \begin{lstlisting}[frame=single, language=c++]	
 class ThreadSafeCounter {
@@ -18630,13 +18675,13 @@ class ThreadSafeCounter {
 		value_ = 0;
 	}
 	
-	private:
+private:
 	mutable std::shared_mutex mutex_;
 	unsigned int value_ = 0;
 };	
 \end{lstlisting}
 
-    \item \texttt{shared\_mutex} has some performance concern, another option is common mutex and\texttt{shared\_ptr.} 
+    \item \texttt{shared\_mutex} has some performance concern, another option is common mutex and\texttt{shared\_ptr.} \texttt{std::shared\_ptr} is not thread safe, so we use lock to protect, In query function, once we get \texttt{shared\_ptr}, we don't need to protect, that is why we put protected logic into the \texttt{getData} function.
 
 \begin{lstlisting}[frame=single, language=c++]	
 class CustomerData : boost::noncopyable{
@@ -18656,11 +18701,11 @@ private:
 	static MapPtr parseData(const string& message);
 	
 	MapPtr getData() const { 
-		muduo::MutexLockGuard lock(mutex_);
+		std::lock_guard lock(mutex_);
 		return data_;
 	}
 	
-	mutable muduo::MutexLock mutex_;
+	std::mutux mutex_;
 	MapPtr data_;
 };
 
@@ -18673,20 +18718,19 @@ int CustomerData::query(const string& customer, const string& stock) const{
 		return -1;
 }
 \end{lstlisting}
-\begin{description}
-	\item[Line 18 and 27] \texttt{std::shared\_ptr} is not thread safe, so we use lock to protect, In query function, once we get \texttt{shared\_ptr}, we don't need to protect, that is why we put protected logic into the \texttt{getData} function.
-\end{description}
 
 	\item How to update? The most important points to help you understand is swap exchange not only pointer, but also reference number. 
 \begin{lstlisting}
 void CustomerData::update(const string& customer, const EntryList& entries){
-    MutexLockGuard lock(mutex_);
-	if (!data_.unique()){
-	    MapPtr newData(new Map(*data_));
+	std::lock_guard lock(mutex_);
+	if (!data_.unique()){ //only shared_ptr managing the current object 
+		//somebody is reading, so copy a new one.
+		MapPtr newData(new Map(*data_));
 		data_.swap(newData);
     }
 	assert(data_.unique());
 	(*data_)[customer] = entries;
+}
 \end{lstlisting}
 
 \begin{center}
@@ -18694,23 +18738,39 @@ void CustomerData::update(const string& customer, const EntryList& entries){
 \end{center}
 
 
-    \item some suggestions about using mutex+lock
+    \item By following these guidelines, you can use mutex and lock effectively to manage concurrency in your C++ programs, reducing the risk of deadlocks, race conditions, and other synchronization issues.
 \begin{enumerate}
-    \item don't use mutex across process, just use TCP socket between processes. 
+    \item Using a mutex for inter-process synchronization is not recommended. Instead, use IPC (Inter-Process Communication) mechanisms like TCP sockets, which are designed to handle communication between processes.
 
     \item Only use non-recursive mutex. If you have to use recursive mutex, you'd better redesign your framework.
     
-    \item Keep the protected region as small as possible.
+    \item Keep the critical section (protected region) as short as possible. This reduces contention and potential for deadlocks, improving overall performance.
+    
+    \item Use RAII (Resource Acquisition Is Initialization) to manage lock lifetimes automatically with \texttt{std::lock\_guard} or \texttt{std::unique\_lock}.
+    
+    \item When locking multiple mutexes, use \texttt{std::scoped\_lock} to avoid deadlocks.
+    
+    \item Use try\_lock to attempt to acquire a lock without blocking, allowing your program to continue if the lock isn't available.
+\begin{lstlisting}
+if (mtx.try_lock()) {
+	// Critical section
+	mtx.unlock();
+} else {
+	// Handle the case where the lock is not available
+}
+\end{lstlisting}
+	
+	\item Avoid locking mutexes in destructors to prevent deadlocks or exceptions during stack unwinding.
 
 \end{enumerate}
 
 \end{itemize}
 
-\subsubsection{dead lock}
+\subsubsection{Problem of lock}
 
 \begin{itemize}
 	
-	\item How to avoid dead lock.
+	\item How to avoid dead lock?
 	\begin{enumerate}
 		\item Avoid nested locks, don't try to acquire a lock when you already hold one.
 		\item Avoid calling user-supplied code while holding a lock, maybe this function has hold a lock already.
@@ -18719,7 +18779,7 @@ void CustomerData::update(const string& customer, const EntryList& entries){
 		\item Deadlock doesn't only occur with locks, it can occur with any synchronization construct that can lead to a wait cycle. For example, it's a bad idea to wait for a thread while holding a lock, because that thread might need to acquire the lock in order to proceed. 
 	\end{enumerate}	
 
-	\item compare below three codes, they do the same thing to avoid deadlock. So we should use \texttt{scoped\_lock} more. 
+	\item Compare below three codes, they do the same thing to avoid deadlock. So we should use \texttt{scoped\_lock} more. 
 \begin{lstlisting}[frame=single, language=c++]
 std::unique_lock<std::mutex> lk1(mutex1, std::defer_lock);
 std::unique_lock<std::mutex> lk2(mutex2, std::defer_lock);
@@ -18743,8 +18803,20 @@ std::scoped_lock guard(lhs.m, rhs.m);
 swap(lhs.some_detail, rhs.some_detail);	
 \end{lstlisting}	
 
-		
-	\item Even when you use a mutex to protect member data in your class, you still need to design your class interface to support concurrent programming. For example, we can't have top() and pop() function for a stack at the same time in a concurrent context, because we can't make two interface functions atomic at the same time. The solution is to use \texttt{std::shared\_ptr} or use references. It's worth noting that in order to make the class exception-safe, we need to have two interface functions: top() and pop(). If we could only use one function and we want to keep the class exception-safe, we can't return a value (because copying a value when returning may throw an exception). Instead, we can return a smart pointer, which will not throw any exceptions.
+	\item Even when you use a mutex to protect member data in your class, you still need to design your class interface to support concurrent programming.
+\begin{enumerate}
+	\item It's worth noting that in order to make the stack class exception-safe, we need to have two interface functions: top() and pop(). If we could only use one function and we want to keep the class exception-safe, we can't return a value (because copying a value when returning may throw an exception).
+	
+	\item But from concurrent perspective, we can't have top() and pop() function for a stack at the same time, because we can't make two interface functions atomic at the same time. Why Separate Locks for top() and pop() Don't Solve the Problem? Suppose we have a thread-safe stack class where both top() and pop() are protected by their own locks: Consider two threads, Thread 1 and Thread 2, operating on the stack:
+\begin{enumerate}
+	\item Thread 1 locks the mutex in top() and retrieves the top element.
+	\item Thread 1 releases the lock after retrieving the top element.
+	\item Thread 2 locks the mutex in pop() and removes the top element.
+	\item Thread 2 releases the lock after removing the top element.
+	\item Thread 1 now calls pop() and attempts to remove the element it retrieved earlier, but that element has already been removed by Thread 2.
+\end{enumerate}
+	
+	\item The solution is to use \texttt{std::shared\_ptr} or use references. Instead, we can return a smart pointer, which will not throw any exceptions.	 
 	
 \begin{lstlisting}[frame=single, language=c++]
 std::shared_ptr<T> pop(){
@@ -18762,17 +18834,18 @@ void pop(T& value){
 	data.pop();
 }		
 \end{lstlisting}	
+\end{enumerate}
 	
-	\item In computer science, a lock convoy is a performance problem that can occur when using locks for concurrency control in a multithreaded application.  A lock convoy occurs when multiple threads of equal priority contend repeatedly for the same lock. Unlike deadlock and livelock situations, the threads in a lock convoy do progress; however, each time a thread attempts to acquire the lock and fails, it relinquishes the remainder of its scheduling quantum and forces a context switch. The overhead of repeated context switches and underutilization of scheduling quanta degrade overall performance.
+	\item In computer science, a lock convoy is a performance problem that can occur when using locks for concurrency control in a multithreaded application.  A lock convoy occurs when multiple threads of equal priority contend repeatedly for the same lock. Unlike deadlock and livelock situations, the threads in a lock convoy do progress; however, each time a thread attempts to acquire the lock and fails, it relinquishes the remainder of its scheduling quantum and forces a context switch. The overhead of repeated context switches and underutilization of scheduling quanta degrade overall performance. A good reference is "A Complete Guide to Lock Convoys", it introduces some deep knowledge about CPU, operating system kernel, and the way your locks are implemented in software.
 	
 	\item Lock convoys often occur when concurrency control primitives such as locks serialize access to a commonly used resource, such as a memory heap or a thread pool. They can sometimes be addressed by using non-locking alternatives such as lock-free algorithms or by altering the relative priorities of the contending threads.
 \end{itemize}
 
 
 \section{Synchronization}
-\subsection{conditional variable}
+\subsection{Conditional variable}
 \begin{itemize}
-	    \item The implementation of a conditional variable can be understood in the following way: you first lock a mutex, then check a flag. If the flag is set, you exit the wait. It's important to note that the mutex remains locked upon return from the wait. If the flag is not set, you unlock and go to sleep. After the sleep is over, you go back to the beginning to proceed again.
+	    \item The implementation of a condition variable can be understood in the following way: first, you lock a mutex and then check a flag. If the flag is set, you exit the wait. It's important to note that the mutex remains locked upon return from the wait. If the flag is not set, you unlock and go to sleep. After being woken up, you reacquire the mutex and check the flag again to determine if you can proceed.
 \begin{lstlisting}[]
 bool flag;
 std::mutex m;
@@ -18786,19 +18859,19 @@ void wait_for_flag(){
 }	
 \end{lstlisting}	
 
-	\item The basic idea of conditional variable is easy, youcould in theory implement something like a conditional variable with nothing more than atomic accesses and timed thread suspension. However, it would perform extremely poorly. Modern OS's know when a thread is waiting on a condition and can wake that thread up "immediately" when the condition is satisfied. Your mechanism requires that the waiting thread wait until some specific time has passed. Plus, you'd have a whole bunch of spurious wake-ups that you have to check for, thus using thread time for no reason. The OS-based implementation will have far fewer spurious wake-ups.
+	\item The basic idea of a condition variable is simple. In theory, you could implement something like a condition variable using only atomic accesses and timed thread suspension. However, this would perform extremely poorly. Modern operating systems know when a thread is waiting on a condition and can wake that thread up "immediately" when the condition is satisfied. Your mechanism would require the waiting thread to wait until a specific time has passed. Moreover, you'd have many spurious wake-ups to check for, wasting thread time for no reason. An OS-based implementation will have far fewer spurious wake-ups.
 	
 	\item Basic usage pattern of conditional variable:
 
 \begin{enumerate}
 	\item Use a global mutex with \texttt{unique\_lock}.  
 	
-	\item In one thread, call wait, pass \texttt{unique\_lock} and lambda with bool check condition.(that is for spurious wakeup)
+	\item In one thread, call wait, pass \texttt{unique\_lock} and lambda with flag check condition.(that is for spurious wakeup).
 	
-	\item In the other thread, use \texttt{lock\_guard} or \texttt{scoped\_guard} to lock the same mutex and update bool flag.
+	\item In another thread, use \texttt{lock\_guard} or \texttt{scoped\_guard} to lock the same mutex and update the flag.
 \end{enumerate}
 
-	\item An example of synchronization between main and worker thread. main tell worker resource is ready, and worker tell main that work has finished. They can use the same mutex. You can see that when cv.wait return, the mutex m is still locked. This point is very important to understand conditional variable.  Inside the source code, \texttt{lock\_guard} must be put inside a pair of curly braces. 
+	\item Here's an example of synchronization between the main and worker threads: the main thread informs the worker when a resource is ready, and the worker informs the main thread when the work is finished. They can use the same mutex for coordination. It's crucial to note that when \texttt{cv.wait} returns, the mutex \texttt{m} remains locked. This detail is critical for understanding conditional variables. In the source code, remember that \texttt{lock\_guard} must be enclosed within a pair of curly braces.
 
 \begin{lstlisting}[frame=single, language=c++]
 std::mutex m;
@@ -18831,7 +18904,7 @@ int main(){
 		std::cout << "main() signals data ready for processing\n";
 	}
 	cv.notify_one(); //tell worker data is ready.
-	{ // wait for the worker
+	{ // wait for the worker to finish
 		std::unique_lock<std::mutex> lk(m);
 		cv.wait(lk, []{return processed;});
 	}
@@ -18890,7 +18963,15 @@ Notifying again...
 ...finished waiting. i == 1
 \end{lstlisting}
 
-    \item \texttt{wait\_for()} and \texttt{std::cv\_status} are different from \texttt{wait()}. \texttt{wait\_for()} will return after a certain amount of time. When using \texttt{wait\_for()}, it's usually placed inside an if statement.
+    \item The difference between wait\_for and wait in the context of condition variables (std::condition\_variable) in C++ is as follows:
+
+\begin{enumerate}
+	\item wait\_for(duration): This function waits for a specified duration of time (duration) or until the condition variable is notified, whichever happens first. If the specified duration elapses before the condition variable is notified, the function returns and the thread continues execution.
+	
+	\item wait(unique\_lock): This function waits indefinitely (until notified) while atomically releasing the associated mutex (unique\_lock). When notified, the function reacquires the mutex and continues execution.
+	
+	\item When using \texttt{wait\_for()}, it's usually placed inside an if statement.
+\end{enumerate}
     
 \begin{lstlisting}[frame=single, language=c++]
 std::condition_variable cv;
@@ -18934,17 +19015,20 @@ Thread 3 finished waiting. i == 1
 
 \end{itemize}
 
-\subsection{future}
+\subsection{async and future}
 
 \begin{itemize}
-	\item \texttt{std::async} and \texttt{std::future} use a conditional variable behind the scenes, making programming much easier. For example, we can open a new thread to retrieve data from a database while simultaneously getting data from a file in the current thread. The resulting code is simple and easy to understand. This is the advantage of using \texttt{std::async}. While it still uses the conditional variable introduced in the previous section, it hides it behind the scenes.
+	
+	\item If you just need some code executed asynchronously i.e. without blocking execution of Main thread, your best bet is to use the \texttt{std::async} functionality to execute the code. The same could be achieved by creating a thread and passing the executable code to the thread via a function pointer or lambda parameter. However, in the later case, you're responsible for managing creation and joining/detaching of them thread, as well as handling any exceptions that might happen in the thread. If you use \texttt{std::async}, you just get rid of all these hassels and also dramatically reduce chances of getting into a deadlock scenario. Another huge advantage of using \texttt{std::async} is the ability to get the result of the task communicated back to the calling thread via a \texttt{std::future} object. For example, assuming we have a function ConjureMagic which returns an \texttt{int}, we can spin an async task that sets a future when it's done and we can extract the result from that future in our calling thread when at an opportune time.
+	
+	\item \texttt{std::async} facilitates asynchronous execution in C++, making programming more straightforward. For instance, you can concurrently retrieve data from a database in a separate thread while fetching data from a file in the main thread. This approach simplifies code and enhances readability. Although std::async employs synchronization mechanisms similar to those discussed earlier, it abstracts these details away from the programmer by managing thread creation and synchronization internally. \texttt{std::async} returns a \texttt{std::future} object, which represents the result of an asynchronous operation. This \texttt{std::future} can be used to retrieve the eventual result of the function or task that was executed asynchronously. The type of the result depends on the return type of the function passed to \texttt{std::async}.
 	
 \begin{lstlisting}[frame=single, language=c++]
 using namespace std::chrono;
 system_clock::time_point start = system_clock::now(); 	// Get Start Time
 std::future<std::string> resultFromDB = std::async(std::launch::async, fetchDataFromDB, "Data");
-//Fetch Data from File
-std::string fileData = fetchDataFromFile("Data");
+
+std::string fileData = fetchDataFromFile("Data"); //Fetch Data from File
 
 // Will block till data is available in future<std::string> object.
 std::string dbData = resultFromDB.get();
@@ -18962,6 +19046,7 @@ std::future<int> myFuture = std::async(std::launch::async, []() {
      throw std::runtime_error("Catch me in MAIN");
      return 8;
 });
+
 if (myFuture.valid()) {
      try {
          int result = myFuture.get();
@@ -18972,19 +19057,19 @@ if (myFuture.valid()) {
 }
 \end{lstlisting}
 
- 	\item If you just need some code executed asynchronously i.e. without blocking execution of Main thread, your best bet is to use the \texttt{std::async} functionality to execute the code. The same could be achieved by creating a thread and passing the executable code to the thread via a function pointer or lambda parameter. However, in the later case, you're responsible for managing creation and joining/detaching of them thread, as well as handling any exceptions that might happen in the thread. If you use \texttt{std::async}, you just get rid of all these hassels and also dramatically reduce chances of getting into a deadlock scenario. Another huge advantage of using \texttt{std::async} is the ability to get the result of the task communicated back to the calling thread via a \texttt{std::future} object. For example, assuming we have a function ConjureMagic which returns an \texttt{int}, we can spin an async task that sets a future when it's done and we can extract the result from that future in our calling thread when at an opportune time.
+ 	\item Currently, \texttt{std::async} is probably best suited for handling either very long-running computations or long-running I/O for fairly simple programs. However, it doesn't guarantee low overhead, and in fact, the way it is specified makes it difficult to implement with a thread pool behind the scenes. Therefore, it's not well-suited for finer-grained workloads. For that, you either need to roll your own thread pools using \texttt{std::thread} or use something like Microsoft's PPL or Intel's TBB. \texttt{std::async} is rather limited in the current standard. It will become more useful if the suggested extensions, which incorporate some of the ideas from Microsoft's PPL, are accepted.
 
 	\item We can also use \texttt{std::packaged\_task} to generate a \texttt{std::future}. The main differences between \texttt{std::async} and \texttt{std::packaged\_task} are:
 
 \begin{enumerate}
-	\item When using \texttt{std::async}, you cannot run your task on a specific thread, while a \texttt{std::packaged\_task} can be moved to other threads.
+	\item When using \texttt{std::async}, you cannot run your task on a specific thread, while a \\ \texttt{std::packaged\_task} can be moved to other threads.
 	
 	\item A \texttt{packaged\_task} needs to be invoked before calling \texttt{future.get()}, otherwise your program will freeze since the future will never become ready.
 	
 	\item A \texttt{packaged\_task} won't start on its own; you have to invoke it. On the other hand, \texttt{std::async} with \texttt{launch::async} will attempt to run the task in a different thread. Use \texttt{std::async} if you want something done but don't really care when it's done, and use \texttt{std::packaged\_task} if you want to wrap up things to move them to other threads or call them later.
 \end{enumerate}
 	
-    \item When we execute the program, we will get a full concurrent result because we used \texttt{std::thread}. Also, because packaged\_task returns a future object, we can use it to retrieve the return value of tasks without any issues. The typical usage of a packaged task is:
+    \item Because \texttt{packaged\_task} returns a future object, we can use it to retrieve the return value of tasks without any issues. The typical usage of a packaged task is:
 
 \begin{enumerate}
 	\item creating the packaged task with a function,
@@ -19024,11 +19109,9 @@ int main(){
 }
 \end{lstlisting}
 
-    \item The wait() and join() methods are used to pause the current thread. wait is mainly used for shared resources, A thread notifies other waiting thread when a resource becomes free. On the other hand, join() is used for waiting a thread to finish.
+%    \item The wait() and join() methods are used to pause the current thread. wait is mainly used for shared resources, A thread notifies other waiting thread when a resource becomes free. On the other hand, join() is used for waiting a thread to finish.
 
-    \item You can use futures, together with promises, with manually created \texttt{std::threads}. Using \texttt{std::async} is a convenient way to fire off a thread for some asynchronous computation and marshal the result back via a future. However, \texttt{std::async} is rather limited in the current standard. It will become more useful if the suggested extensions, which incorporate some of the ideas from Microsoft's PPL, are accepted.
 
-    \item Currently, \texttt{std::async} is probably best suited for handling either very long-running computations or long-running I/O for fairly simple programs. However, it doesn't guarantee low overhead, and in fact, the way it is specified makes it difficult to implement with a thread pool behind the scenes. Therefore, it's not well-suited for finer-grained workloads. For that, you either need to roll your own thread pools using \texttt{std::thread} or use something like Microsoft's PPL or Intel's TBB.
     
     \item Promise and future basic usage, you can see we can use promise as return value from a thread object.
 \begin{lstlisting}[numbers=none]
@@ -19070,7 +19153,7 @@ main(){
 }
 \end{lstlisting}
 
-	\item You can give a promise to one thread and give a share to another thread. The usage is quite similar to conditional variables. The benefit of a conditional variable over a promise and future is that you can use conditional variables to synchronize threads multiple times. In contrast, a promise can send its notification only once. Therefore, you have to use more promise and future pairs to get the functionality of a conditional variable. However, if you use the conditional variable only for one synchronization, it is a lot more difficult to use correctly. On the other hand, a promise and future pair needs no shared variable and, therefore, no lock. They are not prone to spurious wakeups or lost wakeups. Additionally, they can handle exceptions. So, there are many reasons to prefer tasks to conditional variables.
+	\item You can provide a promise to one thread and a future to another thread, which is akin to using conditional variables. However, conditional variables have an advantage in that they can synchronize threads multiple times. In contrast, a promise can notify only once. Therefore, to achieve multiple synchronizations, you would need multiple sets of promises and futures. Nevertheless, if you use a conditional variable only for a single synchronization, promises and futures offer benefits. They require no shared variables and hence no locks, making them immune to issues like spurious or lost wake-ups. Moreover, they can handle exceptions gracefully. These advantages make promises and futures preferable in many scenarios over conditional variables.
 	
 \begin{lstlisting}[numbers=none]
 void doTheWork(){
@@ -19087,15 +19170,14 @@ void setDataReady(std::promise<void>&& prom){
 	prom.set_value();	
 }
 
-std::promise<void> sendReady;
-auto fut= sendReady.get_future();
+std::promise<void> sendReady;      //1 define a promise
+auto fut= sendReady.get_future();  //2 get future from promise
 std::thread t1(waitingForWork,std::move(fut));
 std::thread t2(setDataReady,std::move(sendReady));
 t1.join(); t2.join();	
 \end{lstlisting}
 
-    
-    \item \texttt{std::shared\_future} example. future and shared\_future just like \texttt{unique\_ptr} and \texttt{shared\_ptr}. A \texttt{shared\_future} may be used to signal multiple threads simultaneously, similar to \\
+    \item \texttt{std::shared\_future} example. future and shared\_future just like \texttt{unique\_ptr} and \texttt{shared\_ptr}. A \texttt{shared\_future} can be used to signal multiple threads simultaneously, similar to \\
 \texttt{std::condition\_variable::notify\_all()}.
 
 \begin{lstlisting}[numbers=none]  
@@ -19128,51 +19210,77 @@ ready_promise.set_value(); 	// signal all threads to go
 << result2.get().count() << " ms after start\n";	
 \end{lstlisting}
 \begin{description}
-	\item[Source code] ready\_promise is main switch. t1\_ready\_promise is void, just like a conditional variable. The main thread wait all other threads are ready, then trigger a start singal(ready\_promise.set\_value). For lambda, catch means "copying", although they have the same name, please pay attention here. 
+	\item[Source code] ready\_promise is main switch. t1\_ready\_promise is void, just like a conditional variable. The main thread wait all other threads are ready, then trigger a start singal(ready\_promise.set\_value). In the code, future.wait() is used to wait for completion without retrieving the result, while future.get() is used to retrieve the result once it is available.
+	
 \end{description}
 
-	\item In summary, we know three ways of associating a task with a \texttt{std::future:} \texttt{std::async}, \texttt{std::packaged\_task}, and \texttt{std::promise.} The benefit of the packaged task over \texttt{std::async} is to decouple the creation of the future from the execution of the task. On the other hand, the benefit of the promise over \texttt{std::async} and \texttt{std::packaged\_task} is that the promise can communicate a value to the future at a different time than at the end of a function call.
+	\item In summary, there are three ways to associate a task with a \texttt{std::future}: \texttt{std::async}, \texttt{std::packaged\_task}, and \texttt{std::promise}. The advantage of \texttt{std::packaged\_task} over \texttt{std::async} is its ability to separate the creation of the future from the execution of the task. On the other hand, \texttt{std::promise} offers a benefit over \texttt{std::async} and \texttt{std::packaged\_task} by allowing the communication of a value to the future at a different time than at the end of a function call.
 
 \end{itemize}
 
 
 \subsection{counting\_semaphore, latch and barrier}
 \begin{itemize}
-	\item C++ implements synchronization primitives using atomic operations and memory barriers, freeing users from the need to handle these themselves. These primitives include mutexes, condition variables, shared/exclusive locks, and semaphores, which are similar to those used in other operating systems.
+	\item C++ implements synchronization primitives using atomic operations and memory barriers, relieving users from the burden of handling these aspects manually. These primitives encompass mutexes, condition variables, shared/exclusive locks, and semaphores, akin to those found in other operating systems.
 	
-	\item A semaphore can be compared to a public lending library that doesn't charge late fees. Imagine that the library has 5 copies of the book 'C++ Concurrency in Action' available to borrow. The first five people who come to the library looking for a copy will get one, but the sixth person will either have to wait or come back later. The library doesn't track who returns the books, as there are no late fees. When a copy is returned, it will be given to one of the people who are waiting for it. If no one is waiting, the book will be placed back on the shelf until someone requests a copy.
+	\item A semaphore can be likened to a public lending library without late fees. Picture a library that has 5 copies of the book 'C++ Concurrency in Action' available for borrowing. The first five people who arrive looking for a copy will get one, but the sixth person will need to wait or return later. The library doesn't track who returns the books, so there are no late fees. When a copy is returned, it's given to someone who is waiting for it. If no one is waiting, the book is returned to the shelf until another request comes in. In below code, The semaphore ensures that at most 5 worker threads can acquire permits concurrently. Additional threads will block until a permit becomes available.
 	
 \begin{lstlisting}
-std::counting_semaphore<1> signal2Ping(0); 
-std::counting_semaphore<1> signal2Pong(0);  
-std::atomic<int> counter{};
-constexpr int countlimit = 1'000'000;
-void ping() {
-	while(counter <= countlimit) {
-		signal2Ping.acquire();   
-		++counter;
-		signal2Pong.release();
-	}
-}
-void pong() {
-	while(counter < countlimit) {
-		signal2Pong.acquire();
-		signal2Ping.release();   
-	}
+std::counting_semaphore<5> sem(5); // Semaphore with 5 permits
+
+void worker(int id) {
+	sem.acquire(); // Acquire a permit
+	std::cout << "Worker " << id << " acquired a permit" << std::endl;
+	
+	std::this_thread::sleep_for(std::chrono::seconds(2)); // Simulating some work
+	
+	sem.release(); // Release the permit
+	std::cout << "Worker " << id << " released a permit" << std::endl;
 }
 
-signal2Ping.release();                
-std::thread t1(ping);
-std::thread t2(pong);	
-t1.join();
-t2.join();	
-\end{lstlisting}
+int main() {
+	std::thread workers[10]; // 10 workers
+	for (int i = 0; i < 10; ++i) {// Start all worker threads
+		workers[i] = std::thread(worker, i);
+	}
 	
-    \item \texttt{binary\_semaphore} typically makes little sense for the same task to do both a give and a take on the same binary semaphore. The mutex is similar to the principles of the binary semaphore with one significant difference: the principle of ownership. Ownership is the simple concept that when a task locks (acquires) a mutex, only it can unlock (release) it. If a task tries to unlock a mutex it hasn’t locked (thus doesn’t own), then an error condition is encountered, and most importantly, the mutex is not unlocked. If the mutual exclusion object doesn’t have ownership, then, irrespective of what it is called, it is not a mutex. Semaphores are also often used for the semantics of signaling/notifying rather than mutual exclusion by initializing the semaphore with 0 and thus blocking the receiver(s) that try to acquire() until the notifier "signals" by invoking release(n). In this respect, semaphores can be considered alternatives to std::condition\_variables, often with better performance. You can find a good article on this topic, "Mutex vs. Semaphores – Part 1: Semaphores," and "Mutex vs Semaphore: What’s the Difference?".
+	// Join all worker threads
+	for (int i = 0; i < 10; ++i) {
+		workers[i].join();
+	}
+}	
+\end{lstlisting}
+
+	\item How to understand mutex and semaphore?
+\begin{enumerate}
+    \item A semaphore is a data structure with a queue and a counter. The counter is initialized to a value equal to or greater than zero. It supports the two operations wait and signal. wait acquires the semaphore and decreases the counter; it blocks the thread acquiring it if the counter is zero. signal releases the semaphore and increases the counter. \textbf{Blocked threads are added to the queue to avoid starvation.}
     
     \item mutex make sure that \textbf{critical section}(a piece of code) will not be run concurrently. Semaphore limit the number of access to the same resource. 
     
-    \item \texttt{std::latch} has two typical usages. 
+    \item The mutex has ownership. Ownership dictates that when a task locks (acquires) a mutex, only that task can subsequently unlock (release) it. If a task attempts to unlock a mutex it hasn’t previously locked (and therefore doesn’t own), an error condition is encountered, and crucially, the mutex remains locked.
+    
+    \item binary\_semaphore is an alias for specialization of \texttt{std::counting\_semaphore} with LeastMaxValue being 1. Implementations may implement binary\_semaphore more efficiently than the default implementation of \texttt{std::counting\_semaphore}.
+    
+    \item The C++20 \texttt{std::binary\_semaphore} is a specialization of the more general \\ \texttt{std::counting\_semaphore} that only supports two values, 0 and 1. The main use case of a binary semaphore is for simple signalling, where the alternative approach would be to use the combination of std::mutex, std::condition\_variable and a boolean variable. semaphore often has better performance than condition varaible. 
+    
+\begin{lstlisting}
+std::binary_semaphore signal(0);
+auto t = std::jthread([&signal]() {
+	// Wait until this thread is signaled
+	signal.acquire();
+	// Actual code...
+});
+
+signal.release(); // Signal the thread to run
+\end{lstlisting}
+
+	\item For simple notifying context, you also can use 1) \texttt{binary\_semaphore} or 2) \texttt{promose<void>} instead of conditional variable.
+    
+    \item You can find a good article on this topic, "Mutex vs. Semaphores – Part 1: Semaphores," and "Mutex vs Semaphore: What’s the Difference?".
+    
+\end{enumerate}
+    
+    \item \texttt{std::latch} has two typical usages: 
 \begin{enumerate}
 
 	\item Setting multiple threads to perform a task, and then waiting until all threads have reached a common point. \textbf{wait until finish, aka, finish together.}
@@ -19186,6 +19294,7 @@ void DoWork(threadpool* pool) {
 			completion_latch.count_down();
 		}));
 	}
+	
 	// Block until work is done
 	completion_latch.wait(); //Arrive here together.
 }
@@ -19217,12 +19326,13 @@ void DoWork() {
 \begin{lstlisting}[numbers=none]
 const auto workers = { "anil", "busara"};
 auto on_completion = []() noexcept { 
-	// locking not needed here
-	static auto phase = "... done\n" "Cleaning up...\n";
+	static auto phase = "... done\n" "Cleaning up...\n"; //locking not needed here
 	std::cout << phase;
 	phase = "... done\n";
 };
+
 std::barrier sync_point(std::ssize(workers), on_completion);
+
 auto work = [&](std::string name) {
 	std::string product = "  " + name + " worked\n";
 	std::cout << product;  // ok, op<< call is atomic
@@ -19232,14 +19342,17 @@ auto work = [&](std::string name) {
 	std::cout << product;
 	sync_point.arrive_and_wait();
 };
+
 std::cout << "Starting...\n";
 std::vector<std::thread> threads;
-for (auto const& worker : workers) {
+for (auto const& worker : workers) { //two threads
 	threads.emplace_back(work, worker);
 }
 for (auto& thread : threads) { thread.join();}	
-//output
-Starting...
+\end{lstlisting}
+
+\begin{lstlisting}
+Starting...   //output
 anil worked
 carl worked
 ... done  //the first time go into the on_completion
@@ -19249,7 +19362,6 @@ carl cleaned
 ... done  //the second time go into the on_completion
 \end{lstlisting}
 
-    \item For simple notifying context, you also can use 1) \texttt{binary\_semaphore} or 2) \texttt{promose<void>} instead of conditional variable.
 
 \end{itemize}
 
@@ -19258,18 +19370,37 @@ carl cleaned
 \subsection{Atomic type}
 \begin{itemize}
 
-	\item There are user-defined atomic(trivially copyable) and built-in atomic: bool, integral type, floating point, pointers and smart pointers(C++20).  You can call \texttt{is\_lock\_free} to determine whether operations on a given type are done directly with atomic instructions or done by using a lock internal to the compiler. That is important to know in many cases. If the atomic operations use an internal mutex, then the aotmic performance gains will probably not good. On the contrary, will be bad. So if you have many atomic together, better not use atomic, use one mutex includes them all.
+	\item here are user-defined atomic types(std::atomic, trivially copyable) and built-in atomic types, such as bool, integral types, floating point types, pointers, and smart pointers (since C++20). You can call is\_lock\_free to determine whether operations on a given type are performed directly with atomic instructions or by using a lock internal to the compiler. This is important to know in many cases. If the atomic operations use an internal mutex, the performance gains from using atomic types will probably not be good and may even be detrimental. Therefore, if you have many atomic operations together, it is often better to use a single mutex to protect them all rather than relying on multiple atomic operations.
 		
-	\item Can't use = to initialize atomic variable. A single operation on two distinct objects can't be atomic.
+	\item All operations on an atomic type are defined as atomic, and assignment and copy-construction involve two objects. A single operation on two distinct objects can’t be atomic.
+
+\begin{lstlisting}
+atomic<int> i1, i2;
+i1 = 0; // this is calling int atomic<int>::operator=(int)
+i2 = 1; // this is also calling int atomic<int>::operator=(int)
+i1 = i2; // this is also calling 
+// atomic<int>& atomic<int>::operator=(constatomic<int>&)
+// (so called copy assignment operator which is explicitly deleted 
+
+i1.store(i2);
+// it actually does two things:
+int temporary = i2.load(); // #1
+i2.store(temporary); // #2
+// -> i2 get implicitly converted to int (#1)
+// -> i1.store gets called with that int (#2)
+// each of those 2 instructions are atomic but not both of them at once
+// in other words they i1.store(i2) is not atomic as a whole
+\end{lstlisting}
 
 \begin{lstlisting}[numbers=none]
-atomic<int> t_int = 0; //error, this is calling 1) atomic<int> 2)atomic<int>::operator=(int)
+atomic<int> t_int = 0; //error, this is calling 
+					   //1) atomic<int> 2)atomic<int>::operator=(int)
 atomic<int> x_int{0};  //OK
 atomic<int> z_int = {0}; //OK
 z_int.store{42}.
 \end{lstlisting}	
 
-	\item Atomic is not copy or assignable.
+	\item Atomic is not copyable or assignable.
 \begin{lstlisting}[numbers=none]
 atomic<int> a{1}, b{2};
 b = a //doesn't compile
@@ -19314,7 +19445,7 @@ a_x.exchange(y) //The same, but load store can use different memory oder.
 a_x++ //a_x.fetch_add(1) //Also the same
 \end{lstlisting}	
 
-	\item \texttt{test\_and\_set}, \texttt{exchange}, \texttt{compare\_exchange\_weak(strong)} are all read-modify-write operation. \texttt{exchange(desired)} atomically replaces the underlying atomic value with desired. The operation is read-modify-write operation. It \textbf{ALWAYS} writes desired value to underlying atomic value. 
+	\item \texttt{test\_and\_set}, \texttt{exchange}, \texttt{compare\_exchange\_weak(strong)} are all read-modify-write operation inc++atomic operations. \texttt{exchange(desired)} atomically replaces the underlying atomic value with the specified desired value. This operation is a read-modify-write operation, meaning it \textbf{always} writes the desired value to the underlying atomic value. 
 
 	\item \texttt{test\_and\_set} and \texttt{clear} can only be used in atomic bool type.  \texttt{test\_and\_set} sets a \texttt{atomic\_flag} (make it true) and returns whether it was already set immediately before the call. There are a few points here: 1) it first read the atomic\_flag as return value, then it \textbf{ALWAYS} set(write) atomic\_flag. 2) The read and set are atomic operation(an atomic read-modify-write operation): the value is not affected by other threads between the instant its value is read (to be returned) and the moment it is modified by this function. A typical usage of \texttt{test\_and\_set} is spin lock and I will introduce it in the next section.
 
@@ -19354,7 +19485,8 @@ while(!a_x.compare_exchange_strong(oldx, newx));
 	\item  You need achieve an atomic update based on the value in the atomic variable. A failure indicates that the variable is not updated with our desired value and we want to retry it. Note that we don’t really care about whether it fails due to concurrent write or spurious failure. But we do care that it is we that make this change. A real-world example is for several threads to add an element to a singly linked list concurrently. Each thread first loads the head pointer, allocates a new node and appends the head to this new node. Finally, it tries to swap the new node with the head. Another example is to implement mutex using std::atomic<bool>. At most, one thread can enter the critical section at a time, depending on which thread first set current to true and exit the loop.
 \begin{lstlisting}
 expected = current.load();
-do desired = function(expected);
+do 
+	desired = function(expected);
 while (!current.compare_exchange_weak(expected, desired));	
 \end{lstlisting}
 
@@ -19372,16 +19504,15 @@ uint32_t fetch_multiply(std::atomic<uint32_t>& shared, uint32_t multiplier) {
 \end{lstlisting}
 
 
-	\item  Contrary to pattern A, you want the atomic variable to be updated once, but you don’t care who does it. As long as it’s not updated, you try it again. This is typically used with boolean variables. E.g., you need implement a trigger for a state machine to move on. Which thread pulls the trigger is regardless.
+	\item  Contrary to previous example, you want the atomic variable to be updated once, but you don’t care who does it. As long as it’s not updated, you try it again. This is typically used with boolean variables. E.g., you need implement a trigger for a state machine to move on. Which thread pulls the trigger is regardless. In below code, when \texttt{current.compare\_exchange\_weak(expected, true)} return false, there are two possibilities, one is \texttt{current} is hold true, at this time, compare\_exchange\_weak write true to \texttt{expected}, we exit the while loop; The other possible is spurious failure, at this time, \texttt{expected} is still false, so we are still in side while loop. 
 \begin{lstlisting}
 expected = false;
 // !expected: if expected is set to true by another thread, done!
 // Otherwise, it fails spuriously and we should try again.
-while (!current.compare_exchange_weak(expected, true)
-&& !expected);	
+while (!current.compare_exchange_weak(expected, true) && !expected);	
 \end{lstlisting}
 	
-	\item it should be rare to use compare\_exchange\_weak() outside a loop. On the contrary, there are cases that the strong version is in use. Compare\_exchange\_weak() is improper here because when it returns due to spurious failure, it’s likely that no one occupies the critical section yet.
+	\item It should be rare to use compare\_exchange\_weak() outside a loop. On the contrary, there are cases that the strong version is in use. Compare\_exchange\_weak() is improper here because when it returns due to spurious failure, it’s likely that no one occupies the critical section yet.
 \begin{lstlisting}
 bool criticalSection_tryEnter(lock){
 	bool flag = false;
@@ -19397,41 +19528,43 @@ bool criticalSection_tryEnter(lock){
 %	\includegraphics[width=0.90\linewidth]{pics/atomic_operator.png}
 %\end{center}
 
-	\item Another topic about atomic type is memory order. Detail can be seen in the next section. I give three different memory order: we don't use atomic in case 1, use default memory order in case 2; and use relax memory order in case 3. 
-	
-	\begin{enumerate}
 
-    \item if \texttt{i} is accessed by more than one thread, which includes a write, the behavior is undefined. In the absence of synchronization, the compiler is free to assume no other thread can modify \texttt{i}, and may reorder/optimize access to it. For example, it may load \texttt{i} into a register once and never re-read it from memory, or it may hoist writes out of the loop and only write once at the end.
-\begin{lstlisting}[]
-int i = 0; 
-if(i == 10)  {...}  // may actually be optimized away since `i` is clearly 0 now 
-\end{lstlisting}	
-
-    \item By default reads and writes to an atomic are done in \texttt{std::memory\_order\_seq\_cst} (sequentially-consistent) memory order. This means that not only are reads/writes to \texttt{ai} atomic, but they are also visible to other threads in a timely manner, including any other variable's reads/writes before/after it. So reading/writing an atomic acts as a memory fence. This however, is much slower since (1) an SMP system must synchronize caches between processors and (2) the compiler has much less freedom in optimizing code around the atomic access.
-
-\begin{lstlisting}[]
-std::atomic<int> ai{0}; 
-if(ai == 10) {...}  // [2]    
-\end{lstlisting}
-
-    \item Below code allows and guarantees atomicity of ai reads/writes only. So the compiler is again free to reorder access to it, and only guarantees that writes are visible to other threads in a reasonable amount of time. It's applicability is very limited, as it makes it very hard to reason about the order of events in a program. For example This mode is potentially (and often) slower than case 1 since the compiler must ensure each read/write actually goes out to cache/RAM, but is faster than case 2, since it's still possible to optimize other variables around it
-\begin{lstlisting}[]
-std::atomic<int> ai{0}, aj{0}; 
- 
-aj.store(1, std::memory_order_relaxed);  // thread 1 
-ai.store(10, std::memory_order_relaxed); 
- 
-if(ai.load(std::memory_order_relaxed) == 10) {  // thread 2 
-  aj.fetch_add(1, std::memory_order_relaxed); 
-  // is aj 1 or 2 now??? no way to tell. 
-} 
-\end{lstlisting}
-	\end{enumerate}
 
 \end{itemize}
 
-\subsection{memory model}
+\subsection{Memory model}
 \begin{itemize}
+	
+		\item Another topic about atomic type is memory order. Detail can be seen in the next section. I give three different memory order: we don't use atomic in case 1, use default memory order in case 2; and use relax memory order in case 3. 
+	
+	\begin{enumerate}
+		
+		\item if \texttt{i} is accessed by more than one thread, which includes a write, the behavior is undefined. In the absence of synchronization, the compiler is free to assume no other thread can modify \texttt{i}, and may reorder/optimize access to it. For example, it may load \texttt{i} into a register once and never re-read it from memory, or it may hoist writes out of the loop and only write once at the end.
+		\begin{lstlisting}[]
+			int i = 0; 
+			if(i == 10)  {...}  // may actually be optimized away since `i` is clearly 0 now 
+		\end{lstlisting}	
+		
+		\item By default reads and writes to an atomic are done in \texttt{std::memory\_order\_seq\_cst} (sequentially-consistent) memory order. This means that not only are reads/writes to \texttt{ai} atomic, but they are also visible to other threads in a timely manner, including any other variable's reads/writes before/after it. So reading/writing an atomic acts as a memory fence. This however, is much slower since (1) an SMP system must synchronize caches between processors and (2) the compiler has much less freedom in optimizing code around the atomic access.
+		
+		\begin{lstlisting}[]
+			std::atomic<int> ai{0}; 
+			if(ai == 10) {...}  // [2]    
+		\end{lstlisting}
+		
+		\item Below code allows and guarantees atomicity of ai reads/writes only. So the compiler is again free to reorder access to it, and only guarantees that writes are visible to other threads in a reasonable amount of time. It's applicability is very limited, as it makes it very hard to reason about the order of events in a program. For example This mode is potentially (and often) slower than case 1 since the compiler must ensure each read/write actually goes out to cache/RAM, but is faster than case 2, since it's still possible to optimize other variables around it
+		\begin{lstlisting}[]
+			std::atomic<int> ai{0}, aj{0}; 
+			
+			aj.store(1, std::memory_order_relaxed);  // thread 1 
+			ai.store(10, std::memory_order_relaxed); 
+			
+			if(ai.load(std::memory_order_relaxed) == 10) {  // thread 2 
+				aj.fetch_add(1, std::memory_order_relaxed); 
+				// is aj 1 or 2 now??? no way to tell. 
+			} 
+		\end{lstlisting}
+	\end{enumerate}
 	
 	\item First of all, why do we need memory model? You must remember that cache and store buffer sits between the CPU and memory. When to software writes a value it certainly lands in the cache, but it may never go to main memory at all if the value is written again before the cache copies it to RAM (think loop variables and locals). This whole discussion revolves around the different models for when data is actually placed in RAM or read from RAM. Within a core it doesn't really matter, as they will use that last value written weather it comes from cache or RAM. Let see an examples: Open possible is when write 1 to a, it first write to store buffer, then write b to cache line. At the same time, thread 2 read b =1, but this time, a has not been reflect to cache line, so thread 2 read a = 0 from it's own cache. So assert fire. That is a kind of "reordering", at first glance, it appears as if \#1 and \#2 have been reversed in order.
 
@@ -19648,7 +19781,7 @@ int main() {
 	\item In this section, based on all the knowledge I introduced before, I implement spin lock in different ways, spin lock doesn't use as often as other locks, but the implementation based on atomic and memory order(synchronize-with relationship) worth to know. First, let's use \texttt{test\_and\_set}.
 \begin{lstlisting}
 class spinlock_mutex{
-	std::atomic_flag flag;
+	std::atomic_flag flag; //test_and_set is a method of std::atomic_flag.
 public:
 	spinlock_mutex():flag(ATOMIC_FLAG_INIT){}
 	void lock(){
@@ -20860,22 +20993,19 @@ for(;;){
 	
 \end{itemize}
 
-\section{React}
+\section{Reactor}
 \subsection{Basic}
+
 \begin{itemize}
+	
 %	\item fcntl(sockfd, F\_SETFL, O\_NONBLOCK); you must use non-block and buffer. detail can be found in mudo
 	
+	\item In the context of network programming, non-blocking I/O is particularly useful. When using non-blocking sockets, the read and write operations return immediately if no data is available or if the buffer is full, respectively. This allows the application to perform other tasks or check for the completion of the I/O operation later, without being blocked.
 	
+	\item I/O multiplexing is another technique used to improve the efficiency of I/O operations. It involves using a single thread to handle multiple I/O operations simultaneously, instead of having a separate thread for each I/O operation. This can help reduce the overhead associated with managing multiple threads and improve the overall performance of the application. I/O multiplexing allows a program to monitor multiple file descriptors to see if any of them are ready for an I/O operation (e.g., reading or writing). This is typically achieved using system calls such as select, poll, or epoll on Linux. The main advantage of I/O multiplexing is that it enables a single thread to efficiently manage multiple I/O streams, reducing the need for multiple threads and the associated context-switching overhead.
 	
-	\item Non-blocking I/O is a technique used in computer programming to allow an application to perform other tasks while waiting for input/output (I/O) operations to complete. When an I/O operation is initiated, the application does not wait for the operation to complete, but instead continues executing other code. The status of the I/O operation can be checked later to see if it has completed or not. This technique can help improve the performance and responsiveness of applications.
+	\item The core idea of non-blocking I/O is to avoid blocking on read, write, or other I/O system calls so that the thread of control can be maximally reused, allowing a single thread to serve multiple socket connections. I/O threads can only block on I/O multiplexing functions such as select, poll, or epoll\_wait. Therefore, application-level buffering is necessary. Buffering involves temporarily storing data in a buffer (a region of memory) before it is written to a storage device or transmitted over a network. Buffering can help improve the performance of I/O operations by reducing the number of times data needs to be transferred between the application and the storage device or network. This model is very common in network programming, especially in implementing high-performance servers. It can greatly improve the throughput and response speed of the application, and reduce the use of system resources.
 	
-	\item I/O multiplexing is another technique used to improve the efficiency of I/O operations. It involves using a single thread to handle multiple I/O operations at the same time, instead of having a separate thread for each I/O operation. This can help reduce the overhead associated with managing multiple threads and improve the overall performance of the application.
-	
-	\item The core idea of non-blocking IO is to avoid blocking on read, write or other IO system calls, so that the thread-of-control can be maximally reused, allowing a single thread to serve multiple socket connections. IO threads can only block on IO multiplexing functions such as select/poll/epoll\_wait. Therefore, application-level buffering is necessary. 
-	
-	Buffering is the process of temporarily storing data in a buffer (a region of memory) before it is written to a storage device or transmitted over a network. Buffering can help improve the performance of I/O operations by reducing the number of times data needs to be transferred between the application and the storage device or network.
-	
-	This model is very common in network programming, especially in implementing high-performance servers. It can greatly improve the throughput and response speed of the application, and reduce the use of system resources.
 	
 	\item The main difference between poll() and epoll() is their scalability.
 	\begin{enumerate}
@@ -20938,7 +21068,7 @@ int main() {
 
 	\item The basic data structure behind of epoll function is illustrated by below figure.
 \begin{center}
-	\includegraphics[width=0.55\linewidth]{pics/epoll1.png}
+	\includegraphics[width=0.5\linewidth]{pics/epoll1.png}
 \end{center}
 \end{itemize}
 
@@ -20949,15 +21079,15 @@ int main() {
 
 \section{Summary}
 \begin{itemize}
-	\item The first part is protocol, you need to know 5V concepts: VLAN, Virtual device, Virtual machine, VPN, Vxlan(overlay network.)
+	\item The first part is protocol. You need to know the 5V concepts: VLAN, Virtual Device, Virtual Machine, VPN, and VXLAN (overlay network).
 	
-	\item For sockets, you need to know the address, three handshakes, and four hand waves. You also need to know the difference between '\texttt{close}' and '\texttt{shutdown}', and it is preferable to use '\texttt{shutdown}' in your application.
+	\item For sockets, you need to understand the addressing, the three-way handshake, and the four-way termination. You should also know the difference between close and shutdown, and it is preferable to use shutdown in your application.
 	
-	\item Basic socket I/O, difference between blocking and non-blocking I/O models.
+	\item Basic socket I/O, including the difference between blocking and non-blocking I/O models.
 	
 	\item In basic socket I/O, it is important to be aware of the different types of exceptions.
 	
-	\item The mainstream server-side architecture patterns.: non-blocking+I/O multiplexing +buffer.
+	\item The mainstream server-side architecture patterns: non-blocking + I/O multiplexing + buffering.
 \end{itemize}
 
 
