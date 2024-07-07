@@ -19535,38 +19535,40 @@ bool criticalSection_tryEnter(lock){
 \subsection{Memory model}
 \begin{itemize}
 	
-		\item Another topic about atomic type is memory order. Detail can be seen in the next section. I give three different memory order: we don't use atomic in case 1, use default memory order in case 2; and use relax memory order in case 3. 
+		\item Another important topic related to atomic types is memory order. Only atomic variables have a defined memory model because they are specifically designed to ensure safe concurrent access and modification in multi-threaded environments. Here, I will provide three different examples of memory order:
 	
 	\begin{enumerate}
 		
-		\item if \texttt{i} is accessed by more than one thread, which includes a write, the behavior is undefined. In the absence of synchronization, the compiler is free to assume no other thread can modify \texttt{i}, and may reorder/optimize access to it. For example, it may load \texttt{i} into a register once and never re-read it from memory, or it may hoist writes out of the loop and only write once at the end.
-		\begin{lstlisting}[]
-			int i = 0; 
-			if(i == 10)  {...}  // may actually be optimized away since `i` is clearly 0 now 
-		\end{lstlisting}	
+		\item In this case, we don't use atomic operations, leading to potential data races and undefined behavior in a multithreaded environment. If \texttt{i} is accessed by more than one thread, including at least one write, the behavior is undefined in the absence of synchronization. The compiler can assume that no other thread can modify \texttt{i}, allowing it to reorder or optimize access to the variable. For instance, it might load \texttt{i} into a register once and never read it from memory again, or it might move writes out of a loop and perform a single write at the end.
+\begin{lstlisting}[]
+int i = 0; 
+if(i == 10)  {...}  // may actually be optimized away since `i` is clearly 0 now
+\end{lstlisting}	
 		
-		\item By default reads and writes to an atomic are done in \texttt{std::memory\_order\_seq\_cst} (sequentially-consistent) memory order. This means that not only are reads/writes to \texttt{ai} atomic, but they are also visible to other threads in a timely manner, including any other variable's reads/writes before/after it. So reading/writing an atomic acts as a memory fence. This however, is much slower since (1) an SMP system must synchronize caches between processors and (2) the compiler has much less freedom in optimizing code around the atomic access.
+		\item In this case, we use atomic operations with the default memory order (memory\_order\_seq\_cst), which ensures the strongest synchronization and ordering guarantees. By default, reads and writes to an atomic variable are done using \texttt{std::memory\_order\_seq\_cst} (sequentially-consistent) memory order. This means that not only are reads and writes to \texttt{ai} atomic, but they are also visible to other threads in a timely manner, including any reads or writes to other variables before or after it. In essence, reading or writing an atomic variable acts as a memory fence. However, this approach is slower because (1) an SMP (symmetric multiprocessing) system must synchronize caches between processors, and (2) the compiler has significantly less freedom in optimizing code around the atomic access.
 		
-		\begin{lstlisting}[]
-			std::atomic<int> ai{0}; 
-			if(ai == 10) {...}  // [2]    
-		\end{lstlisting}
+\begin{lstlisting}[]
+std::atomic<int> ai{0}; 
+if(ai == 10) {...}  // [2]    
+\end{lstlisting}		
 		
-		\item Below code allows and guarantees atomicity of ai reads/writes only. So the compiler is again free to reorder access to it, and only guarantees that writes are visible to other threads in a reasonable amount of time. It's applicability is very limited, as it makes it very hard to reason about the order of events in a program. For example This mode is potentially (and often) slower than case 1 since the compiler must ensure each read/write actually goes out to cache/RAM, but is faster than case 2, since it's still possible to optimize other variables around it
-		\begin{lstlisting}[]
-			std::atomic<int> ai{0}, aj{0}; 
-			
-			aj.store(1, std::memory_order_relaxed);  // thread 1 
-			ai.store(10, std::memory_order_relaxed); 
-			
-			if(ai.load(std::memory_order_relaxed) == 10) {  // thread 2 
-				aj.fetch_add(1, std::memory_order_relaxed); 
-				// is aj 1 or 2 now??? no way to tell. 
-			} 
-		\end{lstlisting}
+		\item In this case, we use atomic operations with a relaxed memory order (memory\_order\_relaxed), which provides no synchronization or ordering guarantees beyond atomicity. The code below guarantees atomicity of \texttt{ai} reads and writes only. This means the compiler is free to reorder access to it and guarantees that writes are visible to other threads in a reasonable amount of time. However, its applicability is very limited because it makes it difficult to reason about the order of events in a program. For example, this mode is often slower than case 1 because the compiler must ensure each read and write actually goes out to cache or RAM. However, it is faster than case 2, as it still allows for optimization of other variables around it.
+\begin{lstlisting}[]
+std::atomic<int> ai{0}, aj{0}; 
+
+aj.store(1, std::memory_order_relaxed);  // thread 1 
+ai.store(10, std::memory_order_relaxed); 
+
+if(ai.load(std::memory_order_relaxed) == 10) {  // thread 2 
+	aj.fetch_add(1, std::memory_order_relaxed); 
+	// is aj 1 or 2 now??? no way to tell. 
+} 	
+\end{lstlisting}		
 	\end{enumerate}
 	
-	\item First of all, why do we need memory model? You must remember that cache and store buffer sits between the CPU and memory. When to software writes a value it certainly lands in the cache, but it may never go to main memory at all if the value is written again before the cache copies it to RAM (think loop variables and locals). This whole discussion revolves around the different models for when data is actually placed in RAM or read from RAM. Within a core it doesn't really matter, as they will use that last value written weather it comes from cache or RAM. Let see an examples: Open possible is when write 1 to a, it first write to store buffer, then write b to cache line. At the same time, thread 2 read b =1, but this time, a has not been reflect to cache line, so thread 2 read a = 0 from it's own cache. So assert fire. That is a kind of "reordering", at first glance, it appears as if \#1 and \#2 have been reversed in order.
+	\item First of all, why do we need a memory model? You must remember that cache and store buffers sit between the CPU and memory. When software writes a value, it typically lands in the cache, but it may never reach main memory if the value is overwritten before the cache copies it to RAM (think loop variables and locals). This discussion revolves around the different models for when data is actually placed in or read from RAM. Within a core, it doesn't really matter, as they will use the last value written, whether it comes from cache or RAM.
+	
+	Let's consider an example: One possibility is when a value of 1 is written to \texttt{a}. It first writes to the store buffer, then writes \texttt{b} to the cache line. At the same time, thread 2 reads \texttt{b} = 1, but at this point, a has not yet been reflected in the cache line, so thread 2 reads \texttt{a} = 0 from its own cache. This would cause the assertion to fail. This is a kind of "reordering" — at first glance, it appears as if \#1 and \#2 have been reversed in order.
 
 \begin{lstlisting}
 int a=b=0; //thread 1
@@ -19581,7 +19583,7 @@ void bar(void){ //thread 2
 \end{lstlisting}	
 	
 	
-	\item Above explain the one of the reason of reordering. There are two kinds of reordering: CPU reordering and compiler reorderings. Reordering can also occur in the compiler, For example, consider the following code:
+	\item Above, we explained one of the reasons for reordering. There are two kinds of reordering: CPU reordering and compiler reordering. Reordering can also occur in the compiler. For example, consider the following code:
 \begin{lstlisting}
 payload = 2; //in thread 1 #1
 ready = true;              #2
@@ -19591,13 +19593,13 @@ while(ready){ // in thread 2
 }	
 \end{lstlisting}	
 	
-	The compiler can reorder the execution of \#2 and \#1 because, for Thread 1, they have the same meaning. This is why we need a memory model and memory order to guarantee the correct semantic order."
+	The compiler can reorder the execution of \#2 and \#1 because, for Thread 1, they have the same meaning. This is why we need a memory model and memory order to guarantee the correct semantic order.
 	
-    \item The C++ memory model defines a contract established between the programmer and the system, which consists of the compiler that compiles the program into assembler instructions, the processor that performs the assembler instructions, and the different caches that store the state of the program. The contract requires the programmer to obey certain rules and gives the system full power to optimize the program as long as no rules are broken.
+    \item The C++ memory model defines a contract between the programmer and the system, which includes the compiler that compiles the program into assembly instructions, the processor that executes these instructions, and the various caches that store the program's state. This contract requires the programmer to adhere to certain rules, and in return, it grants the system the ability to optimize the program as long as these rules are not violated.
     
-	\item One of the important concepts in memory order is the "synchronize-with" relationship. This relationship determines whether a variable is visible to another thread, taking into account caching and cache coherency. In some cases, write memory may not be immediately visible to another thread due to caching, and statements may appear to have been reordered in the source code, especially in the context of "payload and flag" situations. As an example, consider the double-checked singleton pattern.
-
-	\item Let A and B represent operations performed by a multithreaded process. If A happens-before B, then the memory effects of A effectively become visible to the thread performing B before B is performed.
+	\item One of the important concepts in memory order is the "synchronize-with" relationship. This relationship determines whether a variable is visible to another thread, considering caching and cache coherence. In some cases, a write to memory may not be immediately visible to another thread due to caching, and statements may appear to have been reordered in the source code, especially in "payload and flag" situations. For example, consider the double-checked locking pattern in a singleton implementation.
+	
+	\item Let A and B represent operations performed by a multithreaded process. If \textbf{A happens-before B}, then the memory effects of A effectively become visible to the thread performing B before B is performed.
 
 
 	\item \textbf{Happens-Before Does Not Imply Happening Before}. One possible is: When \texttt{A = 1} just write to store buffer, then B = 1 will write it to memory. After that, we write A back to memory, Has the happens-before relation been violated? Let’s see. According to the definition, the memory effects of (1) must effectively be visible before (2) is performed. In other words, the store to A must have a chance to influence the store to B. In this case, though, the store to A doesn’t actually influence the store to B. (2) still behaves the same as it would have even if the effects of (1) had been visible, which is effectively the same as (1)’s effects being visible. Therefore, this doesn’t count as a violation of the happens-before rule. I’ll admit, this explanation is a bit dicey, but I’m fairly confident it’s consistent with the meaning of happen-before in all those language specifications.
@@ -19633,7 +19635,7 @@ void consumeMessage(){
 
 		\item The synchronizes-with relationship is something that you can get only between operations on atomic types. One thing they have in common is that whenever there’s a synchronizes-with relationship between two operations, typically on different threads, there’s a happens-before relationship between those operations as well.
 
-		\item In every synchronizes-with relationship, you should be able to identify two key ingredients, which I like to call the guard variable and the payload. The payload is the set of data being propagated between threads, while the guard variable protects access to the payload. I’ll point out these ingredients as we go. But don’t fall into the trap of thinking that synchronizes-with is a relationship between statements in your source code. It isn’t! It’s a relationship between operations which occur at runtime, based on those statements.
+		\item In every synchronizes-with relationship, you should be able to identify two key ingredients, which I like to call the guard variable and the payload. The payload is the set of data being propagated between threads, while the guard variable protects access to the payload. Don’t fall into the trap of thinking that synchronizes-with is a relationship between statements in your source code. It isn’t! It’s a relationship between operations which occur at runtime, based on those statements.
 
 
 \begin{center}
@@ -19644,9 +19646,9 @@ void consumeMessage(){
 %	\includegraphics[width=0.85\linewidth]{pics/happen1.png}
 %\end{center}
 
-	\item Yes, thread.join() creates a synchronization-with relationship between the calling thread and the joined thread. When a thread calls join() on another thread, the calling thread will wait for the joined thread to complete before continuing its execution. This ensures that any operations performed by the joined thread are completed before the calling thread proceeds, creating a synchronization-with relationship between the two threads. In other words, the join operation establishes a happens-before relationship between the end of the joined thread's execution and the continuation of the calling thread's execution.
+	\item From above figure, you can see \texttt{thread.join()} creates a synchronization-with relationship between the calling thread and the joined thread. When a thread calls join() on another thread, the calling thread will wait for the joined thread to complete before continuing its execution. This ensures that any operations performed by the joined thread are completed before the calling thread proceeds, creating a synchronization-with relationship between the two threads. In other words, the join operation establishes a happens-before relationship between the end of the joined thread's execution and the continuation of the calling thread's execution.
 
-	\item For this example, we can get r1=r2=42. It's has sequence before order, then it will lead to happen before order. But please remember, happy before is logic order, not runtime execution order. So x and y will not affect each other, for C and D, due to store buffer, maybe it has reorder effect. it doesn't mean D is executed before C, maybe we first issue r2 = x, but it need go to three level cache, at the same time, maybe x.store invalid cache line. 
+	\item For this example, we may get \texttt{r1=r2=42}. It's has \textbf{sequence before order}, then it will lead to happen before order. But please remember, happy before is logic order, not runtime execution order. So x and y will not affect each other, for C and D, due to store buffer, maybe it has reorder effect. it doesn't mean D is executed before C, maybe we first issue r2 = x, but it need go to three level cache, at the same time, maybe x.store invalid cache line. 
 
 \begin{lstlisting}
 x = y = 0;
@@ -19660,7 +19662,7 @@ y.store(42, memory_order_relaxed); // D
 \end{lstlisting}
 
 
-	\item Default is memory\_order\_seq\_cst order.it means that there is global certain order. in another word, For any thread, they see other threads has the same order.  
+	\item Default is memory\_order\_seq\_cst order. it means that there is global certain order. in another word, For any thread, they see other threads has the same order.  
 
 
 \begin{lstlisting}
@@ -19691,7 +19693,7 @@ a.join(); b.join(); c.join(); d.join();
 assert(z.load() != 0);			// never trigger here.
 \end{lstlisting}
 
-	\item If we change it to release and aquire, it can give you same variable synchronize-with relationship, but it will not give you global order guaranty.  
+	\item If we change it to release and aquire, it can give you same variable synchronize-with relationship, but it will not give you global order guaranty. There exists no such total order between acquire/release operations in different threads, so there is not visibility guarantee. The operations are only ordered once an acquire-operations observes the value from a release-operation, but there is no guarantee when the value of the release-operation becomes visible to the thread performing the acquire-operation. Since we have no guarantee about visibility, it could happen that thread c observes x == true and y == false, while at the same time thread d could observe y == true and x == false. So neither thread would increment z and the assertion would fire.
 
 \begin{lstlisting}
 void write_x(){
@@ -19778,7 +19780,7 @@ int main() {
 
 \begin{itemize}
 	
-	\item In this section, based on all the knowledge I introduced before, I implement spin lock in different ways, spin lock doesn't use as often as other locks, but the implementation based on atomic and memory order(synchronize-with relationship) worth to know. First, let's use \texttt{test\_and\_set}.
+	\item In this section, based on the knowledge I introduced earlier, I'll demonstrate the implementation of a spin lock using different methods. Spin locks aren't as commonly used as other locks, but understanding implementations based on atomic operations and memory ordering (synchronize-with relationship) is valuable. First, let's implement it using \texttt{test\_and\_set}.
 \begin{lstlisting}
 class spinlock_mutex{
 	std::atomic_flag flag; //test_and_set is a method of std::atomic_flag.
@@ -19793,9 +19795,7 @@ public:
 };	
 \end{lstlisting}
 
-	\item test-and-set (TAS) operation. TAS atomically writes to the memory location and returns its old value in a single indivisible step. Actually, the name test-and-set is a little misleading, because the caller is responsible for testing if the operation has succeeded or not. In C++11 \texttt{std::atomic\_bool::exchange()} can be used to perform a TAS operation on an \texttt{std::atomic\_bool} synchronization variable. 
-		
-	\item Implementation of spin lock can also based the \texttt{exchange}. \texttt{exchange} and \texttt{test\_and\_set} has the same basic idea and same performance. 
+	\item test-and-set (TAS) operation. TAS atomically writes to the memory location and returns its old value in a single indivisible step. Actually, the name test-and-set is a little misleading, because the caller is responsible for testing if the operation has succeeded or not. In C++11 \texttt{std::atomic\_bool::exchange()} can be used to perform a TAS operation on an \texttt{std::atomic\_bool} synchronization variable. Implementation of spin lock can also based the \texttt{exchange}. \texttt{exchange} and \texttt{test\_and\_set} has the same basic idea and same performance. 
 \begin{lstlisting}[]
 struct tas_lock {
 	std::atomic<bool> lock_ = {false};
@@ -19844,9 +19844,7 @@ struct spinlock{
 };	
 \end{lstlisting}
 
-	\item A spin lock is a simple lock mechanism that uses busy waiting to achieve synchronization. When a thread attempts to acquire a spin lock, it repeatedly checks the lock's state in a loop until it becomes available. While waiting, the thread keeps the CPU busy, spinning in a tight loop, hence the name "spin lock". Spin locks are often used in situations where the lock is expected to be held for only a short period of time, and contention for the lock is rare.
-
-	A mutex, on the other hand, is a more sophisticated lock mechanism that uses a data structure to manage access to shared resources. When a thread attempts to acquire a mutex, it is added to a queue of threads waiting for the mutex. When the mutex becomes available, the thread at the front of the queue acquires it and can access the shared resource. Mutexes are often used in situations where the lock is expected to be held for a longer period of time, or where contention for the lock is more likely.
+	\item A spin lock is a simple lock mechanism that uses busy waiting to achieve synchronization. When a thread attempts to acquire a spin lock, it repeatedly checks the lock's state in a loop until it becomes available. While waiting, the thread keeps the CPU busy, spinning in a tight loop, hence the name "spin lock". Spin locks are often used in situations where the lock is expected to be held for only a short period of time, and contention for the lock is rare. A mutex, on the other hand, is a more sophisticated lock mechanism that uses a data structure to manage access to shared resources. When a thread attempts to acquire a mutex, it is added to a queue of threads waiting for the mutex. When the mutex becomes available, the thread at the front of the queue acquires it and can access the shared resource. Mutexes are often used in situations where the lock is expected to be held for a longer period of time, or where contention for the lock is more likely.
 
 	In summary, spin locks are simple and lightweight but can cause performance issues if used in highly contended scenarios. Mutexes are more complex and have some overhead due to the management of the waiting queue, but are better suited for highly contended scenarios where lock holding time is longer.	
 	
@@ -19997,7 +19995,7 @@ Singleton* Singleton::getInstance() {
 \section{Construct and destruct in concurrency}
 \begin{itemize}
 
-	\item For construct in concurrency, \textbf{Don't} register any call back or give \texttt{this} pointer to any another thread object, even in the last line of constructor, because maybe it's a child class, after the last line, it will call base class constructor implicitly.
+	\item For construct in concurrency, \textbf{Don't} register any call back or give \texttt{this} pointer to any another thread object, even in the last line of constructor, because maybe it's a child class, after the last line, it will call base class constructor implicitly. If you really need to register this pointer,(such as Observer pattern),  use two phrase methods, construct+ initialize() methods.
 \begin{lstlisting}
 class Foo : public Observer{
 public:
@@ -20006,16 +20004,15 @@ public:
   }
 }
 \end{lstlisting}
-if you really need to register this pointer,(such as Observer pattern),  use two phrase methods, construct+ initialize() methods.
 
-    \item Compared with construct, destruct is difficult, we can \textbf{NOT} put mutex in the destructor. When we have a object, at the same time, we give the reference or pointer to another thread to use it. At this time, data race will happen when one thread try to use one member function, and another thread try to destruct it. 
+    \item Compared with construction, destruction is challenging because we can \texttt{NOT} place a mutex in the destructor. When an object is being accessed concurrently by multiple threads—where one thread uses a member function while another attempts to destroy it—this situation leads to a data race.
 \begin{lstlisting}[]
 A* a = new A();
 thread b(fun, a); thread A
 delete a //thread B, How can you make sure a isn't used in thread A? 
 \end{lstlisting}
 
-	\item For the previous data race happens in destructor, we can use share\_ptr+weak\_pointer to resolve. For weak pointers, the safety guarantee is hidden in the \texttt{weak\_ptr::lock}. it executes atomically.  You can use \texttt{weak\_ptr::lock()} to get a shared\_ptr from other threads without further synchronization. (Why we can get this, because access to reference count is atomic.) 
+	\item To address the data race issue in destructors, we can use shared\_ptr and weak\_ptr to resolve it. The safety guarantee lies in \texttt{weak\_ptr::lock()}, which executes atomically. This allows us to obtain a \texttt{shared\_ptr} from other threads without needing additional synchronization. (This is possible because access to the reference count is atomic.)
 	
 \begin{lstlisting}
 weak_ptr::lock(){
@@ -20036,7 +20033,7 @@ shared_ptr<A> a = new A(); //thread 2
 thread b(fun, a); //suppose the a has go outside of scope here.
 \end{lstlisting}
 
-    \item Share pointer is good helper when you write concurrent programme. In the "read and write mutex" section, we have introduced "copy on write", we mainly use \texttt{shared\_ptr.unique()} to decide if other thread is reading. This pattern also can help use to avoid dead lock. An example has been introduced in the chenshuo's book, the 2.1.2 section.
+    \item shared\_ptr is a valuable tool when writing concurrent programs. In the "read and write mutex" section, we discussed "copy on write," where we typically use \texttt{shared\_ptr.unique()} to determine if other threads are reading. This pattern also helps us avoid deadlocks.
 
 %		\item Why share pointer is important, because it can help you to make sure destructor and other operation thread safe. We can't use mutex in object destructor, in order to make sure destructor and other operations can be synchronized properly. The detail can be found in chenshuo 's book. A famous example is observer. 
 
@@ -20061,9 +20058,9 @@ public:
 		weak_ptr<Stock>& wkStock = stocks_[key];
 		pStock = wkStock.lock();  //atomic operation here.
 		if (!pStock) {
-		pStock.reset(new Stock(key), bind(&StockFactory::weakDeleteCallback,
+			pStock.reset(new Stock(key), bind(&StockFactory::weakDeleteCallback,
                      weak_ptr<StockFactory>(shared_from_this()), _1));
-		wkStock = pStock;
+			wkStock = pStock;
 		}
 		return pStock;
 	}
@@ -20123,23 +20120,31 @@ void testShortLifeFactory() {
 
 \section{Practical suggestions}
 \begin{itemize}
+	\item This chapter presents four valuable examples: 1) singleton, 2) spin lock, 3) stock factory, and 4) using shared\_ptr instead of read and write mutex. Understanding these examples fully, including their design concepts and implementation details, is crucial. Moreover, these examples can prove highly useful in practical applications.
+	
 	
 	\item The whole chapter can be illustrated by the figure below.
 	\begin{center}
 		\includegraphics[width=0.75\linewidth]{pics/concurrent.drawio}
 	\end{center}
 	
-	\item This chapter contains four good examples: 1) singleton, 2) spin lock, 3) stock factory, and 4) using shared\_ptr instead of read and write mutex. It is important to fully understand these examples, including their design ideas and implementation details. Additionally, these examples can be useful in practical applications.
 	
-	\item Don't use multi-thread unless you really need it. Simultaneously respond to many events. Just remember, synchronization has some overhead. Below are some typical scenarios.
-	1) A web server.
-	2) Interface and working thread.
-	3) Take advantage of with multiple processor.
+	\item Only use multi-threading when absolutely necessary, as synchronization comes with overhead. Typical scenarios where multi-threading is beneficial include:
+\begin{enumerate}
+	\item Web servers handling multiple requests concurrently.
+	
+	\item GUI applications separating UI responsiveness from background processing.
+	
+	\item Utilizing multiple processors efficiently.
+\end{enumerate}
 	
 	
-    \item keeping critical sections as compact and small as possible. 
+	
+	
+	
+    \item Compact and small critical sections help minimize potential issues like race conditions and improve concurrency performance.
     
-    \item It is not recommended to create more "runnable" threads than available cores. Prefer to use thread pool, avoid creating and destroying a large number of threads directly. Finally, it is advisable to avoid using volatile for synchronization purposes.
+    \item It's not recommended to create more threads than available cores; instead, using a thread pool is preferred to manage thread lifecycle efficiently. Additionally, volatile should be avoided for synchronization purposes.
      
 %     \item A common method is to make \texttt{std::shared\_ptr} thread safe. when copy it add lock, then use local copy. In this way, we can make our critical section shorter.
 %\begin{lstlisting}
@@ -20165,7 +20170,7 @@ void testShortLifeFactory() {
 %}
 %\end{lstlisting}
     
-    \item Don't use mutexes when \texttt{std::atomic} types will suffice. For example, we want to use multiple thread to add a \texttt{counter}. 
+    \item Avoid using mutexes when \texttt{std::atomic} types can suffice. For example, when incrementing a \texttt{counter} using multiple threads.
 \begin{lstlisting}[]
 mu.lock(); //use mutex and lock 
 counter++;
@@ -20175,16 +20180,14 @@ std::atomic<int> counter; //better solution.
 counter++;
 \end{lstlisting}
     
-    \item If you don't have a strong reason against it, it is generally recommended to use higher-level concurrent functions such as \texttt{std::async} instead of directly managing threads."
+    \item If there's no strong reason against it, it's generally recommended to use higher-level concurrent functions such as std::async instead of directly managing threads.
     
    
-    \item Don't try to acquire a std::mutex twice. The fix is to structure your code in such a way that it does not try to acquire a previously locked mutex. A superficial solution might be to just use a \texttt{std::recursive\_mutex} — but this is almost always indicative of a bad design.
+    \item Don't attempt to acquire a std::mutex twice. The fix is to structure your code so that it doesn't attempt to acquire a mutex that has already been locked. Using a \texttt{std::recursive\_mutex} might seem like a quick fix, but it often indicates a poor design.
 
     
-    \item Using join() to wait for background threads before terminating an application. Using lock free architecture unless absolutely needed. Acquiring multiple locks in the same order, otherwise it will leads to dead lock.
-    
-   
-    
+    \item Use \texttt{join()} to wait for background threads before terminating an application. Prefer lock-free architectures unless absolutely necessary. Acquire multiple locks in the same order to avoid deadlocks.
+     
     
 \end{itemize}
 
