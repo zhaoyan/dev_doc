@@ -16082,6 +16082,16 @@ void merge_sort(Iter first, Iter last){
 
 \subsubsection{Partition and rotate}
 \begin{itemize}
+	
+	\item Usage of \texttt{copy\_if}, you can see that you can copy data to IO stream.
+	\begin{lstlisting}
+		std::copy_if(to_vector.begin(), to_vector.end(),
+		std::ostream_iterator<int>(std::cout, " "),
+		[](int x) { return x % 2 != 0; });
+	\end{lstlisting}
+	
+	\item  Both \texttt{std::remove\_if} and \texttt{std::partition} put the "good" elements first. \texttt{std::partition} puts the "bad" elements after that, whereas \texttt{remove\_if} does not specify what comes after it. It might be the bad elements, but it might also be copies of any (either good or bad) elements. For example, if you \texttt{std::partition} 1 2 3 4 5 on even, you might get 2 4 5 3 1 (note that each element occurs exactly once), whereas if you \texttt{remove\_if} the odd elements, you might get 2 4 3 4 5 (note the duplicates).	
+	
 	\item Implementation of \texttt{std::partition}. That is a common method.  In line 21, j must point \textbf{the last element which is smaller than pivot}, so we can swap it with pivot. 
 \begin{lstlisting}[frame=single, language=c++]	
 int partition(int nums[], int lo, int hi) {
@@ -16292,7 +16302,7 @@ while( (p = std::find_if(p, str.end(), ll)) != str.end()){   //2) test p
 \section{Introduction}
 \begin{itemize}
 	
-	\item Functional programming introduces algebraic data types, such as \texttt{std::option} and \texttt{std::variant}. Functional programming also goes hand-in-hand with generic programming in C++. They both inspire programmers not to think at the hardware and implementation level, but to move to a higher level. Technically, one should not use mutable state (stack or global variables) or loop statements, but instead use STL algorithms directly. In other words, no raw for loop should be used, and STL algorithms should be used instead. An example can be illustrated as shown below: in this code, \texttt{open\_file} and \texttt{count\_lines} are two functions. With the help of the C++ 20 range library, the previous code can be compiled after making small modifications." 
+	\item Functional programming introduces algebraic data types such as \texttt{std::optional} and \texttt{std::variant}. It aligns closely with generic programming in C++, encouraging programmers to focus on higher-level abstractions rather than hardware-specific details. Ideally, mutable state (such as stack or global variables) and imperative loops should be avoided, replaced instead with direct use of STL algorithms. An example can be illustrated as shown below: in this code, \texttt{open\_file} and \texttt{count\_lines} are two functions. The C++20 ranges library enhances readability and expressiveness by replacing traditional loop constructs with more functional-style algorithms, promoting clearer, more maintainable code.
 	
 \begin{lstlisting}[frame=single, language=c++]
 std::vector<int> count_line_in_files(const vector<string> file_names){
@@ -16300,9 +16310,23 @@ std::vector<int> count_line_in_files(const vector<string> file_names){
 }
 \end{lstlisting}	
 		
-	\item "Functions that take other functions as arguments or that return new functions are called higher-order functions. They are the most important concept in functional programming. There are four usual kinds of higher-order functions: \textbf{fold, map, filter, and lift}. I will introduce these four concepts below.
-
-	\item In general, folding does not require that the arguments and the result of the binary function passed to it have the same type. In C++, we use \texttt{std::accumulate} to implement folding.
+	\item Functions that accept other functions as arguments or return new functions are known as higher-order functions, a fundamental concept in functional programming. There are four primary types of higher-order functions: fold, map, filter, and lift. Let's explore each concept:
+\begin{enumerate}
+	\item Fold: Also known as reduce, this function applies a binary operation to an initial value and all elements of a list, returning a single aggregated result.
+	
+	\item Map: This function transforms each element of a list using a given function, producing a new list of transformed elements.
+	
+	\item Filter: It selectively removes elements from a list based on a predicate function, returning a new list containing only those elements that satisfy the predicate.
+	
+	\item Lift: Often used in the context of lifting a function from operating on simple values to operating on values wrapped in a functor (like std::optional, std::variant, etc.) or container, allowing operations to be performed in a more generalized manner.
+	
+\end{enumerate}
+	
+	These higher-order functions promote a declarative style of programming, emphasizing composition and immutability, which are core principles of functional programming.
+	
+	
+	
+	\item In general, folding, also known as reduction, does not mandate that the arguments and the result of the binary function passed to it must have the same type. In C++, we utilize \texttt{std::accumulate} to implement folding. This function aggregates the elements of a sequence using a specified binary operation, starting with an initial value.
 	
 \begin{lstlisting}[frame=single, language=c++]
 int f(int previous_count, char c){
@@ -16316,24 +16340,22 @@ int count_lines(const string &s){
 		
 	\item Three differences between \texttt{std::reduce} and \texttt{std::accumulate}:
 	\begin{enumerate}	
-			\item Use \texttt{std::reduce} when you want your accumulation to run in parallel
-			\item Ensure that the operation you want to use is both associative and commutative
-			\item Remember that the default initial value is produced by default construction, and that this may not be correct for your operation
+			\item Use \texttt{std::reduce} when you want your accumulation to run execution policies. Execution policies are a C++17 feature which allows programmers to ask for algorithms to be parallelised. There are three execution policies in C++17: \texttt{std::execution::seq}, \\
+			\texttt{std::execution::par} and 
+			\texttt{std::execution::par\_unseq}, which is parallelise and vectorise (requires that the operation can be interleaved, so no acquiring mutexes and such).
+			
+			\item Ensure that the operation you want to use is both associative and commutative.
+			
+			\item Remember that the default initial value is produced by default construction, and that this may not be correct for your operation.
 		\end{enumerate}	
 	
-	\item Execution policies are a C++17 feature which allows programmers to ask for algorithms to be parallelised. There are three execution policies in C++17:
-\begin{enumerate}
-\item \texttt{std::execution::seq} – do not parallelise
-\item \texttt{std::execution::par} – parallelise
-\item \texttt{std::execution::par\_unseq} – parallelise and vectorise (requires that the operation can be interleaved, so no acquiring mutexes and such)
-\end{enumerate}
 	
 \begin{lstlisting}
 auto sum3 = std::reduce(std::execution::par, begin(vec), end(vec)); //parallel
 \end{lstlisting}
 
 
-	\item erase+remove idiom and erase+find idiom are common example of \textbf{filter}. erase is container function, and \texttt{find\_if} and \texttt{remove\_if} are STL algorithms. 
+	\item The erase-remove idiom and erase-find idiom are common examples of filtering in C++. The erase function is a container operation, while \texttt{find\_if} and \texttt{remove\_if} are STL algorithms used for filtering elements based on specific criteria.
 	
 \begin{lstlisting}
 people.erase(std::remove_if(people.begin(), people.end(), is_not_female), 
@@ -16345,17 +16367,9 @@ std::string trim_left{std::string s){  // erase+find idiom
 	}
 \end{lstlisting}
 
-	\item Usage of \texttt{copy\_if}, you can see that you can copy data to IO stream.
-\begin{lstlisting}
-std::copy_if(to_vector.begin(), to_vector.end(),
-                 std::ostream_iterator<int>(std::cout, " "),
-                 [](int x) { return x % 2 != 0; });
-\end{lstlisting}
+
+	\item \texttt{std::transform} is an example of mapping in C++. It applies a function to each element of the input container and returns a value for each element in the output container. \texttt{std::for\_each} is essentially a range-based for loop. While using a lambda with \texttt{std::for\_each} is syntactically valid and useful in certain cases, a range-based for loop often provides cleaner and more readable code. However, \texttt{std::for\_each} can simplify syntax when a function is used instead of a lambda.
 	
-	\item  Both \texttt{std::remove\_if} and \texttt{std::partition} put the "good" elements first. \texttt{std::partition} puts the "bad" elements after that, whereas \texttt{remove\_if} does not specify what comes after it. It might be the bad elements, but it might also be copies of any (either good or bad) elements. For example, if you \texttt{std::partition} 1 2 3 4 5 on even, you might get 2 4 5 3 1 (note that each element occurs exactly once), whereas if you \texttt{remove\_if} the odd elements, you might get 2 4 3 4 5 (note the duplicates).	
-
-
-	\item \texttt{std::transform} is an example of \textbf{map}. It returns a value for each element in the input container. \texttt{std::for\_each} is just a kind of range for loop. We don't recommend using a lambda in \texttt{std::for\_each}; a range for loop looks better. However, if we have a function, then \texttt{std::for\_each} provides some syntactic simplicity.
 	
 \begin{lstlisting}
 int op_increase (int i) { return ++i; }
@@ -16372,15 +16386,13 @@ std::transform(begin(foo),end(foo),begin(foo),op_increase); //11 21 31 41 51
 std::transform(foo.begin(),foo.end(),bar.begin(),foo.begin(), std::plus<int>());
 \end{lstlisting}
 
-	\item How to understand \textbf{"lifting"}, Just like mapping. For a container, we can map a function to each item. In another word, we can lift the function from the item level to container level. So they are the two sides of the same coin. 	
-	
 \end{itemize}
 
 \section{Lambda}
 \subsection{Lambda basic syntax}
 
 \begin{itemize}
-	\item Here is the basic syntax for a lambda expression and an example. Pay attention here: \texttt{divisor} is passed by copy. If you modify \texttt{divisor} inside the lambda, it will not affect \texttt{divisor} outside. This is different from \texttt{sum}.
+	\item Here is the basic syntax for a lambda expression and an example. Pay attention here: \texttt{divisor} is passed by copy. If you modify \texttt{divisor} inside the lambda, it does not affect \texttt{divisor} outside. This is different from \texttt{sum}.
 
 \begin{lstlisting}
 [ captures ] (parameters) -> returnTypesDeclaration { ..; }
@@ -16396,12 +16408,13 @@ for_each(vc.begin(), vc.end(), [divisor, &sum] (int y){
 
 	\item Generalized capture(C++14). Adding new member variables to closures or moving objects into closures. 
 \begin{lstlisting}
-auto myfun1 = [i = 5](int x){return x+i;}
+auto myfun1 = [i = 5](int x){return x+i;} //add int i into the closure.
+
 ExpensiveToCopyType f{} ....
 auto myfun2 = [ cf = std::move(f) ](int x) {return cf(x);}
 \end{lstlisting}
 
-	\item You need to add mutable if you want to change the capture value because operator () inside lambda is const by default implicitly. A by-value capture cannot be modified in a non-mutable lambda.
+	\item You need to add mutable if you want to change the value captured by copy because the \texttt{operator()} inside a lambda is implicitly \texttt{const} by default. A by-value capture cannot be modified in a non-mutable lambda.
 \begin{lstlisting}
 int main(){
 	int n;
@@ -16434,7 +16447,7 @@ long res = std::accumulate(arr, arr+12, 1, factorial);
 cout<<"12!="<<res<<endl; // 479001600
 \end{lstlisting}
 
-	\item Under the final C++11 spec, if you have a lambda with an empty capture specification [],  then it can be treated like a regular function and assigned to a function pointer. Here's an example of using a function pointer with a capture-less lambda:
+	\item Under the final C++11 specification, if you have a lambda with an empty capture specification [], it can be treated like a regular function and assigned to a function pointer. Here's an example of using a function pointer with a capture-less lambda:
 
 \begin{lstlisting}[numbers=none]
 typedef int (*func)();
@@ -16462,12 +16475,13 @@ for_each(s.begin(),s.end(), [&] (const std::string& message){
 });
 \end{lstlisting}
 
-	\item Why is a functor better than a function pointer? Because a functor can be inline. And why is a lambda better than a functor? Because a lambda produces an unnamed functor class and does not pollute the namespace. Frequently (although not in this example), the name of the functor class is much less expressive than its actual code. A lambda can also be inline, can access all the automatic variables, and is much less verbose. Placing the code closer to where it's called improves code clarity."
+	\item A functor is often preferred over a function pointer because it can be inlined. Similarly, a lambda is preferred over a functor because it creates an unnamed functor class, avoiding namespace pollution. Additionally, lambdas can be inlined, access automatic variables, and are less verbose, enhancing code clarity by keeping the code closer to where it's called.
 \begin{lstlisting}[numbers=none]
 int count3 = 0;
-std::count_if(v.begin(), v.end(), [&count3](int x){
+std::count_if(v.begin(), v.end(), 
+                         [&count3](int x){
 							count3 += (x%3 == 0)
-						  });
+						 });
 \end{lstlisting}
 
 \end{itemize}
@@ -16475,7 +16489,7 @@ std::count_if(v.begin(), v.end(), [&count3](int x){
 \subsection{Generic lambda and auto return}
 	
 \begin{itemize}
-		\item Generic lambda was introduced in C++14. It uses \texttt{auto} as its parameter. Behind the scenes, it generates a template member operator().
+		\item Generic lambdas were introduced in C++14. They use \texttt{auto} as a parameter, allowing the lambda to accept arguments of any type. Behind the scenes, this generates a templated member operator(), enabling the lambda to work with various types.
 \begin{lstlisting}
 auto glambda = [] (auto a) { return a; };
 
@@ -16499,7 +16513,7 @@ for_each( begin(v), end(v), [](const auto& x) { cout << x; } );
 sort( begin(w), end(w), [](const auto& a, const auto& b) { return *a<*b; } );
 \end{lstlisting}
 
-		\item Another example of generic lambda is shown below. Note that this new version of \texttt{size} is not limited to any specific type; it can be invoked with any type that has a \texttt{size()} member function. Furthermore, because it also implicitly deduces the return type, the return type will be whatever \texttt{m.size()} returns, which can vary depending on the input. This is also a good example.
+		\item Another example of a generic lambda is shown below. Note that this new version of size is not limited to any specific type; it can be invoked with any type that has a size() member function. Furthermore, because it implicitly deduces the return type, the return type will be whatever \texttt{m.size()} returns, which can vary depending on the input. This demonstrates the flexibility and power of generic lambdas. This is a good example of how generic lambdas can simplify code and enhance reusability by allowing functions to operate on a wide range of types.
 
 \begin{lstlisting}
 auto size=[](const unordered_map<wstring, vector<string>>& m){return m.size();};
@@ -16507,7 +16521,7 @@ auto size=[](const unordered_map<wstring, vector<string>>& m){return m.size();};
 auto size = [](const auto& m) { return m.size(); }; // C++14: new expressive power
 \end{lstlisting}
 
-		\item In C++14, we support return type deduction by using \texttt{auto}. The restriction is: All returned values must be of the same type.
+		\item C++14 supports return type deduction by using \texttt{auto}. The restriction is: All returned values must be of the same type.
 
 \begin{lstlisting}
 auto f() { return foo() * 42; } // ok, deduces "-> some_type"
@@ -16536,11 +16550,11 @@ auto do_something(const A& a, const B& b){
 }// We don't need to follow trailing type.
 \end{lstlisting}
 
-		\item \texttt{decltype(auto)} is primarily useful for deducing the return type of forwarding functions and similar wrappers, where you want the type to exactly “track” some expression you’re invoking. Detail can be found in "Generic programming" chapter "decltype" section. 
+		\item \texttt{decltype(auto)} is primarily useful for deducing the return type of forwarding functions and similar wrappers, where you want the type to exactly “track” some expression you’re invoking. More details can be found in the "Generic Programming" chapter under the "decltype" section. Here’s a brief example to illustrate its use. 
+		
 \begin{lstlisting}
 string  lookup1();
 string& lookup2();
-
 string  look_up_a_string_1() { return lookup1(); }
 string& look_up_a_string_2() { return lookup2(); }
 
@@ -16555,7 +16569,7 @@ decltype(auto) look_up_a_string_2() { return lookup2(); } //C++ 14 idiom
 \begin{enumerate}
 	\item Concepts: these concepts are basic building block of range library. You can also use them when you building your own range container. 
 	
-	\item Constrained algorithms: these algorithms accept an range or a sentinel, don't need to input two iterators. 
+	\item Constrained algorithms: these algorithms accept an range or a sentinel, don't need to input two iterators. It also supports projection.
 	
 	\item The views: This is a range that doesn’t own the elements that the begin/end points to. A view is cheap to create, copy and move. There are three characteristics with view: 1) it will not affect original input data range, 2) it uses "evaluated lazily" 3) it can be combined, you can use pipe operator to combine different view together.  
 	
@@ -16564,7 +16578,24 @@ decltype(auto) look_up_a_string_2() { return lookup2(); } //C++ 14 idiom
 \subsection{range concept and sentinel}
 \begin{itemize}
 
-	\item Basic range concepts.
+	\item Basic range concepts definition and list.
+
+\begin{lstlisting}
+template <typename R> //core concept: range
+concept range = requires(R &r) {
+	std::ranges::begin(r);
+	std::ranges::end(r);
+};
+
+template< class T > //input_range
+concept input_range =
+ranges::range<T> && std::input_iterator<ranges::iterator_t<T>>;
+
+template< class T > //forward_range
+concept forward_range =
+ranges::input_range<T> && std::forward_iterator<ranges::iterator_t<T>>;				
+\end{lstlisting}
+
 	
 \begin{center}
 	\begin{tabular}{|c|c|}
@@ -16597,36 +16628,23 @@ decltype(auto) look_up_a_string_2() { return lookup2(); } //C++ 14 idiom
 	\end{tabular}	
 \end{center}
 
+
+	\item There are two special range concept in C++20, one is sized\_range, the other is borrowed\_range. The sized\_range concept in C++20 is part of the Ranges library, which introduces a new way to work with sequences of elements. The sized\_range concept specifically applies to ranges that have a known size, meaning that it provides a constant-time size() member function or can otherwise be queried for its size in constant time. 
+	
+	\item In the following code, the reason for the extra \texttt{ !disable\_sized\_range<remove\_cvref\_t<T> >} check is that some types can meet the syntactic requirements of \texttt{ranges::size} without meeting the semantic requirement that this call must have constant time. For instance, \texttt{MyLinkedList} had O(N) size(), but this wouldn’t be detectable, so the type trait exists to allow for such containers to opt out of being considered sized\_ranges.
 \begin{lstlisting}
-template <typename R> //core concept: range
-concept range = requires(R &r) {
-	std::ranges::begin(r);
-	std::ranges::end(r);
-};
-
-template< class T > //input_range
-concept input_range =
-ranges::range<T> && std::input_iterator<ranges::iterator_t<T>>;
-
-template< class T > //forward_range
-concept forward_range =
-ranges::input_range<T> && std::forward_iterator<ranges::iterator_t<T>>;			
-\end{lstlisting}
-
-	\item C++20 introduces concept of sized\_range. The reason for the extra \\ \texttt{ !disable\_sized\_range<remove\_cvref\_t<T> >} check is that some types can meet the syntactic requirements of \texttt{ranges::size} without meeting the semantic requirement that this call must have constant time. For instance, a pre-C++11 \texttt{std::list} had O(N) size(), but this wouldn’t be detectable, so the type trait exists to allow for such containers to opt out of being considered sized\_ranges.
-\begin{lstlisting}
+namespace std{
+	// MyLinkedList has O(n) size.
+	template <typename T>
+	constexpr bool disable_sized_range<MyLinkedList<T>> = true;
+}	
+	
 template<class T>
 concept sized_range = range<T> && !disable_sized_range<remove_cvref_t<T>> &&
 requires(T& t) { ranges::size(t); };
 \end{lstlisting}
 
-	\item The following example uses the \texttt{sentinel\_for} concept to show that \texttt{vector<int>::iterator} is a sentinel for \texttt{vector<int>}.
-\begin{lstlisting}
-std::vector<int> v = {0, 1, 2};
-std::vector<int>::iterator i = v.begin();
-// show that vector<int>::iterator is a sentinel for vector<int>
-cout<< std::sentinel_for<std::vector<int>::iterator, decltype(i)>; //true
-\end{lstlisting}
+
 	
 %	ranges::distance, get size of range( linear complexity);  ranges::empty, ranges::data. 
 	
@@ -16652,73 +16670,29 @@ auto iter = std::ranges::min_element(get_span());
 \begin{lstlisting}
 template <>
 inline constexpr bool std::ranges::enable_borrowed_range<my::StringRef> = true;
+
+template< class R >
+concept borrowed_range = ranges::range<R> &&(std::is_lvalue_reference_v<R> || 
+                         ranges::enable_borrowed_range<std::remove_cvref_t<R>>);
 \end{lstlisting}
 
+	\item The following example uses the \texttt{sentinel\_for} concept to show that \texttt{vector<int>::iterator} is a sentinel for \texttt{vector<int>}.
+\begin{lstlisting}
+std::vector<int> v = {0, 1, 2};
+std::vector<int>::iterator i = v.begin();
+// show that vector<int>::iterator is a sentinel for vector<int>
+cout<< std::sentinel_for<std::vector<int>::iterator, decltype(i)>; //true
+\end{lstlisting}
 	
-	\item The basic idea of sentinel is below:
-	\begin{enumerate}
-		\item Whenever you have a range where the end is some dynamic condition instead of a fixed position, use an iterator and sentinel pair instead.
-		
-		\item In order to support that, all that is required of existing algorithms is to change their signatures to support this sentinel.
-		
-		\item We can solve any problem by introducing an extra level of indirection. Except for the problem of too many levels of indirection. 
-	\end{enumerate}
-	 
-\begin{lstlisting}
-struct Sentinel {}; // Empty tag type.
-
-// Check whether the associated iterator is done.
-bool operator==(iterator iter, Sentinel s);
-
-template <typename I, typename S>
-void algorithm(I begin, S end); //constrained algorithms
-\end{lstlisting}
-
-	\item Based on previous introduction, we can give a code example. You can implement any check you want in the \texttt{is\_at\_end} function, e.g.: 1)stop never (get an infinite range). 2)stop after N increments (to get a counted range)
-	3) stop when a '$\backslash$0' is encountered, i.e. \texttt{*it = '$\backslash$0'} (for looping over C-strings). 4)stop when it's 12'o clock (for having lunch), and so on.
-
-\begin{lstlisting}
-struct My_iterator;    //some iterator
-struct My_sentinel{
-	bool is_at_end(my_iterator it) const{
-		//here implement the logic when the iterator is at the end
-	}
-};
-
-auto operator==(my_iterator it, My_sentinel s)  
-{ //also for (my_sentinel s, My_iterator it)
-	return s.is_at_end(it); 
-}	
-\end{lstlisting}
-
-	\item An sentinel example when using char pointer, in this context, we can make \texttt{Zstring\_sentinel} empty, because I can judge when to end from iterator( char * ) directly. Another thing need to know, you have to use \texttt{std::ranges::copy}, not \texttt{std::copy}. Only \texttt{std::ranges::copy} supports sentinel concept. 
-
-\begin{lstlisting}
-struct Zstring_sentinel {}; // Empty type.
-
-bool operator==(const char* str, Zstring_sentinel) { // Are we done?
-	return *str == '\0';
-}
-
-void do_sth(const char* str) {
-	std::vector<char> buffer;
-	std::ranges::copy(str, Zstring_sentinel{}, std::back_inserter(buffer));
-	// ...
-}	
-\end{lstlisting}
 
 \end{itemize}
 
 \subsection{constrained algorithms}
 \begin{itemize}
-		\item Most algorithms has corresponding constrained one.
-		\begin{center}
-			\includegraphics[width=0.96\linewidth]{pics/ca.png}
-		\end{center}
-	
-		\item C++20 provides constrained versions of most algorithms in the namespace \texttt{std::ranges}. 
+		
+		\item C++20 provides constrained versions of most algorithms in the namespace \texttt{std::ranges}. The \texttt{std::ranges} namespace includes many of the algorithms from the traditional <algorithm> header, but with added constraints to ensure better compile-time checking and improved generic programming support.
 		\begin{enumerate}
-			\item In these constrained algorithms, a range can be specified as either a iterator-sentinel pair or as a single range argument. 
+			\item In these constrained algorithms, a range can be specified as either a iterator-sentinel pair or as a single range argument. These algorithms work seamlessly with the new range concepts, such as sized\_range, view, and common\_range.
 \begin{lstlisting}
 std::string s("hello");
 namespace ranges = std::ranges;
@@ -16730,7 +16704,7 @@ ranges::transform(s, back_inserter(ordinals), [](unsigned char c) -> size_t
                                                  { return c; });
 \end{lstlisting}
 		
-		\item projections and pointer-to-member callables are supported. It's because we use \texttt{std::invoke} inside constrained algorithms. Detail can be found in "C++20 Ranges, Projections, std::invoke and if constexpr".
+		\item Projections and pointer-to-member callables(pointer to member function and pointer to member data) are supported. This is because \texttt{std::invoke} is used inside constrained algorithms. For more details, refer to "C++20 Ranges, Projections, \texttt{std::invoke} and if constexpr".
 \begin{lstlisting}
 std::vector vec { -1, 2, -3, 4, -5, 6 };
 auto print = [](int i) { std::cout << i << ", "; };
@@ -16749,11 +16723,10 @@ vector<Employee> v = {{"a1"}, {"a2"}, {"a2"} };
 ranges::for_each(v, &Employee::printName); //pointer member function here.
 \end{lstlisting}
 
-	\item The return types of most algorithms have been changed to return all potentially useful information computed during the execution of the algorithm. Most constrained algorithms return \texttt{std::ranges::in\_out\_range}.
+	\item The return types of most algorithms have been changed to include all potentially useful information computed during the execution of the algorithm. Most constrained algorithms now return \texttt{std::ranges::in\_out\_result}.
 	
 \begin{lstlisting}
 //std::ranges::in_out_result
-
 constexpr char in[] = "transform" "\n";
 std::array<char, sizeof(in)> out;
 
@@ -16768,6 +16741,68 @@ std::ranges::for_each(out.cbegin(), result.out, print);
 	
 	\end{enumerate}
 	
+	\item The basic idea of a sentinel is as follows:
+\begin{enumerate}
+	\item Whenever you have a range where the end is determined by a dynamic condition rather than a fixed position, use an iterator and sentinel pair instead.
+	
+	\item To support this, existing algorithms only need to change their signatures to accommodate the sentinel.
+	
+	\item We can solve any problem by introducing an extra level of indirection, except for the problem of too many levels of indirection.
+\end{enumerate}
+
+	
+\begin{lstlisting}
+struct Sentinel {}; // Empty tag type.
+// Check whether the associated iterator is done.
+bool operator==(iterator iter, Sentinel s);
+
+template <typename I, typename S>
+void algorithm(I begin, S end); //constrained algorithms	
+\end{lstlisting}
+
+
+	\item Based on the previous introduction, we can provide a code example to illustrate the use of a sentinel. In this example, you can implement any check you want in the is\_at\_end function. Here are a few scenarios:
+\begin{enumerate}
+	\item Stop never (get an infinite range).
+	\item Stop after N increments (to get a counted range).
+	\item Stop when a '$\backslash$0' is encountered (for looping over C-strings).
+	\item Stop when it's 12 o'clock (for having lunch), and so on.
+\end{enumerate}
+	
+\begin{lstlisting}
+struct My_iterator;    //some iterator
+struct My_sentinel{
+	bool is_at_end(my_iterator it) const{
+		//here implement the logic when the iterator is at the end
+	}
+};
+
+auto operator==(my_iterator it, My_sentinel s)  
+{ //also for (my_sentinel s, My_iterator it)
+	return s.is_at_end(it); 
+}		
+\end{lstlisting}	
+	
+	\item An sentinel example when using char pointer, in this context, we can make \texttt{Zstring\_sentinel} empty, because I can judge when to end from iterator( char * ) directly. Another thing need to know, you have to use \texttt{std::ranges::copy}, not \texttt{std::copy}. Only \texttt{std::ranges::copy} supports sentinel concept. 
+	
+\begin{lstlisting}
+struct Zstring_sentinel {}; // Empty type.
+bool operator==(const char* str, Zstring_sentinel) { // Are we done?
+	return *str == '\0';
+}
+
+void do_sth(const char* str) {
+	std::vector<char> buffer;
+	std::ranges::copy(str, Zstring_sentinel{}, std::back_inserter(buffer));
+	// ...
+}		
+\end{lstlisting}	
+	
+
+\item Most algorithms has corresponding constrained one.
+\begin{center}
+	\includegraphics[width=0.90\linewidth]{pics/ca.png}
+\end{center}	
 
 \end{itemize}
 
@@ -16790,15 +16825,14 @@ std::cout << sv.substr(5, 15) << '\n';
 	\item \texttt{views::transform} doesn't store element, so each element all are r-value(return by a function), in the below loop, you have to use \texttt{auto} or \texttt{const auto \&} to catch rvalue from \texttt{view::transform}. 
 	
 \begin{lstlisting}
-for(auto & e: dic|views::values<0>|views::transform(....)){ 
-//auto &e is not correct, 
+for(auto & e: dic|views::values<0>|views::transform(....)){ //auto &e is not correct, 
 	
 for(auto & e: dic|views::values<0>|views::stride(2)){ //with -std=c++23
 	cout<<e;        //using auto &e is OK here, because stride return lvalue. 
 }
 \end{lstlisting}
 	
-	\item \texttt{views::search} and \texttt{std::search} don't return the same value. views version return subrange, while std version return iterator.
+	\item \texttt{views::search} and \texttt{std::search} don't return the same value. views version return subrange, while \texttt{std::search} return iterator.
 \begin{lstlisting}
 constexpr auto haystack {"abcd abcd"sv};
 constexpr auto needle {"bcd"sv};
@@ -19633,8 +19667,7 @@ void consumeMessage(){
 
 		\item An atomic operation A that performs a release operation on an atomic object M synchronizes with an atomic operation B that performs an acquire operation on M and takes its value from any side effect in the release sequence headed by A.
 
-		\item The synchronizes-with relationship is something that you can get only between operations on atomic types. One thing they have in common is that whenever there’s a synchronizes-with relationship between two operations, typically on different threads, there’s a happens-before relationship between those operations as well.
-
+		
 		\item In every synchronizes-with relationship, you should be able to identify two key ingredients, which I like to call the guard variable and the payload. The payload is the set of data being propagated between threads, while the guard variable protects access to the payload. Don’t fall into the trap of thinking that synchronizes-with is a relationship between statements in your source code. It isn’t! It’s a relationship between operations which occur at runtime, based on those statements.
 
 
@@ -19647,6 +19680,9 @@ void consumeMessage(){
 %\end{center}
 
 	\item From above figure, you can see \texttt{thread.join()} creates a synchronization-with relationship between the calling thread and the joined thread. When a thread calls join() on another thread, the calling thread will wait for the joined thread to complete before continuing its execution. This ensures that any operations performed by the joined thread are completed before the calling thread proceeds, creating a synchronization-with relationship between the two threads. In other words, the join operation establishes a happens-before relationship between the end of the joined thread's execution and the continuation of the calling thread's execution.
+	
+	\item The synchronizes-with relationship is something that you can get only between operations on atomic types. One thing they have in common is that whenever there’s a synchronizes-with relationship between two operations, typically on different threads, there’s a happens-before relationship between those operations as well.
+	
 
 	\item For this example, we may get \texttt{r1=r2=42}. It's has \textbf{sequence before order}, then it will lead to happen before order. But please remember, happy before is logic order, not runtime execution order. So x and y will not affect each other, for C and D, due to store buffer, maybe it has reorder effect. it doesn't mean D is executed before C, maybe we first issue r2 = x, but it need go to three level cache, at the same time, maybe x.store invalid cache line. 
 
@@ -19854,7 +19890,7 @@ struct spinlock{
 
 \begin{itemize}
 	
-	\item The first and simple understand implementation. We can use a lock+mutex to make \textbf{1) atomic access m\_Instance; 2) synchronize-with relationship with the other thread} guarantee at the same time. The only problem is that this lock+mutex implementation is not efficient.  Because if we have many threads to run getInstance, only one can get lock, and all the others will be suspended. It cause lock convery problem, Let's consider one possibility, if one thread get lock but the time slice has been taken away by the OS schedular. Then this mutex is in lock status. Then all the others threads can't get lock,  they will be suspended and all the time slice have been reduced by the OS. then context switch will happen more often, it will cause performance penalty.  From this implementation, you can see lock+mutex is the safest way, because it guarantee aotmic and synchronized-with relationship at the same time. But you pay performance bill. If you want to improve it, you have to take care of atomic access and synchronize-with by you self, let's introduce in the next item.
+	\item The first and easy understandable implementation. We can use a lock+mutex to make \textbf{1) atomic access m\_Instance; 2) synchronize-with relationship with the other thread} guarantee at the same time. The only problem is that this lock+mutex implementation is not efficient.  Because if we have many threads to run getInstance, only one can get lock, and all the others will be suspended. It cause lock convery problem, Let's consider one possibility, if one thread get lock but the time slice has been taken away by the OS schedular. Then this mutex is in lock status. Then all the others threads can't get lock,  they will be suspended and all the time slice have been reduced by the OS. then context switch will happen more often, it will cause performance penalty.  From this implementation, you can see lock+mutex is the safest way, because it guarantee aotmic and synchronized-with relationship at the same time. But you pay performance bill. If you want to improve it, you have to take care of atomic access and synchronize-with by you self, let's introduce in the next item.
 	
 \begin{lstlisting}[]
 Singleton* Singleton::m_Instance = nullptr;
@@ -19968,16 +20004,15 @@ Singleton* Singleton::getInstance() {
 	}
 	return tmp;
 }	
-\end{lstlisting}	
+\end{lstlisting}
+	\item Considering efficiency, the sequence "release > fence > load with memory\_order\_seq\_cst" directly impacts performance. There are two key differences:
+
+\begin{enumerate}
+	\item A memory barrier with acquire semantics imposes stricter ordering constraints. While both an acquire operation on an atomic and a memory barrier require that no read or write operation can be moved before the acquire operation, an acquire memory barrier provides an additional guarantee: no read operation can be moved after the acquire memory barrier.
+
+	\item The release operation (std::memory\_order\_release) places fewer memory ordering constraints on neighboring operations compared to a release fence. A release operation only needs to prevent preceding memory operations from being reordered past itself, whereas a release fence must prevent preceding memory operations from being reordered past all subsequent writes. Due to this distinction, a release operation cannot replace a release fence. In other words, the relaxed semantics suffice for reading the atomic variable var. The std::atomic\_thread\_fence(std::memory\_order\_acquire) ensures that this operation cannot be moved after the acquire fence.	
 	
-	\item Considering the efficiency, release >fence> load with memory\_order\_seq\_cst directly. The detail difference is two points.
-	\begin{enumerate}
-		\item 	A memory barrier with acquire semantic establishes stronger ordering constraints. Although the acquire operation on an atomic and on a memory barrier requires, that no read or write operation can be moved before the acquire operation, there is an additional guarantee with the acquire memory barrier. No read operation can be moved after the acquire memory barrier.
 		
-		\item The release operation \texttt{std::memory\_order\_release}, actually places fewer memory ordering constraints on neighboring operations than the release fence on the previous implementation. A release operation only needs to prevent preceding memory operations from being reordered past itself, but a release fence must prevent preceding memory operations from being reordered past all subsequent writes. Because of this difference, a release operation can never take the place of a release fence. In another word, The relaxed semantic is sufficient for the reading of the atomic variable var. The std::atomc\_thread\_fence(std::memory\_order\_acquire) ensures that this operation can not be moved after the acquire fence.
-		
-		detail can be found in "Acquire and Release Fences Don't Work the Way You'd Expect" and 
-		\verb|https://www.modernescpp.com/index.php/acquire-release-fences|
 		
 		\begin{center}
 			\includegraphics[width=0.63\linewidth]{pics/release1.png}
@@ -19986,6 +20021,10 @@ Singleton* Singleton::getInstance() {
 		\begin{center}
 			\includegraphics[width=0.74\linewidth]{pics/release2.png}
 		\end{center}
+		
+		\item detail can be found in "Acquire and Release Fences Don't Work the Way You'd Expect" and 
+		\verb|https://www.modernescpp.com/index.php/acquire-release-fences|
+		
 	\end{enumerate}
 	\item A good paper can be found "Double-Checked Locking is Fixed In C++11"
 	
