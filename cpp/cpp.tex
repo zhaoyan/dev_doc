@@ -16783,7 +16783,7 @@ auto operator==(my_iterator it, My_sentinel s)
 }		
 \end{lstlisting}	
 	
-	\item An sentinel example when using char pointer, in this context, we can make \texttt{Zstring\_sentinel} empty, because I can judge when to end from iterator( char * ) directly. Another thing need to know, you have to use \texttt{std::ranges::copy}, not \texttt{std::copy}. Only \texttt{std::ranges::copy} supports sentinel concept. 
+	\item An sentinel example when using char pointer, in this context, we can make \texttt{Zstring\_sentinel} empty, because I can judge when to end from \texttt{iterator( char * )} directly. Another thing need to know, you have to use \texttt{std::ranges::copy}, not \texttt{std::copy}. Only \texttt{std::ranges::copy} supports sentinel concept. 
 	
 \begin{lstlisting}
 struct Zstring_sentinel {}; // Empty type.
@@ -16806,11 +16806,11 @@ void do_sth(const char* str) {
 
 \end{itemize}
 
-\subsection{view}
+\subsection{View}
 
 \subsubsection{Composable Range views}
 \begin{itemize}
-	\item Views are simply ranges that are cheap to copy and move (in constant time). Because of this, a view can \textbf{NOT} own the elements it is viewing. One exception is \texttt{std::views::single} which owns the single element it is viewing. Creating a view is preparation to do work in the future. Creating the view doesn't do any implementation job, work happens only when you access an element in the view.
+	\item Views are simply ranges that are cheap to copy and move (in constant time). Due to this, a view does not own the elements it is viewing. An exception to this rule is \texttt{std::views::single}, which owns the single element it is viewing. Creating a view prepares for future work but does not execute any operations immediately; work occurs only when accessing an element within the view.
 	
 \begin{lstlisting}
 //'string::substr' returns a new string, it's memory-instensive.
@@ -16825,17 +16825,17 @@ std::cout << sv.substr(5, 15) << '\n';
 	\item \texttt{views::transform} doesn't store element, so each element all are r-value(return by a function), in the below loop, you have to use \texttt{auto} or \texttt{const auto \&} to catch rvalue from \texttt{view::transform}. 
 	
 \begin{lstlisting}
-for(auto & e: dic|views::values<0>|views::transform(....)){ //auto &e is not correct, 
+for(auto & e: dic|views::values<0>|views::transform(....)){//auto &e is not OK
 	
 for(auto & e: dic|views::values<0>|views::stride(2)){ //with -std=c++23
 	cout<<e;        //using auto &e is OK here, because stride return lvalue. 
 }
 \end{lstlisting}
 	
-	\item \texttt{views::search} and \texttt{std::search} don't return the same value. views version return subrange, while \texttt{std::search} return iterator.
+	\item \texttt{views::search} and \texttt{std::search} don't return the same value. \texttt{views::search} return subrange, while \texttt{std::search} return iterator.
 \begin{lstlisting}
 constexpr auto haystack {"abcd abcd"sv};
-constexpr auto needle {"bcd"sv};
+constexpr auto needle {"bcd"sv};  //needle is string_view
 auto found = std::ranges::search(haystack, needle); //found is subrange.
 std::distance(haystack.begin(), found.begin());
 
@@ -16844,8 +16844,7 @@ auto found = std::search(haystack.being(), haystack.end(), //found is iterator
 std::distance(haystack.begin(), found); 
 \end{lstlisting}	
 
-
-	\item Constrained algorithms only accept a range, not two iterators. It looks like that it's not very flexible, but we can use \texttt{std::views} to get the same result. Comparison between iterator version and view version.
+	\item Constrained algorithms only accept a range, not two iterators. While this may seem less flexible, we can achieve similar functionality using \texttt{std::views}. Let's compare the iterator-based version with the view-based version.
 \begin{lstlisting}
 std::sort(v.begin() + 5, v.end())
 std::sort(v.rbegin(), v.rend());
@@ -16855,34 +16854,32 @@ std::ranges::sort(std::views::drop(v, 5));
 std::ranges::sort(std::views::reverse(v));
 std::ranges::sort(std::views::drop(std::views::reverse(v), 5));		
 \end{lstlisting}		
-
 	
 	\item Elements of a view are usually the actual elements of the range used to create the view. The view usually doesn't own the elements; it just refers to them, with the exception of \texttt{owning\_view}. Changing an element changes that element in the range that the view was created from. The following example shows this behavior:
 	
 \begin{lstlisting}
 int input[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 auto even = [](const int n) { return n % 2 == 0; };
-auto x = input | std::views::filter(even); // create a view of the even elements from input
+auto x = input | std::views::filter(even); 
+// create a view of the even elements from input
+
 std::ranges::fill(x, 42); // changes the evens from input[] to 42
 //  input is 42 1 42 3 42 5 42 7 42 9 42 now.
 \end{lstlisting}
 
-	\item Pay attention to view and adapter, usually we use adapter more.
+	\item Pay attention to view and adapter, usually we use adapter more. Three different ways to use views. We recommend to use the first and the second method.
 \begin{lstlisting}
-std::ranges::views::transform // this is adaptor. it's a object name.
-std::ranges::transform_view // this is a view. that is class name
-\end{lstlisting}
-
-	\item Three different ways to use views. We recommend to use the first and the second method.
-\begin{lstlisting}
+std::ranges::views::stride //this is adaptor. it's a object of ranges::stride_view
+std::ranges::stride_view // this is a view. that is class name
+	
 std::vector<int> v {0,1,2,3,4,5,6,7,8};
 // 1) using functor notation:
 fmt::print("{}\n", std::views::stride(v,3)); // [0,3,6]
 
 // 2) using pipeline notation:
 fmt::print("{}\n", v | std::views::stride(2)); // [0,2,4,6,8]
-// 3) using an explicit view object:
 
+// 3) using an explicit view object:
 std::ranges::stride_view sv2 {v,2};
 fmt::print("{}\n", sv2); // [0,2,4,6,8]
 \end{lstlisting}
@@ -16900,247 +16897,20 @@ for(int n : v | std::views::take(6) | std::views::drop(2)
 
 %\item C++20 doesn't support action yet. 
 
-	\item The transformed range is only a view, the elements are generated one at a time as the view is iterated. It can't be sorted as there is nowhere to store the sorted elements. A hypothetical implementation would also be inefficient as it would have to transform each element every time it needed to do a comparison for the sort. A solution is correct to store the transformed elements in a vector then sort them, \texttt{ranges::to} is a way to implement this.
-
-\begin{lstlisting}
-std::vector ints{ 6, 5, 2, 8 };
-auto even = [](int i) {return 0 == i % 2;};
-
-auto rr = ints  | std::views::filter(even) 
-| std::views::transform([](auto i) {
-	return i * i;
-}) | std::views::reverse;
-
-ints = rr | ranges.to(std::vector); //use ranges::to
-//ints = std::vector(std::ranges::begin(rr), std::ranges::end(rr));
-std::ranges::sort(ints); // output 4, 36, 64.	
-\end{lstlisting}	
+	\item Function application call are \texttt{transform, adjacent\_transform and pairwise\_transform}.
 	
-%	\item An basic \texttt{std::view} example. You can compiled by "g++ a.cpp -std=c++20"
-%\begin{lstlisting}
-%using namespace std;
-%int main() {
-%	std::vector<uint64_t> in{1, 2, 3, 4, 5};
-%	for (auto && i : in | views::drop(2) | views::transform([]( auto &e ){
-%		e+=2; return e*2;}))
-%	std::cout << i << ' '; //should print: 6, 8, 10		 
-%	
-%	for(auto e :in){
-%		std::cout<<e << ' '; //should print 1,2,5,6,7
-%	} 
-%}		
-%\end{lstlisting}	
-
-	
-	\item  A very basic and brief introduction to implementing your own view: from a syntax point of view, \texttt{std::ranges::SquareView} is a class with a special iterator, where the \texttt{operator*()} of the iterator is redefined. It also defines basic \texttt{begin()} and \texttt{end()} functions. Please search for "An Introduction to the Range-v3 Library" on Google; it introduces the basic adapter and view concepts.
+	\item Tokenization view are \texttt{split, lazy\_split, chunk, and chunk\_by}.
 \begin{lstlisting}
-template<typename T>
-using IteratorBase = decltype( std::begin( std::declval<T&>( ) ) );
+using std::operator""sv;
+constexpr auto words{"Hello^_^C++^_^20^_^!"sv};
+constexpr auto delim{"^_^"sv};
 
-template <typename Rng>
-class SquareView : public ranges::view_base{
-	class IteratorType : public IteratorBase<Rng>
-	{
-	public:
-		using Base = IteratorBase<Rng>;
-		using value_type = typename std::iterator_traits<Base>::value_type;
-		IteratorType& operator++( ){ ..}
-		value_type operator*( ) const{ // Where the magic happens
-			value_type value = *static_cast<Base>( *this );
-			return value * value;
-		}
-	};
-	...
-	iterator begin( ) const { return ranges::begin( range_ ); }	
-	auto end( ) const { return ranges::end( range_ ); }
-}
+for (const auto word : std::views::split(words, delim))
+// with string_view's C++23 range constructor:
+std::cout << std::quoted(std::string_view(word)) << ' ';
 \end{lstlisting}
-
-	\item With SquareView, we need to adapter to return this view. The basic idea of range adaptor is inline instance of functor. The functor \texttt{operator()} or \texttt{operator |} return the anonymous \texttt{SquareView}. 
-\begin{lstlisting}
-struct SquareFn{
-	template <typename Rng>
-	auto operator()( Rng&& range ) const{
-		return SquareView( std::forward<Rng>( range ) );
-	}	
-	template <typename Rng>
-	friend auto operator|( Rng&& range, const SquareFn& ){
-		return SquareView( std::forward<Rng>( range ) );
-	}
-};
-namespace Views{
-	constexpr SquareFn Square;
-}
-
-auto view = Views::Square( inputValues ); //method1, use operator()
-auto view = inputValues | Views::Square;  //method2, use operator pipeline
-\end{lstlisting}
-
-
-	\item Such as \texttt{views::take} has one argument, you can use below method to implement it. 
-\begin{lstlisting}
-struct custom_take_range_adaptor_closure
-{
-	std::size_t count_;
-	constexpr custom_take_range_adaptor_closure(std::size_t count): count_(count)
-	{}
 	
-	template <rg::viewable_range R>
-	constexpr auto operator()(R && r) const
-	{
-		return custom_take_view(std::forward<R>(r), count_);
-	}
-} ;
-
-struct custom_take_range_adaptor
-{
-	template<rg::viewable_range R>
-	constexpr auto operator () (R && r, std::iter_difference_t<rg::iterator_t<R>> count)
-	{
-		return custom_take_view( std::forward<R>(r), count ) ;
-	}
-	
-	constexpr auto operator () (std::size_t count)
-	{
-		return custom_take_range_adaptor_closure(count);
-	}   
-};
-
-template <rg::viewable_range R>
-constexpr auto operator | (R&& r, custom_take_range_adaptor_closure const & a)
-{
-	return a(std::forward<R>(r)) ;
-}	
-\end{lstlisting}
-
-
-	\item special adaptor are \texttt{views::ref\_view, views::owning\_view, views::all and views::common}. \texttt{std::views::all} returns a suitable view(\texttt{std::views::ref\_view}, \texttt{std::views::owning\_view}, etc) depending on the input range type. If parameter of \texttt{views::all} is a non-view rvalue such as a temporary object, or is the result of passing the range to \texttt{std::move}, it will return an \texttt{owning\_view}. Use \texttt{std::views::all\_t<decltype((rg))>} to get the type of the returned view. Usually, we don't use it directly in our code. 
-\begin{lstlisting}
-#include <ranges>
-std::vector<int> v {9,1,3,7,4};
-auto vw1 = std::views::all(v); //return std::views::ref_view.
-fmt::print("{}\n", vw1); // [9,1,3,7,4]
-v.pop_back();
-fmt::print("{}\n", vw1); // [9,1,3,7]
-
-// move 'v' into a new view:
-auto vw2 = std::views::all(std::move(v)); //return std::views::owning_view.
-v = std::vector<int>{8};
-// => 'vw2' is an owning_view, which stores the elements
-fmt::print("{}\n", vw2); // [9,1,3,7]
-fmt::print("{}\n", v); // [8]		
-\end{lstlisting}		
-	
-	
-	\item The reason for \texttt{std::views::take\_while} error is that unlike \texttt{std::views::filter}, \\ \texttt{std::views::take\_while} isn't a \texttt{common\_range}. Common ranges require that \texttt{ranges::begin} and \texttt{ranges::end} return the same type.
-\begin{lstlisting}
-auto v = std::vector{8,7,3};
-auto rng = v | std::views::filter([](int x){return x > 5 ;});
-auto res = std::accumulate(rng.begin(),rng.end(),0); //OK here.
-
-//auto rng = v | std::views::take_while([](int x){return x > 5 ;}) ; //error
-auto rng = v | std::views::take_while([](int x){return x > 5 ;})| std::views::common
-auto res = std::accumulate(rng.begin(),rng.end(),0);  //error here.	
-\end{lstlisting}
-
-	
-	\item You can also use \texttt{views::common} on you own range. 
-\begin{lstlisting}
-#include <ranges>
-class Gadget_Range {
-	std::array<int,6> a_ {5,4,3,2,1,0};
-	public:
-	auto begin () const { // exclude last element
-		return std::counted_iterator{a_.begin(),5};
-	}
-	auto end () const { // counting_iterator already knows size	
-		return std::default_sentinel;
-	}
-};
-Gadget_Range g;
-
-fmt::print("{}\n", g);
-// accumulate requires same type for 'begin' and 'end'
-// ERROR: std::accumulate(g.begin(), g.end(), 0);
-auto cv = g | std::views::common;
-auto sum = std::accumulate(cv.begin(), cv.end(), 0);
-fmt::print("sum: {}\n", sum);		
-\end{lstlisting}		
-	
-	\item You need to be aware of certain limitations when working with views, such as the size range, common range, ,random range and \texttt{ranges::dangling}. These limitations can arise from the embedded container, as seen in the example below with \texttt{std::forward\_list}, or they can stem from the views themselves. For instance, \texttt{views::take\_while} is not considered a common range at all. 
-\begin{lstlisting}
-std::sort(v|views::take(3)); //OK, because views::take can model random range
-std::sort(v|views::filter(...)) // Error, views::filter only model bidirection range.
-(forward_list<int> | views::tak3(3) ).size, // forward_list doesn't support size
- std::accumulate(v|views::take_while(...) )// take_while is not common range.
- 
- //A temporary view 
- auto rr = ranges::min_element(dic | views::values | views::filter( [](auto p){ return p.second == 1;} ) 
- (*rr).first //Error, rr is ranges::dangling.
- 
- //below is Correct version. 
- auto vv = dic | views::values | views::filter( [](auto p){ return p.second == 1; });
- auto rr = ranges::min_element(vv, {}, &pair<int, int>::first ) ;
- cout<<(*rr).first;
-\end{lstlisting}
-
-
-	\item \texttt{std::views::iota} and \texttt{std::views::repeat} are range factories. 
-\begin{lstlisting}
-for (int i : std::ranges::iota_view{1, 10})
-for (int i : std::views::iota(1, 10))    
-for (int i : std::views::iota(1) | std::views::take(9))
-auto const r51 = std::views::repeat(1,5); // 1 1 1 1 1 
-auto const r4a = std::views::repeat('a') | std::views::take(4); // a a a a	
-\end{lstlisting}
-
-	\item Element selector views are: \texttt{views::filter, views::stride}
-\begin{lstlisting}
-std::vector<int> v {0,1,2,3,4,5,6,7,8};
-auto const is_even = [] (int x) { return !(x & 1); };
-fmt::print("{}\n", v | std::views::filter(is_even)); // [0,2,4,6,8]
-fmt::print("{}\n", v | std::views::stride(2)); // [0,2,4,6,8]
-\end{lstlisting}	
-
-	\item Subrange selector views are: \texttt{views::counted, views::take, views::take\_while, views::drop, views::drop\_while}.  \\
-	Note that \texttt{std::views::counted} is not pipelinable and that there's also no \\ \texttt{std::ranges::counted\_view} type.
-\begin{lstlisting}
-std::vector<int> v {0,1,2,3,4};
-fmt::print("{}\n", std::views::counted(v.begin()+1,2)); // [1, 2]
-fmt::print("{}\n", v | std::views::take(3)); // [0,1,2]
-fmt::print("{}\n", v | std::views::drop(2)); // [2,3,4]
-
-std::vector<int> v {2,6,7,6,5};
-auto const is_even = [] (int x) { return !(x & 1); };
-fmt::print("{}\n", v | std::views::drop_while(is_even)); // [7,6,5]	
-\end{lstlisting}
-
-	\item Sliding Window Views: return a range of either tuples or contiguous subranges of the input range. \texttt{views::slide, views::adjacent, views::pairwise}. \texttt{views::adjacent} is a view similar to \texttt{views::slide}, producing a sliding window over the input range. However, where \texttt{views::slide} produces subranges, \texttt{views::adjacent} produces tuples of references to elements.
-	
-	
-\begin{lstlisting}
-std::vector<int> v {0,1,2,3,4};
-for (auto x : v | std::views::slide(3)) { fmt::print("{} ",x); } // [0,1,2] [1,2,3] [2,3,4]
-
-std::string s = "abcde";
-for (auto p : s | std::views::adjacent<3>) {fmt::print("{} ",p); } // abc bcd cde
-for (auto p : s | std::views::pairwise) {fmt::print("{} ",p); } // ab bc cd de
-
-
-for (auto [first, second, third] : v | std::views::adjacent<3>) {
-	// iterate over {1,2,3}, {2,3,4}, {3,4,5}
-}
-
-for (auto [left, right] : data | std::views::pairwise) {
-	// iterate over {1,2}, {2,3}, {3,4}, {4,5}
-}
-\end{lstlisting}
-
-	\item Function application call are \texttt{transform, adjacent\_transform and pairwise\_transform}
-	
-	\item Tokenization view are \texttt{split, lazy\_split, chunk, and chunk\_by}
-	
-	\item Multiple ranges to single range: \texttt{zip, join, join\_with, zip\_transform, cartesian\_product}
+	\item Multiple ranges to single range: \texttt{zip, join, join\_with, zip\_transform, cartesian\_product}.
 \begin{lstlisting}
 std::vector<std::string> v = {"I","am","here","now"};
 fmt::print("{}\n", v | std::views::join); // Iamherenow
@@ -17152,7 +16922,7 @@ fmt::print("{}\n", std::views::zip(a,s2,s3)); // (0,A,-) (1,B,+)
 \end{lstlisting}
 
 
-	\item Projections views: \texttt{keys, values, elements}
+	\item Projections views: \texttt{views::keys, views::values, views::elements}. \texttt{views::keys} applies a projection to extract keys from elements. It is typically used with associative containers or ranges of pairs or tuples where the first element represents a key. \texttt{views::elements} allows you to access elements directly without any projection. It's useful when you want to iterate over all elements of a range without specific transformation.
 \begin{lstlisting}
 std::vector<std::pair<char,int>> v {{'b',3},{'a',4},{'z',2},{'k',9}};
 fmt::print("{}\n", v | std::views::keys); // [b,a,z,k]
@@ -17163,7 +16933,56 @@ std::vector<std::tuple<char,int,std::string>> v {
 fmt::print("{}\n", v | std::views::elements<2>);
 \end{lstlisting}
 
-	\item \texttt{Subrange} combines an iterator and a sentinel (or two iterators) into a view. 
+	\item \texttt{std::views::iota} and \texttt{std::views::repeat} are range factories. 
+\begin{lstlisting}
+for (int i : std::ranges::iota_view{1, 10})
+for (int i : std::views::iota(1, 10))    
+for (int i : std::views::iota(1) | std::views::take(9))
+auto const r51 = std::views::repeat(1,5); // 1 1 1 1 1 
+auto const r4a = std::views::repeat('a') | std::views::take(4); // a a a a		
+\end{lstlisting}
+
+	\item Element selector views are: \texttt{views::filter, views::stride}
+\begin{lstlisting}
+std::vector<int> v {0,1,2,3,4,5,6,7,8};
+auto const is_even = [] (int x) { return !(x & 1); };
+fmt::print("{}\n", v | std::views::filter(is_even)); // [0,2,4,6,8]
+fmt::print("{}\n", v | std::views::stride(2)); // [0,2,4,6,8]	
+\end{lstlisting}	
+
+	\item Subrange selector views are: \texttt{views::counted}, \texttt{views::take}, \texttt{views::take\_while}, \texttt{views::drop}, \texttt{views::drop\_while}. Note that \texttt{std::views::counted} is not pipelinable and that there's also no  \texttt{std::ranges::counted\_view} type.
+\begin{lstlisting}
+std::vector<int> v {0,1,2,3,4};
+fmt::print("{}\n", std::views::counted(v.begin()+1,2)); // [1, 2]
+fmt::print("{}\n", v | std::views::take(3)); // [0,1,2]
+fmt::print("{}\n", v | std::views::drop(2)); // [2,3,4]
+
+std::vector<int> v {2,6,7,6,5};
+auto const is_even = [] (int x) { return !(x & 1); };
+fmt::print("{}\n", v | std::views::drop_while(is_even)); // [7,6,5]		
+\end{lstlisting}
+
+	\item Sliding Window Views: return a range of either tuples or contiguous subranges of the input range. \texttt{views::slide, views::adjacent, views::pairwise}. \texttt{views::adjacent} is a view similar to \texttt{views::slide}, producing a sliding window over the input range. However, where \texttt{views::slide} produces subranges, \texttt{views::adjacent} produces tuples of references to elements.
+
+\begin{lstlisting}
+std::vector<int> v {0,1,2,3,4};
+for (auto x : v | std::views::slide(3)) { fmt::print("{} ",x); } 
+// [0,1,2] [1,2,3] [2,3,4]
+
+std::string s = "abcde";
+for (auto p : s | std::views::adjacent<3>) {fmt::print("{} ",p); } // abc bcd cde
+for (auto p : s | std::views::pairwise) {fmt::print("{} ",p); } // ab bc cd de
+
+for (auto [first, second, third] : v | std::views::adjacent<3>) {
+	// iterate over {1,2,3}, {2,3,4}, {3,4,5}
+}
+
+for (auto [left, right] : data | std::views::pairwise) {
+	// iterate over {1,2}, {2,3}, {3,4}, {4,5}
+}	
+\end{lstlisting}
+
+	\item \texttt{std::views::subrange} combines an iterator and a sentinel (or two iterators) into a view. Another interesting view is \texttt{views::neumerate}, similar with \texttt{views::zip.}
 \begin{lstlisting}
 std::vector<int> v {9,1,3,7,4,5,3,8};
 auto const srv = std::ranges::subrange(v.begin()+2, v.begin()+6); // 3 7 4 5
@@ -17243,7 +17062,7 @@ for (auto const& [index, value] : std::views::enumerate(s)) {
 %	\bottomhline
 %\end{tabular}
 
-	\item The views can be remembered by (GPTSSSZS). generate, projection, transform, stride(filter), slide(adjacent), subrange(drop, take, count), zip(join), split(chunk). 
+	\item The views can be remembered by (\textbf{GPTSSSZS}): generate, projection, transform, stride(filter), slide(adjacent), subrange(drop, take, count), zip(join), split(chunk). 
 \begin{center}
 	\includegraphics[width=0.8\linewidth]{pics/view.drawio.png}
 \end{center}
@@ -17265,16 +17084,209 @@ auto common = std::views::common(firstFive);
 auto output = std::ostream_iterator<int>(std::cout, " ");
 std::copy(common.begin(), common.end(), output); //1) to traditional algorithm
 std::ranges::copy(firstFive, output);            //2) to constraint algorithm
-std::ranges::copy(firstFive.begin(), MySentinel{}, output); //3) sentinel.	
+std::ranges::copy(firstFive.begin(), MySentinel{}, output); //3) sentinel.		
 \end{lstlisting}
-
-
 \begin{center}
 	\includegraphics[width=0.8\linewidth]{pics/range.drawio.png}
 \end{center}
 
 
 
+\end{itemize}
+
+\subsubsection{View limitation}
+\begin{itemize}
+	
+	\item You need to be aware of certain limitations when working with views, such as size range, common range, random range, and ranges::dangling. These limitations can arise from the embedded container, as seen in the example below with \texttt{std::forward\_list}, or they can stem from the views themselves. For instance, \texttt{std::views::filter} is not considered a random\_access\_range at all.
+\begin{lstlisting}
+//below comes from cpp conference website.
+// filter_view models the concepts bidirectional_range, forward_range, input_range, and common_range when the underlying view V models respective concepts.
+	
+// take_view models the concepts contiguous_range, random_access_range, bidirectional_range, forward_range, input_range, and sized_range when the underlying view V models respective concepts. It models common_range when the underlying view V models both random_access_range and sized_range.
+
+sort(v|views::take(3)); //OK, because views::take can model random range
+sort(v|views::filter(...)) //Error, views::filter only model bidirection range
+\end{lstlisting}	
+	
+	\item Another important point is common range. The reason for the error with \texttt{std::views::take\_while} is that, unlike \texttt{std::views::filter}, \texttt{std::views::take\_while} isn't a common\_range. Common ranges require that \texttt{ranges::begin} and \texttt{ranges::end} return the same type.
+\begin{lstlisting}
+auto v = std::vector{8,7,3};
+auto rng = v | std::views::filter([](int x){return x > 5 ;});
+auto res = std::accumulate(rng.begin(),rng.end(),0); //OK here.
+
+//auto rng = v | views::take_while([](int x){return x > 5 ;}) ; //error
+auto rng = v | views::take_while([](int x){return x > 5 ;})|views::common;//ok
+auto res = std::accumulate(rng.begin(),rng.end(),0);  // not range version.		
+\end{lstlisting}	
+
+	\item The transformed range is only a view; the elements are generated one at a time as the view is iterated. It cannot be sorted because there is no storage for the elements. A hypothetical implementation would also be inefficient, as it would need to transform each element every time it compares for sorting. A correct solution is to store the transformed elements in a vector and then sort them. \texttt{ranges::to} provides a way to implement this.
+\begin{lstlisting}
+std::vector ints{ 6, 5, 2, 8 };
+auto even = [](int i) {return 0 == i % 2;};
+
+auto rr = ints  | std::views::filter(even) | std::views::transform([](auto i) {
+											return i * i;
+										}) | std::views::reverse;
+
+ints = rr | ranges.to(std::vector); //use ranges::to
+//ints = std::vector(std::ranges::begin(rr), std::ranges::end(rr));
+std::ranges::sort(ints); // output 4, 36, 64.		
+\end{lstlisting}		
+	
+	\item Pay attention to temporary view. 
+\begin{lstlisting}
+//A temporary view 
+auto rr = ranges::min_element( dic | views::values | views::filter( [](auto p){
+											return p.second == 1
+										}) 
+(*rr).first //Error, rr is ranges::dangling.
+
+//below is Correct version. 
+auto vv = dic | views::values | views::filter( [](auto p){ 
+											return p.second == 1; 
+										});
+auto rr = ranges::min_element(vv, {}, &pair<int, int>::first ) ;
+cout<<(*rr);		
+\end{lstlisting}
+		
+	
+	%	\item An basic \texttt{std::view} example. You can compiled by "g++ a.cpp -std=c++20"
+	%\begin{lstlisting}
+	%using namespace std;
+	%int main() {
+		%	std::vector<uint64_t> in{1, 2, 3, 4, 5};
+		%	for (auto && i : in | views::drop(2) | views::transform([]( auto &e ){
+			%		e+=2; return e*2;}))
+		%	std::cout << i << ' '; //should print: 6, 8, 10		 
+		%	
+		%	for(auto e :in){
+			%		std::cout<<e << ' '; //should print 1,2,5,6,7
+			%	} 
+		%}		
+	%\end{lstlisting}	
+	
+	
+	\item Special adaptor are \texttt{views::ref\_view, views::owning\_view, views::all and views::common}. \texttt{std::views::all} returns a suitable view(\texttt{std::views::ref\_view}, \texttt{std::views::owning\_view}, etc) depending on the input range type. If parameter of \texttt{views::all} is a non-view rvalue such as a temporary object, or is the result of passing the range to \texttt{std::move}, it will return an \texttt{owning\_view}. Use \texttt{std::views::all\_t<decltype((rg))>} to get the type of the returned view. Usually, we don't use it directly in our code. 
+\begin{lstlisting}
+#include <ranges>
+std::vector<int> v {9,1,3,7,4};
+auto vw1 = std::views::all(v); //return std::views::ref_view.
+fmt::print("{}\n", vw1); // [9,1,3,7,4]
+v.pop_back();
+fmt::print("{}\n", vw1); // [9,1,3,7]
+
+// move 'v' into a new view:
+auto vw2 = std::views::all(std::move(v)); //return std::views::owning_view.
+v = std::vector<int>{8};
+// => 'vw2' is an owning_view, which stores the elements
+fmt::print("{}\n", vw2); // [9,1,3,7]
+fmt::print("{}\n", v); // [8]			
+\end{lstlisting}		
+	
+	\item You can also use \texttt{views::common} on you own range. 
+\begin{lstlisting}
+#include <ranges>
+class Gadget_Range {
+	std::array<int,6> a_ {5,4,3,2,1,0};
+	public:
+	auto begin () const { // exclude last element
+		return std::counted_iterator{a_.begin(),5};
+	}
+	auto end () const { // counting_iterator already knows size	
+		return std::default_sentinel;
+	}
+};
+Gadget_Range g;
+
+fmt::print("{}\n", g);
+// accumulate requires same type for 'begin' and 'end'
+// ERROR: std::accumulate(g.begin(), g.end(), 0);
+auto cv = g | std::views::common;
+auto sum = std::accumulate(cv.begin(), cv.end(), 0);
+fmt::print("sum: {}\n", sum);			
+\end{lstlisting}		
+		
+	
+\end{itemize}
+
+\subsubsection{View implementation}
+\begin{itemize}
+		\item  A very basic and brief introduction to implementing your own view: from a syntax point of view, \texttt{std::ranges::SquareView} is a class with a special iterator, where the \texttt{operator*()} of the iterator is redefined. It also defines basic \texttt{begin()} and \texttt{end()} functions. Please search for "An Introduction to the Range-v3 Library" on Google; it introduces the basic adapter and view concepts.
+\begin{lstlisting}
+template<typename T>
+using IteratorBase = decltype( std::begin( std::declval<T&>( ) ) );
+
+template <typename Rng>
+class SquareView : public ranges::view_base{
+	class IteratorType : public IteratorBase<Rng>
+	{
+		public:
+		using Base = IteratorBase<Rng>;
+		using value_type = typename std::iterator_traits<Base>::value_type;
+		IteratorType& operator++( ){ ..}
+		value_type operator*( ) const{ // Where the magic happens
+			value_type value = *static_cast<Base>( *this );
+			return value * value;
+		}
+	};
+	...
+	iterator begin( ) const { return ranges::begin( range_ ); }	
+	auto end( ) const { return ranges::end( range_ ); }
+}	
+\end{lstlisting}	
+	
+	\item With SquareView, we need to adapter to return this view. The basic idea of range adaptor is inline instance of functor. The functor \texttt{operator()} or \texttt{operator |} return the anonymous \texttt{SquareView}. 
+\begin{lstlisting}
+struct SquareFn{
+	template <typename Rng>
+	auto operator()( Rng&& range ) const{
+		return SquareView( std::forward<Rng>( range ) );
+	}	
+	template <typename Rng>
+	friend auto operator|( Rng&& range, const SquareFn& ){
+		return SquareView( std::forward<Rng>( range ) );
+	}
+};
+namespace Views{
+	constexpr SquareFn Square;
+}
+
+auto view = Views::Square( inputValues ); //method1, use operator()
+auto view = inputValues | Views::Square;  //method2, use operator pipeline	
+\end{lstlisting}	
+	
+	
+	\item Such as \texttt{views::take} has one argument, you can use below method to implement it. 
+\begin{lstlisting}
+struct custom_take_range_adaptor_closure{
+	std::size_t count_;
+	constexpr custom_take_range_adaptor_closure(std::size_t count): count_(count)
+	{}
+	
+	template <rg::viewable_range R>
+	constexpr auto operator()(R && r) const
+	{
+		return custom_take_view(std::forward<R>(r), count_);
+	}
+} ;
+
+struct custom_take_range_adaptor{
+	template<rg::viewable_range R>
+	constexpr auto operator () (R && r, std::iter_difference_t<rg::iterator_t<R>> count){
+		return custom_take_view( std::forward<R>(r), count ) ;
+	}
+	
+	constexpr auto operator () (std::size_t count){
+		return custom_take_range_adaptor_closure(count);
+	}   
+};
+
+template <rg::viewable_range R>
+constexpr auto operator | (R&& r, custom_take_range_adaptor_closure const & a){
+	return a(std::forward<R>(r)) ;
+}		
+\end{lstlisting}	
+	
 \end{itemize}
 
 \subsubsection{Sequence View}
@@ -17372,50 +17384,6 @@ cout << s[0]; //  w might hold new memory, bad
 
 \end{itemize}
 
-
-
-\subsubsection{Practical examples}
-
-\begin{itemize}
-	
-	\item Count word frequency. 
-\begin{lstlisting}
-#include <range/v3/view.hpp>
-#include <range/v3/action.hpp>
-#include <range/v3/istream_range.hpp>
-#include <range/v3/to_container.hpp>
-using namespace ranges::v3 , std::placeholders ;
-std::string string_to_lower(const std::string &s) {
-    return s | view::transform(tolower);
-}
-std::string string_only_alnum(const std::string &s) {
-    return s | view::filter(isalnum);
-}
-
-const int n = argc <= 1 ? 10 : atoi(argv[1]);
-const auto words =
-	istream_range<std::string>(std::cin)
-	| view::transform(string_to_lower)| view::transform(string_only_alnum)
-	| view::remove_if(&std::string::empty) | to_vector | action::sort;
-
-const auto results =
-	words | view::group_by(std::equal_to<>())
-	// Creating a pair that consists of a word and its frequency
-	| view::transform([] (const auto &group) {
-				const auto begin       = std::begin(group);
-				const auto end         = std::end(group);
-				const int  count       = distance(begin, end);
-				const std::string word = *begin;
-				return std::make_pair(count, word);
-				})                     
-	| to_vector | action::sort;
-           
-for (auto value: results | view::reverse | view::take(n) ){
-	std::cout << value.first << " " << value.second << std::endl;
-}
-\end{lstlisting}
-
-\end{itemize}
 
 \section{Algebraic data types}
 
