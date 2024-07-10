@@ -11431,19 +11431,19 @@ struct function<R (A...)>{
 \subsection{template class and inheritance}
 \begin{itemize}
 	
-	\item Utilize member function templates to accept all compatible types, as detailed in Effective C++ item 45. For instance, consider the following example where we define a template copy constructor member function that can be used as a generalized copy constructor.
+	\item Utilize member function templates to accept all compatible types, as detailed in Effective C++ Item 45. For instance, consider the following example where we define a template copy constructor member function that can be used as a generalized copy constructor.
 	
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 class SmartPtr {
-	public:
+public:
 	template<typename U> // member template
 	SmartPtr(const SmartPtr<U>& other); 
 	...
 }		
 \end{lstlisting}		
 	
-	\item Non-Template class Derived from Template Base class specification
+	\item Non-Template class derived from Template Base class specification.
 \begin{lstlisting}[numbers=none]
 struct less_than_7 : std::unary_function<int, bool>{
 	bool operator()(int i) const { return i < 7; }
@@ -11454,7 +11454,7 @@ class u8toU16 : public std::codecvt<wchar_t, char, std::mbstate_t>{
 };	
 \end{lstlisting}	
 	
-	\item Template class Deriving from the non-template class.
+	\item Template class deriving from the non-template class.
 \begin{lstlisting}[numbers=none]
 class Base{...}
 
@@ -11472,16 +11472,6 @@ class SpecialStack: public Stack<T>{
 	...
 }	
 \end{lstlisting}			
-		
-		\item If an enum is used by several member functions of the \texttt{std::codecvt} template class, and does not relate to the template parameters. Hence it can exist in a separate base class.
-		
-\begin{lstlisting}[numbers=none]
-template<typename T>
-class codecvt_base{
-public:
-	enum result {ok, partial, error, noconv};
-};	
-\end{lstlisting}		
 		
 		\item You also can extend the derived class by adding another template parameter.
 \begin{lstlisting}[numbers=none]
@@ -11531,7 +11521,7 @@ class Derived: public T
 		
 
 	
-	\item Public inheritance is discussed in the first chapter of "Modern C++ Design" in the context of the creator template class. When a derived class publicly inherits from a base class, it indicates that the derived class intends to expose the public interface of the base class. Public inheritance allows the interface of the base class to be accessed from outside the class, such as through a Create() function. On the other hand, private inheritance is used when we want to inherit and use the implementation of the base class, without exposing its interface to the outside world. Usually, Private inheritance is not the first choice, but the last choice. If policy class has protect member function which we want to use, at this time. private inheritance is our last choice. 
+	\item Public inheritance is discussed in the first chapter of "Modern C++ Design" in the context of the creator template class. When a derived class publicly inherits from a base class, it indicates that the derived class intends to expose the public interface of the base class. Public inheritance allows the interface of the base class to be accessed from outside the class, such as through a Create() function. On the other hand, private inheritance is used when we want to inherit and use the implementation of the base class without exposing its interface to the outside world. Usually, private inheritance is not the first choice but the last choice. If a policy class has protected member functions that we want to use, then private inheritance is our last choice. 
 	
 \begin{lstlisting}[numbers=none]
 template <class T>
@@ -11555,55 +11545,49 @@ class WidgetManager : public CreationPolicy{
 
 typedef WidgetManager< OpNewCreator<Widget> > MyWidgetMgr; // Application code
 \end{lstlisting}	
-	
-	
+		
 \end{itemize}
 
-\subsection{template and friend}
+\subsection{Template and friend}
+\subsubsection{Friend basic}
 \begin{itemize}
-	\item There are three types of friends in C++: 1) friend classes, 2) friend functions, and 3) friend templates. These friends can be either bound or non-bound. If the friend is bound, you can find the host class parameter 'T' in the friend declaration.
+	\item There are three types of friends in C++: 1) friend classes, 2) friend functions, and 3) friend templates. These friends can either be bound or non-bound. If the friend is bound, you can find the host class parameter 'T' in the friend declaration.
 	
-	\item  There are three different kinds for a template class:1) Non-template friend, 2) Bound-template, 3) Unbound-template.
+	\item  There are three different kinds friends function for a template class:
+\begin{enumerate}
+	\item Non-template friend: The \texttt{counts()} is not invoked by an HasFriend obj and has not object parameters. If \texttt{counts} want to access a HasFriend object, It can access a global one, and use a global pointer to access non-global object.
 \begin{lstlisting}
 template<typename T>
 class HasFriend{
-	friend void counts();
-}	
+	friend void counts();  //Non-template friend function
+}		
 \end{lstlisting}	
-
-	\begin{description}
-		\item[Line 3:] Non-template friend function \texttt{counts()}, The counts is not invoked by an HasFriend obj and has not object parameters.  If counts want to access a HasFriend object, It can access a global one, and use a global pointer to access non-global object.
-	\end{description}
 	
-	\item Bound-template friend function. You need to define explicit specialization for the friends you plan to use. Why, because 1)reports is not template function. 2) reports is not function definition, it is just function declaration.
+	\item Bound-template: You need to define explicit specialization for the friends you plan to use. Why, because in line 3, \texttt{reports} is not neither template function nor function definition. it is just function declaration. For instance, it assumes they are non-templates like this \texttt{reports(HasFriend<int> \&hf)}. In another word, it just look for this function definition, it will not instantiate this function from template class \texttt{HasFriend}, you must give the function definition by yourself. 
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 class HasFriend{
-	friend void reports(HasFriend<T> &);
+	friend void reports(HasFriend<T> &); //no template keyword around function.
 }
 
 void reports(HasFriend<int> &hf){...}
-void reports(HasFriend<short> &hf){...}	
-\end{lstlisting}	
+void reports(HasFriend<short> &hf){...}		
+\end{lstlisting}		
 	
-	\begin{description}
-		\item[Line 6 to 7:] explicit specialization for the type you plan to use. Why? The snag happens when the compiler sees the friend lines way up in the class definition proper. At that moment it does not yet know the friend functions are themselves templates; it assumes they are non-templates like this \texttt{reports(HasFriend<int> \&hf)}. In another word, it just look for this function definition, it will not instantiate this function from template function. \textbf{it is very import to understand this point before you continue below all examples.}
-	\end{description}
-	
-	\item A better bound-template, reports has <> after it.  and you don't need redefine reports many time like previous codes. Reports is a template function here. You can think that is a implicit instantiations. 
+	\item A better Bound-template, in line 8, \texttt{reports} has <> after it.  You don't need redefine reports many time like previous codes.  
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
-void reports(T &hf){
+void reports(T &hf){  //reports is a template function here.
 	cout <<hf.item<<endl;
 }
 
 template<typename TT>
 class HasFriend{
-	friend void reports<>(HasFriend<TT> &); //has <>, is a implicit instantiation
-}	
-\end{lstlisting}	
+  friend void reports<>(HasFriend<TT> &);//has <>, implicit instantiation
+}		
+\end{lstlisting}		
 	
-	\item Non-bound friend template.
+	\item Unbound-template: An unbound-template friend function in C++ refers to a friend function declared within a template class without explicitly specifying the template parameters of the class as part of its declaration.
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 class ManyFriend{
@@ -11614,26 +11598,31 @@ private:
 	friend void show2(C& , D&);
 };
 
-template <typename C, typename D> void show2(c& c, D& d){
+template <typename C, typename D> 
+void show2(c& c, D& d){
 	cout<<c.item<<d.item<<endl;
 }
 
 ManyFriend<int> mi;
 ManyFriend<double>md;
-show2(mi,md);	
-\end{lstlisting}	
+show2(mi,md);		
+\end{lstlisting}		
 	
+\end{enumerate}
+
 	\item Difference between bound and non-bound:
 	
 	\begin{enumerate}
-		\item bound friend is specialization of template function, so It has <> after the function name.
+		\item Bound friend is specialization of template function, so it has <> after the function name.
 		
-		\item non-bound template use different typename, such as C and D in previous example, and it also use template keyword
+		\item Non-bound template use different typename, such as C and D in previous example, and it also use template keyword
 		
-		\item bound template will produce more function implementation , but non-bound template will only produce ONE function implementation.
+		\item Bound template will produce more function implementation , but non-bound template will only produce ONE function implementation.
 	\end{enumerate}
+
+\subsubsection{A pratical example}	
 	
-	\item Next, We would like to give another interesting example about bound friend template function.
+	\item An interesting example about bound friend template function. In below code, we can't instantiate template \texttt{operator *} by expression \texttt{oneHalf*2}. Why? If we implicit convert 2 to \texttt{Rational<int>}, then we can deduct correct and instantiate template \texttt{operator *}. But, why we implicit convert?, we have a function to match. Right now, we don't have any function, Pay attention here, template function is still \textbf{NOT} a real function. So we never do implicit convert without any real function which need to be matched. The whole story is just like chicken and egg. That's why \texttt{oneHalf*2} fail here. 
 \begin{lstlisting}
 template<T>
 Rational<T> operator*(const Rational<T>& lsh, const Rational<T>& rhs){
@@ -11650,11 +11639,8 @@ public:
 Rational<int> oneHalf{1, 2}; //create a Rational object
 Rational<int> result = oneHalf*2; //Compile error		
 \end{lstlisting}	
-	\begin{description}
-		\item[Source code:] We can't instantiate template \texttt{operator *} by expression \texttt{oneHalf*2}. Why? If we implicit convert 2 to \texttt{Rational<int>}, then we can deduct correct and instantiate template \texttt{operator *}. But, why we implicit convert?, we have a function to match. Right now, we don't have any function, Pay attention here, template function is still \textbf{NOT} a real function. So we never do implicit convert without any real function which need to be matched.  The whole story is just like chicken and egg. That's why \texttt{oneHalf*2} fail here. 
-	\end{description}
-	
-	\item Continue the previous example, If we have a function declaration exist, then implicit convert will happen. So let's see the next source code:
+
+	\item Continue the previous example, If we have a function declaration existing, implicit conversion will occur. The code below compiles okay but results in a linker error.
 \begin{lstlisting}
 template<T>
 Rational<T> operator*(const Rational<T>& lsh, const Rational<T>& rhs){
@@ -11663,20 +11649,20 @@ Rational<T> operator*(const Rational<T>& lsh, const Rational<T>& rhs){
 
 template<typename T>
 class Rational {
-	public:
+public:
 	Rational(const T& numerator = 0, const T& denominator = 1){...}
 	friend Rational<T> operator*(const Rational<T>& lsh,  const Rational<T>& rhs)
 } 
 
 Rational<int> oneHalf(1,2);
-Rational<int> result = oneHalf*2; //Compile OK, Link error		
+Rational<int> result = oneHalf*2; //Compile OK, but Link error		
 \end{lstlisting}	
 	\begin{description}
 		\item[Line 10:] Here, you can omit <T> after Rational. Inside class template, class\_name is just class\_name<T>.
 		
-		\item[Line 14:] By now, Compile OK. Because when we define \texttt{Rational<int>}, it declare a friend function in line 10, so we can implicit convert 2 to \texttt{Rational<int>} to match this the function in line 10.
+		\item[Line 14:] By now, Compile OK. Because when we define \texttt{Rational<int>}, it declare a friend function in line 10, so we can implicit convert 2 to \texttt{Rational<int>} to match the function in line 10.
 		
-		\item[Source code:] There is \textbf{NO} relationship between Line 10 and the function defined in Line 1. Most people assume that they are in a declaration and definition relationship, but this is incorrect. In reality, the template function is not yet a real function. We need to instantiate the template to create a real function, either implicitly or explicitly. The code still generates a link error because we have failed to instantiate the template \texttt{operator *} on Line 1. This means that we don't have a real function for \texttt{operator *}. We have already discussed why this is the case in the previous example.
+		\item[Source code:] Why link error?, there is \textbf{NO} relationship between Line 10 and the function defined in Line 1. Most people assume that they are in a declaration and definition relationship, but this is incorrect. In reality, the template function is not yet a real function. We need to instantiate the template to create a real function, either implicitly or explicitly. The code still generates a link error because we have failed to instantiate the template \texttt{operator *} on Line 1. This means that we don't have a real function for \texttt{operator *}. We have already discussed why this is the case in the previous example.
 	\end{description}
 	
 	\item Last, How to resolve this problem, There are two ways: 1) You can give the definition inside the class directly and delete template operator* in the outside. 2) Another fix is to use the previous trick, put the <> after operator, and tell compiler explicitly that we want to use template function here.   
@@ -11693,7 +11679,7 @@ class Rational {
 };		
 \end{lstlisting}	
 	
-	\item Great! The syntax of templates in C++ can be tricky and complex, but there are ways to work around it. So don't worry if you don't understand it at first sight. Instead, try to understand it from the compiler's perspective.
+	\item The syntax of templates in C++ can be tricky and complex, but there are ways to work around it. The principle here is: \textbf{for a function, both declaration and definition are required. Then next question is how to generate them from template}. If you find it confusing initially, approach it from the compiler's perspective to better understand how templates are processed.
 	
 \end{itemize}
 
