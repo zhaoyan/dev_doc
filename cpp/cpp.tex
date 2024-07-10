@@ -7678,17 +7678,17 @@ T operator+(T&& lhs) {
 	\item Basic class categories:
 	\begin{enumerate}
 			
-		\item Value-like types, such as \texttt{int} or \texttt{vector<Widget>}, represent values and should naturally be copyable. In C++11, you should generally think of move as an optimization of copy, and so all copyable types should naturally be movable. Moving is just an efficient way of doing a copy in the often-common case that you don't need the original object anymore and are just going to destroy it anyway, such as \texttt{std::pair}, \texttt{std::vector}, and \texttt{std::string}.
+		\item Value-like types, such as \texttt{std::pair}, \texttt{std::vector}, and \texttt{std::string}, represent values and should naturally be copyable. In C++11, you should generally think of move as an optimization of copy, and so all copyable types should naturally be movable. Moving is just an efficient way of doing a copy in the often-common case that you don't need the original object anymore and are just going to destroy it anyway.
 		
 		\begin{enumerate}
 			\item Has a public destructor, copy constructor and assignment operator with value semantics.
-			\item Has no virtual function. so intended to be used as a concrete class, not as a base class.
-			\item instantiated on stack or as a member of an other class.
+			\item Has no virtual function. It intendeds to be used as a concrete class, not as a base class.
+			\item Instantiated on stack or as a member of an other class.
 		\end{enumerate}
 		
 		\item Object(reference)-like types that exist in inheritance hierarchies, such as base classes and classes with virtual or protected member functions. These are normally held by pointer or reference, often a \texttt{Base*} or \texttt{Base\&}, and so do not provide copy construction to avoid slicing; if you do want to get another object just like an existing one, you usually call a virtual function like clone. These do not need move construction or assignment for two reasons: They're not copyable, and they already have an even more efficient natural "move" operation -- you just copy/move the pointer to the object and the object itself doesn't have to move to a new memory location at all.
 		\begin{enumerate}
-			\item Has a destructor that is public and virtual, But for some trait class, destructor can be protected, such as \texttt{std::unary\_function}
+			\item Has a destructor that is public and virtual, but for some trait class, destructor can be protected, such as \texttt{std::unary\_function}.
             \item Establish interfaces through virtual functions.
 			\item \textbf{Usually instantiated on heap, and used via a (smart) pointer or reference to support polymorphism.} 
         \end{enumerate}
@@ -7697,7 +7697,7 @@ T operator+(T&& lhs) {
     \item Policies are classes (or class templates) to \textbf{inject behavior} into a parent class, typically through inheritance. Through decomposing a parent interface into orthogonal (independent) dimensions, policy classes form the building blocks of more complex interfaces. An often seen pattern is to supply policies as user-definable template (or template-template) parameters with a library-supplied default. An example from the Standard Library are the Allocators, which are policy template parameters of all STL containers. Policy classes (normally templates) are fragments of pluggable behavior.
         \begin{enumerate}
             \item May or may not have state or virtual functions.
-            \item Is not usually instantiated standalone, but only as a base or member. 
+            \item They are not usually instantiated standalone, but only as a base or member. 
         \end{enumerate}
 
 \begin{lstlisting}[numbers=none]
@@ -7727,12 +7727,14 @@ T f(T i){
 std::cout << f(123) << '\n'; //output 123
 \end{lstlisting}
 
-    \item exception class. They are thrown by value but should be caught by reference. 
+    \item Exception class. They are thrown by value but should be caught by reference. 
 
-		\item Ancillary classes typically support specific idioms. such as RAII.  types that express unique ownership of a resource, such as \texttt{std::unique\_ptr}, are naturally move-only types, because they are not value-like (it doesn't make sense to copy them) but you do use them directly (not always by pointer or reference) and so want to move objects of this type around from one place to another.	
+	\item Ancillary classes typically support specific idioms. such as RAII.  types that express unique ownership of a resource, such as \texttt{std::unique\_ptr}, are naturally move-only types, because they are not value-like (it doesn't make sense to copy them) but you do use them directly (not always by pointer or reference) and so want to move objects of this type around from one place to another.	
 
-        \item Functor class, includes lambda. with operator() defined. This becomes more and more important and win a seat in this list. 
+	\item Functor class, includes lambda. with operator() defined. This becomes more and more important and win a seat in this list. 
+	
 	\end{enumerate}
+	
     \item About class categories, I need to add a few points. Most of the time, we mainly use value objects and reference objects. The other kinds are a kind of special and easy to understand. For value objects, you can think that it's a data abstraction, which has zero or very little overhead. 
     
     \item For reference object, usually we don't support copy, for example, A people object has no meaning to copy himself. It has three points need to mention:
@@ -7740,9 +7742,9 @@ std::cout << f(123) << '\n'; //output 123
         \begin{enumerate}
             \item If it's only used for the interface, it will be an Abstract Base Class. There are two common idioms that can be used here: NVI (No virtual interface) and Non-leaf abstraction. Details can be seen later in the design section.
 
-            \item non-copyable class. such as thread, employee etc. You should disable the copy constructor when you find it's not fit into the context.
+            \item Non-copyable class. such as thread, employee etc. You should disable the copy constructor when you find it's not fit into the context.
 
-            \item copyable class. A good example is music note, You can see the clone pattern in design pattern. Here music note is a kind of interface. So it's a ABC, at the same time, client should be able to "copy" to generate new notes. Under such context, you can use virtual copy constructor, in another word, use \texttt{basePtr->clone()} virtual function. Clone pattern is just for this scenario. 
+            \item Copyable class. A good example is music note, You can see the clone pattern in design pattern. Here music note is a kind of interface. So it's a ABC, at the same time, client should be able to "copy" to generate new notes. Under such context, you can use virtual copy constructor, in another word, use \texttt{basePtr->clone()} virtual function. Clone pattern is just for this scenario. 
 
         \end{enumerate}
 \end{itemize}
@@ -7751,13 +7753,13 @@ std::cout << f(123) << '\n'; //output 123
 \subsection{Class interface design}
 \begin{itemize}
 	
-	\item Nesting a class does not create a class member of another class. Instead, it defines a type that is known just locally to the class that contains the nested class declaration.  A good example is Class queue nest class node,  because node is just used inside the class Queue. Another good example is vector and it's iterator.
+	\item Nesting a class does not create a class member of another class. Instead, it defines a type that is known locally to the class that contains the nested class declaration. A good example is a class Queue nested within a class Node, because Node is just used inside the class Queue. Another good example is vector and its iterator."
 	
-	\item Virtual function must be member, operator\verb=>>= and \verb=<<= are never be members, or It maybe be a friend. Only non-member functions get type conversions on their left-most argument.  In the previous example, If you want to use support \texttt{2*obj}, You need make operator * to be non member function.  Detail can be seen in effective c++.
+	\item A virtual function must be a member. Operators \verb=>>= and \verb=<<= are never members; they may be friends. Only non-member functions get type conversions on their left-most argument. In the previous example, if you want to support \texttt{2 * obj}, you need to make \texttt{operator*} a non-member function. Details can be found in \textit{Effective C++}.
 	
-	\item Protect keyword don't use very often, it is just used in inheritance context. Child class can access base class protected member. you should use private keyword first if you real want to have good \textbf{Encapsulation} and Never return reference or pointer to a private or protected member data.
+	\item The \texttt{protected} keyword is not used very often; it is mainly used in the context of inheritance. A child class can access the base class's protected members. You should use the \texttt{private} keyword first if you truly want good \textbf{encapsulation}. Never return a reference or pointer to private or protected member data."
 	
-	\item In C++ Primer, page 653, you can find a good example of a class interface. You should remember this as a basic pattern. If you use the new operator to allocate memory inside your class, you should define the copy constructor, assignment operator and destructor, move constructor, and move assignment. Usually, you should have these seven member functions. Alternatively, you can follow the Principal Four and a Half rule, which will be introduced later. Put the class definition into a namespace. You need to declare the operator \verb=<<= inside the namespace, outside of the class. In this way, ADL (Argument-Dependent Lookup) can access it correctly.
+	\item In \textit{C++ Primer}, page 653, you can find a good example of a class interface. You should remember this as a basic pattern. If you use the \texttt{new} operator to allocate memory inside your class, you should define the copy constructor, assignment operator, destructor, move constructor, and move assignment operator. Usually, you should have these seven member functions. Alternatively, you can follow the Principle of Four and a Half, which will be introduced later. Put the class definition into a namespace. You need to declare the operator \verb=<<= inside the namespace, but outside of the class. In this way, ADL (Argument-Dependent Lookup) can access it correctly.
 	
 \begin{lstlisting}[frame=single, language=c++]
 #pragma once  //below is string.h file
@@ -7789,41 +7791,14 @@ namespace Company_namespace{
 }
 \end{lstlisting}
 
-        \item \texttt{String\& operator=(const char*a);} is an option, why it make \texttt{str=temp} more efficient? see C++ Primer P652.
+        \item \texttt{String\& operator=(const char*a);} is an option, it makes \texttt{str=temp} more efficient? see C++ Primer P652.
 	
 \begin{lstlisting}[numbers=none]
 String str; char temp[40];
 str= temp // make it more efficient
 \end{lstlisting}
-	
-	
-    \item Prefer minimal classes to monolithic classes. Big class is difficult to reach error-safe because it tackle multiple responsibilities. It's also difficult maintain, understand and deploy.
-
-	\item For operator overload, how to decide member or non-member function?
-	\begin{enumerate}
-		\item operator =, ->, [], () must be members.
-		\item needs a different type as its left-hand argument, such as operator \verb=<<=, use nonmember.
-		\item leftmost argument needs type conversion, use non-member.
-		\item can be implement using the class public interface alone, use nonmember.
-	\end{enumerate}
-
-	\item Prefer non-member non-friend functions. A good example is begin function in STL. non-member style can be used in generic programming better.  
-
-\begin{lstlisting}[numbers=none]
-std::vector<int> vi = {1,2,3};
-auto i = vi.begin();
-auto i = begin(vi);
-\end{lstlisting}
-
-	\item Keep in mind that only a class declaration can decide which functions are friends, so the class declaration still controls which functions access private data. Friend has three categories:
-
-\begin{enumerate}
-	\item Friend Class: just as TV and RemoteControl, you can declare RemoteControl a friend class inside TV.
-	
-	\item Friend Member functions: You can select some member functions to be friend of another class, In this way, you need forward declaration.  
-	
-	\item Common Friend method, a good example is overload \verb=operator <<=. 
-\end{enumerate}
+		
+    \item Prefer minimal classes to monolithic classes. A big class is difficult to make error-safe because it tackles multiple responsibilities. It's also difficult to maintain, understand, and deploy.
 	
 \end{itemize}
 
@@ -7833,9 +7808,9 @@ auto i = begin(vi);
 \subsubsection{constructor basic}
 
 \begin{itemize}
-	\item Normally, constructor, destructor, and assignment should be public unless you have a special requirement for a specific class or in a particular context. Avoid calling virtual functions in constructors and destructors. Details can be found in "C++ Coding Standards" item 49.
+	\item Normally, constructors, destructors, and assignment operators should be public unless you have a special requirement for a specific class or in a particular context. Avoid calling virtual functions in constructors and destructors. Details can be found in \textit{C++ Coding Standards}, item 49.
 	
-	\item Make Constructors Protected to prohibit direct instantiation. Make constructors Private to stop Derivation. That is an old trick, in C++14, you can use \texttt{=delete} to tell the compiler directly.
+	\item Make constructors protected to prohibit direct instantiation. Make constructors Private to stopdDerivation. That is an old trick, in C++14, you can use \texttt{=delete} to tell the compiler directly.
 	
 	\item Use default arguments to reduce the number of constructor.
 \begin{lstlisting}[numbers=none]
@@ -7843,7 +7818,7 @@ class Brush{
 	Brush();
 	Brush(Color c);
 	Brush(Texture t);
-	Brush(Color c= Black,Texture t=Solid); //better
+	Brush(Color c= Black,Texture t=Solid); //better style
 }
 \end{lstlisting}
 		
@@ -7856,14 +7831,14 @@ class Brush{
 			\item When the compiler generates a temporary object.
 		\end{enumerate}
 				
-		\item For reference, once assigned, a reference cannot be re-assigned. So if a class has a reference member, It can be initialized by initializer list in constructor and copy constructor. Meanwhile, please do NOT overload assignment operator any more, If you really need assignment operator, change reference to pointer.
+		\item For a reference, once assigned, it cannot be re-assigned. So if a class has a reference member, it can be initialized by the initializer list in the constructor and copy constructor. Meanwhile, please do NOT overload the assignment operator anymore. If you really need an assignment operator, change the reference to a pointer.
 		
 \end{itemize}
 
 \subsubsection{Default constructor}
 \begin{itemize}
 	
-	\item Avoid gratuitous default constructor. If an object can be generated from "nothing", maybe you can give a default constructor, such as a container, you can generate an empty container without any input. For container example, default constructor is reasonable, you can declare your own converting constructor and use system implicit generated one. you can use keyword default. 
+	\item Avoid gratuitous default constructors. If an object can be created from 'nothing', consider providing a default constructor. For example, in containers, a default constructor allows creating an empty container without any input. It's reasonable to have a default constructor for containers. You can also declare your own converting constructor and use the system's implicitly generated one. You can use the keyword \texttt{default} to specify default behavior.
 \begin{lstlisting}[frame=single, language=c++]
 class Container{
 	Container() = default; //use default is OK here.
@@ -7873,7 +7848,7 @@ class Container{
 
 	\item If you define a specific constructor, system will not produce any default constructor for you. At this time, maybe you need to add default constructor.
 		
-	\item For some classes, you should not allow objects to be created without providing certain information. For example, when creating a worker, you must provide their SSN. In this case, creating a default constructor is not a good idea, as a null SSN could cause a lot of trouble in the future.
+	\item For some classes, allowing objects to be created without providing essential information is not advisable. For instance, when creating a Worker, it's crucial to provide their SSN. In such cases, a default constructor is not recommended, as leaving the SSN uninitialized could lead to significant issues later on.
 \begin{lstlisting}[numbers=none]
 class Worker{
 	char* SSN; // each worker should have SSN
@@ -7882,7 +7857,7 @@ class Worker{
 }
 \end{lstlisting}
 	
-	\item We should not declare a default constructor. In this way, our class design better represents the real world. However, we must understand the two sides of the coin. Without a default constructor, all of the following statements will produce errors during compilation. To fix these kinds of compilation errors, we can use a \texttt{Worker*} pointer or a \texttt{std::vector<Worker>}. This is the spirit of C++, where there is never a single best answer, and everything depends on the context."
+	\item We should not declare a default constructor. In this way, our class design better represents the real world. However, we must understand the two sides of the coin. Without a default constructor, all of the following statements will produce errors during compilation. To fix these kinds of compilation errors, we can use a \texttt{Worker*} pointer or a \texttt{std::vector<Worker>}. This is the spirit of C++, where there is never a single best answer, and everything depends on the context.
 	
 \begin{lstlisting}
 class Worker{
@@ -7961,7 +7936,7 @@ public:
 
 \subsubsection{named constructor idiom and virtual constructor idiom}
 \begin{itemize}
-	\item First, let take a look common pattern of constructor, constructor is different, you have to use the same name. But it can't express semantic behind the function interface. In order to resolve this problem, we can use "named constructor". 
+	\item First, let take a look common pattern of constructor, constructor is different, you have to use the same name. But it can't express semantic behind the function interface. In order to resolve this problem, we can use "named constructor" idiom. 
 \begin{lstlisting}
 class Point {
 public:
@@ -7979,7 +7954,7 @@ Point p1 = Point::rectangular(5.7, 1.2);
 Point p2 = Point::polar(5.7, 1.2);
 \end{lstlisting}
 	
-	\item In some applications, we need to copy or assign objects using base class pointers. For example, if the class owns the object pointed to by an abstract base class pointer as illustrated below (another example can be found in More Effective C++ item 25), the problem is how to perform assignment and copy between \texttt{Graph} objects. 
+	\item In some applications, objects need to be copied or assigned using base class pointers. For instance, if a class owns objects pointed to by abstract base class pointers, like a \texttt{Graph} managing pointers to various \texttt{Shape} objects (as illustrated in 'More Effective C++' item 25), a significant issue arises when performing assignments and copies between \texttt{Graph} objects.
 	
 \begin{lstlisting}
 class Graph {
@@ -8004,7 +7979,7 @@ private:
 	\item[Line 16:]  Please note here: Shape here represent value semantic and reference semantic at the same time. If we use \texttt{Shape*->draw}, then it's reference semantic. It's also a value member inside the graph class, that is why we need to clone function for it.
 \end{description}
 
-	\item A constructor shall not be virtual or static(named constructor can be static). If you need something like this, you can look up the virtual constructor idiom. The idiom uses virtual clone() member function (for copy constructing), or a virtual create() member function (for the default constructor). The purpose is to resolve the problem of assignment and copy between Graph object. As usual with this idiom, we declare a pure virtual clone() method in the base class. It follow 'non-leaf class abstract' rule.
+	\item A constructor shall not be virtual or static(named constructor can be static). If you need something like this, you can look up the virtual constructor idiom. The idiom uses virtual clone() member function (for copy constructing), or a virtual create() member function (for the default constructor). The purpose is to resolve the problem of assignment and copy between Graph object. As usual with this idiom, we declare a pure virtual clone() method in the base class. It follow 'non-leaf class abstract' rule. Virtual function can have different return type, That is OK in C++ language.
 	
 \begin{lstlisting}
 class Shape {
@@ -8014,13 +7989,13 @@ public:
 	virtual void move() = 0;
 	// ...
 	virtual Shape* clone()  const = 0;   
-	virtual Shape* create() const = 0; 
+	virtual Shape* create() const = 0;  //return shape* here
 };
 	
 class Circle : public Shape {
 public:
-	Circle* Circle::clone()  const{return new Circle(*this); }	
-	Circle* Circle::create() const{return new Circle(); }  
+	Circle* Circle::clone()  const{return new Circle(*this); } //return Chircle*
+	Circle* Circle::create() const{return new Circle(); }//Covariant Return Types  
 };
 
 Shape* s2 = s.clone();
@@ -8028,9 +8003,7 @@ Shape* s3 = s.create();
 delete s2;    // You need a virtual destructor here
 delete s3;
 \end{lstlisting}
-	\begin{description}
-		\item[Line 13 and 14:] Covariant Return Types; Virtual function can have different return type. Line 7 return \texttt{shape*}, In line 13, we can change it to \texttt{Circle*}. That is OK in C++ language.
-	\end{description}
+
 
 \end{itemize}
 
@@ -8084,6 +8057,7 @@ Base::~Base(){} //Must give implementation, even function is empty.
 	\end{enumerate}
 \end{itemize}
 
+
 \subsection{member functions relationship}
 
 \subsubsection{Basic introduction}
@@ -8114,7 +8088,7 @@ const Empty* operator&() const ;
 
 	\item First question is what \texttt{"declare"} mean?  
 \begin{center}
-	\includegraphics[scale=0.6]{pics/sm1.png} 
+	\includegraphics[scale=0.4]{pics/sm1.png} 
 \end{center}
 
 
@@ -8195,7 +8169,7 @@ X x; //without line 4, here will call template function in line 2.
      //with line 4, compiler will report error here.
 \end{lstlisting}
 
-    \item It's preferable to use deleted functions instead of privately undefined ones. Any function, including non-member functions and template instantiations, can be declared as \texttt{= deleted}.
+    \item It's preferable to use deleted functions instead of privately undefined ones. Any function, including non-member functions and template instantiations, can be declared as \texttt{= delete}.
 
 \begin{lstlisting}[frame=single, language=c++]
 template <class charT, class traits = char_traits<charT> >
@@ -8247,7 +8221,9 @@ void processPointer<void>(void*) = delete; //can't use void to instantiate.
 	\item The Copy Assignment Operator will not be implicitly generated if
 		\begin{enumerate}
 		\item you have explicitly declared a copy-assignment operator (for class X an operator = taking X, X\& or const X\&) )
+		
 		\item there is a member in your class that is not assignable (such as a reference, a const object or a class with no or inaccessible assignment operator)
+		
 		\item (C++11) you have explicitly told the compiler to not generate one using A\& operator=(const A\&) = delete;
 		\end{enumerate}
 	
@@ -8272,17 +8248,19 @@ void processPointer<void>(void*) = delete; //can't use void to instantiate.
 		
 		\item you have explicitly told the compiler to not generate one using A\& operator=(A\&\&) = delete;
 		\end{enumerate}
-	
-	\item  The justification is that declaring a copy operation (construction or assignment) indicates that the normal approach to copying an object(memberwise copy) isn't appropriate for the class, and compilers thinks that if memberwise copy isn't appropriate for the copy operations, memberwise move probably isn't appropriate for the move operations either. The same idea as the previous item, declaring a move operation (construction or assignment) in a class causes compilers to disable the copy operations.
-	
-	\item The two copy operations(copy constructor and copy assignment) are independent: declaring one doesn't prevent compilers from generating the other. The two move operations are not independent. If you declare either, that prevents compilers from generating the other.
-	
-	\item C++11 deprecates the automatic generation of copy operations for classes declaring copy operations or a destructor. If you declare a destructor, declare your copy members too, even thought not necessary. This means that if you have code that depends on the generation of copy operations in classes declaring a destructor or one of the copy operations, you should consider upgrading these classes to eliminate the dependence.  Provided the behavior of the compiler-generated functions is correct (i.e, if memberwise copying of the class's non-static data members is what you want), your job is easy, because C++11's "= default" lets you say that explicitly:
 		
 	\item A summary of previous rules is illustrated in below figure. 
 	\begin{center}
-		\includegraphics[scale=0.6]{pics/sm3.png}
+		\includegraphics[scale=0.6]{pics/ob_m.drawio.png}
 	\end{center}
+	
+	\item  The justification is that declaring a copy operation (construction or assignment) indicates that the normal approach to copying an object(memberwise copy) isn't appropriate for the class, and compilers thinks that if memberwise copy isn't appropriate for the copy operations, memberwise move probably isn't appropriate for the move operations either. The same idea as the previous item, declaring a move operation (construction or assignment) in a class causes compilers to disable the copy operations.
+	
+	\item The two copy operations(copy constructor and copy assignment) are independent: declaring one doesn't prevent compilers from generating the other. The two move operations are NOT independent. If you declare either, that prevents compilers from generating the other.
+	
+	\item C++11 deprecates the automatic generation of copy operations for classes declaring copy operations or a destructor. If you declare a destructor, declare your copy members too, even thought not necessary. This means that if you have code that depends on the generation of copy operations in classes declaring a destructor or one of the copy operations, you should consider upgrading these classes to eliminate the dependence.  Provided the behavior of the compiler-generated functions is correct (i.e, if memberwise copying of the class's non-static data members is what you want), your job is easy, because C++11's \texttt{=default} lets you say that explicitly:
+		
+
 
 	
 %\begin{center}
@@ -8295,17 +8273,17 @@ void processPointer<void>(void*) = delete; //can't use void to instantiate.
 
 \subsection{Resource management policy}
 \begin{itemize}
-    \item If a class only includes value-like members, we usually don't need a resource management policy. In other words, we don't have to build any copy or move constructors; we can just use the compiler-generated default ones. This is known as the \textbf{Rule of Zero}.
-\begin{lstlisting}
+    \item If a class comprises only value-like members, such as primitive types or standard library types, and does not require explicit resource management, it's preferable to rely on the compiler-generated default constructors and other member functions. This approach, known as the \textbf{Rule of Zero}, minimizes code duplication and potential errors associated with manual resource management.
+\begin{lstlisting}[numbers=none]
 class NoResource{
 	value-like member1; // such string s, std::vector
 	value-like member2; // such as int i;
 }
 \end{lstlisting}
 
-    \item If a class includes reference-like member, things becomes a little complex. You need to consider ownership And lifetime control. We can use \textbf{Four and half rule}, which will be introduced later.
+    \item If a class includes reference-like members, things become a little complex. You need to consider ownership and lifetime control. We can use the 'Four and a Half Rule,' which will be introduced later.
 
-\begin{lstlisting}
+\begin{lstlisting}[numbers=none]
 class OneRef{
 	reference-like member1; //such as a handle, and pointer to a member.
 }
@@ -8315,7 +8293,7 @@ class OneRef{
 
 \subsubsection{Rule of zero}
 \begin{itemize}
-    \item Rule of zero: If you can avoid defining default operations, do! It’s the simplest and gives the cleanest semantics. If all members have all the special functions, no further work is needed. In another word, any time you have resource, you can put it into the wrapper and change it into value-like member, in this way, we can follow Rule of zero.
+    \item The Rule of Zero states: If you can avoid defining default operations, do so! It simplifies and provides the cleanest semantics. If all members have all the special functions, no further work is needed. In other words, any time you have a resource, you can encapsulate it within a wrapper and transform it into a value-like member. This approach allows us to adhere to the Rule of Zero.
 
 \begin{lstlisting}
 class ZeroRule{
@@ -8328,7 +8306,7 @@ class ZeroRule{
 }	
 \end{lstlisting}
 
-	\item A variant of Rule of zero: As long as you can, stick to the Rule of Zero, but if you have to write at least one of the Big Five, default the rest. Why?  When you "user declare" destructor, according to our previous introduction, it loses its move operations. BUT it doesn’t lose its copy operations! So client code will continue to compile, but will silently call copy instead of move. This is not good. Default version is just like you move member manually, but \texttt{= default} permits you to skip the body definition. 
+	\item A variant of the Rule of Zero suggests: Stick to the Rule of Zero as long as possible. However, if you must define at least one of the Big Five (constructor, destructor, copy constructor, move constructor, copy assignment operator, move assignment operator) for non-resource managment purpose, default the rest. Why? When you explicitly declare a destructor, as we discussed earlier, it disables the default move operations but retain copy operations. As a result, client code will still compile but will silently invoke copy operations instead of move operations, which can lead to inefficiencies. Using \texttt{=default} allows you to implicitly define move operations without specifying their bodies.
 	 
 \begin{lstlisting}
 class X{
@@ -8350,15 +8328,15 @@ struct Example {
 
 \end{lstlisting}
    
-    \item Whenever possible, you should consider following the Rule of Zero first. If there isn't a suitable wrapper class, such as \texttt{std::unique\_ptr} or \texttt{std::shared\_ptr}, to meet your requirements or you want to manage your resources yourself, then you can follow the Rule of Four and a Half. The Rule of Four uses the "copy and swap idiom," so I will introduce that first and then move on to the Rule of Four and a Half.
-
+    \item Whenever possible, you should consider following the Rule of Zero first. If there isn't a suitable wrapper class, such as \texttt{std::unique\_ptr} or \texttt{std::shared\_ptr}, to meet your requirements.
+    
 \end{itemize}
 
 \subsubsection{copy and swap idiom, rule of four and half.}
 \begin{itemize}
-	\item Any class that manages a resource (a wrapper, like a smart pointer) needs to implement The Big Three. While the goals and implementation of the copy-constructor and destructor are straightforward, the copy-assignment operator is arguably the most nuanced and difficult. How should it be done? What pitfalls need to be avoided?
+	\item Any class that manages a resource (like a wrapper, such as a smart pointer) needs to implement The Big Three. While the goals and implementation of the copy constructor and destructor are straightforward, the copy-assignment operator is arguably the most nuanced and difficult. How should it be done? What pitfalls need to be avoided?
 	
-	\item The old implementation need 1) avoid assignment self 2) return *this reference. There are two problems, the first one is the old implementation is not strong exception safe. For example, when we copy the content1, an exception has been thrown. Under such context, original one has been damaged. The second problem is so many duplicated code. The assignment code has almost the same code with copy constructor.
+	\item The old implementation need 1) avoid assignment self 2) return \texttt{*this} reference. There are two problems, the first one is the old implementation is not strong exception safe. For example, when we copy the content1, an exception has been thrown. Under such context, original one has been damaged. The second problem is so many duplicated code. The assignment code has almost the same code with copy constructor.
 \begin{lstlisting}[numbers=none]
 class & class::operator=(class &a){
 	if(this == &a)
@@ -8371,7 +8349,7 @@ class & class::operator=(class &a){
 	
 	\item The copy-and-swap idiom is a better solution, and elegantly assists the assignment operator in achieving two things: avoiding code duplication, and providing a strong exception guarantee. Conceptually, it works by using the copy-constructor's functionality to create a local copy of the data, then takes the copied data with a swap function, swapping the old data with the new data. The temporary copy then destructs, taking the old data with it. We are left with a copy of the new data. In order to use the copy-and-swap idiom, we need three things: a working copy-constructor, a working destructor (both are the basis of any wrapper, so should be complete anyway), and a swap function. The swap function can be a member function.
 	
-    \item A low efficient implementation with swap. We should not use reference as function parameter. \textbf{No matter lvalue or rvalue, copy always happen inside assignment operator.}
+    \item We should not use reference as function parameter. \textbf{No matter lvalue or rvalue, copy always happen inside assignment operator.}
 \begin{lstlisting}[numbers=none]
 dumb_array& operator=(const dumb_array& other){
 	dumb_array temp(other);
@@ -8384,7 +8362,7 @@ da = f(); // use const & get the pvalue, // but inside the operator =, we copy.
 // we didn't use move, so it's low efficient.	
 \end{lstlisting}
 	
-	\item  A efficient way is to use value parameter. On a general note, a remarkably useful guideline is as follows: if you're going to make a copy of something in a function, let the compiler do it in the parameter list.
+	\item  A efficient way is to use value parameter. On a general note, a remarkably useful guideline is as follows: \textbf{if you're going to make a copy of something in a function, let the compiler do it in the parameter list.}
 	
 \begin{lstlisting}[numbers=none]
 dumb_array& operator=(dumb_array other){
@@ -8432,13 +8410,13 @@ namespace std{
 } 
 \end{lstlisting}
 \begin{description}
-    \item[Line 9:] Why do we need member swap? because it can visit private member of class. So swap in line 9 may not be declare friend. That is a good style. Inside swap member function, you may use std::swap to exchange class member and label it noexcept.
+    \item[Line 9:] Why do we need member swap? because it can visit private member of class. So swap in line 9 may not be declare friend. That is a good style. Inside swap member function, you may use \texttt{std::swap} to exchange class member and label it noexcept.
     
 	\item[Line 14:] Use swap member function to implement assignment operator, the function parameter is value, and label it noexcept. 
 	
-	\item [Line 18:] Once we have swap functions, we can use it to implement move constructor and label it noexcept. That is very important, when we use \texttt{vector<dump\_array>}, when vector need expand its size, it will use move if move is noexcept, if move is not noexcept, it will use copy which deep copy happens. 
+	\item [Line 7:] Once we have swap member functions, we can use it to implement move constructor and label it noexcept. That is very important, when we use \texttt{vector<dump\_array>}, when vector need expand its size, it will use move if move is noexcept, if move is not noexcept, it will use copy which deep copy happens. 
     
-    \item[Line 26:] If \texttt{dump\_array} has it's own namespace, then put swap non-member swap function into the same namespace. In this way, client can use ADL find this version and pick it up. If no own namespace, just put it in global scope.
+    \item[Line 23-25:] If \texttt{dump\_array} has it's own namespace, then put swap non-member swap function into the same namespace. In this way, client can use ADL find this version and pick it up. If no own namespace, just put it in global scope.
     
 \begin{lstlisting}
 namespace_dr::dumb_array dr1;
@@ -8446,11 +8424,9 @@ namespace_dr::dumb_array dr2;
 swap(dr1, dr2); // will go to namespace_dr to find the correct swap function.
 \end{lstlisting}
 
-    \item [Line 29:] You also need to put swap into the std namespace and make it specialization.
+    \item [Line 26:] You also need to put swap into the std namespace and make it specialization.
 \begin{lstlisting}
-//clients code should be like this
-using std::swap
-swap(dr1, dr2);  //using your version.
+using std::swap   //clients code should be like this
 std::swap(dr1,dr2) //some people or STL library code will use this way
                    //also guarantee that your version can be called properly. 
 \end{lstlisting}	
@@ -8464,6 +8440,7 @@ class X{  //
 }
 
 class X{ //copy and swap idiom
+public:
 	std::vector<int> v_;
 	X& operator=(X x){
 		v_.swap(x.v_);
@@ -8472,10 +8449,10 @@ class X{ //copy and swap idiom
 }
 \end{lstlisting}
 
-	\item If we need a user-defined copy constructor to avoid shallow copy, and at the same time, we need a user-defined destructor to free or release some resources, that is a strong indication that we can use the "four and a half idiom". In the previous code snippet, Class X doesn't need its own copy constructor and destructor, wo we should NOT use "four and a half idiom" here either. 
+	\item If we require a user-defined copy constructor to avoid shallow copy, and simultaneously need a user-defined destructor to free or release resources, it strongly suggests that we can employ the 'four and a half idiom'. In the previous code snippet, \texttt{Class X} does not require its own copy constructor and destructor, so we should not apply the 'four and a half idiom' here either.
 
 
-	\item Before C++11, we didn't have move semantics, so we just needed to follow the Rule of Three: If a class requires a user-defined destructor, a user-defined copy constructor, or a user-defined copy assignment operator, it almost certainly requires all three. After C++11, with the introduction of move semantics, the Rule of Three became the Rule of Five, adding a move constructor and a move assignment operator.
+	\item Before C++11, without move semantics, we adhered to the Rule of Three: If a class required a user-defined destructor, a user-defined copy constructor, or a user-defined copy assignment operator, it almost certainly needed all three. After C++11 introduced move semantics, the Rule of Three evolved into the Rule of Five, adding a move constructor and a move assignment operator to manage resource ownership efficiently.
 	
 	\item With help "copy and swap idiom", the rule of five becomes to the Rule of The Big Four (and a half), which states that if you implement one of below file, you should implement all the others.
 	\begin{enumerate}
@@ -8483,26 +8460,26 @@ class X{ //copy and swap idiom
 		\item The assignment operator. Don't need move assignment, in assignment operator, we pass only one kind of type--value. 
 		\item The move constructor.
 		\item The destructor.
-		\item The swap function(that is half).
+		\item The swap member function(that is half).
 	\end{enumerate}
     	
 \end{itemize}
 
-\subsubsection{Summary}
+\subsubsection{Summary of resource management}
 \begin{itemize}
-    \item For non-resource classes, you should follow the zero rule. For classes that wrap resources, you should follow the four and a half rule. Don't use the big three rule, as it has been deprecated after C++11.
+    \item For non-resource classes, adhere to the Rule of Zero. For classes that manage resources, consider using the Four and a Half Rule. Avoid using the Big Three Rule, as it has become less relevant after C++11.
 
-    \item You can use \texttt{=default} and \texttt{=delete} to explicitly declare some special member functions. For example, if you define destructor for log purpose, it will disable copy constructor generation, at this time, you can add \texttt{Foo Foo(cont Foo\& rhs)=default} to your class to bring them back.
+    \item You can use \texttt{=default} and \texttt{=delete} to explicitly declare certain special member functions in C++. For instance, if you define a destructor for logging purposes, which disables the generation of the default copy constructor, you can reintroduce it with \texttt{Foo(const Foo\& rhs) = default} in your class.
         
-    \item The common use resource management policies are below:
+    \item Based on the resource inside class, below describes scenarios where certain operations (copying and moving) are either allowed, preferred, restricted, or disallowed altogether.
 \begin{enumerate}
-    \item Objects that can be both moved and copied
-    \item Objects for which it makes sense to copy but not move
-    \item Objects for which it makes sense to move but not copy
+    \item Objects that can be both moved and copied.
+    \item Objects for which it makes sense to copy but not move.
+    \item Objects for which it makes sense to move but not copy.
     \item Objects which should neither be moved not copied.
 \end{enumerate}
 
-	\item Besides these famous idiom, you can customize your own class management policy. Different policy will make the class has different behavioral, then represents the practical application semantic the best. 
+	\item In addition to well-known idioms like the Rule of Zero and the Four and a Half Rule, you can customize your own class management policies. These custom policies allow you to define unique behaviors for your classes that best represent the practical application semantics.
 	
 	\begin{enumerate}
 		\item Use the compiler-provided versions of these functions. In other words, you're not doing any resource management in the class.
@@ -8511,16 +8488,16 @@ class X{ //copy and swap idiom
 		
 		\item Disable copying and move semantics for the class, because it doesn't make sense to allow it, such as \texttt{std::mutex}
 		
-		\item For \texttt{std::unary\_function}, it's base class, but it's just trait class.(extract type information from a function). You can declare its destructor as protect and non virtual. Then your client can't use below code:
+		\item For \texttt{std::unary\_function}, it's base class, but it's just trait class.(extract type information from a function). You can declare its destructor as protect and non virtual. Then your client can't write below code:
 \begin{lstlisting}[numbers=none]
-class Base {
+class unary_function {
 protected:
-	~Base(){
-		cout<<"Base::Destructor\n";
+	~unary_function(){
+		...
 	}
 };
 
-Base *base_ptr = new Base{};
+unary_function *base_ptr = new unary_function{};
 delete base_ptr; //compiler barks here.
 \end{lstlisting}
 	\end{enumerate}
@@ -8529,12 +8506,59 @@ delete base_ptr; //compiler barks here.
 
 \subsection{operator overload}
 \begin{itemize}
+		\item \textbf{Never overload \&\&, || and comma in C++.  Just remember it!}
+		
+		\item For all operators where you have to choose to either implement them as a member function or a non-member function, use the following rules of thumb to decide:
+	\begin{enumerate}
+		\item Binary operators = (assignment), [] (array subscription), -> (member access), as well as the unary () (function call) operator, must always be implemented as member functions, because the syntax of the language requires them to.
+		
+		\item If it is a unary operator, implement it as a member function.
+		
+		\item Needs a different type as its left-hand argument, such as operator \verb=<<=, use nonmember.
+		
+		\item If a binary operator treats both operands equally (it leaves them unchanged), implement this operator as a non-member function, such as +, -
+		
+		\item Leftmost argument sometimes needs type conversion, use non-member.
+		
+		\item If a binary operator does not treat both of its operands equally (usually it will change its left operand), it might be useful to make it a member function of its left operand’s type, if it has to access the operand's private parts.
+		
+		\item Can be implement using the class public interface alone, use nonmember.
+	\end{enumerate}
+	
+	\item A example based on previoius rules: If it's not member function, declare it as a friend function if it need to visit private member variable. If you want to overload + operator, and support time t; 3+t;  You need to define a friend function. In order to improve a \texttt{t+3} efficiency, you also can define a member function time \texttt{operator+(int i)} member function.
+\begin{lstlisting}[frame=single, language=c++]
+friend time operator+(const time &lhs, const time &rhs); //non-member, rule 4
+friend time operator+(int,  const time &t) //nonmember, for 3+t, rule 5
+time operator+(int i) //member, for t+3, avoid implicit, rule 6
+operator +=(const time& rhs)  // member, change left operand, so rule 6.
+\end{lstlisting}
+	
+	\item Prefer non-member non-friend functions. A good example is begin function in STL. non-member style can be used in generic programming better.  
+	
+\begin{lstlisting}[numbers=none]
+std::vector<int> vi = {1,2,3};
+auto i = vi.begin();
+auto i = begin(vi);	
+\end{lstlisting}	
+	
+	\item Keep in mind that only a class declaration can decide which functions are friends, so the class declaration still controls which functions access private data. Friend has three categories:
+	
+	\begin{enumerate}
+		\item Friend Class: just as TV and RemoteControl, you can declare RemoteControl a friend class inside TV.
+		
+		\item Friend Member functions: You can select some member functions to be friend of another class, in this way, you need forward declaration.  
+		
+		\item Common Friend method, a good example is overload \verb=operator <<=. 
+	\end{enumerate}
+	
 	\item Overload means providing two (or more) functions that perform similar, closely related things, differentiated by the types and/or number of arguments it accepts.
 	
 	\begin{enumerate}
 		\item  In some cases it's worth arguing that a function of a different name is a better choice than an overloaded function.
 		
-		\item  In the case of constructors and operator, overloading is the only choice because we can't give them the different name. and operator overload is typical feature in Object Base Programming.(OB)
+		\item  In the case of constructors and operator, overloading is the only choice because we can't give them the different name. 
+		
+		\item Operator overload is typical feature in Object Base Programming.(OB)
 		
 		\item Sometimes, overload and default parameter have same client usage, as shown below. If there is a value that you can use for a default, use default parameter. Overload usually take different parameter type or different number of parameters.
 \begin{lstlisting}[numbers=none]
@@ -8547,42 +8571,8 @@ g() or g(10);
 \end{lstlisting}				
 	\end{enumerate}
 
-	\item \textbf{Never overload \&\&, || and comma in C++.  Just remember it!}
-	
-	\item For all operators where you have to choose to either implement them as a member function or a non-member function, use the following rules of thumb to decide:
-	\begin{enumerate}
-		\item If it is a unary operator, implement it as a member function.
-		
-		\item If a binary operator treats both operands equally (it leaves them unchanged), implement this operator as a non-member function.
-		
-		\item If a binary operator does not treat both of its operands equally (usually it will change its left operand), it might be useful to make it a member function of its left operand’s type, if it has to access the operand's private parts.
-		
-		\item If you both define member and nonmember operator, it will call your member version first,  If you delete the member version, then it will call nonmember version. 
-\begin{lstlisting}
-class Sample{
-public:
-	Sample operator + (const Sample& op2){ return Sample{};}
-	friend Sample operator + (const Sample& op1, const Sample& op2);
-};
-
-Sample operator + (const Sample& op1, const Sample& op2){
-	return Sample{};
-}
-Sample s1{};
-Sample s2{};
-Sample s3 = s1+s2;  //this line call member version in line 3. 
-\end{lstlisting}
-
-	\end{enumerate}
 	
 	
-	\item You can declare operator as member function. if it's not member function, declare it as a friend function if it need to visit private member variable. If you want to overload + operator, and support time t; 3+t;   You need to define a friend function. In order to improve a \texttt{t+3} efficiency, you also can define a member function time \texttt{operator+(int i)} member function.
-\begin{lstlisting}[frame=single, language=c++]
-time operator+(const time &lhs, const time &rhs); //non-member function
-friend time operator+(int,  const time &t) //nonmember, for 3+t;
-time operator+(int i) //member, for t+3, avoid implicit conversion from 3 to t
-\end{lstlisting}
-
 	\item Overloading sometimes can help you to avoid implicit type conversion. In the below example, we avoid creating a temporary obj implicitly created by constructor.
 
 \begin{lstlisting}[frame=single, language=c++]
@@ -8611,17 +8601,16 @@ Vector2D operator+(const Vector2D& lhs, const Vector2D& rhs){
 }
 \end{lstlisting}
 	
-	\item Why does \texttt{<<} need to be both a friend and a non-member? Its left operands are stream classes from the standard library, which cannot be changed. In other words, you need to write \texttt{cout << obj}. If you declare \texttt{<<} as a member operator, you would have to write \texttt{obj << cout}, which looks weird.
+	\item Why does \texttt{<<} need to be both a friend and a non-member? Its left operands are stream classes from the standard library, which cannot be changed. In other words, you need to write \texttt{cout <<} obj. If you declare \texttt{<<} as a member operator, you would have to write \texttt{obj << cout}, which looks weird.
 	
-	\item The assignment operator overload should return a non-const reference. Some people suggest that returning a const reference can avoid the possibility of writing code like (x=y)=z. However, this is not a common coding practice. In the STL string, the assignment operator just returns a reference. This serves as a helpful reminder that whenever you have questions about interface design, you can look to the STL library for guidance.
+	\item The assignment operator overload should return a non-const reference. Some suggest using a const reference to prevent constructs like \texttt{(x = y) = z}, but this is uncommon in coding practices. In the STL, for example with \texttt{std::string}, the assignment operator simply returns a reference. This serves as a useful reference that when in doubt about interface design, consulting the STL library can provide valuable guidance.
+	
 \begin{lstlisting}[numbers=none]
-class A & operator=(const class A& rhs){	
+class A& operator=(const class A& rhs){	
 	//Do some things other
 	return *this;
 }
 \end{lstlisting}
-
-	\item The binary operators = (assignment), [] (array subscription), -> (member access), as well as the unary () (function call) operator, must always be implemented as member functions, because the syntax of the language requires them to.
 	
 \end{itemize}
 
@@ -9559,16 +9548,16 @@ Class LandVehicleGasPowered: public LandVehicle
 \end{itemize}
 
 \chapter{Exception and error}
-\section{debug}
+\section{Debug}
 \begin{itemize}
-	\item A few useful debugger commands in linux
+	\item A few useful debugger commands in linux:
 	\begin{enumerate}
 		\item cgbd: terminal-based frontend for gdb, sudo apt-get install cgbd (sudo apt install -y cgdb)
 		\item gdbgui: brower-based frontend for gdb, https://gdbgui.com,  sudo pip install gdbgui
 		\item visual studio code: can connect to gdb. 
 	\end{enumerate}
 	
-	\item Usually compiler command switch and tool
+	\item Common use compiler command switch and tool.
 \begin{lstlisting}
 g++ a.cpp -o a -fsanitize=address
 g++ a.cpp -o a -fsanitize=undefined
@@ -9597,7 +9586,7 @@ g++ -std=c++20 -Wall -Wextra -Wpedantic -Wshadow -Werror input.cpp -o output
 	
 	\item \texttt{exit( status )} terminates the process normally. A status value of 0 or EXIT\_SUCCESS indicates success, and any other value or the constant EXIT\_FAILURE is used to indicate an error. \texttt{exit()} performs the following operations: 1) flushes any unwritten buffered data, 2) closes all open files, and 3) may remove any temporary files that were created by the program (depending on how they are managed). When you call exit or execute a return statement from main, static objects are destroyed in the reverse order of their initialization.
 	
-	\item \texttt{atexit()} registers the function pointed to by func to be called on normal program termination (via \texttt{std::exit()} or returning from the main function)
+	\item \texttt{atexit()} registers a function to be called on normal program termination (via \texttt{std::exit()} or returning from the main function)
 \begin{lstlisting}[]
 void myProgramIsTerminating1(void){
 	cout<<"exit main function"<<endl;
@@ -9605,11 +9594,11 @@ void myProgramIsTerminating1(void){
 
 int main(int argc, char**argv){
 	atexit (myProgramIsTerminating1);
-	//abort(); abort will not call myProgramIsTerm
+	//abort(); abort will not call myProgramIsTerminating1
 }	
 \end{lstlisting}		
 	
-	\item C++11 introduced \texttt{quick\_exit()}, which was added specifically to deal with the difficulties of ending a program cleanly when using threads. \texttt{std::quick\_exit()} is similar to \texttt{\_exit()}, but with the added option to execute some code that was registered with \texttt{at\_quick\_exit} before the program terminates."
+	\item C++11 introduced \texttt{quick\_exit()}, which was added specifically to deal with the difficulties of ending a program cleanly when using threads. \texttt{std::quick\_exit()} is similar to \texttt{\_exit()}, but it provides the option to execute some code that was registered with \texttt{at\_quick\_exit} before the program terminates.
 	
 	\item \texttt{\_exit()} is called without performing any of the regular cleanup tasks for terminating processes, while \texttt{abort()} is called without destroying any objects and without calling any of the functions passed to \texttt{atexit} or \texttt{at\_quick\_exit}. However, if core dumps are enabled, \texttt{abort()} will dump the core. You can use this core dump to debug your program by analyzing it. Here's how to generate and use a core dump: when your program has an invalid memory operation, running the program may result in the following message:
 \begin{lstlisting}[]
@@ -9628,7 +9617,7 @@ bt // give bt command in gdb enviroment, then you will know where
 // your programme perform invalid memory operation.	
 \end{lstlisting}	
 	
-	\item When you use gdb, abort can list stack frame information for you. It's very helpful for you to debug.  Exit just end the application. When you use gdb, it shows nothing.
+	\item When you use gdb, \texttt{abort()} can list stack frame information for you. It's very helpful for you to debug. \texttt{exit()} just end the application. When you use gdb, it shows nothing.
 	
 	\item When \texttt{assert} fail, it just calls \texttt{abort}. 
 \begin{lstlisting}[numbers=none]
@@ -9649,10 +9638,10 @@ int main() {
 }	
 \end{lstlisting}	
 	
-	\item In C, issuing a return statement from the \texttt{main} function is equivalent to calling the \texttt{exit} function with the return value as its argument. However, in C++, there are some subtle differences. When you call return in \texttt{main()}, destructors will be called for locally scoped objects. If you call \texttt{exit()}, no destructor will be called for locally scoped objects. Therefore, it's best not to use \texttt{exit} in C++. Instead, use try and catch(...) and then return EXIT\_FAILURE to ensure that the stack has been successfully unwound. \texttt{exit} is a C function and is not aware of, nor compatible with, C++ idioms. It does not perform cleanup on your objects, including those in the same scope. This means that your file may not be closed properly, and as a result, the content might never get written into it!
+	\item In C, issuing a return statement from the main function is equivalent to calling the exit function with the return value as its argument. However, in C++, there are significant differences. When you use return in \texttt{main()}, destructors will be called for locally scoped objects. On the other hand, if you call \texttt{exit()}, no destructors will be called for locally scoped objects. Therefore, it's advisable not to use \texttt{exit()} in C++. Instead, use try-catch blocks and return \texttt{EXIT\_FAILURE} to ensure proper stack unwinding. \texttt{exit()} is a C function and is not aware of, nor compatible with, C++ idioms. It does not perform cleanup on objects, including those in the same scope. This means that files may not be closed properly, potentially resulting in unwritten content.
 	
 	
-	\item The difference between \texttt{exit} and \texttt{abort} is that \texttt{exit} allows the C++ run-time termination processing to take place (global object destructors get called), but \texttt{abort} terminates the program immediately. The \texttt{abort} function bypasses the normal destruction process for initialized global static objects. It also bypasses any special processing that was specified using the \texttt{atexit} function. That is to say, if you use \texttt{abort()}, no objects will be destroyed. That is, no global objects, no static objects and no local objects will have their destructors called.
+	\item The difference between \texttt{exit} and \texttt{abort} is that exit allows the C++ run-time termination processing to take place, including calling global object destructors. On the other hand, abort terminates the program immediately. The \texttt{abort} function bypasses the normal destruction process for initialized global static objects and also bypasses any special processing specified using the \texttt{atexit} function. In other words, if you use \texttt{abort()}, no objects will have their destructors called—neither global objects, static objects, nor local objects.
 	
 	\item According to previous introduction, if you want to end application in the other fun, you need to throw a exception, then leave it un-handle or re-throw it until it reaches \texttt{main}. In this way, stack unwinding will make sure all the destructor will be called.
 \begin{lstlisting}[frame=single, language=c++]
@@ -9697,15 +9686,15 @@ catch(end_exception& ex){
 \subsection{Handle error in C}
 \begin{itemize}
 
-\item There are three common error handling methods: 1) a global error code (C) or error state (C++), 2) return value, and 3) exception.
+	\item There are three common error handling methods: 1) global error code or error state (C/C++), 2) return value, and 3) exception.
 \begin{lstlisting}[frame=single, language=c++]
 errno(), strerror()  //C language
 cin.fail()  //C++ language
 \end{lstlisting}
 
-\item Besides above, you can use some custom function pointer to do some customized error handling behavior, such as \texttt{set\_new\_handler} function for new operator
+	\item Besides the differences mentioned above, you can also use custom function pointers to implement customized error handling behavior. For example, the \texttt{set\_new\_handler} function allows you to specify a custom handler function for the new operator.
 
-\item \texttt{errno()} and \texttt{strerror()} is a typical C language style.
+	\item \texttt{errno()} and \texttt{strerror()} is a typical C language style.
 
 \begin{enumerate}
 	\item In general, you should detect errors by checking return values, and use \texttt{errno} or \texttt{perror()} only to distinguish among the various causes of an error, such as "File not found" or "Permission denied."
@@ -9728,7 +9717,7 @@ std::cout << "log(-1) failed: " <<std::strerror(errno) << '\n';
 	\item You can detect errors by setting \texttt{errno} to 0, calling the function, and then testing \texttt{errno}. Setting \texttt{errno} to 0 first is important, as no library function ever does that for you.
 \end{enumerate}
 
-\item C11 provide \texttt{fenv.h} file to expand \texttt{errno}
+	\item C11 provide \texttt{fenv.h} file to expand \texttt{errno}
 \begin{lstlisting}[frame=single, language=c++]
 #include <math.h>       /* math_errhandling */
 #include <errno.h>      /* errno, EDOM */
@@ -9756,7 +9745,8 @@ if (math_errhandling  &MATH_ERREXCEPT) {
 \subsection{Exceptions or Bug?}
 \begin{itemize}
 
-\item \textbf{Is it a bug or exception?} Exceptions are typically events that are beyond the control of the program or the user, while bugs are problems that are within the control of the program and can be fixed by changing the code. In other words, exceptions are things that can happen even if the program is perfectly correct, while bugs are things that should never happen if the program is written correctly. A practical example of an exception is a dead battery in a cell phone, but having diarrhea is an abnormality and not an exception. For example, a failure to open a file is an exception and you should throw an exception for it. On the other hand, if \texttt{age<0}, it is an abnormality which is shouting out: "I am a bug, fix me now!".
+\item \textbf{Is it a bug or exception?} Exceptions are typically events that are beyond the control of the program or the user, while bugs are problems that are within the control of the program and can be fixed by changing the code. In other words, exceptions are things that can happen even if the program is perfectly correct, while bugs are things that should never happen if the program is written correctly. A practical example of an exception is a dead battery in a cell phone, whereas having diarrhea is an abnormality and not an exception. For instance, a failure to open a file is an exception and should be handled by throwing an exception. On the other hand, if \texttt{age < 0}, it indicates a bug that needs fixing immediately.
+
 \begin{lstlisting}[numbers=none]
 FILE *f = fopen("hr.dat".....);
 if(f==nullptr){   //it's exception, don't use assert here.
@@ -9771,17 +9761,19 @@ fprintf(f, %d, age);
 
 \item You can also think of an exception as a runtime error and a bug as a logical error. For logical errors, you need to rewrite the code to fix them. For runtime errors, you need to throw and catch exceptions to handle them. Logical errors should be identified as soon as possible using assertions or unit tests. Distinguishing between these two different conditions is important and it does not depend on the phenomenon but rather on the cause. For example, in the function \texttt{f(Foo* p)}, if \texttt{p} is \texttt{nullptr}, there are two possibilities reasons:
 
+
+
 \begin{enumerate}
 	\item They may be passing \texttt{nullptr} because they received bad data from an external user (for example, the user forgot to fill in a field and the database connection failed). In this case, you should throw an exception since it is a runtime situation (i.e., something that cannot be detected by a careful code-review; it is not a bug). 
 	
 	\item \texttt{nullptr} is caused by a mistake in their own code. you should definitely fix the bug in the caller's code. but you must not merely change the code within \texttt{f(Foo* p);} you must, Must, MUST fix the code in the caller(s) of \texttt{f(Foo* p)}.
 \end{enumerate}
 
-\item In previous example, You can use assert first, after you code-review, found that It's not bug, but cause by an exception, such as net disconnect. so you can change assert to throw. THAT IS  A GOOD STRATEGY!
+	\item In previous example, You can use assert first, after you code-review, found that It's not bug, but cause by an exception, such as net disconnect. so you can change assert to throw. THAT IS  A GOOD STRATEGY!
 
 \begin{lstlisting}[frame=single, language=c++]
 fun(int* pi, int j){
-	assert(j< 10); //logic error, You can assert it 
+	assert(j< 10); //logic error, You should use assert here
 	assert(pi == nullptr)
 	
 	if(file.open()) //runtime error
@@ -9789,17 +9781,17 @@ fun(int* pi, int j){
 }		
 \end{lstlisting}
 
-\item assert is a preprocessor macro (more about them later) and commas would otherwise be interpreted as macro argument separator:
+	\item Because assert is a function-like macro, commas anywhere in the argument that are not protected by parentheses are interpreted as macro argument separators.
 \begin{lstlisting}
-assert( min(1,2) == 1 );  //  ERROR
+assert( min(1,2) == 1 );  // 1 ,(comma here) 2  ERROR
 assert( (min(1,2) == 1) );  //  OK	
 \end{lstlisting}
 
-\item Assertions are deactivated by defining preprocessor macro NDEBUG, e.g., with compiler switch: \texttt{g++ -DNDEBUG …}
+	\item Assertions are deactivated by defining preprocessor macro NDEBUG, e.g., with compiler switch: \texttt{g++ -DNDEBUG …}
 
-\item Bugs should be found as early as possible. There are two basic methods to achieve this: using assertions and conducting unit tests. I will introduce unit testing in the 'Testing' chapter.
+	\item Bugs should be found as early as possible. There are two basic methods to achieve this: using assertions and conducting unit tests. I will introduce unit testing in the 'Testing' chapter.
 
-\item The idea behind using \texttt{assert} is to immediately spot an abnormal case that may otherwise cause errors in other parts of the code. Without an \texttt{assert}, it may be difficult to trace the error back to its source position.
+	\item The idea behind using \texttt{assert} is to immediately spot an abnormal case that may otherwise cause errors in other parts of the code. Without an \texttt{assert}, it may be difficult to trace the error back to its source position.
 \begin{lstlisting}[frame=single, language=c++]
 fun(char* p){
 	assert(p!=nullptr);
@@ -9809,40 +9801,43 @@ fun(char* p){
 }		
 \end{lstlisting}
 
-\item You can use \&\& to make assert print out more useful information. string literal is always true; when \texttt{I<5} is false, the whole condition will be printed out.
+	\item You can use \&\& to make assert print out more useful information. string literal is always true; when \texttt{I<5} is false, the whole condition will be printed out.
 \begin{lstlisting}[frame=single, language=c++]
 #include <cassert>
 assert(I<5 && "I is more than 5");	
 \end{lstlisting}
 
-\item Assert is just \texttt{if()}+\texttt{abort()}: Difference of assert and return error(throw exception) is that abort will terminate you application immediately, and you can use GDB to trace back source easily.
+	\item Assert is just \texttt{if()}+\texttt{abort()}: Difference of assert and return error(throw exception) is that abort will terminate you application immediately, and you can use GDB to trace back source easily.
 
-\item the usage of assert depends on the context, but it's not always recommended to use assert to its fullest. Precondition and postcondition assertions are two important types of assertions, but there are other types of assertions that can also be useful, such as invariants, boundary checks, and null checks. Precondition assertions are used to test the validity of the arguments passed to a method before the method is executed. Postcondition assertions are used to test the validity of the results produced by the method after the method has completed its execution.
+	\item the usage of assert depends on the context, but it's not always recommended to use assert to its fullest. Precondition and postcondition assertions are two important types of assertions, but there are other types of assertions that can also be useful, such as invariants, boundary checks, and null checks. Precondition assertions are used to test the validity of the arguments passed to a method before the method is executed. Postcondition assertions are used to test the validity of the results produced by the method after the method has completed its execution.
 
 \end{itemize}
 
 \subsection{Exceptions in C++}
 \begin{itemize}
-\item If you don't know if you should use exception, then you should use it in your project. In other word, if you don't have any solid reason to against it, just use it.
-
-\item Exceptions mainly handle runtime errors. They are potentially recoverable errors, such as attempting to open an unavailable file or requesting more memory than is available.
+	\item If you're unsure whether to use exceptions, it's generally recommended to use them in your project. In other words, if you don't have a solid reason against using them, just implement them. Exceptions are primarily used to handle runtime errors—potentially recoverable errors such as attempting to open an unavailable file or requesting more memory than is available.
 \begin{enumerate}
 	\item A file write operation failed or file access operation failed because this file doesn't exist.
 	
 	\item No enough memory.
 	
-	\item invalid value, which come from user input, not come from you error code logic.
+	\item Invalid value, which come from user input, not come from you error code logic.
 	
 	\item System communication software invalid protocol, format, or no response.
 \end{enumerate}
 
-\item unwinding the stack has cost problems, it make program 10\% larger and slower. So you can use \texttt{-fno-exceptions} to stop it.
+	\item unwinding the stack has cost problems, it make program 10\% larger and slower. So you can use \texttt{-fno-exceptions} to stop it.
 
-\item Exception specification is add \texttt{throw} keyword in the end of function, no throw means that it will throw any exceptions, and \texttt{throw()} means it will not throw any exceptions. Throw( e1, e1) means that it will throw two kinds of exceptions. In C++, this feature has been unsupported and only one left is use throw() to indicates that it will not throw any exceptions. In modern C++, we use \texttt{noexcept} to replace throw(). Pay attention here: exception specification doesn't use very well with template. construct, destruct and assignment will become \texttt{noexcept} if the functions they are calling are noexcept. 
+	\item Exception specification is add \texttt{throw} keyword in the end of function,  \texttt{throw()} means it will not throw any exceptions. In modern C++, exception specifications like throw() have been deprecated, and \texttt{noexcept} is preferred. noexcept is used to indicate that a function will not throw any exceptions. It's important to note that exception specifications do not integrate well with templates. Constructors, destructors, and assignment operators will automatically become noexcept if the functions they invoke are noexcept.
 
-\item A simple exception can be a char string, then using \texttt{const char* c} to catch it. A more complicate example is exception class, and you can define the exception class, and throw \texttt{exception\_class}, than use \texttt{exception\_class \& }ec to catch it.  
+	\item Standard exception includes \textbf{logic\_error, domain\_error,  runtime\_error.  Invalid\_argument, out\_of\_bounds, range\_error, overflow\_error.}
 
-\item You don't need explicit define \texttt{exception\_class} object and throw this object; throw \\ \texttt{exception\_class()}; will avoid copy and is recommend way to follow.
+\begin{center}
+	\includegraphics[scale=0.8]{pics/exception.jpg}
+\end{center}
+
+
+	\item A simple exception can be represented by a \texttt{const char*}, which can be caught using \texttt{const char* c}. A more complex example involves defining an exception class. You can create an exception class, throw an instance of it (throw \texttt{exception\_class}), and catch it using a reference (\texttt{exception\_class\&} ec). You don't need explicit define \texttt{exception\_class} object and throw this object; throw  \texttt{exception\_class()}; will avoid copy and is recommend way to follow.
 \begin{lstlisting}[numbers=none]
 throw exception_class{}; //good style
 
@@ -9851,7 +9846,7 @@ throw ex
 \end{lstlisting}
 
 
-\item You can build an exception class inside the C++ standard exception system. It needs to derive your class from exception and redefine the function what(). If your exception class has a very tight relationship with your real class, it can be declared as a nested class.
+	\item You can build an exception class inside the C++ standard exception system. It needs to derive your class from base \texttt{exception} class and redefine the function what(). If your exception class has a very tight relationship with your real class, it can be declared as a nested class too.
 
 \begin{lstlisting}[numbers=none]
 Class my_ex :public std::exception{
@@ -9859,16 +9854,7 @@ Class my_ex :public std::exception{
 }	
 \end{lstlisting}
 
-
-\item Standard exception includes \textbf{logic\_error, domain\_error,  runtime\_error.  Invalid\_argument, out\_of\_bounds, range\_error, overflow\_error.}
-
-\begin{center}
-	\includegraphics[scale=0.8]{pics/exception.jpg}
-\end{center}
-
-
-
-\item Common pattern of try catch block:
+	\item Common pattern of try catch block:
 \begin{enumerate}
 	\item Handle an exception and continue executing, place the code in separate try-catch blocks. 
 	
@@ -9889,7 +9875,7 @@ catch (Exception2 ex){
 }			
 \end{lstlisting}
 	
-	\item When exception happen, we have to deal with immediately and don't want to continue to run, can use one try and multi catch blocks. 
+	\item When exception happen, we have to deal with immediately and don't want to continue to run, Use one try and multi catch blocks. 
 \begin{lstlisting}[frame=single, language=c++]
 try{ 
 	// code that throws an exception	
@@ -9904,7 +9890,7 @@ catch (Exception2 ex){
 \end{lstlisting}		
 	
 	
-	\item Properly order your catch-clauses. Arranging the catch blocks in inverse order of derivation. Catch by using reference: 1) It will support polymorphic exception, and catch exception from specific to generic. 2) It will avoid extra copying.
+	\item Properly order your catch-clauses by arranging them in inverse order of derivation. Catching exceptions by reference has two benefits: 1) It supports polymorphic exceptions, allowing you to catch exceptions from specific to more generic types. 2) It avoids unnecessary copying of exception objects.
 \begin{lstlisting}[frame=single, language=c++]
 void f(){
 	// ...
@@ -9929,33 +9915,40 @@ catch(my_base_ex &ex){
 	\item Don't use all throw and catch to replace return-code. For a simple function, if just return one error code and user will not forget to test return code, return-code method is more efficient than try catch. 
 \end{enumerate}
 
-\item Compared with return error code, exception has advantage:
+	\item Compared with return error code, exception has some advantages:
 \begin{enumerate}
 	\item  Can catch deeper called function exceptions. If you want to use return value, deeper called function is hard to deal with.
 	
-	\item Difficult to return value: 
+	\item Exceptions can be used in scenarios where returning a value directly is difficult or impractical: 
 	\begin{enumerate}
 		\item No return value, such as class constructor.
 		\item All return value is normal value, such as \texttt{atoi()}.
 	\end{enumerate}
 	
-	\item Make correct path and error-handle path separately and clearly.
+	\item Exception can make correct path and error-handle path separately and clearly.
 	
 	\item You can't ignore exceptions; any unhandled exception can result in termination of the program.
 \end{enumerate}
 
 
-\item \textbf{Never throw any exception in destructor.} In another word, Destructors and deallocation must never fail. In you destructor, don't throw any exception, or catch all the exception inside of it. Otherwise it will call \texttt{std::terminate} to stop the application. see more effective C++ exception chapter. However, throwing an exception in constructor is the best way to signal an error during object construction. Since there's no return value, there's no other way, other than constructing a headless object, which is bad style in C++.
-
-\item In C++, the lifetime of an object begins when its constructor completes and ends when its destructor is called. If the constructor throws an exception, the destructor is not called for that object. However, the destructors of any member variables whose constructors have already completed are still called.
+	\item \textbf{Never throw any exception in destructor.} In another word, Destructors and deallocation must never fail. In you destructor, don't throw any exception, or catch all the exception inside of it. Otherwise it will call \texttt{std::terminate} to stop the application. See more effective C++ exception chapter. However, throwing an exception in constructor is the best way to signal an error during object construction, since there's no return value.
+	
+	\item In C++, the lifetime of an object begins when its constructor completes and ends when its destructor is called. If the constructor throws an exception, the destructor is not called for that object. However, the destructors of any member variables whose constructors have already completed are still called.
 
 \end{itemize}
 
 \section{Usage suggestions}
 \begin{itemize}
-\item All standard containers must also implement the strong guarantee for all operations (with two exceptions). They always have commit-or-rollback semantics so that an operation such as an insert either succeeds completely or else does not change the program state at all. "No change" also means that failed operations do not affect the validity of any iterators that happened to be already pointing into the container. There are only two exceptions to this point. First, for all containers, multi-element inserts ("iterator range" inserts) are never strongly exception-safe. Second, for vector<T> and deque<T> only, inserts and erases (whether singleor multi-element) are strongly exception-safe as long as T's copy constructor and assignment operator do not throw. Note the consequences of these particular limitations. Unfortunately, among other things, this means that inserting into and erasing from a vector<string> or a vector<vector<int> >, for example, are not strongly exception-safe.
+	\item All standard containers are required to implement the strong guarantee for most operations, ensuring commit-or-rollback semantics. This means operations like insertions either complete successfully or leave the container unchanged. 'No change' also ensures that failed operations do not invalidate any iterators pointing to the container. However, there are two exceptions to this rule:
+	\begin{enumerate}
+		\item Multi-element inserts (iterator range inserts) are never strongly exception-safe across all containers.
+		
+		\item For \texttt{vector<T>} and \texttt{deque<T>}, inserts and erases (both single and multi-element) are strongly exception-safe, provided that type T's copy constructor and assignment operator do not throw exceptions.
+	\end{enumerate}
+		
+	Operations like inserting into or erasing from containers holding complex types (e.g., \texttt{vector<string>} or \texttt{vector<vector<int>>}) are not strongly exception-safe.
 
-\item Exception handling is highly dependent on your application context. So it should be designed into a program rather than just added on. Consciously specify, and conscientiously apply, what so many projects leave to adhoc (mis)judgment: Develop a practical, consistent, and rational error handling policy early in design, and then stick to it. Ensure that it includes:
+	\item Exception handling is highly dependent on your application context. So it should be designed into a program rather than just added on. Consciously specify, and conscientiously apply, what so many projects leave to adhoc (mis)judgment: Develop a practical, consistent, and rational error handling policy early in design, and then stick to it. Ensure that it includes:
 
 \begin{enumerate}
 	\item Identification: What conditions are errors.
@@ -9968,7 +9961,7 @@ catch(my_base_ex &ex){
 \end{enumerate}
 
 
-\item For different runtime errors, you can take various actions. And it's depends on you context of application.
+	\item For different runtime errors, you can take various actions. And it's depends on you context of application.
 
 \begin{enumerate}
 	\item Error is just warning, log or show it to user, then continue;
@@ -9979,14 +9972,14 @@ catch(my_base_ex &ex){
 
 \item When to use assert ?
 \begin{enumerate}
-	\item Your problem comes from your own bad code, it's better to use ASSERTs.  Including you coding error or addition overflow.
+	\item Your problem comes from your own bad code, including you coding error or addition overflow.
 	
-	\item Bugs in your program are not something the user can handle, User can do nothing when he face "age should be not negative" unless age is inputted by himself(at this time, you should use return error code)
+	\item Bugs in your program are not something the user can handle, user can do nothing when he face "age should be not negative" unless age is inputted by a user (at this time, you should use return error code or exception to ask user input again)
 	
-	\item You have to stop your application. If you write negative age back to database, It may cause futuristic error for other user later, and It's very difficult to trace back.
+	\item You have to stop your application. If you write negative age back to database, It may cause futuristic error for other user later, and it's very difficult to trace back.
 \end{enumerate}
 
-\item When to throw a exception( or return error code)? Exception and return a error code has the same philosophy. \textbf{let caller decide what to do next}.
+	\item When to throw a exception( or return error code)? Exception and return a error code has the same philosophy. \textbf{let caller decide what to do next}.
 
 \begin{enumerate}
 	\item As a general rule of thumb, throw an exception when your program can identify an \textbf{external problem} that prevents execution.
@@ -9994,17 +9987,17 @@ catch(my_base_ex &ex){
 	\item Identify problems that the program can't handle and inform the user about them, because the user can handle them. For example, running out of memory space, non-existent file, no net connection, failed object construction, and receiving invalid data from the server, etc.
 \end{enumerate}
 
-\item When to use try... catch block? Catch an exception where you can do something useful with it.
+	\item What to do in catch clause?
 
 \begin{enumerate}
-	\item You can actually handle the exception. your catch clause deals with the error and continues execution without throwing any additional exceptions. My caller never knows that the exception occurred.
+	\item You can actually handle the exception. Your catch clause deals with the error and continues execution without throwing any additional exceptions. Your caller never knows that the exception occurred.
 	
-	\item I can have a catch clause that does blah blah blah, after that I will rethrow the exception. In this case, consider changing the try block into an object whose destructor does blah blah blah. For instance, if you have a try block whose catch clause closes a file then rethrows the exception, consider replacing the whole thing with a File object whose destructor closes the file. This is commonly called RAII
+	\item I can have a catch clause that does blah blah blah, after that I will rethrow the exception. In this case, consider changing the try block into an object whose destructor does blah blah blah. For instance, if you have a try block whose catch clause closes a file then rethrows the exception, consider replacing the whole thing with a File object whose destructor closes the file. This is commonly called RAII. 
 	
-	\item Show some message or log exception, or give user a list options to select.  then rethrow.
+	\item Show some message or log exception, or give user a list options to select, then rethrow.
 \end{enumerate}
 
-\item Exception in C++ is a tool; use it properly and it will help you; Don't blame the tool if you use it improperly. "Wrong exception-handling mindsets" in c++ FAQ website section 17 is good topic. You need to read it.
+	\item Exception in C++ is a tool; use it properly and it will help you; Don't blame the tool if you use it improperly. "Wrong exception-handling mindsets" in c++ FAQ website section 17 is good reference paper. 
 
 \end{itemize}
 
@@ -11412,18 +11405,7 @@ void do_stuff(T& t) {
 }	
 \end{lstlisting}
 
-	\item A partial specialization can indeed have more template parameters than the primary template. A typical example of this use is \texttt{std::function}: 
-\begin{lstlisting}
-template <class T>
-struct function;
 
-template <class R, class... A>
-//R(A...) is specification and it's ONE template parameter.
-struct function<R (A...)>{  
-	....
-    // std::function as we know it
-};
-\end{lstlisting}	
 
 \end{itemize}
 
@@ -11688,7 +11670,7 @@ class Rational {
 \section{Type traits}
 \subsection{STL type traits}
 \begin{itemize}
-	\item Type check traits in STL
+	\item Type traits in the STL are a set of template-based utilities that provide compile-time information about types. They are part of the <type\_traits> header in C++ and are extensively used for template metaprogramming, enabling developers to write more flexible and type-safe code.
 \begin{lstlisting}
 cout <<  boolalpha <<  '\n';
 
@@ -11708,7 +11690,7 @@ cout << std::is_lvalue_reference<int&>::value << '\n';                   // true
 cout << std::is_rvalue_reference<int&&>::value << '\n';                  // true	
 \end{lstlisting}
 
-	\item comparing types
+	\item Comparing two types in C++ using type traits is often done to check if two types are the same or to evaluate type relationships such as inheritance or convertibility. The standard library provides several type traits for this purpose.
 \begin{lstlisting}
 std::cout << std::is_base_of<Base,Derived>::value << '\n'; //true
 std::cout << std::is_base_of<Derived,Base>::value << '\n';
@@ -11723,24 +11705,7 @@ std::cout << std::is_same<int, int64_t>::value << '\n';
 std::cout << std::is_same<long int, int64_t>::value << '\n'; //true
 \end{lstlisting}
 
-	\item type modifications
-\begin{lstlisting}
-// const-volatile modifications:
-remove_const; remove_volatile; remove_cv;
-add_const; add_volatile; add_cv;
-struct foo{
-	void m() { std::cout << "Non-cv\n"; }
-	void m() const { std::cout << "Const\n"; }
-	void m() volatile { std::cout << "Volatile\n"; }
-	void m() const volatile { std::cout << "Const-volatile\n"; }
-};
-
-foo{}.m();  //output "Non-cv"
-std::add_const<foo>::type{}.m(); //Const
-std::add_volatile<foo>::type{}.m(); //Volatile
-std::add_cv<foo>::type{}.m();  //output "Const-volatile"
-\end{lstlisting}
-
+	\item Type modifications using type traits in C++ allow you to alter types by adding or removing qualifiers and changing the type structure. 
 \begin{lstlisting}
 // reference modifications:
 remove_reference; add_lvalue_reference; add_rvalue_reference;
@@ -11755,10 +11720,27 @@ remove_pointer;  add_pointer;
 decay; enable_if; conditional; common_type; underlying_type;
 \end{lstlisting}
 
+\begin{lstlisting}
+	// const-volatile modifications:
+	remove_const; remove_volatile; remove_cv;
+	add_const; add_volatile; add_cv;
+	struct foo{
+		void m() { std::cout << "Non-cv\n"; }
+		void m() const { std::cout << "Const\n"; }
+		void m() volatile { std::cout << "Volatile\n"; }
+		void m() const volatile { std::cout << "Const-volatile\n"; }
+	};
+	
+	foo{}.m();  //output "Non-cv"
+	std::add_const<foo>::type{}.m(); //Const
+	std::add_volatile<foo>::type{}.m(); //Volatile
+	std::add_cv<foo>::type{}.m();  //output "Const-volatile"
+\end{lstlisting}
+
 \end{itemize}
 \subsection{How to build custom type traits?}
 \begin{itemize}
-	\item A type trait is a mechanism that allows you to obtain information about the types passed as template arguments at compile-time, enabling you to make static decisions based on that information. A type trait can provide any information or customization about a type. For instance, the \texttt{is\_integer} trait simply returns a boolean value indicating whether the type is an integer or not, while the more complex \texttt{char\_traits} trait can return a set of functions. In this way, you can also view \texttt{char\_traits} as a policy.
+	\item A type trait is a mechanism that allows you to obtain information about the types passed as template arguments at compile time, enabling you to make static decisions based on that information. A type trait can provide any information or customization about a type. For instance, the \texttt{is\_integer} trait simply returns a boolean value indicating whether the type is an integer or not, while the more complex \texttt{char\_traits} trait can return a set of functions. In this way, you can also view \texttt{char\_traits} as a policy.
 	
 \end{itemize}
 
@@ -11783,7 +11765,7 @@ struct is_swapable<int> {
 };
 \end{lstlisting}
 
-	\item Another way is to build new trait based on existing trait.
+	\item Another way is to build new trait based on existing traits.
 \begin{lstlisting}[numbers=none]
 template <typename T>
 struct is_swapable {
@@ -11792,7 +11774,7 @@ struct is_swapable {
 };
 \end{lstlisting}
 
-	\item Starting with C++11, a new type generator was introduced - \texttt{std::integral\_constant}, along with its corresponding \texttt{std::true\_type} and \texttt{std::false\_type} types. 
+	\item Starting with C++11, a new type generator was introduced:  \texttt{std::integral\_constant}, along with its corresponding \texttt{std::true\_type} and \texttt{std::false\_type} types. 
 \begin{lstlisting}[frame=single, language=c++]
 template<class T, T v>
 struct integral_constant {
@@ -11808,7 +11790,7 @@ typedef integral_constant<bool,true> true_type;
 
 
 \item \texttt{std::true\_type} use \texttt{integral\_constant}(type generator)to define a new type. \newline 
-\texttt{is\_arithmetic} can be derived form \texttt{true\_type} or \texttt{false\_type}. It makes easier for use to build a new type trait. 
+\texttt{is\_arithmetic} can be derived form \texttt{true\_type} or \texttt{false\_type}. It makes easier for us to build and use a new type trait. 
 \begin{lstlisting}[numbers=none]
 std::integral_constant<bool, true>
 
@@ -11817,29 +11799,18 @@ struct is_arithmetic : std::integral_constant<bool, std::is_integral<T>::value |
 							std::is_floating_point<T>::value> { };
 \end{lstlisting}
 
-	\item Rules need to be follow when you build type trait.
+	\item To build a type trait, you typically define a template structure named after the trait you need, such as \texttt{is\_integer}, \texttt{is\_pointer}, or \texttt{is\_void}. The structure contains a static constant boolean value named value, which is initialized to a sensible state by default. To query the value of a type trait, you can use the following syntax: my\_type\_trait<T>::value.
 	
-	\begin{enumerate}
-		\item most common usage of trait is member constants ::value, such as \texttt{is\_integer<T>::value}, 
-		
-		\item To use a type trait, you typically define a template structure, named after the trait you need, such as \texttt{is\_integer}, \texttt{is\_pointer}, or \texttt{is\_void}. The structure contains a static constant boolean value named \texttt{value}, which is initialized to a sensible state by default. To query the value of a type trait, you can use the following syntax: \texttt{my\_type\_trait<T>::value}. For more information, you may refer to the article "A Simple Introduction to Type Traits.
-	\end{enumerate}
-
-	\item Another kind of implementation is to use predefined type. An example can be found in iterator and container.
+	\item Another kind of implementation is to use predefined type. An example can be found the iterator in a container.
 
 \begin{lstlisting}[frame=single, language=c++]
-struct random_access_iterator_tag: public bidirectional_iterator_tag {};
-
 template < ... > // template params elided
 class deque {
 	class iterator {
 	public:
-		typedef random_access_iterator_tag iterator_category;
+		typedef random_access_iterator_tag iterator_category; // define category
 	};		
 \end{lstlisting}
-\begin{description}
-	\item[Line 7:] Insider deque, we define \texttt{iterator\_category} inside iterator class. 
-\end{description}
 
 	\item Then we can use \texttt{iterator\_traits} to get \texttt{iterator\_category} defined inside deque.
 \begin{lstlisting}[frame=single, language=c++]
@@ -11849,7 +11820,7 @@ struct iterator_traits {
 };
 \end{lstlisting}
 
-	\item Why don't we use \texttt{iterator\_category} inside of \texttt{deque} directly. With help of trait, we can build partial specification version for pointer, In this way, \texttt{iterator\_traits} also can deal with pointer. (array in C++)
+	\item Why don't we use \texttt{iterator\_category} inside of \texttt{deque} directly? With help of \texttt{iterator\_traits}, we can build partial specification version for pointer, In this way, \texttt{iterator\_traits} also can deal with pointer. (array in C++)
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T> // partial template specialization
 struct iterator_traits<T*>{ // for built-in pointer types
@@ -11862,7 +11833,8 @@ struct iterator_traits<T*>{ // for built-in pointer types
 
 	\item SFINAE is "Substitution Failure Is Not An Error". Compiler will try type deduct when it instantiate the template function or template class. when it can't deduct properly, compiler will search for another option instead of report error. 
 	
-	\item You can use the \texttt{sizeof} and \texttt{static\_cast} operators to perform compile-time evaluation. For instance, you can use this technique to test if a class is derived from another class. It's worth noting that this approach was popular before C++11, but C++14/17 offer better ways to achieve the same objective. Therefore, it's advisable to be aware of this technique, but there's no need to use it in your code.
+	\item You can use the sizeof and static\_cast operators to perform compile-time evaluation. For instance, you can use this technique to test if a class is derived from another class. It's worth noting that this approach was popular before C++11, but C++14/17 offer better ways to achieve the same objective. Therefore, it's advisable to be aware of this technique, but there's no need to use it in your code.
+	
 \begin{lstlisting}[frame=single, language=c++]
 template<typename D, typename B>
 class IsDerivedFromHelper{
@@ -11882,14 +11854,14 @@ bool IsDerivedFrom() {
 \end{lstlisting}
 
 	
-	\item In C++14/17, you can use the \texttt{constexpr} operator instead of \texttt{sizeof}, and the \texttt{decltype} and \texttt{declval} operators to obtain type information at compile-time. For example, the following code tests if the type has a "serialize" member function:
+	\item In C++14/17, you can use the \texttt{constexpr} operator instead of \texttt{sizeof}, and the \texttt{decltype} and \texttt{declval} operators to obtain type information at compile time. For example, the following code tests if a type has a "serialize" member function:
 	
 \begin{lstlisting}[frame=single, language=c++]
 template <class T> 
 struct hasSerialize{
 	template <typename C>
 	static constexpr 
-	decltype(std::declval<C>().serialize(), bool())
+	decltype(std::declval<C>().serialize(), bool()) //, is a operator
 	test(int /* unused */){
 		return true;
 	}
@@ -11911,7 +11883,13 @@ struct hasSerialize{
 		
 		\item In the function which return true, use \texttt{decltype} and \texttt{declval} to simulate call some functions you want to judge. make these type used in function parameter or return. 
 		
-		\item Pay attention to the usage of \texttt{static constexpr bool}. Use test function to initialized \textbf{constexpr value} 
+		\item Pay attention to the usage of \texttt{static constexpr bool}. Use test function to initialized \textbf{constexpr value}.
+		
+		\item In line 5, the comma operator in C++ involving expressions where multiple expressions are evaluated, but only the value of the last expression is considered. 
+		
+\begin{lstlisting}[numbers=none]
+int a = (1, 2, 3, 4);  //a is 4 after this statement.
+\end{lstlisting}
 	\end{enumerate}
 
 %	\item use \texttt{is\_valid}
@@ -11993,7 +11971,7 @@ struct hasSerialize : std::false_type { };
 
 // Partial template specialisation, inherit from std::true_type.
 template <typename T>
-struct hasSerialize<T, decltype(std::declval<T>().serialize())> : std::true_type { };
+struct hasSerialize<T, decltype(std::declval<T>().serialize())>:std::true_type {};
 \end{lstlisting}
 
 	\item Building on previous technology, we also introduced \texttt{void\_t} in C++17, which makes it easier for us to define new type traits. For example, the code below judges whether the type \texttt{T} has a \texttt{reserve()} member function.
@@ -12001,7 +11979,7 @@ struct hasSerialize<T, decltype(std::declval<T>().serialize())> : std::true_type
 template <typename T, typename = void>
 struct has_reserve : false_type {};
 
-template <typename T>
+template <typename T> 
 struct has_reserve<T, void_t<decltype(declval<T&>().reserve(1U))>>: true_type {};
 \end{lstlisting}
 
@@ -12012,8 +11990,8 @@ struct has_reserve<T, void_t<decltype(declval<T&>().reserve(1U))>>: true_type {}
 \subsubsection{ If T is function type? }
 
 \begin{itemize}
-	\item This is an example to test if T is function.
-\begin{lstlisting}[frame=single, language=c++]
+	\item This is an example to test if T is function. The basic idea is: there is three types you can't use to declare array, 1) void, 2) reference and 3) function type.
+\begin{lstlisting}[frame=single, language=c++, numbers=none]
 template <class T>
 struct IsFunction{
 	// int (*p)[1]  pointer to array(int [1])
@@ -12036,9 +12014,10 @@ IsFunction<decltype(f)>::value; //value is true
 \end{lstlisting}
 \begin{description}
 	\item[Line 6:] Why we need declare a pointer to array? it will make line 14 easier, we can just use 0 as pretend pointer.
-	\item[Source code:] There is three types you can't use to declare array, 1) void, 2) reference and 3) function type.  About function type, I will introduce below. 
 \end{description}
 
+	\item A little more explanation about above code.
+	
 \begin{enumerate}
 	\item What is a function type?
 \begin{lstlisting}
@@ -12055,9 +12034,11 @@ void fv(){...}
 
 		\item[Line 7:] just like \texttt{int fv();} declare a function. How to define this variable make it linkable? Just like common function definition.
 	\end{description}
+
+	\item \texttt{decltype(f)} is not a function pointer. In order to get a function pointer you either have to use decltype with the address of f \texttt{decltype(\&f)} or you can add a * to the end of the type to declare a pointer to the type of f \texttt{decltype(f)*}
 	
 	\item You can not define function type array.
-\begin{lstlisting}
+\begin{lstlisting}[numbers=none]
 typedef int FT(); //FT is type
 FT fa[3]; //compile error, error: declaration of 'fa' as array of functions
 \end{lstlisting}
@@ -12072,7 +12053,7 @@ FT fa[3]; //compile error, error: declaration of 'fa' as array of functions
 struct A {
 	int fun() const&;
 };
-typedef int FunSignature() const&;
+typedef int FunSignature() const&; //FunSignature if function type
 FunSignature A::*p = &A::fun;
 \end{lstlisting}
 
@@ -12083,8 +12064,9 @@ struct A {
 };
 
 template<class T, class U>
-struct PM_traits<U T::*> {
-	using member_type = U;
+struct PM_traits<U T::*> { //U is FunSignature type, 
+	                        
+	using member_type = U; //U equal typedef int FunSignature() const&;
 };
 
 int main() {
@@ -12092,12 +12074,12 @@ int main() {
 }
 \end{lstlisting}
 
-	\item Based on previous knowledge, we can implement 
+	\item Based on previous introduction, we can build below code to judge if it's a member function.
 \begin{lstlisting}[frame=single, language=c++]
 template< class T >
 struct is_member_function_pointer_helper : std::false_type {};
 
-template< class T, class U>
+template< class T, class U> //partial specialization has more parameter??? 
 struct is_member_function_pointer_helper<T U::*> :std::is_function<T> {};
 
 template< class T >
@@ -12108,10 +12090,23 @@ class A {
 public:
 	void member() { }
 };
+
 //&A::member is expression, decltype change it to a type.
 cout<<std::is_member_function_pointer<decltype(&A::member)>::value
 \end{lstlisting}
 
+	\item A partial specialization can indeed have more template parameters than the primary template. A typical example of this use is \texttt{std::function}: 
+\begin{lstlisting}
+template <class T>
+struct function;
+
+template <class R, class... A>
+//R(A...) is specification and it's ONE template parameter.
+struct function<R (A...)>{  
+	....
+	// std::function as we know it
+};	
+\end{lstlisting}	
 
 \end{itemize}
 
@@ -12122,7 +12117,7 @@ cout<<std::is_member_function_pointer<decltype(&A::member)>::value
 \begin{itemize}
 	\item There are \textbf{three} main usages of type traits:
 \begin{enumerate}
-	\item Correctness. 
+	\item Using \texttt{static\_assert} in C++ allows you to perform compile-time assertions to check the correctness of conditions. This is particularly useful for ensuring certain conditions are met during compilation. 
 \begin{lstlisting}
 template<typename T>
 T gcd(T a, T b) {
@@ -12133,7 +12128,7 @@ T gcd(T a, T b) {
 	}
 }	
 \end{lstlisting}
-	\item More generic. For a template functor, you can obtain the value type from \texttt{iterator\_traits} of the container. This information can be used in a template function object. The source code is very interesting because it combines the container, algorithm, and template function. It supports almost any generic type.
+	\item For a template functor, you can obtain the value type from iterator\_traits of the container. This information is essential in creating a template function object that can be used with various types. The source code becomes particularly interesting as it integrates the container, algorithms, and template functions, supporting nearly any generic type.
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 struct Half{
@@ -12165,7 +12160,7 @@ inline void fill(I first, I last, const T& val){
 \end{enumerate}
 	
 	
-	\item A famous usage of tag dispatch is in iterators. Pay attention to \texttt{iterator\_traits}. Why do we use it here? It's a template that, with specialization, can support common pointer types. The client side may or may not be a template. For \texttt{advance}, it should be a template because it needs a template parameter \texttt{InputIterator}. There are some tag types that need to be defined, and you should use these tags in the functions that you want to dispatch by overload resolution at compile time. 
+	\item A famous application of tag dispatch is seen in iterators, particularly involving iterator\_traits. This template is specialized to support common pointer types, making it versatile across different client-side implementations, whether they are templated or not. In functions like \texttt{advance}, which requires the InputIterator template parameter, it is crucial to utilize tag types. These tags facilitate overload resolution at compile time, allowing functions to be dispatched appropriately based on the specified tags.
 
 \begin{lstlisting}[numbers=none]
 struct input_iterator_tag { };
@@ -12188,7 +12183,7 @@ void advance(InputIterator& i, Distance n) {
 }	
 \end{lstlisting}	
 
-    \item use \texttt{true\_type} or \texttt{flase\_type} in tag dispatch. The idea is just like previous iterator. Another interesting point is that overload function can return different types. foo's return type is \texttt{int} if it calls the \texttt{std::true\_type} overload and \texttt{double} if it calls the \texttt{std::false\_type} overload. So here we use \texttt{auto} as function return type. examples.
+    \item use \texttt{true\_type} or \texttt{flase\_type} in tag dispatch. This technique is just like previous iterator. An interesting aspect is that overloaded functions can return different types. For instance, the return type of foo is int if it calls the \texttt{std::true\_type} overload and double if it calls the \texttt{std::false\_type} overload. Therefore, we use \texttt{auto} as the function's return type.
 \begin{lstlisting}[numbers=none]
 template <typename T>
 int foo_impl(T value, std::true_type) {...}
@@ -12218,12 +12213,12 @@ struct enable_if<true, T> {
 };	
 \end{lstlisting}	
 
-	\item When we make the call \texttt{do(25)}, the compiler selects the first overload: since the condition \texttt{std::is\_integral<int>} is true, the specialization of struct \texttt{enable\_if} for true is used, and its internal type is set to int. The second overload is omitted because without the true specialization (\texttt{std::is\_class<int>} is false) the general form of struct \texttt{enable\_if} is selected, and it doesn't have a type, so the type of the argument results in a substitution failure.
+	\item When we call do(25), the compiler selects the first overload because the condition \\ \texttt{std::is\_integral<int>} is true. This causes the specialization of the \texttt{enable\_if} struct for true to be used, where its internal type is set to int. The second overload is omitted because without the true specialization (when \texttt{std::is\_class<int>} is false), the general form of the \texttt{enable\_if} struct is selected, which does not define a type. Therefore, the type substitution fails for the argument in the second overload function.
 
 \begin{lstlisting}[numbers=none]
 template <typename T>
 void do(typename enable_if<std::is_integral<T>::value, T>::type &t){
-	// an implementation for integral types 
+	// an implementation for integral types, T is int
 }
 
 template <typename T>
@@ -12232,7 +12227,7 @@ void do(typename enable_if<std::is_class<T>::value, T>::type &t) {
 }		
 \end{lstlisting}	
 	
-	\item Another example which use \texttt{enable\_if}. \texttt{has\_serialize} trait has been introduced in the type trait section, you can see the detail there. 
+	\item Another example which use \texttt{enable\_if}. \texttt{has\_serialize} trait has been introduced in the type trait section. 
 	
 \begin{lstlisting}[numbers=none]
 template <class T>
@@ -12269,7 +12264,14 @@ serialize(const T& obj){
 %\end{lstlisting}	
 
 	
-	\item An example of usage of \texttt{enable\_if}. We can also use \texttt{enable\_if} to "delete" a function for certain type. 
+	\item An example of usage of \texttt{enable\_if}. We can also use \texttt{enable\_if} to "delete" a function for certain type. In line 6:
+\begin{enumerate}
+	\item unname template parameter. There is no name after second typename. 
+	\item  \texttt{enable\_if\_t} is alias template.
+	\item  \texttt{is\_reference\_v} is variable template. 
+	\item  Why do we need \texttt{T\_}? f must be a template function, although it's inside another template class. These two template need to use different template parameter. 
+	
+\end{enumerate}
 \begin{lstlisting}
 template<typename T>
 class MyClass{
@@ -12280,25 +12282,20 @@ class MyClass{
 	void f(T&& x){}  //T can't be reference 
 };	
 \end{lstlisting}
-\begin{description}
-	\item[Line 6:] Pay more attention to five points here: 
-	1) unname template parameter. There is no name after second typename. 
-	2) \texttt{enable\_if\_t} is alias template.
-	3) \texttt{is\_reference\_v} is variable template. 
-	4) Why do we need \texttt{T\_}? f must be a template function, although it's inside another template class. These two template need to use different template parameter. 
-	5) \texttt{enable\_if} should be used in template parameter deduction first; don't use it for function parameters or function return types unless you have a strong reason.
-\end{description}
+
+
+	\item The usage of \texttt{std::enable\_if} is very flexible, it can be used 1) template function parameter, 2) template function return, 3) as a template parameter in one template function to suppress it, 4) as a template parater in two template functions to overload it. It should be used in template parameter deduction first; Don't use it for function parameters or function return types unless you have a strong reason.
 
 	\item A common pattern to select a function according to input type.
 \begin{lstlisting}
 template<typename T,
-std::enable_if_t<std::is_same<int, T>::value>* = nullptr>
+std::enable_if_t<std::is_same<int, T>::value >* = nullptr>
 void f() { }
 
 template<typename T,
-std::enable_if_t<std::is_same<double, T>::value>* = nullptr>
+std::enable_if_t<std::is_same<double, T>::value >* = nullptr>
 void f() { }
-//-----------------------------
+//--------better method.
 template<typename T,
 typename = std::enable_if_t<std::is_same<int, T>::value>>
 void g() { }
@@ -12308,9 +12305,8 @@ typename = std::enable_if_t<std::is_same<double, T>::value>>
 void g() { }
 \end{lstlisting}
 
-	\item The usage of \texttt{std::enable\_if} is very flexible, it can be used 1) template function parameter, 2) template function return, 3) as a template parameter in one template function to suppress it, 4) as a template parater in two template functions to overload it. 
 
-	\item In C++17, we can also use \texttt{if constexpr}, that make our code looks clean and simple. But the basic idea is the same. If your compiler support \texttt{if constexpr} or \texttt{concept}, please use it instead of \texttt{std::enable\_if}. I am afraid that this will be deprecated in the future version of C++ standard. 
+	\item In C++17, we can use if constexpr, which makes our code cleaner and simpler. However, the basic idea remains the same. If your compiler supports if constexpr or concepts, it's preferable to use them instead of \texttt{std::enable\_if}. There is concern that \texttt{std::enable\_if} may be deprecated in future versions of the C++ standard.
 
 \begin{lstlisting}[numbers=none]
 template <typename T>
@@ -12328,7 +12324,7 @@ auto get_value(T t){
 
 \subsubsection{A practical example}
 \begin{itemize}
-    \item If we want to add some items to a kind of "container". We need to check if a container has reserve method(for example, vector). If we have this method, use it to reserve space before we use push back. Otherwise, we use push back directly. Below code build a type trait, it uses void\_t and true\_type. We have introduced before. 
+    \item If we want to add some items to a kind of "container". We need to check if a container has reserve method(for example, vector). If we have this method, use it to reserve space before we use push back. Otherwise, we use push back directly. Below code build a type trait, it uses void\_t and true\_type. 
 \begin{lstlisting}
 template <typename T, typename = void_t<>>
 struct has_reserve : false_type {};
@@ -12337,7 +12333,7 @@ template <typename T>
 struct has_reserve<T, void_t<decltype(declval<T&>().reserve(1U))>> : true_type {};   
 \end{lstlisting}
 
-    \item use tag dispatch to get static dynamic.
+    \item Use tag dispatching to select different implementations of functions or algorithms based on types or traits known at compile time. This can indeed improve efficiency by avoiding runtime checks or by specializing implementations for specific scenarios. 
 \begin{lstlisting}
 template <typename C, typename T>
 void _append(C& container, T* ptr, size_t size, true_type) {
@@ -12391,7 +12387,7 @@ auto append(C& container, T* ptr, size_t size)->
 }
 \end{lstlisting}
 
-\item use \texttt{if constexpr}
+\item Use \texttt{if constexpr} after C++17.
 \begin{lstlisting}
 template <typename C, typename T>
 void append(C& container, T* ptr, size_t size){
@@ -12404,7 +12400,7 @@ void append(C& container, T* ptr, size_t size){
 }   
 \end{lstlisting}
 
-	\item In C++ 20, we can use concept directly.  You can see that we use \texttt{HasReserve} here directly. The whole code is very clear, That is why we call concept as "future of generic programming" 
+	\item In C++20, concepts can be used directly. Here, we directly utilize HasReserve. The code becomes clearer, which is why concepts are referred to as the "future of generic programming."
 \begin{lstlisting}
 template<typename T>
 concept HasReserve = requires(T a){
@@ -12422,21 +12418,21 @@ void append(C& container, T* ptr, size_t size){
 
 \end{itemize}
 
+
 \subsection{Type traits Summary}
 
-
 \begin{itemize}
-	\item Common type traits implementation methods includes
+	\item Common type traits implementation methods includes:
 	\begin{enumerate}
 		\item template partial specification: \texttt{is\_integer}
-		\item use basic trait to build more complex one: \texttt{is\_swap}
-		\item use template parameter deduction : \texttt{std::is\_function} and
+		\item Use basic trait to build more complex one: \texttt{is\_swap}
+		\item Use template parameter deduction : \texttt{std::is\_function} and
 		\texttt{is\_member\_function}, \texttt{is\_array}, \texttt{is\_class(T::*)}
-		\item define trait in existing class : \texttt{iterator\_trait}.
-		\item template class partial specification, with help of \texttt{decltype}, \texttt{declval} and void\texttt{\_t}. A good example is \texttt{has\_serialize}.	
+		\item Define trait in existing class : \texttt{iterator\_trait}.
+		\item Template class partial specification, with help of \texttt{decltype}, \texttt{declval} and void\texttt{\_t}. A good example is \texttt{has\_serialize}.	
 	\end{enumerate}
 	
-	\item Use a few ways to implement type traits, then use these type traits to achieve static polymorphism and increase efficiency. This is the basic idea of generic programming.
+	\item Use above ways to implement type traits, then use these type traits to achieve static polymorphism and increase efficiency. This is the basic idea of generic programming.
 \begin{center}
 	\includegraphics[scale=0.9]{pics/tag_dispatch.png}
 \end{center}
@@ -12447,7 +12443,7 @@ void append(C& container, T* ptr, size_t size){
 	
 	\begin{tabular}{|p{0.14\textwidth} |p{0.38\textwidth}|p{0.38\textwidth}|}
 		\hline
-		C++ version & build type trait method  & use type trait method \\
+		C++ version & build type traits  & use type traits \\
 		\hline
 		C++11& static and size of & enable\_if \\
 		\hline
@@ -12462,8 +12458,8 @@ void append(C& container, T* ptr, size_t size){
 	We should use the new generation technology if the compiler supports it, because it's easier to write and maintain. The requires expression and requires clause will be introduced in the Modern C++ chapter. You can see how elegant the requires expression is when we want to check if T has a certain member function.
 \begin{lstlisting}
 template <typename T>
-concept HasSquare = requires (T t) {
-	{t.square()} -> std::convertible_to<int>;
+concept hasSerialize = requires (T t) {
+	{t.Serialize()} -> std::convertible_to<string>;
 }; 	
 \end{lstlisting}	
 	
@@ -12471,6 +12467,74 @@ concept HasSquare = requires (T t) {
 
 
 \section{Template common idiom}
+\subsection{meta-programming basic}
+\begin{itemize}
+	
+	\item Basic component in meta-programming.
+	\begin{enumerate}
+		\item enum, static, constexpr constant in compiling time
+		\item typedef and using to define meta data.
+		\item template, you can think that is "meta function". All the logic are calculated inside it when the compiler analyze the template, it's core idea in meta-programming.
+		
+\begin{lstlisting}[numbers=none]
+template<int N, int M>
+struct meta_func{
+	static constexpr int value = N+M;
+}
+
+cout<<meta_func<10, 20>::value. 		
+\end{lstlisting}		
+		
+	\end{enumerate}
+	
+	\item Implement branch, based on template specification.
+\begin{lstlisting}[numbers=none]
+template<bool B>
+class IfElse{};
+
+template<bool true>
+class IfElse{
+	static inline void func(){
+		cout<<"output true";
+	}
+};
+
+template<bool false>
+class IfElse{
+	static inline void func(){
+		cout<<"output false";
+	}
+};
+
+IfElse<(2+3 ==6)>::func(); //usage. 	
+\end{lstlisting}	
+	\item Implement loop, based on recursive. 
+\begin{lstlisting}[numbers=none]
+template<int Number>
+struct Fibo{
+	enum{
+		value = Fibo<Number-1>::value+Fibo<Number-2>::value
+	};
+};
+
+template<>
+struct Fibo<0>{
+	enum{
+		value = 0
+	};
+};
+
+template<>
+struct Fibo<1>{
+	enum{
+		value = 1
+	};
+};
+\end{lstlisting}		
+	
+	
+\end{itemize}
+
 
 \subsection{policy, mixin and CRTP}
 These three patterns are associated, so I put them together. 
@@ -12478,7 +12542,7 @@ These three patterns are associated, so I put them together.
 \subsubsection{policy}
 \begin{itemize}
 	
-	\item The Policy class can be thought of as an optional of multiple inheritance. Why do we use private inheritance here? Because we don't want to expose \texttt{print} and \texttt{message} methods. We just want to use it. So we use private inheritance here.
+	\item The Policy class can be viewed as employing a form of multiple inheritance, akin to an optional inheritance approach. We use private inheritance to encapsulate the print and message methods, preventing their exposure. This way, we can utilize them internally without making them accessible externally.
 	
 \begin{lstlisting}[numbers=none]
 class OutputPolicyWriteToCout{
@@ -12526,7 +12590,7 @@ HelloWorldGerman hello_world2;
 hello_world2.run(); // prints "Hallo Welt!"
 \end{lstlisting}
 	
-	\item If polymorphism can be determined at compile time, we can use 'static polymorphism' by injecting a class with static methods using template parameters. These methods can be inlined and will incur no runtime overhead.
+	\item When polymorphism can be resolved at compile time, we can leverage 'static polymorphism' by employing a class with static methods injected via template parameters. These methods can be inlined, resulting in no runtime overhead. This approach is commonly seen in the STL, often implemented using functors. Despite the implementation specifics, the fundamental idea remains consistent.
 	
 \begin{lstlisting}[frame=single, language=c++]
 // char_traits::eq, traits with case-insensitive eq:
@@ -12544,7 +12608,7 @@ std::cout<< "found at position" <<str.find('t') ;
 \end{lstlisting}
 
 	
-	\item This kind of example can be found frequently in the STL, often implemented using a functor. The basic idea remains the same. All of these technologies are part of generic programming. A good example of this is found in the book "Modern C++ Design", where the first chapter introduces the policy pattern and the second chapter introduces several techniques for managing type information at compile time. 
+	\item A good example of this is found in the book "Modern C++ Design", where the first chapter introduces the policy pattern and the second chapter introduces several techniques for managing type information at compile time. 
 	
 \end{itemize}
 
@@ -12552,16 +12616,31 @@ std::cout<< "found at position" <<str.find('t') ;
 \begin{itemize}
 	
 	\item How can we understand Mixin? At a semantic level, it's the idea of adding new code (new functions) to an existing class. At a syntactic level, there are different ways to achieve this goal. For example, the following three different approaches are all considered "Mixin", and each has its own unique application scenarios.
+	
 	\begin{enumerate}
-		\item Method 1 involves creating a base (Mixin) class that includes the regular \texttt{operator new}, and then having your own existing class inherit from it. This method is introduced in the "Memory" chapter's "Operator new overload" section. For this scenario, the Mixin class doesn't depend on the existing class; it simply adds some common functions.	
+		\item Method 1 involves creating a base (Mixin) class that includes the regular operator new, and then having your own existing class inherit from it. This method is introduced in the "Memory" chapter's "Operator new overload" section. In this scenario, the Mixin class doesn't depend on the existing class; it simply adds some common functions.
 		
-		\item Method 2 involves using CRTP, such as \texttt{enable\_from\_this}. The main point here is that CRTP will generate a new base class, which is different due to the different child class. Let me explain this in detail. In the next section, "CRTP", we provide an example of how to calculate the number of objects that have been generated. The CRTP pattern works for this example, but method 1 doesn't work. The same idea also applies to \texttt{enable\_from\_this}, as they require different \texttt{weak\_ptr} points for different classes.
+		\item Method 2 involves using CRTP, such as enable\_from\_this. The key point here is that CRTP generates a new base class specific to each child class. In the next section, we provide an example of how to calculate the number of objects generated. The CRTP pattern works for this example, but method 1 does not. A similar concept applies to enable\_from\_this, as they require different weak\_ptr points for different classes.
 		
-		\item Method 3 is an template class, which is parameterized on its base class. Such as RepeatPrint which I will introduce next.
+		\item Method 3 is a template class parameterized on its base class. An example is RepeatPrint, which I will introduce next.
 	\end{enumerate}
 	In one word, please understand Mixin in semantic way, not in syntax way.
 	
-	\item Method 3 involves using template classes that define generic behavior and are designed to inherit from the type you wish to plug their functionality onto. For example, RepeatPrint is a Mixin class, where T is the type you wish to plug the functionality onto.
+	\item Method 3 involves using template classes that define generic behavior and are designed to inherit from the type you wish to plug their functionality onto. Supposing that we have an existing type which has a print method.
+\begin{lstlisting}[numbers=none]
+class Name{
+public:
+	Name(std::string firstName, std::string lastName)
+	: firstName_(std::move(firstName)), lastName_(std::move(lastName)) {}
+	
+	void print() const{
+		std::cout << lastName_ << ", " << firstName_ << '\n';
+	}
+private:
+	std::string firstName_, lastname;
+};	
+\end{lstlisting}	
+	RepeatPrint is a Mixin class, where T is the type you wish to plug the functionality onto.
 	
 \begin{lstlisting}[numbers=none]
 template<typename T>
@@ -12575,32 +12654,19 @@ class RepeatPrint : T{
 };
 \end{lstlisting}
 	
-	\item Supposing that we have an existing type which has a print method.
-\begin{lstlisting}[numbers=none]
-class Name{
-public:
-	Name(std::string firstName, std::string lastName)
-	: firstName_(std::move(firstName)), lastName_(std::move(lastName)) {}
-	
-	void print() const{
-		std::cout << lastName_ << ", " << firstName_ << '\n';
-	}
-private:
-	std::string firstName_, lastname;
-};
-\end{lstlisting}
-	
 	\item Client side can use \texttt{RepeatPrint} class by two ways:
 \begin{lstlisting}[numbers=none]
-template<typename T> //method 1, we use object generator pattern
+RepeatPrint<Name> rp{"Eddard", "Stark"}; \\method 1, specify type explicitly
+rp.repeat(10)
+
+template<typename T> //method 2, we use object generator pattern
 RepeatPrint<T> rpGen(T const& printable){
 	return RepeatPrint<T>(printable);
 }
 Name ned{"Eddard", "Stark"};    
 rpGen(ned).repeat(10);
 
-RepeatPrint<Name> rp{"Eddard", "Stark"}; \\method 2, specify type explicitly
-rp.repeat(10)
+
 \end{lstlisting}
 
 \end{itemize}
@@ -12608,7 +12674,7 @@ rp.repeat(10)
 
 \subsubsection{CRTP}
 \begin{itemize}
-	\item The basic syntax is Templates Parameterised by a Derived Class.
+	\item The basic syntax is Templates parameterised by a Derived Class.
 	
 \begin{lstlisting}[numbers=none]
 template <class T> 
@@ -12645,6 +12711,7 @@ struct dog : animal<dog> {
 struct cat : animal<cat> {
 	void speak() { cout << "miao!" << endl; }
 };
+
 template<typename specific_animal>
 void speakFun(animal<specific_animal> &animal) {
 	animal.speak();
@@ -12655,7 +12722,7 @@ dog d;
 speakFun(d); // output miao
 \end{lstlisting}
 
-\item Adding functionality to existing class, that is a kind of "Mixin". The code below calculates the number of objects that have been generated.
+	\item Adding functionality to existing class, that is a kind of "Mixin". The code below calculates the number of objects that have been generated.
 
 \begin{lstlisting}[]
 template <typename T>
@@ -12749,124 +12816,72 @@ int main(){
 %}
 %\end{lstlisting}
 
-	\item Another interesting example is CRTP on CRTP. How to understand below code? \texttt{Scale} add functionality to \texttt{Sensitivity}, \texttt{crtp} add functionality to \texttt{Scale} and \texttt{Square}.
-\begin{lstlisting}
-template <typename T, template<typename> class crtpType>
-struct crtp{
-	T& underlying() { return static_cast<T&>(*this); }
-	T const& underlying() const { return static_cast<T const&>(*this); }
-private:
-	crtp(){}
-	friend crtpType<T>;
-};
-
-template <typename T>
-struct Scale : crtp<T, Scale>{
-	void scale(double multiplicator){
-		this->underlying().setValue(this->underlying().getValue() * multiplicator);
-	}
-};
-template <typename T>
-struct Square : crtp<T, Square>{
-	void square(){
-		this->underlying().setValue(this->underlying().getValue() * this->underlying().getValue());
-	}
-};
-
-class Sensitivity : public Scale<Sensitivity>, public Square<Sensitivity>{
-	public:
-	double getValue() const { return value_; }
-	void setValue(double value) { value_ = value; }	
-private:
-	double value_{3.3};
-};
-
-Sensitivity s;
-s.scale(2);
-cout<<s.getValue()<<endl;  //output 6.6 here. 
-\end{lstlisting}
-
-	\item For CRTP: 1) impacts the definition of the existing class, because it has to inherit from the CRTP; 2) client code uses the original class directly and benefits from its augmented functionalities.
-
-	\item For Mixin class, 1) leaves the original class unchanged. 2) client code doesn’t use the original class directly, it needs to wrap it into the mixin to use the augmented functionality. 3) inherits from a the original class even if it doesn’t have a virtual destructor. This is ok unless the Mixin class is deleted polymorphically through a pointer to the original class.
-
-\end{itemize}
-
-\subsubsection{meta-programming}
-\begin{itemize}
-
-
-\item basic component.
+%	\item Another interesting example is CRTP on CRTP. How to understand below code? \texttt{Scale} add functionality to \texttt{Sensitivity}, \texttt{crtp} add functionality to \texttt{Scale} and \texttt{Square}.
+%\begin{lstlisting}
+%template <typename T, template<typename> class crtpType>
+%struct crtp{
+%	T& underlying() { return static_cast<T&>(*this); }
+%	T const& underlying() const { return static_cast<T const&>(*this); }
+%private:
+%	crtp(){}
+%	friend crtpType<T>;
+%};
+%
+%template <typename T>
+%struct Scale : crtp<T, Scale>{
+%	void scale(double multiplicator){
+%		this->underlying().setValue(this->underlying().getValue() * multiplicator);
+%	}
+%};
+%template <typename T>
+%struct Square : crtp<T, Square>{
+%	void square(){
+%		this->underlying().setValue(this->underlying().getValue() * this->underlying().getValue());
+%	}
+%};
+%
+%class Sensitivity : public Scale<Sensitivity>, public Square<Sensitivity>{
+%public:
+%	double getValue() const { return value_; }
+%	void setValue(double value) { value_ = value; }	
+%private:
+%	double value_{3.3};
+%};
+%
+%Sensitivity s;
+%s.scale(2);
+%cout<<s.getValue()<<endl;  //output 6.6 here. 
+%\end{lstlisting}
+	
+	\item Considering adding functionality to an existing class, CRTP (as seen in the previous counter example) and a template class parameterized on its base class (as seen in the previous RepeatPrint example) have some differences:
 \begin{enumerate}
-	\item enum static, constexpr constant in compiling time
-	\item typedef and using to define meta data.
-	\item template, you can think that is "meta function" all the logic are calculated inside it when the compiler analyze the template.  It's core idea in meta-programming.
-	\item ::
-	\item please see a good example below. 
-\begin{lstlisting}
-	template<int N, int M>
-	struct meta_func{
-		static constexpr int value = N+M;
-	}
+	\item For counter: 
+	\begin{enumerate}
+		\item Impacts the definition of the existing class because it has to inherit from the CRTP.
+		\item Client code uses the original class directly and benefits from its augmented functionalities.
+	\end{enumerate}
 	
-	cout<<meta_func<10, 20>::value. 
-\end{lstlisting}
 	
+	\item For RepeatPrint: 
+	\begin{enumerate}
+		\item Leaves the original class unchanged.
+		
+		\item Client code doesn’t use the original class directly; it needs to wrap it into the mixin to use the augmented functionality.
+		
+		\item Inherits from the original class even if it doesn’t have a virtual destructor. This is okay unless the Mixin class is deleted polymorphically through a pointer to the original class.
+	\end{enumerate}
 \end{enumerate}
-	\item branch, based on template specification
-\begin{lstlisting}
-template<bool B>
-class IfElse{};
-
-template<bool true>
-class IfElse{
-	static inline void func(){
-		cout<<"output true";
-	}
-};
-
-template<bool false>
-class IfElse{
-	static inline void func(){
-		cout<<"output false";
-	}
-};
-
-IfElse<(2+3 ==6)>::func(); //usage. 
-\end{lstlisting}
-	\item loop, based on recursive. 
-\begin{lstlisting}
-template<int Number>
-struct Fibo{
-	enum{
-		value = Fibo<Number-1>::value+Fibo<Number-2>::value
-	};
-};
-
-template<>
-struct Fibo<0>{
-	enum{
-		value = 0
-	};
-};
-
-template<>
-struct Fibo<1>{
-	enum{
-		value = 1
-	};
-};
-\end{lstlisting}
 	
 
 \end{itemize}
+
 
 
 \subsubsection{A practical example}
 \begin{itemize}
-	\item Consider the Task Manager framework, which requires certain functionalities to be shared among task implementations. For instance, task execution timing and logging of start and completion messages are two common features. In this context, we have explored six different approaches to implementing these features.
+	\item In the context of the Task Manager framework, certain functionalities need to be shared among task implementations. For example, task execution timing and logging of start and completion messages are common features. In this context, we have explored six different approaches to implementing these features.
 	
-	\item method 1, use Mixin
+	\item Method 1, use "Mixin" method
 	\begin{enumerate}
 		
 		\item The function name (Execute) can be different. Here, we use the same name because we can recursive use it. such as: \texttt{LoggingTask< TimingTask< MyTask > > Task;}
@@ -12896,20 +12911,21 @@ LoggingTask< MyTask > task;
 task.Execute();
 \end{lstlisting}
 		
-		\item if you have a \texttt{MyTask} variable, you can build a helper function to build Mixin class 
+		\item If you have a \texttt{MyTask} variable, you can build a helper function to build Mixin class 
 \begin{lstlisting}[numbers=none]
 template<typename Task>
 LogTask<Task> getLogTask(Task const& task){
 	//Call the below explicit constructor in LogTask class
 	return LogTask<Task>(task);
 }
-		
-getLogTask(task).Execute //with log functions
+
+MyTask myTask;		
+getLogTask(myTask).Execute //with log functions
 \end{lstlisting}
 		
 	\end{enumerate}
 	
-	\item method 2, use CRTP. Use base class extend and reuse function(Execute\_imp). Expose Execute interface to client by base class. Client can directly use MyTask.
+	\item Method 2, use CRTP. Use base class extend and reuse function(Execute\_imp). Expose Execute interface to client by base class. Client can directly use MyTask.
 	
 \begin{lstlisting}[numbers=none]
 template< class Task >
@@ -12929,11 +12945,11 @@ public:
 	}
 };
 	
-MyTask task;
+MyTask task; // use MyTask variable directly.
 task.Execute();
 \end{lstlisting}
 	
-	\item method 3, template Method. No template, just use run time polymorphism. Base class define a basic flow of action, some part of action is override in the Child class, That is Template Method pattern in design pattern.
+	\item Method 3, template Method. Just use run time polymorphism. Base class define a basic flow of action, some part of action is override in the child class, That is typical "Template Method pattern" in design pattern.
 
 \begin{lstlisting}[numbers=none]
 class BaseLoggingTask{
@@ -12946,7 +12962,7 @@ public:
 	virtual void OnExecute() = 0;
 };
 	
-// Concrete Task implementation that reuses the logging code of the BaseLoggingTask
+// Concrete Task implementation that reuses the logging code of BaseLoggingTask
 class MyTask : public BaseLoggingTask{
 public:
 	virtual void OnExecute(){
@@ -12955,7 +12971,7 @@ public:
 };
 	\end{lstlisting}
 	
-	\item method 4, command pattern. For Logging Task, you can see the class \textbf{includes and derived from ITask at the same time}. 
+	\item Method 4, command pattern. For Logging Task, you can see the class \textbf{includes and derived from ITask at the same time}. 
 
 \begin{lstlisting}[numbers=none]
 class LoggingTask : public ITask{
@@ -12992,7 +13008,7 @@ t->Execute();
 	\end{center}
 	
 	
-	\item method 5, mixin many mixin
+	\item Method 5, mixin many mixin.
 
 \begin{lstlisting}[numbers=none]
 template< class T >
@@ -13031,7 +13047,7 @@ Task t4;
 t4.Execute();
 \end{lstlisting}
 
-		\item method 6, policy base
+		\item Method 6, policy base.
 \begin{lstlisting}[numbers=none]
 class coutLog{
 	void beginLog(){
@@ -13055,18 +13071,20 @@ class Task: private LogPolicy, TimePolicy{
 	
 	\item Comparison of above methods.
 	\begin{enumerate}
-		\item Policy pattern can be useful when there are frequent changes in log and time function.
-		\item Both Mixin and command can be combined to itself to perform multiple actions.
-		\item template is more efficient than inheritance. 
-		\item Command pattern has similar structure to the the composite pattern.
-		\item Mixin do not modify the current class, while CRTP changes the interface of current class.
+		\item The Policy pattern can be useful when there are frequent changes in logging and timing functions.
+		\item Both Mixin and Command patterns can combine themselves to perform multiple actions.
+		\item Templates are more efficient than inheritance.
+		\item The Command pattern has a structure similar to the Composite pattern.
+		\item Mixins do not modify the current class, while CRTP changes the interface of the current class.
 	\end{enumerate}
 	
 \end{itemize}
 
 \subsubsection{summary}
 \begin{itemize}
-	\item The basic idea is illustrated below in this important figure, which is worth exploring to gain a deeper understanding. For example, if we consider the class \texttt{Foo: T}, we can refer to it as the policy idiom if we focus on \texttt{Foo}, or as the mixin idiom if we focus on \texttt{T}. In the mixin idiom, \texttt{Foo} is only intended to add some functionality to \texttt{T}. CRTP follows the same idea, where we use static polymorphism when focusing on the parent class, and add functionality to the child class when focusing on it. A common use case for this idea is with \texttt{std::enable\_shared\_from\_this}.
+	
+	
+	\item The basic idea is illustrated below in this important figure, which is worth exploring to gain a deeper understanding. For example, considering the class \texttt{Foo<T>}, we can refer to it as the Policy Idiom if we focus on Foo, or as the Mixin Idiom if we focus on \texttt{T}. In the Mixin Idiom, \texttt{Foo} is intended solely to add functionality to \texttt{T}. CRTP follows a similar concept, leveraging static polymorphism when focusing on the parent class and augmenting functionality in the child class. For augmenting functionality, a common application of this concept is seen with \texttt{std::enable\_shared\_from\_this}.
 
 		\includegraphics[width=0.9\linewidth]{pics/template1.drawio.png}
 		
@@ -13075,10 +13093,10 @@ class Task: private LogPolicy, TimePolicy{
 		%\includegraphics[width=0.9\linewidth]{pics/mixin_tt.png}
 		\includegraphics[width=0.9\linewidth]{pics/template2.drawio.png}
 		
-	\item For CRTP pattern, there are two advanced usage. 1)we can use template class as child class, an example is \texttt{yan\_vect} code in CRTP section.  2)we can use template template parameter too. A goog example is adding scale and square to sensitivity code in CRTP section. 
-	
-		%\includegraphics[width=0.9\linewidth]{pics/crtp_tt.png}
-		\includegraphics[width=0.9\linewidth]{pics/template3.drawio.png}
+%	\item For CRTP pattern, there are two advanced usage. 1)we can use template class as child class, an example is \texttt{yan\_vect} code in CRTP section.  2)we can use template template parameter too. A goog example is adding scale and square to sensitivity code in CRTP section. 
+%	
+%		%\includegraphics[width=0.9\linewidth]{pics/crtp_tt.png}
+%		\includegraphics[width=0.9\linewidth]{pics/template3.drawio.png}
 
 \end{itemize}
 
@@ -13088,7 +13106,7 @@ class Task: private LogPolicy, TimePolicy{
 
 \begin{itemize}
 	
-	\item Most compilers treat all member function pointers identically, regardless of the class. For most of them, a straightforward \texttt{reinterpret\_cast<>} from the given member function pointer to the another member function pointer would work. This technology is used widely as a kind of member function type erasure method. The detail can be found in this link:
+	\item Most compilers treat all member function pointers identically, regardless of the class. For many of them, a straightforward \texttt{reinterpret\_cast<>} from one member function pointer to another would work. This technology is widely used as a form of member function type erasure method. The detail can be found in this link:
 	
 	https://www.codeproject.com/Articles/7150/Member-Function-Pointers-and-the-Fastest-Possible
 \begin{lstlisting}
@@ -13113,7 +13131,7 @@ PMB pmb =(PMB)(pma); //to an unrelated member function pointer.
 	\item When you implement type erasure, it always starts with making a list of the things you want to be able to do with your type-erased object - call it, destroy it, copy it, and so on. For example, A \texttt{std::function} affords copying and calling. A \texttt{std::any} affords copying, but not calling. A \texttt{std::move\_only\_function} affords calling and moving, but not copying.
 
 	
-	\item Each item in your requirement list becomes a virtual member function of \texttt{AbstractWhatever}, which will then be appropriately overridden by \texttt{WrappingWhatever<T>} for T. At the top-level, \texttt{Whatever} stores a \texttt{unique\_ptr<AbstractWhatever> ptr\_} (and/or an SBO buffer) and provides a clean non-virtual interface that is implemented entirely by calling virtual member functions on \texttt{*ptr\_}. An example implementation is illustrated in the code and picture below.
+	\item Each item in your requirement list becomes a virtual member function of \texttt{AbstractWhatever}, which will then be appropriately overridden by \texttt{WrappingWhatever<T>} for T. At the top-level, \texttt{Whatever} stores a \texttt{unique\_ptr<AbstractWhatever> ptr\_} (and/or an SBO buffer) and provides a clean non-virtual interface that is implemented entirely by calling virtual member functions on \texttt{*ptr\_}. An example implementation is illustrated in the code and picture below. The core idea is: \textbf{Use a template class to hold different types and inherit this template class from a base class that exposes interfaces to clients}.
 
 \begin{center}
 	\includegraphics[scale=0.9]{pics/function1.png}
