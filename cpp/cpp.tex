@@ -8251,7 +8251,7 @@ void processPointer<void>(void*) = delete; //can't use void to instantiate.
 		
 	\item A summary of previous rules is illustrated in below figure. 
 	\begin{center}
-		\includegraphics[scale=0.6]{pics/ob_m.drawio.png}
+		\includegraphics[scale=0.66]{pics/ob_m.drawio.png}
 	\end{center}
 	
 	\item  The justification is that declaring a copy operation (construction or assignment) indicates that the normal approach to copying an object(memberwise copy) isn't appropriate for the class, and compilers thinks that if memberwise copy isn't appropriate for the copy operations, memberwise move probably isn't appropriate for the move operations either. The same idea as the previous item, declaring a move operation (construction or assignment) in a class causes compilers to disable the copy operations.
@@ -8260,9 +8260,6 @@ void processPointer<void>(void*) = delete; //can't use void to instantiate.
 	
 	\item C++11 deprecates the automatic generation of copy operations for classes declaring copy operations or a destructor. If you declare a destructor, declare your copy members too, even thought not necessary. This means that if you have code that depends on the generation of copy operations in classes declaring a destructor or one of the copy operations, you should consider upgrading these classes to eliminate the dependence.  Provided the behavior of the compiler-generated functions is correct (i.e, if memberwise copying of the class's non-static data members is what you want), your job is easy, because C++11's \texttt{=default} lets you say that explicitly:
 		
-
-
-	
 %\begin{center}
 %\includegraphics[scale=0.6]{pics/sm4.png} \newline
 %\end{center}
@@ -8332,7 +8329,7 @@ struct Example {
     
 \end{itemize}
 
-\subsubsection{copy and swap idiom, rule of four and half.}
+\subsubsection{Copy and swap idiom, rule of four and half.}
 \begin{itemize}
 	\item Any class that manages a resource (like a wrapper, such as a smart pointer) needs to implement The Big Three. While the goals and implementation of the copy constructor and destructor are straightforward, the copy-assignment operator is arguably the most nuanced and difficult. How should it be done? What pitfalls need to be avoided?
 	
@@ -8488,18 +8485,7 @@ public:
 		
 		\item Disable copying and move semantics for the class, because it doesn't make sense to allow it, such as \texttt{std::mutex}
 		
-		\item For \texttt{std::unary\_function}, it's base class, but it's just trait class.(extract type information from a function). You can declare its destructor as protect and non virtual. Then your client can't write below code:
-\begin{lstlisting}[numbers=none]
-class unary_function {
-protected:
-	~unary_function(){
-		...
-	}
-};
 
-unary_function *base_ptr = new unary_function{};
-delete base_ptr; //compiler barks here.
-\end{lstlisting}
 	\end{enumerate}
 
 \end{itemize}
@@ -8621,58 +8607,50 @@ class A& operator=(const class A& rhs){
 \subsubsection{Polymorphism by inheritance}
 
 \begin{itemize}
-	\item Polymorphism is a powerful design mechanism that allows for the encapsulation of related types behind an abstract public interface. However, the cost is an additional level of indirection, both in terms of memory acquisition and type resolution. This style of programming is called object-oriented programming. Polymorphism is supported only by references and pointers. See the source code below:
+	\item Polymorphism is a powerful design mechanism in object-oriented programming that enables encapsulation of related types behind an abstract public interface. However, it comes with the cost of additional indirection, affecting both memory allocation and type resolution. Polymorphism is primarily supported through references and pointers.
 
 \begin{lstlisting}[numbers=none]
-class A{
+class Base{
 public:
 	virtual void fun(){ cout<<"A";}
 };
 	
-class B: public A{
+class Derived: public Base{
 public:
 	void fun(){cout<<"B";}
-	int m_b = 100;
+	int m_d = 100;
 };
 \end{lstlisting}
 
-	\item Base pointer can't access class member in derived class directly.
+	\item Base pointer can't access class member in derived class directly. In line 4 and 5, pointer \texttt{pb} has type. The pointer type alter the interpretation of the size and composition of the memory. Pointer type is \texttt{Base}, so the size of memory which pointer address is sizeof(Base), that's why you can't see the \texttt{m\_d} at all. When you change the pointer type from \texttt{Base} to \texttt{Derived}, then the memory which pointer address is \texttt{sizeof(Derived)}, interpretation supports \texttt{->m\_d} now.
 	
 \begin{lstlisting}
-B b;
-A* pa = &b;
-cout<<b.m_b;    //OK,You can access class member by object directly.
-//cout<<pa->m_b;   //ERROR 
-//cout<<(*pa).m_b; //ERROR
-cout<<static_cast<B*>(pa)->m_b; //OK
+Derived d;
+Base* pb = &d;
+cout<<d.m_b;    //OK,You can access class member by object directly.
+//cout<<pb->m_b;   //ERROR 
+//cout<<(*pb).m_b; //ERROR
+cout<<static_cast<Derived*>(pb)->m_b; //OK
 \end{lstlisting}
-\begin{description}
-	\item[Line 4-5:] Error, it doesn't work. Pointer has type. The pointer type alter the interpretation of the size and composition of the memory. Pointer type is \texttt{A}, so the size of memory which pointer address is sizeof(A), that's why you can't see the \texttt{m\_b} at all.
-	\item[Line 6:] OK, when you change the pointer type from A to B, then the memory which pointer address is \texttt{sizeof(B)}, interpretation also support \texttt{->m\_b} now. 
-\end{description}
 
-\item Base object doesn't support polymorphism.
+
+\item Base object doesn't support polymorphism. When a base class object is directly initialized or assigned with a derived class object, the derived object is sliced to fit into the available memory resources of the base type. Virtual table content changed. There is nothing of the derived type remaining. Polymorphism is not present, and an observant compiler can resolve an invocation of a virtual function through the object at compile time, thus by-passing the virtual mechanism.
 \begin{lstlisting}
-B b;
-A a = b; //sliced happen here.
-a.fun(); //output A
+Derived d;
+Base b = d; //sliced happen here.
+b.fun(); //output A
 \end{lstlisting}
-\begin{description}
-	\item[Line 2:] When a base class object is directly initialized or assigned with a derived class object, the derived object is sliced to fit into the available memory resources of the base type. Virtual table content changed. There is nothing of the derived type remaining. 
-	
-	\item[Line 3:] Polymorphism is not present, and an observant compiler can resolve an invocation of a virtual function through the object at compile time, thus by-passing the virtual mechanism.
-\end{description}
 
-	\item A pointer or a reference support polymorphism because in derived class, we build virtual table, (adding indirect level.)
+	\item A pointer or a reference support polymorphism because inside derived class, compiler builds virtual table, (adding indirect level.)
 \begin{lstlisting}
-A& ra = b;
-ra.fun(); //output B
-A* pa = &b;  no sliced happen here
-pa->fun(); //output B
-(*pa).fun(); //output B, no sliced happen before.
+Base& rb = d;
+rb.fun(); //output B
+Base* pb = &d;  //no sliced happen here
+pb->fun(); //output B
+(*pb).fun(); //output B, no sliced happen before.
 		
-A* pa1 = new B; //virtual table content has not changed.
-(*pa1).fun(); //output B
+Base* pb1 = new B; //virtual table content has not changed.
+(*pb1).fun(); //output B
 \end{lstlisting}
 
 \end{itemize}
@@ -8681,64 +8659,66 @@ A* pa1 = new B; //virtual table content has not changed.
 
 \subsubsection{constructor and destructor in inheritance}
 \begin{itemize}
-	\item  \textbf{The subclass constructor will always call the base class constructor.} The idea behind this rule is to ensure that an object can be initialized properly. The constructor should NOT be virtual. If the subclass doesn't define any constructor, the compiler will implicitly define a default constructor, and this constructor will call the base class's default constructor. If the subclass has a constructor but doesn't explicitly call the base class's specified constructor, the constructor of the subclass will call the base class's default constructor (without any parameters). If the base constructor only has a specified constructor and no default constructor, the compiler will produce an error. If you want to explicitly call the base class's specified constructor, use the initialization list syntax.
+	\item  \textbf{The Derived constructor will always call the Base class constructor.} The idea behind this rule is to ensure that an object can be initialized properly. The constructor should NOT be virtual. If the Derived doesn't define any constructor, the compiler will implicitly define a default constructor, and this constructor will call the Base class's default constructor. If the Derived has a constructor but doesn't explicitly call the base class's specified constructor, the constructor of the Derived will call the Base class's default constructor (without any parameters). If the Base constructor only has a specified constructor and no default constructor, the compiler will produce an error. If you want to explicitly call the base class's specified constructor, use the initialization list syntax in Derived class.
 \begin{lstlisting}[frame=single, language=c++]
-class base{
+class Base{
 public:
-	base();  //default constructor
-	base(int b); //converting constructor
-	private:
-	int b;
+	Base();  //default constructor
+	Base(int b); //converting constructor
+private:
+	int m_b;
 };
 	
-class subclass: public base{
-	subclass();  //default constructor
-	subclass(int s, int b); // converting constructor1
-	subclass(int s);     //converting constructor2
-	int s;
+class Derived: public Base{
+public:
+	Derived();  //default constructor
+	Derived(int d, int b); // converting constructor1
+	Derived(int d);     //converting constructor2
+private:
+	int m_d;
 };
-	
-subclass::subclass(int s, int b): base(b){
-	m_s = s;
-}
 //////////////////////////////////////////
-subclass sc1(2,3); //call converting constructor, explicit call base constructor constructor.
-subclass sc2(2);  // implicit call base default constructor
-subclass sc3;   //if base has no default constructor, sc2 and sc3 report error
+Derived d1(2,3); //call converting constructor, explicit call Base constructor.
+Derived d2(2);  // implicit call Base default constructor
+Derived d3;   //if Base has no default constructor, d2 and d3 report error
 \end{lstlisting}
 
-	\item If you don't use explicit initialization list syntax to call the base class's specified constructor, you will either get an uninitialized value or you won't be able to initialize the base member, both of which are not good.
+	\item If you don't use explicit initialization list syntax to call the Base class's specified constructor, you will either get an uninitialized value or you won't be able to initialize the base member, both of which are not good.
 \begin{lstlisting}[frame=single, language=c++]
-DeriveClass::DeriveClass(int base_a, b){ // call default constructor,  
-	Derive_b = b
+DeriveClass::DeriveClass(int b, int d){ // call default constructor,  
+	m_d = d;
 }	
 
-DeriveClass::DeriveClass(int base_a, b) {
-	base_a = a  //It can be thought as a bad design.
-	Derive_b = b
+DeriveClass::DeriveClass(int b, int d) {
+	m_b = b;  //It can be thought as a bad design.
+	m_d = d;
+}
+
+Derived::Derived(int d, int b): Base(b){
+	m_d = d;
 }
 \end{lstlisting}
 \begin{description}
-	\item[Line 1:] it will call \texttt{base\_class} default constructor. in this case, \texttt{base\_a} is not assigned at all.
-	\item[Line 6:] You can't access private base member data. \texttt{base\_a} need to be public member data.
+	\item[Line 1:] it will call \texttt{Base} default constructor. in this case, \texttt{m\_d} is not assigned at all.
+	\item[Line 6:] You can't access private base member data. \texttt{m\_b} need to be public member data.
 \end{description}
 
-	\item If a base class has a destructor, but sub class doesn't have, compiler will produce an implicit default destructor, and this implicit default destructor will call base class destructor. If you define a subclass destructor, It will call base destructor automatically, you don't need to call it explicitly. The question is, How can you make sure you sub class destructor will be called if you use a base class pointer or reference? You need to make the base class destructor virtual. That introduce an important principle: \textbf{Make base class destructor public and virtual} (polymorphic deletion by base class pointer or reference), or protect and non-virtual, base classes need not always allow polymorphic deletion. For example, consider class templates such as \texttt{std::unary\_function}. This time, you should make destructor protected and non-virtual.
-\begin{lstlisting}[]
+	\item If a Base class has a destructor, but Derived doesn't have, compiler will produce an implicit default destructor for Derived class, and this implicit default destructor will call base class destructor. If you define a Derived destructor, It will call Base destructor automatically, you don't need to call it explicitly. The question is, How can you make sure you Derived destructor will be called if you use a base class pointer or reference? You need to make the Base class destructor virtual. That introduce an important principle: \textbf{Make base class destructor public and virtual} (polymorphic deletion by base class pointer or reference).	
+	
+	\item Base classes need not always allow polymorphic deletion. For example, For \texttt{std::unary\_function}, it's base class, but it's just trait class.(extract type information from a function). You can declare its destructor as protect and non virtual. Then your client can't write below code:
+\begin{lstlisting}[numbers=none]
 template <class Arg, class Result>
 struct unary_function{
 	typedef Arg    argument_type;
 	typedef Result result_type;
 };
-	
+
 void f( std::unary_function* f ){
 	delete f; // error, illegal code to use unary_function in this way.
-}
-\end{lstlisting}
-\begin{description}
-	\item[Line 8:] Make destructor protected and non-virtual, then this line will compile with failure, it's good design. 
-\end{description}
+}	
+\end{lstlisting}	
 
+	
 	\item Don't call base destructor explicitly, It will called automatically in the reverse order of construction.  And you should give a base destructor a definition, Or linker will report error it even you don't call it in your source code.
 	
 	\item Never throw an exception from a destructor. If exception A is thrown, then stack unwinding will occur. When an object is destructed, its destructor is called, and if another exception B is thrown by the destructor, the application will call the terminate function immediately. If you encounter an exception, catch it inside the destructor.
@@ -8748,7 +8728,7 @@ void f( std::unary_function* f ){
 \subsubsection{copy constructor in inheritance}
 
 \begin{itemize}
-	\item Copy constructor(assignment constructor) in inheritance sometimes causes \textbf{slicing problem}.   Below five are all SLICING problems, number 4 and number 5 is not very obvious. They all call base class constructor.  No matter what you input a reference to a derived class or not.
+	\item Copy constructor(assignment constructor) in inheritance sometimes causes \textbf{slicing problem}.   Below five are all clicing problems, number 4 and number 5 is not very obvious. They all call base class constructor.  No matter what you input a reference to a derived class or not.
 \begin{lstlisting}[numbers=none]
 class Base{};
 class Derived1 : Base{};
@@ -8783,7 +8763,7 @@ base* bp2 = new Derived2();
 %\end{lstlisting}
 	
 	
-\item Think a problem as below: how to make deep copy and avoid slicing in base class copy constructor?
+	\item Think a problem as below: how to make deep copy and avoid slicing in base class copy constructor?
 \begin{lstlisting}[numbers=none]
 class Base{};
 class Derived1 : Base{};
@@ -8808,15 +8788,13 @@ Base* Copy(Base& Bref){
 	Base* p = new Base(Bref) //Slicing happen here, error!
 }
 \end{lstlisting}
-	\item Continue- Think this problem: TypeID method.
+	\item Continue- Think this problem: TypeID method. Using \texttt{type\_id} and \texttt{dynamic\_cast} involve a lot of if and switch about type. Anytime if you use \texttt{dynamic\_cast} and \texttt{if}, you can think about using virtual function instead.
 \begin{lstlisting}[numbers=none]
 Base* Copy(Base& Bref){
 	int typeid;
 }
 \end{lstlisting}
-\begin{description}
-	\item[Line 2:] Use \texttt{type\_id} and \texttt{dynamic\_cast}. involve a lot of if and switch about type. anytime if you use \texttt{dynamic\_cast} and \texttt{if}, you can think about using virtual function instead.
-\end{description}
+
 	
 \item Continue- Think this problem: Virtual Clone method.
 	A function's return type is never considered part of its signature. You can override a member function with any return type as long as the return type could be used wherever the base class return type could be used.
@@ -8830,7 +8808,7 @@ class Derived1 : Base{
 }
 	
 Base* Copy(Base& Bref){
-	Base* p = Bref.Clone();
+	return Bref.Clone();
 }
 \end{lstlisting}
 	
@@ -8839,13 +8817,12 @@ Base* Copy(Base& Bref){
 	\item Assignment operator and copy constructor in inheritance summary:
 
 	\begin{enumerate}
-		\item Default Assignment  operator and  copy constructor in derived class which are implicitly produced by compiler will call default base assignment operator and copy constructor.
+		\item Default Assignment operator and copy constructor in derived class which are implicitly produced by compiler will call default base assignment operator and copy constructor.
 		
-		\item If derived class has no new operation. Don't need to define derived class Assignment operator and  copy constructor, implicit one will call base one automatically.
+		\item If derived class has no its own resource, don't need to define derived class Assignment operator and copy constructor, implicit one will call base one automatically.
 		
-		\item If derived class has new operation. You have to define derived class Assignment  operator and  copy constructor, it will NOT invoke assignment  operator and  copy constructor in base class any more.  Inside, manually invoke base class Assignment operator and copy constructor. Detail can be found in C++ primer p760. Syntax looks like below: see effective C++ Item 16.
+		\item If derived class has its own resource, you have to define derived class Assignment  operator and  copy constructor, it will NOT invoke assignment  operator and  copy constructor in base class any more.  Inside, manually invoke base class Assignment operator and copy constructor. Detail can be found in C++ primer p760. Syntax looks like below: For copy constructor, just initialization list syntax. For assignment operator, use two different methods depends on if base class declare its own assignment operator(). More detail can be seen in effective C++ Item 16.
 		
-		\item For copy constructor, just initialization list syntax. For assignment operator, use two different methods depends on if base class declare its own assignment operator(). Source code is below:
 		
 \begin{lstlisting}[frame=single, language=c++]
 DerivedClass::DerivedClass(const DerivedClass &dc): \
@@ -8865,7 +8842,7 @@ DerivedClass & DerivedClass::operator=(const DerivedClass &dc){
 		
 	\end{enumerate}
 
-	\item For conversion constructors and destructors, the derived class always calls the base class one. Even if you define your own constructor or destructor, it will also implicitly call the base class one. However, for copy constructors and assignment operators, the derived class's implicit constructor or operator will not call the base class one. If you define your own copy constructor or assignment operator, you need to manually call the base class one. This is the difference between conversion constructors and destructors versus copy constructors and assignment operators.
+	\item For conversion constructors and destructors, the derived class always calls the base class's constructor or destructor. Even if you define your own constructor or destructor, it will implicitly call the base class's version. However, for copy constructors and assignment operators, the derived class's implicit constructor or operator will not call the base class's version. If you define your own copy constructor or assignment operator, you need to manually call the base class's version. This is the key difference between conversion constructors and destructors versus copy constructors and assignment operators.
 
 %	\item There are three articles, you should read them together.\\
 %\\
@@ -8884,17 +8861,17 @@ DerivedClass & DerivedClass::operator=(const DerivedClass &dc){
 	
 	\item Only virtual functions are included in the vtbl. Friend functions cannot be virtual functions because they are not even members of the class. When a method is declared virtual in a base class, it is automatically virtual in the derived class, but it is still a good idea to explicitly declare it using the keyword \texttt{virtual} in the derived class declarations as well.
 	
-	\item Do not rewrite non-virtual base member functions. It is not overriding but overwriting. In fact, overwriting is not a standard concept in C++. Most of the time, you can refer to it as \textbf{name hiding}. If you redefine the same non-virtual function name in both the base and child classes, you cannot use dynamic binding, only static binding. 
+	\item Do not rewrite non-virtual base member functions. It is not overriding, but overwriting. In fact, overwriting is not a standard concept in C++. Most of the time, you can refer to it as \textbf{name hiding}. If you redefine the same non-virtual function name in both the base and derived classes, you cannot use dynamic binding, only static binding. 
 \begin{lstlisting}[frame=single, language=c++]
-class A{
+class Base{
 	f(int) {}
 };
-class B:public class A{
-	f(int)  {} // overwrite A::f(int)
+class Derived:public class Base{
+	f(int)  {} // overwrite Base::f(int)
 };
 
-A* pa = new B();
-pa->f(3) // call base f, because pa is A*, event it points to B. 	
+Base* pb = new Derived();
+pb->f(3) // call base f, because pb is Base*, event it points to Derived. 	
 \end{lstlisting}
 
 	\item For overriding to occur, several requirements must be met:
@@ -8906,6 +8883,7 @@ pa->f(3) // call base f, because pa is A*, event it points to B.
 		\item The constness of the base and derived functions must be identical.
 		\item The return types and exception specifications of the base and derived functions
 		must be \textbf{compatible}. Don't need to be the same.
+		
 		\item To these constraints, which were also part of C++98, C++11 adds one more: The functions' reference qualifiers must be identical. Below code demonstrate reference qualifier usage:
 \begin{lstlisting}
 class Widget {
@@ -8922,7 +8900,7 @@ makeWidget().doWork();  //call Widget::doWork &&
 
 	\end{enumerate}
 	
-	\item Any small error will not real override base virtual function. But creating a new virtual method with a different signature. such as examples below.
+	\item Any small mismatch may not real override base virtual function, but creating a new virtual method with a different signature. In below code, all functions in Derived class are \textbf{NOT} overriding functions. 
 
 \begin{lstlisting}[numbers=none]
 class Base {
@@ -8944,20 +8922,20 @@ public:
 	
 	\item Use the \texttt{override} specifier in derived class member functions to check if they match with the member function in the base class. It can overcome all implicit non-override problems in the previous source code.
 \begin{lstlisting}[numbers=none]
-struct A{
+struct Base{
 	virtual void foo();
 	void bar();
 	virtual void goo(const int);
 };
 	
-struct B : A{
+struct Derived : Base{
 	void foo() override; // OK: B::foo overrides A::foo.
 	void bar() override; // Error: A::bar is not virtual.
 	void goo(int) override; //Error; different signature. 
 }
 \end{lstlisting}
 	
-    \item Use \texttt{final} specifier in Base class, to stop sub-class override.
+    \item Use \texttt{final} specifier in Base class, to stop Derived class to override it.
 \begin{lstlisting}[numbers=none]
 class Base{
 	virtual void method1() final;
