@@ -13486,9 +13486,9 @@ Directory<int> var_d1;
 \subsection{Basic knowledge}
 \begin{itemize}
 
-	\item Using \texttt{std::vector} or \texttt{std::string} instead of dynamically allocating arrays with new[] is generally recommended for better memory management and safety in C++. Using \texttt{reserve()} can indeed help in optimizing memory usage when dealing with large data sets.
+	\item Using \texttt{std::vector} or \texttt{std::string} instead of dynamically allocating arrays with new[] is generally recommended for better memory management and safety in C++. Using \texttt{reserve()} in \texttt{std::vector} or \texttt{std::string} can indeed help in optimizing memory usage when dealing with large data sets.
 		
-	\item For all containers in the STL, the general principle is "Copy in, Copy out." However, In C++11 and beyond, using \texttt{emplace\_back}, \texttt{emplace}, or \texttt{try\_emplace} allows you to construct objects directly within containers like \texttt{std::vector} or associative containers such as \texttt{std::map} and \texttt{std::unordered\_map}. This approach avoids the overhead of unnecessary copying by constructing the objects in place, which can be more efficient, especially for complex or move-only types.
+	\item For all containers in the STL, the general principle is "Copy in, Copy out." However, In C++11 and beyond, using \texttt{emplace\_back}(like \texttt{push\_back}), \texttt{emplace}(like \texttt{insert(pos, value)}), or \\ \texttt{try\_emplace} in \texttt{std::map} allows you to construct objects directly within containers like \\ \texttt{std::vector} or associative containers such as \texttt{std::map} and \texttt{std::unordered\_map}. This approach avoids the overhead of unnecessary copying by constructing the objects in place inside a container, which can be more efficient, especially for complex or move-only types.
 \begin{lstlisting}[numbers=none]
 int j = 10;
 vector<int> vc;
@@ -13505,9 +13505,8 @@ i = -99 // when you modify i, not effect on vc
 		
 		\item Optional values. When you want a\texttt{ map<Thing, Widget>}, but some things have no associated Widget, prefer to use \texttt{map<Thing, shared\_ptr<Widget> >}.
 		
-		\item Index containers. To have a main container hold the objects and access them using different sort orders without resorting the main container, you can set up secondary containers that "point into" the main one and sort the secondary containers in different ways using dereferenced compare predicates. But prefer a container of \texttt{MainContainer::iterators} (which are value-like) instead of a container of pointers.
+		\item Index containers. To have a main container hold the objects and access them using different sort orders without resorting the main container, you can set up secondary containers that "point into" the main one and sort the secondary containers in different ways using dereferenced compare predicates. Prefer a container of \texttt{MainContainer::iterators} instead of a container of pointers, because most of STL algorithm support interators. 
 		
-		\item To have a container store and own objects of different but related types, such as types derived from a common base class, prefer \texttt{container< shared\_ptr<Base> >}. An alternative is to store proxy objects whose nonvirtual functions pass through to corresponding virtual functions of the actual object.
 	\end{enumerate}
 
 	\item Even for copy-in, copy-out operations, \texttt{std::vector} is more flexible than arrays in C because it utilizes heap memory. If you prefer to use stack memory instead, you can opt for \texttt{std::array}.
@@ -13519,13 +13518,16 @@ vector<Foo> fvc; // NO default constructor has been called.
 fvc.reserve(50);
 \end{lstlisting}
 
-	\item Copy-in and copy-out operations can potentially cause efficiency problems. Additionally, attempting to insert a derived class object into a container of base class objects will result in a slicing error. To overcome this issue, using a container of pointers is a common approach. However, this approach can lead to resource leakage if memory deallocation is forgotten or if an exception is thrown. A better alternative is to utilize smart pointers. It's important to note that using \texttt{std::auto\_ptr} in any container is prohibited in C++ and will result in a compiler error. For more detailed information on this topic, refer to "Effective STL," item 8.
+	\item Copy-in and copy-out operations can potentially cause efficiency problems. Additionally, attempting to insert a derived class object into a container of base class objects will result in a slicing error. To overcome this issue, using a container of pointers is a common approach. However, this approach can lead to resource leakage if memory deallocation is forgotten or if an exception is thrown. A better alternative is to utilize smart pointers, such as types derived from a common base class, prefer \texttt{container< shared\_ptr<Base> >}.
+	
+	
+	\item It's important to note that using \texttt{std::auto\_ptr} in any container is prohibited in C++ and will result in a compiler error. For more detailed information on this topic, refer to "Effective STL," item 8.
 
 	\item All container is not thread-safe. It's your duty to make it thread-safe, and thread-safe is OS dependent. Detail can be seen "Effective STL" item 12.
 \begin{lstlisting}[numbers=none]
-getMutexFor(v); 
-...// do something on v.
-releaseMutexFor(v);
+getMutexFor(container); 
+...// do something on container.
+releaseMutexFor(container);
 \end{lstlisting}
 
 	\item With the assistance of an allocator, a container can optimize its behavior. For example, Plain Old Data (POD) types may not require calling constructors, and small objects can be efficiently stored in a memory pool. More detailed information on these topics can be found in the book "The C++ Standard Library: A Tutorial and Reference." Allocators can be customized, as demonstrated in "Effective STL" with two examples. However, in many cases, replacing the default allocator is unnecessary. It's worth noting that the design of allocators can sometimes lead to instances where types like \texttt{vector<int, allocA>} and \texttt{vector<int, allocB>} are treated as distinct types, which might not always be optimal.
@@ -13541,8 +13543,10 @@ releaseMutexFor(v);
 \begin{enumerate}
 \item Sequence: \texttt{std::array, std::vector, std::list, std::forward\_list, std::string, std::deque}.
 \item Associative: \texttt{std::map, std::set, std::multiset, std::multimap}.
+
+\item Unordered associative: \texttt{std::unordered\_map, std::unordered\_set,  \\ std::unordered\_multimap}, \texttt{std::unordered\_multiset}.
+
 \item Adaptor: \texttt{std::stack, std::queue and std::priority\_queue}.
-\item Unordered map(hash): \texttt{std::unordered\_map, std::unordered\_set,  \\ std::unordered\_multimap}, \texttt{std::unordered\_multiset}.
 \end{enumerate}
 
 \begin{figure}[ht]
@@ -13630,7 +13634,8 @@ for(auto p = fi; p!= si; ++p){
 
 
 
-	\item Using a \texttt{std::vector} for small amount of items is almost always superior to using \texttt{std::list}. Even though insertion in the middle of the sequence is a linear-time operation for \texttt{std::vector} and a constant-time operation for list. \texttt{std::vector} usually outperforms \texttt{list} because of its better constant factor. \textbf{list's Big-Oh advantage doesn't kick in until data sizes get larger(more than 1k)}
+	\item Using a \texttt{std::vector} for small amount of items is almost always superior to using \texttt{std::list}. Even though insertion in the middle of the sequence is a linear-time operation for \texttt{std::vector} and a constant-time operation for list. \texttt{std::vector} usually outperforms \texttt{list} because of its better constant factor and cache friendly. \textbf{list's Big-Oh advantage doesn't kick in until data sizes get larger(more than 1k)}. The same idea also apply on the associative container, the standard associative containers are implemented as balanced binary search trees. They are optimized for a mixed combination of insertions, deletions, and lookups. However, if the container is used as a dictionary, it can fall into three distinct phases: setup, lookup, and modify. Modify operations are infrequent, whereas lookups are very frequent. In such cases, the associative container may not be the best option. A sorted \texttt{std::vector} also supports logarithmic search time and has two advantages: 1) it uses less space, and 2) more space can cause page faults in memory, making the sorted \texttt{std::vector} faster than the associative container with the same logarithmic search complexity. Therefore, for a dictionary, it's better to use a sorted vector.
+	
 
 \end{enumerate}
 
@@ -13720,7 +13725,7 @@ std::cout<<(*it)<<"  "; //error, Unpredicted Behavior
 	
 \begin{lstlisting}
 array<string, 3> arr_str = {"hello", "world", "!"}; //need specify size, 3 here.
-array<int, 10> arr_i = {0};
+array arr_i = {1, 2, 3}; //std::array supports CTAD in c++ 17. 
 \end{lstlisting}	
 	
 	\item \texttt{std::array} supports copying and assignment between arrays of the same size. The \texttt{at()} method is slower (but safer) than \texttt{operator[]}, as it performs bounds checking. Unlike other containers, \texttt{std::array} does not have a constructor for initializing elements individually; you specify its size using a template parameter. Since \texttt{std::array} is fixed in size, it does not provide a \texttt{push\_back} function.
@@ -13854,7 +13859,7 @@ v1.shrink_to_fit(); //new feature in C++11
 \subsubsection{Modify}
 \begin{itemize}
 	
-	\item The primary modification interface for sequential containers consists of \texttt{push\_} and \texttt{pop\_} operations. For associative containers, the primary modification interface includes \texttt{insert} and \texttt{erase} operations. In another word, Both associative and sequential containers support common interfaces within the STL, such as \texttt{insert}, \texttt{erase}, and \texttt{emplace}. In sequential containers, these functions are less prominent because we primarily use \texttt{push\_} and \texttt{pop\_} operations. Conversely, in associative containers, the \texttt{insert} and \texttt{erase} functions are crucial APIs for modifying the container.
+	\item The primary modification interface for sequential containers consists of \texttt{push\_} and \texttt{pop\_} operations. For associative containers, the primary modification interface includes \texttt{insert} and \texttt{erase} operations. Although both associative and sequential containers support common interfaces within the STL, such as \texttt{insert}, \texttt{erase}, these functions are less prominent because we primarily use \texttt{push\_} and \texttt{pop\_} operations. Conversely, in associative containers, the \texttt{insert} and \texttt{erase} functions are crucial APIs for modifying the container. You can also use \texttt{emplace} to build object in container directly. 
 	
 	
 	\item Note that \texttt{std::forward\_list} lacks \texttt{push\_back()}, \texttt{pop\_back()}, and \texttt{size()} functions. Instead of \texttt{insert()}, \texttt{std::forward\_list} uses \texttt{insert\_after()}. Below is an example of how to append an element to the end of \texttt{std::forward\_list}.
@@ -13877,7 +13882,9 @@ void insert( InputIt first, InputIt last );  //insert range.
 	\begin{description}
 		\item[Line 1:] If you insert a value directly using \texttt{insert}, it will return a pair where the second element is a boolean value that indicates whether the insertion was successful or not.
 		
-		\item[Line 2:] When you insert a value using a hint iterator, the \texttt{insert} function returns an iterator pointing to either the element that was successfully inserted or the equivalent element that already existed in the container. Unlike the direct value insertion method, this version of \texttt{insert} does not return a boolean value to indicate success. This design choice ensures compatibility with positional insertions in sequential containers like \texttt{std::vector::insert}, allowing for the creation of generic inserters such as \texttt{std::inserter}. To verify the success of a hinted insertion, one can compare the container's size before and after the operation.
+		\item[Line 2:] When you insert a value using a hint iterator, the \texttt{insert} function returns an iterator pointing to either the element that was successfully inserted or the equivalent element that already existed in the container. Unlike the direct value insertion method, this version of \texttt{insert} does not return a boolean value to indicate success. This design choice ensures compatibility with positional insertions in sequential containers like \texttt{std::vector::insert}, allowing for the creation of generic inserters such as \texttt{std::inserter}. To verify the success of a hinted insertion, one can compare the container's size before and after the operation. 
+		
+		\item[Line 2:]In \texttt{std::unordered\_map}, you can find the same version insert function. It is an just for interface compatibility. In other words, for \texttt{std::unordered\_map} it does not differ a hint is provided or not.
 	\end{description}
 	
 	\item For sequential containers, after performing an insert or erase operation, it is crucial \textbf{not} to continue using the same iterator. Instead, you should use the new valid iterator returned by the insert or erase function.
@@ -14123,20 +14130,11 @@ v1.insert(v1.begin(),  v2,begin() , v2.end()); // a better method is here.
 \begin{itemize}
 		
 	
-
-
-	\item When you use STL Container, you should realize that typedef are your best friends. 1) For a complex type, it can save typing. 2) keep good maintainable for future change. 
-\begin{lstlisting}[numbers=none]
-typedef vector<Foo, SpecialAllocator<Foo> > FooContainer;
-typedef FooContainer::iterator FooIt;
-
-FooContainer fc1; // make you programming more clearly,
-FooIt it1;
-\end{lstlisting}
-
+	\item When you use STL Container, you should realize that typedef are your best friends. 1) For a complex type, it can save typing. 2) keep good maintainable for future change. In modern C++, we recommend using type alias more. 
 \begin{lstlisting}
 typedef vector< pair<int, string> > ComVec;
 ComVec::value_type aaa;  //save a lot of typing 
+using ComVec = vector< pair<int, string> > // use type alias more in modern C++
 
 typedef std::vector< std::pair<int,std::string> > Record_t;
 //typedef std::vector< std::pair<float,std::string> > Record_t;
@@ -14150,7 +14148,7 @@ int find_it(std::string value, Record_t const& stuff){
 }	
 \end{lstlisting}
 \begin{description}
-	\item[Line 4-5:] change \texttt{int} to \texttt{float}, code below line 5 don't need change at all.
+	\item[Line 5-6:] change \texttt{int} to \texttt{float}, code below line 5 don't need change at all.
 \end{description}
 
 	\item Use :: to access the type defined inside a container.
@@ -14180,7 +14178,7 @@ class TSContainer {
 private:
 	T container;
 public:
-	void push(typename T::value_type& item){
+	void push(typename T::value_type& item){ //use typename before T::value_type
 		container.push_back(item);
 }	
 \end{lstlisting}		
@@ -14189,7 +14187,6 @@ public:
 		
 %	\item Never try to expect all the container has the same interface. Even a generic erase(), for sequence, It return next iterator,(because it will invalid the iterator).   But for associative, it return void(c++ 98) and return next iterator(C++ 11). If you just want to change a container in the future, you should put a container into a class: CustomCollection. then hide it from the class client. The detail can be seen in Effective STL item 2.
 
-	\item The standard associative containers are implemented as balanced binary search trees. They are optimized for a mixed combination of insertions, deletions, and lookups. However, if the container is used as a dictionary, it can fall into three distinct phases: setup, lookup, and modify. Modify operations are infrequent, whereas lookups are very frequent. In such cases, the associative container may not be the best option. A sorted \texttt{std::vector} also supports logarithmic search time and has two advantages: 1) it uses less space, and 2) more space can cause page faults in memory, making the sorted \texttt{std::vector} faster than the associative container with the same logarithmic search complexity. Therefore, for a dictionary, it's better to use a sorted vector.
 
 	
 	\item The book "effective STL item 19" introduces the difference between equality and equivalence in associative Containers.
@@ -14264,7 +14261,7 @@ us.max_load_factor() //usually is 1, don't change it.
 \subsection{string}
 \subsubsection{std::string class basic knowledge}
 \begin{itemize}
-	\item In C++, we encourage you to use the string class more often, instead of \texttt{char[]} and \texttt{char *p = new}. It offers more functions, such as \texttt{compare, find, erase, replace,} and \texttt{insert}. The string class is a template specialization of \texttt{basic\_string<char>}. Understanding this will enable you to construct a string of type \texttt{w\_char}.
+	\item In C++, we encourage you to use the string class more often, instead of \texttt{char[]} and \texttt{char *p = new}. It offers more APIs which are suitable for manipulate string, such as \texttt{compare, find, erase, replace,} and \texttt{insert}. The string class is a template specialization of \texttt{basic\_string<char>}. Understanding this will enable you to construct a string of type \texttt{w\_char}.
 	
 	
 	\item There are a lot of ways that can be used construct a string object, you can see these methods in the cpp reference website, such as:
@@ -14366,7 +14363,28 @@ while ((pos=str.find_first_of("aeiou", pos)) !=std::string::npos){
 }	
 \end{lstlisting}
 
+	\item replace has very complex interface. There are two big categories, The first is based on position, the second is based on iterator. It also accepts \texttt{std::string} or \texttt{char*} as input.
+\begin{lstlisting}[numbers=none]
+1)replace( size_type pos, size_type count, const basic_string& str ); 
+2)replace( size_type pos, size_type count, const CharT* cstr );
+
+//for 3) and 4), you also can control str or cstr length. 
+3) replace( size_type pos, size_type count, const basic_string& str, size_type pos2, size_type count2 );
+4)replace( size_type pos, size_type count, const CharT* cstr, size_type count2 );
+
+//5) can control how many single character you want to input.
+5) basic_string& replace( size_type pos, size_type count, size_type count2, CharT ch );
+
+//For above position verison, it also supports iterator version. 
+1-iterator)replace( const_iterator first, const_iterator last, const basic_string& str ); 
+\end{lstlisting}
+
+	
+\end{itemize}
+
 \subsubsection{std::string examples}
+
+\begin{itemize}
 
 	\item The common usage pattern about strings: 1) case conversion, 2) number conversion, 3) predicate and category, 4) trim, 5) find and search  6)replace and erase 7) split and join.
 
@@ -14729,11 +14747,22 @@ std::vector<int>::const_iterator cit = it; //ok to get cit from it directly.
 
 advance(i, distance<const_iterator>(i, ci)); //change ci to i.		 
 \end{lstlisting}
-	\item In C++, containers are required to provide an iterator type that is convertible to \texttt{const\_iterator}. This allows you to implicitly convert an iterator to a\texttt{ const\_iterator} when necessary. 
+	\item In C++, containers are required to provide an iterator type that is convertible to \texttt{const\_iterator}. This allows you to implicitly convert an iterator to a\texttt{ const\_iterator} when necessary. But you can't change remove const from const\_iterator by type cast. A trick is to use container's erase member function. 
 \begin{lstlisting}	
 Container::iterator it = /* blah */;
-Container::const_iterator cit = it;				
+Container::const_iterator cit = it;		
+
+vector v = {1, 2, 3};
+auto ci = v.cbegin();
+std::vector<int>::iterator i = v.erase(ci,ci);		
 \end{lstlisting}	
+
+	\item Another interesting thing is erase member function receive a const\_iterator, instead of normal iterator. The passed iterator is just used as the \textbf{position} where the element would be deleted, not for modifying the element through it. That means const\_iterator would be fine. Before C++11, the support for const\_iterator was not very good, but the situation has changed from C++11. You should use const\_iterator instead of iterator when possible now.
+	
+\begin{lstlisting}
+iterator erase (const_iterator first, const_iterator last);
+
+\end{lstlisting}
 	
 	\item Different iterators can also be transformed according arrow direction in blow figure.
 	\begin{center}
@@ -16115,7 +16144,6 @@ copy_if(vi2.begin(), vi2.end(), ostream_iterator<int>(cout, " "),  //copy_if
  	});
 
 \end{lstlisting}
-
 	\item From \texttt{std::vector} to construct \texttt{std::map}, you can use \texttt{std::copy} or range construction. 
 
 \begin{lstlisting}
@@ -16149,23 +16177,7 @@ std::map<std::string, int> m2( values.begin(), values.end() );
 	\item slide(\texttt{std::rotate}) 
 \end{enumerate}
 
-	\item You can use rotate in insert sort method. It is also used in slide. Detail can be found in "Top 5 Beautiful C++ std Algorithms Examples"
-	
-\begin{lstlisting}[breaklines, basicstyle=\scriptsize]
-for (auto i = v.begin(); i != v.end(); ++i)  //insertion sort
-	std::rotate(std::upper_bound(v.begin(), i, *i), i, std::next(i));
 
-template <typename It> 
-auto slide(It f, It l, randIter p) -> std::pair<It, It>{
-	if (p < f) return { p, std::rotate(p, f, l) };
-	if (l < p) return { std::rotate(f, l, p), p };
-	return { f, l };
-}		
-\end{lstlisting}	
-	\begin{description}
-		\item[line 2:] rotate(a, b, c) is [a,b) and [b,c) scope. they are all left close, right open scope. In this way, you can understand why we need \texttt{std::next(i)} here.
-		\item[line 6-7:] when p <f, p is the first element position, when p>l, p is the last element position. That will help you to understand slide algorithm. 
-	\end{description}
 	
 
 	\item Filter and transform example. A container, filter some items and get the name of \texttt{person\_t}.
@@ -16244,30 +16256,36 @@ str.erase(unique(begin(str), end(str)), end(str));
 cout<<str<<endl; //output "abc de f"
 \end{lstlisting}
 
-	\item We can use \texttt{std::mt19937} in \texttt{std::sample}, \texttt{std::shuffle} and distribution.
+	\item We can use \texttt{std::mt19937} in \texttt{std::sample}, \texttt{std::shuffle} and distribution. The basic step is: 
+\begin{enumerate}
+	\item Generate \texttt{random\_device rd;}  
+	\item Call \texttt{rd}'s \texttt{operator()}, aka, \texttt{rd()} generate a real random value from hardware, and use this real random value to build \texttt{mt19937} object: \texttt{mt19937 mt{rd()};}.
+	\item Pass this \texttt{mt} object into \texttt{std::shuffle}, \texttt{std::sample}, or distribute object operator(mt).
+\end{enumerate}
+	
 \begin{lstlisting}
 vector<int> v1(10, 0); //both fill and generate need resize the vector
 
 uniform_int_distribution<int> dist{1, 100}; //1) distribution.
-random_device device;
-mt19937 gen{device()}; //2) device is functor, device() return a value.
+random_device rd;
+mt19937 mt{rd()}; //2) rd is functor, rd() return a real random value.
 
 ranges::generate(v1,  [&](){
-	return dist(gen); //3) distribution + mt19337 object.
+	return dist(mt); //3) pass mt into dist's operator() to generate random value.
 });
 
 random_device rd;
-mt19937 gen{rd()};
-ranges::shuffle(v1, gen);  //shuffle also need to use mt19937.
+mt19937 mt{rd()};
+ranges::shuffle(v1, mt);  //shuffle also need to use mt19937.
 
-ranges::sample(vi, std::back_inserter(out), 4, gen);
+ranges::sample(vi, std::back_inserter(out), 4, mt);
 \end{lstlisting}
 
 	\item Code snippet for k-max frequency problem. 
 \begin{lstlisting}
 map<int, int> map1;
-for(auto e: v1){
-	map1[e]++;  //you can use [] directly here, will insert
+for(auto e: v1){ 
+	++map1[e];  //you can use [] directly here, will insert
 	            //default value if it doesn't exist.
 }
 
@@ -16280,11 +16298,13 @@ for(auto [k,v]: v2){ //auto binding.
 	cout<<k<<" "<<v<<endl;
 }
 
-//The second method to avoid copy
+//The second method to avoid copy real object, just copy iterator. 
 std::map<int, int> m1{{1, 3}, {2, 5}, {3, 0}, {4, 2}};
-std::vector<decltype(m1)::iterator> v1(m1.size());
-std::iota(v1.begin(),v1.end(), m1.begin() );
-std::ranges::sort(v1, {}, &std::pair<const int,int>::second);
+std::vector<decltype(m1)::iterator> v1(m1.size()); //delcare a vector of iterator, 
+std::iota(v1.begin(),v1.end(), m1.begin() );   //just copy iterator, good example.
+
+ranges::sort(v1, std::greater{}, &pair<const int,int>::second);//from big to small
+ranges::sort(vd, {}, &remove_reference_t<decltype(*dict.begin())>::second);//same
 
 for(auto e: v1){
 	//cout<<*e.first<<" "<<*e.second<<'\n';
@@ -16320,10 +16340,14 @@ void selection_sort(ForwardIt begin, ForwardIt end){
 }
 \end{lstlisting}
 
-	\item Implement insert sort by using \texttt{std::rotate}
+	\item Implement insert sort by using \texttt{std::rotate}. rotate(a, b, c) is [a,b) and [b,c) scope. they are all left close, right open scope. In this way, you can understand why we need \texttt{std::next(i)} here.
 \begin{lstlisting}[frame=single, language=c++]	
 	for (auto i = start; i != end; ++i)
-	std::rotate(std::upper_bound(start, i, *i), i, std::next(i) );	
+	//          | i positon here
+	// 1 2  5 6 4 ***** //(5 6) (4) rotate. 
+	//      | upper_bound return here 
+	 
+ 	std::rotate(std::upper_bound(start, i, *i), i, std::next(i) );	
 \end{lstlisting}
 
 	\item Implement merge sort by using \texttt{std::inplace\_merge}.
@@ -16419,26 +16443,19 @@ void quickSort(FwdIt first, FwdIt last, Compare cmp = Compare{}){
 }		
 \end{lstlisting}		
 	
-	\item Use partition to implement \textbf{gather}. 
-\begin{lstlisting}[frame=single, language=c++]
-template <typename BiIt, typename UnPred> 
-auto gather(BiIt f, BiIt l, BiIt p, UnPred s) -> std::pair <BiIt, BiIt>{
-	return { stable_partition(f, p, not1(s)), 
-		stable_partition(p, l, s) };
-}		
-\end{lstlisting}	
-	
-	
-	
-	\item Slide. Pay attention here: rotate returns iterator to the new location of the element pointed by first. 
-\begin{lstlisting}[frame=single, language=c++]
+	\item \texttt{std::rotate} is used to implement "slide". Detail can be found in "Top 5 Beautiful C++ std Algorithms Examples". Pay attention here: rotate returns iterator to the new location of the element pointed by first. 
+
+\begin{lstlisting}[breaklines, basicstyle=\scriptsize]
 template <typename It> 
 auto slide(It f, It l, randIter p) -> std::pair<It, It>{
 	if (p < f) return { p, std::rotate(p, f, l) };
 	if (l < p) return { std::rotate(f, l, p), p };
 	return { f, l };
-}		
-\end{lstlisting}
+}			
+\end{lstlisting}	
+\begin{description}		
+	\item[Source code] when p <f, p is the first element position, when p>l, p is the last element position. That will help you to understand slide algorithm. 
+\end{description}	
 	
 \end{itemize}
 
@@ -16486,7 +16503,7 @@ int firstUniqChar(string s) {
 vector nums	= {1, 1, 1,  2, 2, 3}
 unordered_map<int, int> dic;
 for(auto e : nums){ 
-	dic[e]++; //If e is not in dic, dic[e] insert automatically.
+	++dic[e]; //If e is not in dic, dic[e] insert automatically.
 }
 auto i = max_element(begin(dic),end(dic), [](auto &e, auto &e1){
 	return e.second< e1.second;});
@@ -16505,12 +16522,12 @@ return i->first; // return 1, 1 occurs three times.
 #define watch(x) cout << (#x) << " is " << (x) << endl
 \end{lstlisting}
 	
-	\item How to generate permutation?
+	\item How to generate permutation? Before you use \texttt{std::next\_permutation}, you need to use \texttt{std::sort} first.
 \begin{lstlisting}[frame=single, language=c++]
-sort(str.begin(), str.end());
+std::sort(str.begin(), str.end());
 do {
 	cout << str << endl;
-} while (next_permutation(str.begin(), str.end()));			
+} while (std::next_permutation(str.begin(), str.end()));			
 \end{lstlisting}	
 	
 	
@@ -16545,9 +16562,6 @@ while( (p = std::find_if(p, str.end(), ll)) != str.end()){   //2) test p
 %\end{lstlisting}
 
 \end{itemize}
-
-
-
 
 
 \chapter{Functional programming}
@@ -17055,9 +17069,48 @@ void do_sth(const char* str) {
 \item Most algorithms has corresponding constrained one.
 \begin{center}
 	\includegraphics[width=0.90\linewidth]{pics/ca.png}
-\end{center}	
+\end{center}
+	
+\end{itemize}
+
+\subsubsection{std::invoke}
+\begin{itemize}
+	
+	\item Behind the projection in the constraint algorithms is \texttt{std::invoke}, \texttt{std::invoke} brings to the table is that you can use it for other things beyond just functors.
+\begin{lstlisting}
+struct S{
+	void do_something(int);
+	int v;
+};
+
+S s;
+std::invoke(&S::do_something, s, 42); // same as s.do_something(42)
+std::invoke(&S::do_something, std::ref(s), 42);
+
+S* p = &s;
+std::invoke(&S::do_something, p, 42); //if p is pointer, then invoke means
+                                      //p->do_something(42)
+\end{lstlisting}
+
+	\item You can also use \texttt{std::invoke} with pointers to non-static data members.
+\begin{lstlisting}
+struct S{
+	std::function<void()> do_something;
+	int v;
+};
+S s;
+s.do_something = []() { std::cout << "hello"; };
+
+std::invoke(&S::v, s) = 42; // same as s.v = 42
+auto x = std::invoke(&S::v, s); // same as "auto x = s.v;"
+std::invoke(&S::do_something, s); //do_something is data member pointer, no output
+std::invoke(&S::do_something, s)();            //output "hello"
+std::invoke(std::invoke(&S::do_something, s)); //output "hello" too
+\end{lstlisting}
 
 \end{itemize}
+
+
 
 \subsection{View}
 
