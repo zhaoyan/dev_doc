@@ -8024,7 +8024,7 @@ str= temp // make it more efficient
 	
 \end{itemize}
 
-\section{Object base}
+\section{Object base paradigm}
 \subsection{Constructor}
 
 \subsubsection{constructor basic}
@@ -8779,12 +8779,10 @@ g() or g(10);
 \end{lstlisting}				
 	\end{enumerate}
 
-	
-	
 	\item Overloading sometimes can help you to avoid implicit type conversion. In the below example, we avoid creating a temporary obj implicitly created by constructor.
 
 \begin{lstlisting}[frame=single, language=c++]
- class String{
+class String{
 	bool operator==(const String& lhs, const String& rhs);
 }
 String str;
@@ -8792,7 +8790,6 @@ if(str =="hello") //will build a temp obj String("hello");
 
 bool operator==(const String& lhs, const char* rhs); //avoid implicit conversion.	
 \end{lstlisting}
-
 	
 	\item When implementing binary arithmetic operators such as +, -, and *, it's good practice to first implement compound assignment operators such as +=, -= and *=. These can then be used to implement the common operators. For example, you can use += to implement +. This design provides two advantages: 1) it provides an additional function, and 2) it avoids code duplication. 
 \begin{lstlisting}[numbers=none]
@@ -8823,7 +8820,7 @@ class A& operator=(const class A& rhs){
 \end{itemize}
 
 
-\section{Object oriented}
+\section{Object oriented paradigm}
 
 \subsection{Inheritance}
 \subsubsection{Polymorphism by inheritance}
@@ -9010,6 +9007,7 @@ Base* Copy(Base& Bref){
 	Base* p = new Base(Bref) //Slicing happen here, error!
 }
 \end{lstlisting}
+
 	\item Continue- Think this problem: TypeID method. Using \texttt{type\_id} and \texttt{dynamic\_cast} involve a lot of if and switch about type. Anytime if you use \texttt{dynamic\_cast} and \texttt{if}, you can think about using virtual function instead.
 \begin{lstlisting}[numbers=none]
 Base* Copy(Base& Bref){
@@ -9052,8 +9050,8 @@ DerivedClass::DerivedClass(const DerivedClass &dc): \
 		
 DerivedClass & DerivedClass::operator=(const DerivedClass &dc){
     BaseClass::operator=(dc);
-    ( (BaseClass&) *this ) = dc
-    ( (BaseClass) *this ) = dc // this will call baseclass copy constructor.
+    ( (BaseClass&) *this ) = dc; // call baseclass assignment operator
+    ( (BaseClass) *this ) = dc; //not assignment, just call baseclass copy stor
 }
 \end{lstlisting}
 
@@ -13722,7 +13720,6 @@ va.emplace_back("aa",1); //only call constructor, the most efficient.
 	
 	\item It's important to note that using \texttt{std::auto\_ptr} in any container is prohibited in C++ and will result in a compiler error. For more detailed information on this topic, refer to "Effective STL," item 8.
 	
-
 	
 	\item With the assistance of an allocator, a container can optimize its behavior. For example, Plain Old Data (POD) types may not require calling constructors, and small objects can be efficiently stored in a memory pool. More detailed information on these topics can be found in the book "The C++ Standard Library: A Tutorial and Reference." Allocators can be customized, as demonstrated in "Effective STL" with two examples. However, in many cases, replacing the default allocator is unnecessary. It's worth noting that the design of allocators can sometimes lead to instances where types like \texttt{vector<int, allocA>} and \texttt{vector<int, allocB>} are treated as distinct types, which might not always be optimal.
 \end{itemize}
@@ -13764,41 +13761,49 @@ vcFoo.resize(10);  // beside allocate space, also construct object.
 vcFoo[2] = foo;    // OK here.		
 \end{lstlisting}	
 	
-	\item To minimize unnecessary allocations, follow these guidelines: 1) If you know the expected number of elements, use \texttt{reserve} to preallocate memory. 2) If the exact number is unknown but maximum efficiency is desired, reserve more space than initially needed, and later trim any excess capacity using \texttt{shrink\_to\_fit()}. This ensures optimal memory usage. \texttt{std::vector}, \texttt{std::string} and \texttt{std::deque} support \texttt{shrink\_to\_fit()}. In the above three containers, \texttt{pop\_back()} function will not free memory. 
-\begin{lstlisting}[frame=single, language=c++]
-vector<class>(v1).swap(v1);
-string(s).swap(s) 
+	\item To minimize unnecessary allocations, follow these guidelines:
+\begin{enumerate}
+	\item If you know the expected number of elements, use \texttt{reserve} to preallocate memory.
+	
+	\item If the exact number is unknown but maximum efficiency is desired, reserve more space than initially needed, and later trim any excess capacity using \texttt{shrink\_to\_fit()}. This ensures optimal memory usage. \texttt{std::vector}, \texttt{std::string} and \texttt{std::deque} support \texttt{shrink\_to\_fit()}. In the above three containers, \texttt{pop\_back()} function will not free memory.  
+	
 
+
+\begin{lstlisting}[frame=single, language=c++]
+vector<Foo>(v1).swap(v1); // vector<class>(v1) is temporary vector, it copy
+                          //existing Foo object inside v1. After swap, v1 
+                          //size will be reduce to fit size. 
+                          
 v1.shrink_to_fit(); //new feature in C++11
 \end{lstlisting}
-	\begin{description}
-		\item[Line 1:] \texttt{vector<class>(v1)} copy constructor create a unnamed temp vector. \texttt{temp} just copy real object, so it's capacity (maybe 8) is small. \texttt{temp.swap(v1)} then \texttt{temp} has 1000 space,  \texttt{v1} capacity is 8 now. In the end of statement, \texttt{temp} is destroyed.
-	\end{description}
+	
+	\item For \texttt{std::iota}, \texttt{std::fill}, and \texttt{std::generate} algorithms, the target range is specified by a pair of iterators. You need to ensure that the target range has been initialized. You can use the \texttt{resize()} member function, or you can use the default constructor with a size parameter, such as \texttt{std::vector<int> v(3)}, to meet this requirement.
+	
+\end{enumerate}
 		
 \end{itemize}
 
 \subsubsection{Modify}
 \begin{itemize}
 	
-	\item The primary modification interface for sequential containers consists of \texttt{push\_} and \texttt{pop\_} operations. For associative containers, the primary modification interface includes \texttt{insert} and \texttt{erase} operations. Although both associative and sequential containers support common interfaces within the STL, such as \texttt{insert}, \texttt{erase}, these functions are less prominent because we primarily use \texttt{push\_} and \texttt{pop\_} operations. Conversely, in associative containers, the \texttt{insert} and \texttt{erase} functions are crucial APIs for modifying the container. You can also use \texttt{emplace} to build object in container directly. 
+	\item Although both associative and sequential containers support common interfaces within the STL, such as \texttt{insert}, \texttt{erase}, the primary modification member functions for sequential containers are \texttt{push\_back(front)} and \texttt{pop\_back(front)} operations. For associative containers, the primary modification member functions are \texttt{insert} and \texttt{erase} operations.  After C++11, you can also use \texttt{emplace} group member functions to build object in container directly. 
 	
+	\item \texttt{clear} only changes the size to 0; it doesn't affect the capacity. \texttt{insert} usually returns an iterator to the inserted element, or to the element that prevented the insertion (in the case of \texttt{std::map} or \texttt{std::set}). \texttt{erase} usually returns an iterator to the element following the last removed element.
 	
 	\item Note that \texttt{std::forward\_list} lacks \texttt{push\_back()}, \texttt{pop\_back()}, and \texttt{size()} functions. Instead of \texttt{insert()}, \texttt{std::forward\_list} uses \texttt{insert\_after()}. Below is an example of how to append an element to the end of \texttt{std::forward\_list}.
 \begin{lstlisting}
-auto before_end = forward_list.before_begin();
+auto before_end = forward_list.before_begin(); 
 for (auto& _ : forward_list)
-	++ before_end;
+	++ before_end;    //above code move iterator to the last non-null element.
 	
 forward_list.insert_after(before_end, 1234); //use insert_after instead of insert. 
 \end{lstlisting}
-	
-	\item \texttt{clear} only changes size to 0, doesn't effect capacity. 
-	
+		
 	\item In associative containers such as \texttt{std::map} or \texttt{std::set}, you do not need to use \texttt{find} before calling \texttt{insert}. If the element already exists, \texttt{insert} will simply do nothing. There are three versions of the \texttt{insert} function: 
 \begin{lstlisting}[]
 std::pair<iterator, bool> insert( P& value );  // direct insert
 iterator insert( iterator hint, const value_type& value ); //hint insert
-void insert( InputIt first, InputIt last );  //insert range.	
+void insert( InputIt first, InputIt last );  // range insert.	
 \end{lstlisting}	
 	\begin{description}
 		\item[Line 1:] If you insert a value directly using \texttt{insert}, it will return a pair where the second element is a boolean value that indicates whether the insertion was successful or not.
@@ -13819,10 +13824,12 @@ cout<<*i ; //good
 	
 	\item Because we want to use \texttt{std::inserter}, the insert member functions in all sequential and associative containers have the same API format. Adaptor containers do not support \texttt{insert} at all. 
 \begin{lstlisting}[numbers=none]
-std::multiset<int> s {1, 2, 3};
+iterator insert( const_iterator pos, const value_type& value ); //common API 
+
+std::multiset<int> s {1, 2, 3};  //inserter usage for associative container
 std::fill_n(std::inserter(s, s.end()), 5, 2);	
 
-std::vector<int> d {100, 200, 300};
+std::vector<int> d {100, 200, 300}; //inserter usage for sequential container
 std::vector<int> v {1, 2, 3, 4, 5};
 std::copy(d.begin(), d.end(), std::inserter(v, std::next(v.begin())));
 //output 1 100 200 300 2 3 4 5	
@@ -13832,7 +13839,7 @@ std::copy(d.begin(), d.end(), std::inserter(v, std::next(v.begin())));
 	\begin{enumerate}
 		\item \texttt{lower\_bound} always return a iterator, which point to the element which equal or greater than the value? why, because you can use this iterator with insert function directly.
 		
-		\item \texttt{insert()} member function in a container inserts a value before the iterator. 
+		\item \texttt{insert(const\_iterator pos, ..)} member function in a container inserts a value before the iterator \texttt{pos}. 
 		
 		\item For \texttt{std::forward\_list()}, insert member funciton will be low efficiency, that is why it provides \texttt{insert\_after()} function.
 	\end{enumerate}
@@ -13842,12 +13849,16 @@ std::copy(d.begin(), d.end(), std::inserter(v, std::next(v.begin())));
 \begin{lstlisting}[numbers=none]
 size_t erase( P& value );   //return number of you have deleted.
 iterator erase ( iterator pos ); // return the next iterator.
-void erase( InputIt first, InputIt last ); //erase range.	
+void erase( InputIt first, InputIt last ); //range erase.	
 \end{lstlisting}	
-	\item In sequential containers, \texttt{erase()} has only two versions and accepts only iterators, not values. If you want to delete a value, you need to use a generic remove algorithm for \texttt{std::vector} or the \texttt{remove} member function for \texttt{std::list}, which differs from how associative containers handle deletions.
+	\item In sequential containers, \texttt{erase()} has only two versions and accepts only iterators, not values. If you want to delete a value, you need to use a generic remove algorithm for \texttt{std::vector} or the \texttt{remove} member function for \texttt{std::list}, which differs from how associative containers handle deletions. A mnemonics is: \texttt{std::map/std::set} uses erase+value, \texttt{std::list} use remove+value, \texttt{std::vector} use erase+remove+value.
 	
+\begin{lstlisting}
+size_type erase( const Key& key );  //map API
+size_type remove( const T& value ); //list API
+iterator erase( const_iterator first, const_iterator last ); //vector API
+\end{lstlisting}
 	
-	\item Generally, it is not advisable to delete items from a container while iterating through it, as this action can invalidate the iterator and potentially lead to program crashes. However, if you are absolutely certain that the items being deleted are not the values referenced by any of the iterators used at the moment of deletion, it is safe to proceed with the deletion. It's important to note that for other STL containers such as \texttt{std::vectors}, the constraint is even stricter: deleting items from the container not only invalidates iterators pointing to the deleted item but can also affect other iterators. Therefore, deleting from these containers while iterating through them is even more problematic.
 	
 	\item Choose carefully among erasing options: To eliminate all objects in a container that have a particular value.
 	\begin{enumerate}
@@ -13878,7 +13889,7 @@ lsit.remove_if(badValue);                                   // 2) list
 
 for(auto i = map.begin();i!=map.end(); /* no ++i here*/) {  // 3) map
 	if(badVaue(*i)) 
-		map.erase(i++);  //post increment here! or i = map.erase(i);
+		i = map.erase(i);  //post increment here! or map.erase(i++);
 	else  
 		++i;
 }	
@@ -13887,27 +13898,29 @@ for(auto i = map.begin();i!=map.end(); /* no ++i here*/) {  // 3) map
 	\item To perform additional actions inside the loop while erasing objects, you cannot use the erase-remove idiom; instead, you should explicitly write a loop.
 \begin{lstlisting}[numbers=none]
 bool badValue(int x);
-for(vect<int>::iterator i = vect.begin();i!=vect.end(); ){
+for(auto i = vect.begin(); i!=vect.end(); ){
 	if(badVaue(*i)) {
-		i = vect.erase(i);
-		...do something else
+		i = vect.erase(i); // use erase return value update i here.
+		...do something else 
 	}
 	else  ++i;
 }			
 \end{lstlisting}
 
+	\item Generally, it is not advisable to delete items from a container while iterating through it, as this action can invalidate the iterator and potentially lead to program crashes. However, if you are absolutely certain that the items being deleted are not the values referenced by any of the iterators used at the moment of deletion, it is safe to proceed with the deletion. It's important to note that for other STL containers such as \texttt{std::vectors}, the constraint is even stricter: deleting items from the container not only invalidates iterators pointing to the deleted item but can also affect other iterators. Therefore, deleting from these containers while iterating through them is even more problematic.
+
 	\item Effective STL item 22: Avoid in-place key modification in \texttt{std::set} and \texttt{std::map}.
 \begin{enumerate}
 	\item you can't change key in map because it's const default.
 \begin{lstlisting}[numbers=none]
-map.begin()->first = 10 //compile error
+map.begin()->first = 10; //compile error here
 \end{lstlisting}	
 	
 	\item For \texttt{std::set} or \texttt{std::map}, you can modify non-key part. In line 3, \texttt{set.find} returns a const iterator, and you cannot change the value through it. To modify the value, you must first change it to a reference. Using \texttt{const\_cast<Employee>} alone is not correct as it creates a temporary object and modifies it, which is not what you want.
 \begin{lstlisting}[frame=single, language=c++]
-iterator i = set.find(employee);
+auto i = set.find(employee); //i is const_iterator
 if( i != set.end())
-const_cast<Employee &> (*i).setTitle("manager")	
+	const_cast<Employee &> (*i).setTitle("manager");
 \end{lstlisting}	
 	
 	\item If you want to modify the key part in \texttt{std::set} or \texttt{std::map}, erase it first, modify, then insert it back.
@@ -13924,10 +13937,9 @@ if(i ! = se.end()){   // 1) find the one
 	\item C++ 17 provide a easier way to modify the key in associate container, use extract to transfer node without copying or moving.
 \begin{lstlisting}
 map<int,string> m {{2,"a"},{3,"x"}};
-auto n2 = m.extract(2);
-n2.key() = 5;
-
-m.insert(std::move(n2)); // move node back in, why we use move here?
+auto n2 = m.extract(2);  //1) extract, no delete any memory here. 
+n2.key() = 5;            //2) modify key, 
+m.insert(std::move(n2)); //3) use insert and move to add node back. 
 \end{lstlisting}	
 	
 \end{enumerate}
@@ -13952,9 +13964,9 @@ m.insert(std::move(n2)); // move node back in, why we use move here?
 	
 	\item To determine if an element is present in a container, you can use the following methods:
 \begin{enumerate}
-	\item For sequential containers like \texttt{std::vector} or \texttt{std::list}, employ the generic \texttt{std::find()} algorithm. Check if the returned iterator is not equal to \texttt{container.end()} to confirm element presence. Additionally, \texttt{std::count()} reveals the number of occurrences.
+	\item For sequential containers like \texttt{std::vector} or \texttt{std::list}, employ the generic \texttt{std::find()} and \texttt{std::find\_if()} algorithm. Check if the returned iterator is not equal to \texttt{container.end()} to confirm element presence. Additionally, \texttt{std::count()} reveals the number of occurrences.
 	
-	\item For associative containers such as \texttt{std::map} or \texttt{std::set}, use \texttt{contains()} (from C++20) to directly check existence (returns a boolean). \texttt{count()} indicates occurrence count (0 or 1 for map/set, any non-negative for multimap/multiset). Use \texttt{find()} or \texttt{lower\_bound()} to locate the element or its position.
+	\item For associative containers such as \texttt{std::map} or \texttt{std::set}, use \texttt{contains()} (from C++20) to directly check existence (returns a boolean). \texttt{count()} indicates occurrence count (0 or 1 for map/set, any non-negative for multimap/multiset). Use \texttt{find()}, \texttt{lower\_bound()}, \texttt{upper\_bound()} and \texttt{equal\_range()} to locate the element or its position.
 	
 	\item Consider \texttt{std::any\_of}, \texttt{std::all\_of}, and \texttt{std::none\_of} algorithms for complex lookups, requiring a predicate functor.
 \begin{lstlisting}
@@ -13976,7 +13988,7 @@ bool nn = none_of(v.begin(), v.end(), [](int i) {return i >= 0; });
 	
 	\item For \texttt{std::set} or \texttt{std::map}, It has own version, \texttt{find()}, \texttt{count()} and \texttt{lower\_bound()}, \texttt{upper\_bound()}, and \texttt{equal\_range()}. You should not use \texttt{binary\_search} generic algorithm on the \texttt{std::map} and \texttt{std::set}, but use its own \texttt{find()}.
 	
-	\item  \texttt{find()} will return a match iterator, if no match, it will return the last iterator. But \texttt{Lower\_bound}  will return a position anyway, match position or insert position(no match).
+	\item  \texttt{find()} will return a match iterator, if no match, it will return the last iterator. But \texttt{Lower\_bound}  will return a position anyway, it can be either match position or insert position(no match).
 	
 	\item \texttt{std::lower\_bound}: first element that is greater-or-equal. \texttt{std::upper\_bound}: first element that is strictly greater. \texttt{std::equal\_range} return a pair of (\texttt{lower\_bound}, \texttt{upper\_bound}).
 	
@@ -13985,7 +13997,7 @@ bool nn = none_of(v.begin(), v.end(), [](int i) {return i >= 0; });
 	\end{center}
 	
 	
-	\item In the case of \texttt{equal\_range()}, if the two returned iterators are equal, it means that the element was not found in the range. If the distance between the two iterators is greater than or equal to one, it indicates the presence of one or more matching elements. This function can be used to replace \texttt{find()} or \texttt{count()} functions.
+	\item In the case of \texttt{equal\_range()}, if the two returned iterators are equal, it means that the element was not found in the range. If the distance between the two iterators is greater than or equal to one, it indicates the presence of one or more matching elements. This function can be used as a substitute for the \texttt{find()} or \texttt{count()} functions.
 \begin{lstlisting}[frame=single, language=c++]
 std::sort (v.begin(), v.end());// 10 10 10 20 20 20 30 30
 auto p =std::equal_range (v.begin(), v.end(), 20);
@@ -14050,7 +14062,7 @@ v1.insert(v1.begin(),  v2,begin() , v2.end()); // a better method is here.
 \subsubsection{Other usage suggestions}
 \begin{itemize}
 		
-	\item All container is not thread-safe. It's your duty to make it thread-safe, and thread-safe is OS dependent. Detail can be seen "Effective STL" item 12.
+	\item All container is not thread-safe. It's your duty to make it thread-safe. 
 \begin{lstlisting}[numbers=none]
 getMutexFor(container); 
 ...// do something on container.
@@ -14127,10 +14139,10 @@ public:
 		
 		\item It is important to always have comparison functions return false for equal values, to ensure strict weak ordering, as introduced in item 21 "in Effective STL".
 
-  		\item The generic algorithm \texttt{find} still uses \texttt{operator==} by default.
+  		\item The generic algorithm \texttt{std::find} uses \texttt{operator==} by default.
 \begin{lstlisting}[frame=single, language=c++, numbers=none]
 set<string,  case_insensitive_compare> ss; //ss has "AA";
-ss.find("aa"); //return true;
+ss.find("aa"); //return true; 
 find(ss.begin(),ss.end() , "aa") //false, find algorithm use operator ==
 \end{lstlisting}
 
@@ -14150,8 +14162,8 @@ set<*string,  stringLess> ss;
 	\item To support user-defined key types in \texttt{std::unordered\_set<Key>} and \texttt{std::unordered\_map<Key, Value>} one has to provide \texttt{operator==(Key, Key)} and a hash function(or functor).
 \begin{lstlisting}[numbers=none]
 struct X { int id; /* ... */ };
-	bool operator==(X a, X b) { return a.id == b.id; }
-	struct MyHash {
+	bool operator==(const & X a, const & X b) { return a.id == b.id; }
+	struct MyHash { //define MyHash inside struct X
 		size_t operator()(const X& x) const { 
 			return std::hash<int>()(x.id); }
 	};
@@ -14188,34 +14200,34 @@ us.max_load_factor() //usually is 1, don't change it.
 \subsection{New containers and features in modern C++}
 \begin{itemize}
 	
-	\item New containers introduced in C++11 include \texttt{std::forward\_list}, \texttt{std::unordered\_map}, and \texttt{std::unordered\_set}. The latter two support the implementation of hash tables, and the standard library provides basic hash functions for fundamental types like \texttt{int} and \texttt{string}. If you have your own class, you can use \texttt{boost::hash\_combine} to implement a hash function (or functor).
+	\item New containers introduced after C++11 include \texttt{std::forward\_list}, \texttt[std::array], \texttt{std::unordered\_map}, and \texttt{std::unordered\_set}. The latter two support the implementation of hash tables, and the standard library provides basic hash functions for fundamental types like \texttt{int} and \texttt{string}. If you have your own class, you can use \texttt{boost::hash\_combine} to implement a hash function (or functor).
 	
 	\item \texttt{std::array} is a class-based version of the classic C array, distinguished by its fixed size at compile time and allocation on the stack. In contrast, \texttt{std::vector} is a small class that holds a pointer to heap-allocated memory. This means that when you create a \texttt{std::vector}, it allocates memory using \texttt{new}. Accessing elements in a \texttt{std::vector} may involve slightly slower performance due to indirection through pointers to access the arrayed data. However, vectors can be resized dynamically, and they consume only a trivial amount of stack space regardless of their size.
 	
-	\begin{lstlisting}
-		array<string, 3> arr_str = {"hello", "world", "!"}; //need specify size, 3 here.
-		array arr_i = {1, 2, 3}; //std::array supports CTAD in c++ 17. 
+\begin{lstlisting}
+array<string, 3> arr_str = {"hello", "world", "!"}; //need specify size, 3 here.
+array arr_i = {1, 2, 3}; //std::array supports CTAD in c++ 17. 
 	\end{lstlisting}	
 	
-	\item \texttt{std::array} supports copying and assignment between arrays of the same size. The \texttt{at()} method is slower (but safer) than \texttt{operator[]}, as it performs bounds checking. Unlike other containers, \texttt{std::array} does not have a constructor for initializing elements individually; you specify its size using a template parameter. Since \texttt{std::array} is fixed in size, it does not provide a \texttt{push\_back} function.
-	\begin{lstlisting}[numbers=none]
-		array<int, 10> a2 = {0};
-		auto a3 = a2; //making a new array via copy
-		auto a4(a2); //same
-		a5 = a2 // a2 and a5 must have the same size.  
-	\end{lstlisting}	
+	\item \texttt{std::array} supports copying and assignment between arrays of the same size. The \texttt{at()} method is slower (but safer) than \texttt{operator[]}, as it performs bounds checking. Unlike other containers, \texttt{std::array} does not have a constructor for initializing elements individually; you specify its size using a template parameter. Since \texttt{std::array} is fixed in size, it does not provide a \texttt{push\_back} member function like \texttt{std::vector}.
+\begin{lstlisting}[numbers=none]
+array<int, 10> a2 = {0};
+auto a3 = a2; // making a new array via copy
+auto a4(a2);  // same
+a5 = a2 // a2 and a5 must have the same size and type.	  
+\end{lstlisting}		
 	
 	
-	\item Fixed-size C arrays decay into pointers when passed to a function, losing the array length information. Unlike C arrays, \texttt{std::array} and \texttt{std::vector} do not implicitly decay into a raw pointer. To obtain the underlying pointer of an \texttt{std::array}, you must use the data() member function, especially when interfacing with APIs that require a C-style buffer interface. Using an \texttt{std::array\&} as a function parameter ensures that the array length information is preserved.
+	\item Fixed-size C arrays decay into pointers when passed to a function, losing the array length information. Unlike C arrays, \texttt{std::array} and \texttt{std::vector} do not implicitly decay into a raw pointer. To obtain the underlying pointer of an \texttt{std::array}, you must use the \texttt{data()} member function, especially when interfacing with APIs that require a C-style buffer interface. Using an \texttt{std::array\&} as a function parameter ensures that the array length information is preserved.
 	
-	\begin{lstlisting}[numbers=none]
-		void carr_func(int * arr, size_t size){
-			std::cout << "carr_func - arr: " << arr << std::endl;
-		}
-		
-		carr_func(a2, a2.size()); //Error:
-		carr_func(a2.data(), a2.size()); //OK	
-	\end{lstlisting}	
+\begin{lstlisting}[numbers=none]
+void carr_func(int * arr, size_t size){
+	std::cout << "carr_func - arr: " << arr << std::endl;
+}
+
+carr_func(a2, a2.size()); //Error:
+carr_func(a2.data(), a2.size()); //OK		
+\end{lstlisting}		
 	
 	%	\item For most cases, you should use \texttt{std::array} and \texttt{std::forward\_list} first if you don't have any strong reason against using them.
 	%\begin{lstlisting}[numbers=none]
@@ -14229,32 +14241,32 @@ us.max_load_factor() //usually is 1, don't change it.
 	
 	
 	
-	\item Another addition is \texttt{insert\_or\_assign} in \texttt{std::map} in C++ 17. \texttt{insert\_or\_assign()} is a “smarter” successor of operator[]. Just like operator[] it modifies values if supplied with a key that is already present in the map. However, unlike operator[], \texttt{insert\_or\_assign()} doesn’t require default constructibility of the value\_type. On top of that, it returns a pair<iterator, bool>. The bool is true when insertion took place and false in case of assignment. 
+	\item Another addition is \texttt{insert\_or\_assign} in \texttt{std::map} in C++ 17. \texttt{insert\_or\_assign()} is a “smarter” successor of operator[]. Just like operator[] it modifies values if supplied with a key that is already present in the map. However, unlike operator[], \texttt{insert\_or\_assign()} doesn’t require default constructibility of the value\_type. On top of that, it returns a \texttt{pair<iterator, bool>}. The bool is true when insertion took place and false in case of assignment. 
 	
-	\begin{lstlisting}
-		auto m = std::map<int, A> {};
-		
-		m.insert({1, {"Ann", 63}}); //constructor, copy, move
-		m.insert({1, A("Ann", 63)});  //constructor, move, move
-		m.insert(std::make_pair(1, A("Ann", 63))); //constructor, move , move 
-		m.emplace(std::make_pair(1, A("Ann", 63))):  //constructor,  move, move
-		m.emplace(1, A("Ann", 63)): //constructor, move
-		
-		// m.emplace(1, "Ann", 63); //doens't work
-		m.try_emplace(1, "Ann", 63); //Work, only constructor	
-	\end{lstlisting}	
+\begin{lstlisting}
+auto m = std::map<int, A> {};
+
+m.insert({1, {"Ann", 63}}); //constructor, copy, move
+m.insert({1, A("Ann", 63)});  //constructor, move, move
+m.insert(std::make_pair(1, A("Ann", 63))); //constructor, move , move 
+m.emplace(std::make_pair(1, A("Ann", 63))):  //constructor,  move, move
+m.emplace(1, A("Ann", 63)): //constructor, move
+
+// m.emplace(1, "Ann", 63); //doens't work
+m.try_emplace(1, "Ann", 63); //Work, only constructor		
+\end{lstlisting}		
 	
 	\item \texttt{try\_emplace()} is a safer successor of \texttt{insert()} or emplace(). In line with insert() and \texttt{emplace()}, \texttt{try\_emplace()} doesn’t modify values for already inserted elements. However, on top of that, it prevents stealing from original arguments that happens both with \texttt{insert()} and \texttt{emplace()} in case of a failed insertion.
 	
-	\begin{lstlisting}
-		auto p = std::make_unique<A>("John",47);
-		
-		m.emplace(1, std::move(p)); // p won't be inserted
-		assert(p != nullptr); // this will most likely fail
-		
-		m.try_emplace(1, std::move(p));
-		assert(p != nullptr); //no plundering in case insertion failed
-	\end{lstlisting}
+\begin{lstlisting}
+auto p = std::make_unique<A>("John",47);
+
+m.emplace(1, std::move(p)); // p won't be inserted
+assert(p != nullptr); // this will most likely fail
+
+m.try_emplace(1, std::move(p));
+assert(p != nullptr); //no plundering in case insertion failed
+\end{lstlisting}	
 	
 	\begin{center}
 		\includegraphics[width=0.6\linewidth]{pics/try_emplace}
@@ -14265,80 +14277,64 @@ us.max_load_factor() //usually is 1, don't change it.
 \end{itemize}
 
 
-\subsection{string}
+\subsection{String}
 \subsubsection{std::string class basic knowledge}
 \begin{itemize}
-	\item In C++, we encourage you to use the string class more often, instead of \texttt{char[]} and \texttt{char *p = new}. It offers more APIs which are suitable for manipulate string, such as \texttt{compare, find, erase, replace,} and \texttt{insert}. The string class is a template specialization of \texttt{basic\_string<char>}. Understanding this will enable you to construct a string of type \texttt{w\_char}.
+	\item The string class is a template specialization of \texttt{basic\_string<char>}. Understanding this will enable you to construct a string of type \texttt{w\_char}.
 	
-	
-	\item There are a lot of ways that can be used construct a string object, you can see these methods in the cpp reference website, such as:
-\begin{lstlisting}[numbers=none]
-string(const char* s);
-string(const char*, size_type n);
-string(const string& str, size_type pos, size_type n = npos)
-......
-\end{lstlisting}
-	
-	\item The standard containers define \texttt{size\_type} as a typedef to \texttt{Allocator::size\_type} (where \texttt{Allocator} is a template parameter). For the default allocator (\texttt{std::allocator}), \texttt{size\_type} is defined to be \texttt{size\_t}. Therefore, in the standard case, they are the same. However, if you use a custom allocator, a different underlying type could be used. Thus, using \texttt{container::size\_type} is preferable for maximum portability.
-	
-	\item Essentially, a \texttt{std::string} is just a \texttt{std::vector}, so it supports all the functionalities that \texttt{std::vector} provides. However, being a string, it also has additional interfaces specifically tailored for string operations, such as \texttt{find()}, \texttt{find\_first\_of()}, \texttt{length}, \texttt{starts\_with(), compare(), substr(), contains()}, and more. string method lists are below:
+	\item In C++, we encourage you to use the string class more often, instead of \texttt{char[]} and \texttt{char *p = new}. Essentially, a \texttt{std::string} is just a sequential container, like \texttt{std::vector}. Therefore, it supports all the functionalities that \texttt{std::vector} provides. However, being a string, it also has additional interfaces specifically tailored for string operations, such as \texttt{find()}, \texttt{replace}, \texttt{compare}, \texttt{length}, and \texttt{substr}, among others. A list of string methods is below:
 	
 	\begin{tabular}{| p{0.2\textwidth} |p{0.7\textwidth}|}
-		\tophline
-		length(), size()  & Returns the current number of elements in a string. \\
-		
-		\tophline
-		find(), rfind() & Search a string in a forward/backward direction for the first occurrence of a substring that matches a specified sequence of characters.\\
-		
-		\tophline
-		substr() & Copies a substring of at most some number of characters from a string beginning from a specified position. \\		
-		\tophline
-		find\_first\_not\_of() find\_first\_of() find\_last\_not\_of() find\_last\_of() & Search through a string for the first character that is not any element of a specified string.\\
-		\tophline
-		append() & Adds characters to the end of a string.\\
-		\tophline
-		substr() & Return sub string. \\
-		\tophline
-		c\_str(), data() & Return pointer. \\
-		\tophline
-		compare()& Compares two character sequences. \\
-		\tophline
-		copy() & Copies at most a specified number of characters from an indexed position in a source string to a target character array.The function does not append a null character at the end of the copied content.
-		\\
-		\bottomhline
-	\end{tabular}
+	\tophline
+	length(), size()  & Returns the current number of elements in a string. \\
 	
-		
-	\item When it comes to the real size of a string, the string class usually manages its own memory. Just like \texttt{std::vector}, you can use the \texttt{string::capacity()} and \texttt{string::reserve()} functions to manipulate the memory allocation. For example, if you call \texttt{str.reserve(50)}, \texttt{str.capacity()} will return 63. This is because 63 is the largest block size that can fit 50 characters, plus one extra character for the null terminator (\verb='\0'=) that marks the end of the string.
+	\tophline
+	find(), rfind() & Search a string in a forward/backward direction for the first occurrence of a substring that matches a specified sequence of characters.\\
 	
-	\item If you are using a string with some legacy C function, you should use the \texttt{std::string.c\_str()} function for read-only operations. This function returns a \texttt{const char*}, so you cannot modify the string using this pointer. If your legacy C function needs to modify the string, you should follow the steps below: 	 
-	
-\begin{lstlisting}[frame=single, language=c++]
-Old_c(const char* p); 
-Old_c(str.c_str());  // legacy C function read a string
-	
-size_t Old_c(char *pArray, size_t arraySize);  // legacy C write a string.
+	\tophline
+	substr() & Copies a substring of at most some number of characters from a string beginning from a specified position. \\		
+	\tophline
+	find\_first\_not\_of() find\_first\_of() find\_last\_not\_of() find\_last\_of() & Search through a string for the first character that is not any element of a specified string.\\
+	\tophline
+	append() & Adds characters to the end of a string.\\
+	\tophline
+	substr() & Return sub string. \\
+	\tophline
+	c\_str(), data() & Return pointer. \\
+	\tophline
+	compare()& Compares two character sequences. \\
+	\tophline
+	copy() & Copies at most a specified number of characters from an indexed position in a source string to a target character array.The function does not append a null character at the end of the copied content.
+	\\
+	\bottomhline
+\end{tabular}
 
-vector<char> vc(maxNumChars); // 1) create vector char, better than char* p
-size_t charsWritten = Old_c(&vc[0], vc.size()); //2) copy it to vc
-string s(vc.begin(), vc.begin()+charsWritten); //3) copy it to string
-\end{lstlisting}
-
-	\item Another interesting topic regarding strings is SBO(small buffer optimization), which is used in the string implementation of all compilers. For short strings (less than 16 characters), we can save them in \_local memory instead of on the heap, which saves on heap allocation costs.
+	\item The \texttt{std::string} interface has a bad reputation due to its extensive API, but there are some clues to help you remember and use it effectively. Most string API functions support four kinds of function parameters:
+\begin{enumerate}
+	\item A \texttt{std::string} or \texttt{std::string\_view} parameter. 
+	
+	\item \texttt{CharT* s} pointer, for \texttt{CharT*} pointer, ususally it support another overload version, which you can input \texttt{size\_type count} to specify the length of \texttt{s}.
+	
+	\item A single character. 
+	
+	\item One or two iterators, because \texttt{std::string} is also sequential container, such as \texttt{std::vector}. 
+\end{enumerate}
 \begin{lstlisting}
-class string{
-	union Buffer{
-		char*    _begin;
-		char[16] _local;
-	};
-	
-	Buffer _buffer;
-	size_t _size;
-	size_t _capacity;
-};
+size_type find( const basic_string& str, size_type pos = 0 ) const;
+size_type find( const CharT* s, size_type pos, size_type count ) const;
+size_type find( const CharT* s, size_type pos = 0 ) const;
+size_type find( CharT ch, size_type pos = 0 ) const;
 \end{lstlisting}
-	
-	
+		
+	\item There are a lot of ways that can be used construct a string object, you can see these methods in the cpp reference website, such as:
+\begin{lstlisting}[numbers=none]
+string(size_type count, CharT ch);  //1) single character
+string(const char*, size_type n);   //2) character pointer 
+string(const string& str, size_type pos, size_type n = npos) //3) std::string
+template< class InputIt > //4) iterator, comes from sequential container.
+basic_string( InputIt first, InputIt last, const Allocator& alloc=Allocator());
+\end{lstlisting}
+		
 	\item There are a few \texttt{find()} name inside STL library, don't confused with below names: 
 	\begin{enumerate}
 		\item \texttt{std::find/find\_if }, \texttt{std::search/find\_end} are generic algorithms based on iterators. \texttt{std::find} look for a value in a container, and \texttt{std::search} look for a sub range. \texttt{vector} doesn't have \texttt{find} member function, you should use \texttt{std::find} for it.
@@ -14386,7 +14382,38 @@ while ((pos=str.find_first_of("aeiou", pos)) !=std::string::npos){
 1-iterator)replace( const_iterator first, const_iterator last, const basic_string& str ); 
 \end{lstlisting}
 
+	\item The standard containers define \texttt{size\_type} as a typedef to \texttt{Allocator::size\_type} (where \texttt{Allocator} is a template parameter). For the default allocator (\texttt{std::allocator}), \texttt{size\_type} is defined to be \texttt{size\_t}. Therefore, in the standard case, they are the same. However, if you use a custom allocator, a different underlying type could be used. Thus, using \texttt{container::size\_type} is preferable for maximum portability.
+
+
+\item When it comes to the real size of a string, the string class usually manages its own memory. Just like \texttt{std::vector}, you can use the \texttt{string::capacity()} and \texttt{string::reserve()} functions to manipulate the memory allocation. For example, if you call \texttt{str.reserve(50)}, \texttt{str.capacity()} will return 63. This is because 63 is the largest block size that can fit 50 characters, plus one extra character for the null terminator (\verb='\0'=) that marks the end of the string.
+
+\item If you are using a string with some legacy C function, you should use the \texttt{std::string.c\_str()} function for read-only operations. This function returns a \texttt{const char*}, so you cannot modify the string using this pointer. If your legacy C function needs to modify the string, you should follow the steps below: 	 
+
+\begin{lstlisting}[frame=single, language=c++]
+Old_c(const char* p); 
+Old_c(str.c_str());  // legacy C function read a string
+
+size_t Old_c(char *pArray, size_t arraySize);  // legacy C write a string.
+
+vector<char> vc(maxNumChars); // 1) create vector char, better than char* p
+size_t charsWritten = Old_c(&vc[0], vc.size()); //2) copy it to vc
+string s(vc.begin(), vc.begin()+charsWritten); //3) copy it to string	
+\end{lstlisting}
+
+\item Another interesting topic regarding strings is SBO(small buffer optimization), which is used in the string implementation of all compilers. For short strings (less than 16 characters), we can save them in \_local memory instead of on the heap, which saves on heap allocation costs.
+\begin{lstlisting}
+class string{
+	union Buffer{
+		char*    _begin;
+		char[16] _local;
+	};
 	
+	Buffer _buffer;
+	size_t _size;
+	size_t _capacity;
+};	
+\end{lstlisting}
+
 \end{itemize}
 
 \subsubsection{std::string examples}
@@ -25759,9 +25786,24 @@ struct Name {
 
 	\item There are a few key points about spaceship operator:
 \begin{enumerate}
-	\item Default spaceship operator will generate all six comparison operators. 
+	\item The default spaceship operator will generate all four comparison operators, not six comparison operators. The reason why equality and ordering are separated is that there are many scenarios where automatically implementing \texttt{==} in terms of \texttt{<=>} could be quite inefficient.
+\begin{center}
+\begin{tabular}{|c|c|c|}
+	\hline
+	&  Equality & Ordering  \\
+	\hline
+	Primary & ==  &  <=> \\
+	\hline
+	Secondary& != & <, >, <=, >=  \\
+	\hline
+\end{tabular}
+\end{center}
+	
+	 
 	\item It returns three ordering type. You can convert strong to weak, and weak to partial. These type supports comparison with 0. 
+	
 	\item If you define your own spaceship operator, compiler will not generate \texttt{==} operator.
+	
 	\item Why do we have three return types? It can make compiler to distinguish type mismatch error.  Please see the following code: 
 \begin{lstlisting}
 struct Int{
@@ -25798,7 +25840,6 @@ std::partial_ordering to std::strong_ordering
 |                       std::partial_ordering
 \end{verbatim}
 \end{small}
-
 
 \end{enumerate}
 
