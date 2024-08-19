@@ -3206,21 +3206,19 @@ while (std::getline(ss, str1, '.')) {  //geline support input delim
 
 \subsection{Basic principles and terminology}
 \begin{itemize}
-	\item Always initialize variables before using them, and manually initialize any non-member objects of built-in types, including pointers.
+	\item Always initialize variables before first using them, including non-member objects of built-in types and pointers.
 	
-	\item There are three names you need to distinguish: 1) initializer list, 2) list(brace) initialization, and 3) member initialization list (mem-init).
+	\item There are three terminologies you need to distinguish: 1) initializer list, 2) list(brace) initialization, and 3) member initialization list (mem-init).
 
 	\begin{enumerate}
 		\item The member initialization list is used in C++ constructors to initialize all members inside an object. It offers several advantages, as detailed in the 'OOP' chapter. For example, reference-type member variables can only be initialized using the member initialization list. Additionally, it provides higher efficiency because the copy constructor is only called once.
 		
 		\item List initialization is a generic initialization syntax that supports uniform initialization, including for class members and aggregates. Additionally, it avoids narrowing conversions and vexing parse problems.
 		
-		\item Initializer list is \texttt{std::initializer\_list}. It is a  new data type. just like std::list.
+		\item Initializer list is \texttt{std::initializer\_list}. It is a  new data type. just like \texttt{std::list}.
 	\end{enumerate}
 
-	\item A constructor with one parameter is called a converting constructor in C++. Since C++11, any constructor that is not declared with the specifier explicit is considered a converting constructor. This includes both implicitly-declared and user-defined non-explicit copy constructors and move constructors.
-	
-	\item Constructors with more than one parameter are also considered converting constructors in C++11. This is because the new standard provides a convenient syntax for passing arguments and returning values using braced-init-lists. Consider the following example:
+	\item A constructor with one parameter is called a converting constructor in C++ before C++11. However, since C++11, any constructor that is not declared with the specifier \texttt{explicit} is considered a converting constructor. In another word, whether a constructor is a converting constructor only depends on whether it has the \texttt{explicit} specifier. If there is no \texttt{explicit} specifier, even constructors with zero or more than one parameter are considered converting constructors, including both implicitly-declared and user-defined non-explicit copy constructors and move constructors. This is because the new standard provides a convenient syntax for passing arguments and returning values using braced-init-lists. Consider the following example:
 \begin{lstlisting}[numbers=none]
 struct Foo{
 	Foo() { }         // converting constructor (since C++11)  
@@ -3228,21 +3226,39 @@ struct Foo{
 	Foo(float, int) { } // converting constructor (since C++11)
 };
 
-Foo bar(Foo f) {
-	return {1.0f, 5}; //CONVERTING two numbers into Foo.
+Foo fun(Foo f) {
+	return {1.0f, 5}; //CONVERTING two numbers into a Foo object.
 }
 
-bar({1.0f, 5});  //	CONVERTING two numbers into Foo.
+fun({1.0f, 5});  //	CONVERTING two numbers into a Foo object.
 \end{lstlisting}	
-	In this example, the ability to specify the return value as a braced-init-list is considered a conversion. This uses the converting constructor to construct a Foo object.
-	
-	\item It's important to note that whether a constructor is a converting constructor only depends on whether it has the \texttt{explicit} specifier. If there is no \texttt{explicit} specifier, even constructors with zero or more than one parameter are considered converting constructors."
-	
-	\item List(brace) initialization(syntax description) is also called uniform initialization(semantic description), In this book, uniform, list(brace) initialization are interchangeable. In syntax level, it uses braced-init-lists (\{\}) to enclose initializer values.
+		
+	\item List(brace) initialization (syntax description) is also called uniform initialization (semantic description). In this book, uniform, list(brace) initialization are interchangeable. In syntax level, it uses braced-init-lists (\{\}) to enclose initializer values.
 	
 	\item List initialization is a feature that permits the usage of a consistent syntax to initialize variables and objects ranging from primitive types to aggregates. Although the syntax is uniform, it carries out different actions depending on the type being initialized. For instance, it may perform value initialization or call a converting constructor.
 	 	
-	\item Default constructor is different with default initialization. Copy constructor is also different with copy initialization.
+	\item Do not determine the type of initialization an expression performs based on its syntax, but rather judge it based on the type of the variable. 
+	
+\begin{lstlisting}
+struct Foo1{
+	int x;
+	int y;
+};
+Foo1{1,2}; //perform aggregate initialization, because Foo1 is aggregate type.
+
+struct Foo2{
+	int x;
+	int y;
+	Foo(int x, int y){} //has user defined constructor
+}
+Foo2{1,2}; //perform direct initialization, because Foo2 is not aggregate type
+\end{lstlisting}
+
+	\item Do not determine the type of initialization an expression performs based on its constructor. Default initialization doesn't always use default constructor. Copy initialization doesn't always invoke copy constructor.
+\begin{lstlisting}
+int i; //default initialization, without default constructor.
+int j = i; //copy initialization, without copy constructor.
+\end{lstlisting}
 	
 	\item A good reference page is \verb|https://en.cppreference.com/w/cpp/language/initialization|. Anytime you have a question, you can go there to get the official explanation. 
 \end{itemize}
@@ -3293,9 +3309,9 @@ Y::Y(){
 	
 	\item  When dealing with global objects across multiple translation units, you have two main strategies to avoid the pitfalls of uncertain initialization order:
 	\begin{enumerate}
-		\item Avoid Global Objects: Prefer local static objects or other design patterns that don't rely on global state.
+		\item Avoid global objects: Prefer local static objects or other design patterns that don't rely on global state.
 		
-		\item Use the Singleton Design Pattern: Ensure that an object is created when first accessed, thereby controlling the initialization order explicitly.
+		\item Use the singleton design pattern: Ensure that an object is created when first accessed, thereby controlling the initialization order explicitly.
 	
 	\begin{lstlisting}[numbers=none]
 #include "x.h"  // File x.cpp
@@ -3321,11 +3337,11 @@ Y::Y(){
 \begin{itemize}
 	\item There are six \textbf{initialization methods} in C++:
 	\begin{enumerate}
-		\item Default initialization in C++ can be a bit confusing, as it behaves differently depending on the context and the type of the variable being initialized. Let's break down the two key points:
+		\item Default initialization behaves differently depending on the context and the type of the variable being initialized. Pay attention to the following two points:
 		\begin{enumerate}
-			\item Default Initialization Does Not Necessarily Call the Default Constructor: If a class type has a default constructor, it will be called. However, for built-in types (like int, char, double, etc.), default initialization does not call any constructor.
+			\item Default Initialization does Not necessarily call the default constructor: If a class type has a default constructor, it will be called. However, for built-in types (like int, char, double, etc.), default initialization does not call any constructor.
 			
-			\item Default Initialization Does Not Necessarily Set the Variable to Zero: For built-in types, default initialization results in an indeterminate value if the variable is not explicitly initialized. This can lead to unpredictable behavior if the variable is used before being set to a known value.	
+			\item Default Initialization does Not necessarily set the variable to zero: For built-in types, default initialization results in an indeterminate value if the variable is not explicitly initialized. This can lead to unpredictable behavior if the variable is used before being set to a known value.	
 		\end{enumerate}
 			
 \begin{lstlisting}[numbers=none]
@@ -3340,25 +3356,21 @@ struct T2{
 	int mem;
 	T2() { } 
 };
-int n; // static non-class, a two-phase initialization is done:
-	// first, zero initialization, then default initialization does nothing
-	
+int static s_n; // static non-class, a two-phase initialization: first, zero initialization, then default initialization does nothing. static and default initialization are not exclusive each other, they can be combined. 
+
 int main(){
 	int n;          // non-class, the value is indeterminate
 	std::string s;  // class, calls default constructor, s is "" (empty string)
 	std::string a[2]; // array, default-initializes the elements, a is {"", ""}
-	//  int& r;       // error: a reference
+	//  int& r;       // error: a reference can't use default initialization.
 	//  const int n;  // error: a const non-class
 	//  const T1 t1;  // error: const class with implicit default constructor
 	T1 t1;            // class, calls implicit default constructor
 	const T2 t2;   // const class, calls the user-provided default constructor
-                  // t2.mem is default-initialized (to indeterminate value)
+                   // t2.mem is default-initialized (to indeterminate value)
 }
 \end{lstlisting}
 
-\begin{description}
-	\item[Line 6:] static initialization and default initialization is not exclusive each other, they can be combined. 
-\end{description}
 
 
 	\item Value initialization syntax and example.
@@ -3375,32 +3387,27 @@ struct T1{
 	int mem1;
 	std::string mem2;
 }; // implicit default constructor
-
 struct T2{
 	int mem1;
 	std::string mem2;
 	T2(const T2&) { } // user-provided copy constructor, no default ctor
-};
-
+}; //T2 with user-proviced copy constructor
 struct T3{
 	int mem1;
 	std::string mem2;
 	T3() { } // user-provided default constructor
 };
 std::string s{}; // class => default-initialization, the value is ""
-
 int n{};                // scalar => zero-initialization, the value is 0
-double f = double();    // scalar => zero-initialization, the value is 0.0
-int* a = new int[10](); // array => value-initialization of each element 0
+int* a = new int[10]{}; // array => value-initialization of each element 0
 
 T1 t1{};		// class with implicit default constructor =>
 // t1.mem1 is zero-initialized 0, t1.mem2 is default-initialized ""
-//  T2 t2{};	// error: class with no default constructor
+
+//T2 t2{};	// error: class with no default constructor
 
 T3 t3{};		// class with user-provided default constructor =>
 // t3.mem1 is default-init to indeterminate, t3.mem2 is default-init ""
-
-std::vector<int> v(3);  // value-initialization of each element to 0
 \end{lstlisting}
 
 		\item Direct initialization syntax and example.
@@ -3425,7 +3432,7 @@ Foo f(2); // f is direct-initialized:
 Foo f2 = 2; //error, because constructor is explicit.
 \end{lstlisting}
 
-		\item Copy initialization syntax and example.
+		\item Copy initialization syntax and example. Pay attention here, only one argument on the right side of equal assignment in the copy initialization expression.
 \begin{lstlisting}[numbers=none]
 T object = other;     // Initialization via assignment
 T array[N] = {other}; // In array-initialization, the individual value are copy-init
@@ -3436,23 +3443,16 @@ throw object;
 \end{lstlisting}
 
 \begin{lstlisting}[]
-struct A {
-	operator int() { return 12;}
-};
+int a = 1;
+int b = a; // this is a copy initialization. 
 
-struct B {
-	B(int) {}
+struct Foo {          
+	Foo(int) {}
 };
-
-int c = b; // this is also copy initialization. 
-A a;
-//B b1 = a;  // it's copy initialization, but fail. 
-B b2{a};     // calling A::operator int(), then B::B(int)
-B b3 = {a};  //like line 12. not copy initialization, is list initialization
-auto b4 = B{a}; //like line 12. not copy initialization, but direct init.
+Foo foo = 3; // copy initialization of Foo 
 \end{lstlisting}
 
-		\item Aggregate initialization is used when initializing arrays or simple struct (all-member-public, no user-provided c'ctors.)
+		\item Aggregate initialization is used when initializing arrays or simple struct (all-member-public, no user-provided constructor.)
 \begin{lstlisting}[numbers=none]
 T object = {arg1, arg2, ...}; // If T is an array or a simple struct
 T object{arg1, arg2, ...};    // If T is an array or a simple struct
@@ -3471,8 +3471,7 @@ struct S {
 S s1 = { 1, { 2, 3, {4, 5, 6} } };
 S s2 = { 1, 2, 3, 4, 5, 6}; // same, but with brace elision
 S s3{1, {2, 3, {4, 5, 6} } }; // using direct-list-initialization syntax
-S s4{1, 2, 3, 4, 5, 6}; // error until CWG 1270: 
-						// brace elision only allowed with equals sign
+S s4{1, 2, 3, 4, 5, 6}; // brace elision is ok without = after C++ 14.
 \end{lstlisting}
 
 		\item Reference initialization. It must has a reference symbol \texttt{\&} in the expression.
@@ -3488,7 +3487,7 @@ T & ref { arg1, arg2, ... } ;
 \begin{enumerate}
 	\item Without parentheses, compiler uses the default initialization.
 	
-	\item Using empty parentheses or braces, compiler initializes the variable with a default value. The compiler uses a user-defined value if one exists, otherwise it sets the value to zero.
+	\item Using empty braces \{\}, compiler initializes the variable with a default value. The compiler uses a user-defined value if one exists, otherwise it sets the value to zero.
 	
 	\item Using parentheses with a value initializes the variable with the specified value.
 	
@@ -3499,7 +3498,7 @@ T & ref { arg1, arg2, ... } ;
 	\item Reference initialization is the simplest form of initialization.
 \end{enumerate}
 
-	\item After learning about the six forms of initialization, it's important to understand some key differences. In the next three sections, I'll explain the distinctions between value initialization and default initialization, direct initialization and copy initialization, and traditional copy initialization and list copy initialization. These concepts can be complicated, but don't worry – a short summary will follow each section. Let's get started!
+	\item After learning about the six forms of initialization, it's important to understand some key differences between them. In the following sections, I'll explain the distinctions between value initialization and default initialization, direct initialization and copy initialization, and traditional copy initialization and list copy initialization.
 \end{itemize}
 
 
@@ -3508,10 +3507,20 @@ T & ref { arg1, arg2, ... } ;
  
 	\item Let's take a look at some examples that demonstrate the difference between value initialization and default initialization.
 	\begin{enumerate}
+		\item Class has no default constructor. 
+\begin{lstlisting}[frame=single, language=c++]
+struct Foo{ //no or delete default constructor
+	Foo() = delete;
+	int i;
+};
+				
+Foo foo;     //Error, call to deleted constructor of Foo
+Foo foo1{};	 //Error with same reason.
+\end{lstlisting}
+	
 		\item Class has a implicit default constructor.
 \begin{lstlisting}[frame=single, language=c++]
-class Foo{ //implicit default constructor
-public:
+struct Foo{ //implicit default constructor
 	int i;
 };				
 Foo foo(); //function declaration, can't use () to call default ctor
@@ -3520,17 +3529,16 @@ Foo foo;     //foo.i is random value
 Foo foo1{};	 //foo1.i is zero.		 
 \end{lstlisting}
 
-\begin{description}			
-\item[Line 7:]	 It's a \textbf{default initialization}. Standard says: if T is a non-POD (until C++11) class type, then... otherwise, no initialization is performed: the objects with automatic storage duration (and their subobjects) contain \textbf{indeterminate values}. Because Foo is POD class, so default initialization doesn't nothing, leave indeterminate values.
+%\begin{description}			
+%\item[Line 7:]	 It's a \textbf{default initialization}. Standard says: if T is a non-POD (until C++11) class type, then... otherwise, no initialization is performed: the objects with automatic storage duration (and their subobjects) contain \textbf{indeterminate values}. Because Foo is POD class, so default initialization doesn't nothing, leave indeterminate values.
+%
+%\item[Line 8:]  It's a \textbf{value initialization}. \texttt{Foo} has a implicitly-defined constructor. Standard says: "if T is a class type with a default constructor that is neither user-provided nor deleted (that is, it may be a class with an implicitly-defined or defaulted default constructor), the object is \textbf{zero-initialized} and then it is default-initialized if it has a non-trivial default constructor;"
+%\end{description}
 
-\item[Line 8:]  It's a \textbf{value initialization}. \texttt{Foo} has a implicitly-defined constructor. Standard says: "if T is a class type with a default constructor that is neither user-provided nor deleted (that is, it may be a class with an implicitly-defined or defaulted default constructor), the object is \textbf{zero-initialized} and then it is default-initialized if it has a non-trivial default constructor;"
-\end{description}
-
-		\item Class has a defaulted default constructor.
+		\item Class has a defaulted default constructor. How to understand \texttt{"= default"} in line 2?. Because class has its own copy constructor, so compiler doesn't produce implicit default constructor. In order to generate one, you should use \texttt{"= default"}.
 \begin{lstlisting}[frame=single, language=c++]
-class Foo{ //implicit default constructor
-public:
-	Foo() = default;
+struct Foo{ //implicit default constructor
+	Foo() = default; 
 	Foo(const Foo&){...};
 	int i;
 };
@@ -3538,35 +3546,30 @@ public:
 Foo foo;     //foo.i is random value
 Foo foo1{};	 //foo1.i is zero.		 
 \end{lstlisting}
-\begin{description}			
-	\item[Line 3:]  How to understand \texttt{"= default"}?. Because class has its own copy constructor, so compiler doesn't produce implicit default ctor. In order to generate one, you should use \texttt{"= default"}.
-	
-	\item[Line 8:] It's a defaulted default constructor.  Standard says: if T is a non-POD (until C++11) class type, the constructors are considered and subjected to overload resolution against the empty argument list. The constructor selected (which is one of the default constructors) is called to provide the initial value for the new object;
-	
-	\item[Line 9:] It's a value init. Standard says: "A class with an implicitly-defined or defaulted default constructor, the object is zero-initialized."
-\end{description}
+
+%\begin{description}			
+%	
+%	\item[Line 8:] It's a defaulted default constructor.  Standard says: if T is a non-POD (until C++11) class type, the constructors are considered and subjected to overload resolution against the empty argument list. The constructor selected (which is one of the default constructors) is called to provide the initial value for the new object;
+%	
+%	\item[Line 9:] It's a value init. Standard says: "A class with an implicitly-defined or defaulted default constructor, the object is zero-initialized."
+%\end{description}
 
 
-		\item Class has a user-defined default constructor.
+		\item Class has a user-defined default constructor. If there is a user-defined constructor, the compiler will call that constructor. If the user-defined constructor does not initialize all the member variables, then the uninitialized member variables will have random values. 
 \begin{lstlisting}[frame=single, language=c++]
-class Foo{ //implicit default constructor
-public:
+struct Foo{ //implicit default constructor
 	Foo();
 	int i;
 };
 Foo::Foo() = default; //like Foo::Foo() {}, it is user defined constructor.
     		
 const Foo cfoo; //cfoo.i is random value 
-			
 Foo foo;     //foo.i is random value
 Foo foo1{};	 //foo1.i is random value.	
+
 Foo* pf = new Foo;   //just like Foo foo; pf->i is random 
-Foo* pf1 = new Foo();  // just like new Foo{}
-Foo* pf2 = new Foo{};  // just like Foo foo{};		 
+Foo* pf1 = new Foo{};  //pf1->i is random, same as Foo* pf2 = new Foo();
 \end{lstlisting}
-\begin{description}			
-	\item[Source code:] If there is a user-defined constructor, the compiler will call that constructor. If the user-defined constructor does not initialize all the member variables, then the uninitialized member variables will have random values. 
-\end{description}
 
 	 \item Value initialization also kick in when you use \texttt{new}. Detail can be found: "Do the parentheses after the type name make a difference with new?"
 
@@ -3576,9 +3579,11 @@ Foo* pf2 = new Foo{};  // just like Foo foo{};
 \begin{enumerate}
 	\item \texttt{Foo foo()} is not initialization call at all, it's a function declaration. 
 	
-	\item If there is an user-defined default constructor, \texttt{Foo foo;} and \texttt{Foo foo1\{\};} both call user-defined default ctor. If it does nothing, then \texttt{i} is random.
+	\item If there is no a default constructor, both \texttt{Foo foo;} and \texttt{Foo foo1\{\};} fail. 
 	
 	\item If there is an implicitly-defined or defaulted default constructor, \texttt{Foo foo;} and \texttt{Foo foo1\{\};} are different. \texttt{Foo foo1\{\};} perform zero initialization. So \texttt{i} is 0. 
+	
+	\item If there is an user-defined default constructor, \texttt{Foo foo;} and \texttt{Foo foo1\{\};} both call user-defined default ctor. If it does nothing, then \texttt{i} is random.
 	
 	\item The behavior of value initialization depends on whether you have a user-defined constructor. If you don't have one, the compiler performs zero initialization. However, if you have a user-defined constructor, the compiler calls your defined constructor directly instead of performing zero initialization. This is because you have higher priority than the compiler in determining how the object should be initialized.
 \end{enumerate}
@@ -3590,21 +3595,22 @@ Foo* pf2 = new Foo{};  // just like Foo foo{};
 \subsubsection{Copy initialization and direct initialization}
 \begin{itemize}
 
-	\item It's crucial to distinguish between copy initialization and the use of a copy constructor. When invoking the copy constructor directly, it falls under direct initialization. In contrast, copy initialization involves two stages: first, a temporary object is created, followed by copying this temporary object to initialize the new object. During direct initialization, only one constructor is called, determined by the compiler through overload resolution. These definitions outline the theoretical differences between copy initialization and direct initialization. However, in practice, compiler optimizations may obscure or simplify the intricacies of the initialization process.
+	\item It's crucial to distinguish between copy initialization and the use of a copy constructor. When invoking the copy constructor directly, it falls under direct initialization. In contrast, copy initialization involves two stages: first, a temporary object is created, followed by copying this temporary object to initialize the new object. During direct initialization, only one constructor is called, determined by the compiler through overload resolution. 
+	
+%	These definitions outline the theoretical differences between copy initialization and direct initialization. However, in practice, compiler optimizations may obscure or simplify the intricacies of the initialization process, don't consider compiler optimization when you want to decide if a initialization is copy initialization or not. 
 	
 \begin{lstlisting}[frame=single, language=c++]
 ClassTest ct1("ab"); //direct initialization
 ClassTest ct2 = "ab"; //copy initialization
-ClassTest ct3 = ct1; //copy initialization
+ClassTest ct3 = ct1; //copy initialization, there is = in the expression
 ClassTest ct4(ct1); //direct initialization, not copy initialization
 ClassTest ct5=ClassTest();//copy initialization, ClassTest has default constructor
 \end{lstlisting}
 \begin{description}
-	\item[Line 2:] When compiler optimizations are turned on, the behavior of copy initialization may be different than what's described by the theoretical definition. For example, consider the case of initializing an object \texttt{ct2}, if the copy constructor is private, the compiler will stop the compilation. However, if the copy constructor is public, the compiler may optimize the initialization process and call the single-argument constructor directly, bypassing the creation of a temporary object. Even though the single-argument constructor is called directly, this is still considered copy initialization.
+%	\item[Line 2:] When compiler optimizations are turned on, the behavior of copy initialization may be different than what's described by the theoretical definition. For example, consider the case of initializing an object \texttt{ct2}, if the copy constructor is private, the compiler will stop the compilation. However, if the copy constructor is public, the compiler may optimize the initialization process and call the single-argument constructor directly, bypassing the creation of a temporary object. Even though the single-argument constructor is called directly, this is still considered copy initialization.
 	
-	\item[Line 3:] For \texttt{ct3}, It's copy initialization, because there is = inside the initialization expression.
-	
-	\item[Line 4:] \texttt{ct4} is direct initialization call copy constructor. because in theoretical it's only one step, call a constructor by overload. For compiler, maybe line 3 and line 4 take the same action, but they are different initilazation method theoretically. The C++ standard precisely defines different initialization methods according to how variables or objects are initialized syntactically,not on the actions that a compiler may take during compilation. This distinction is crucial for understanding different initilazation method.
+
+	\item[Line 4:] \texttt{ct4} is direct initialization. Because in theoretical it's only one step, call a constructor by overload. For compiler, maybe line 3 and line 4 take the same action when optimization is on, but they are different initilazation method theoretically. The C++ standard precisely defines different initialization methods according to how variables or objects are initialized syntactically, not on the actions that a compiler may take during compilation. This distinction is crucial for understanding different initialization method.
 	
 \end{description}
 
@@ -3615,12 +3621,34 @@ ClassTest ct5=ClassTest();//copy initialization, ClassTest has default construct
 struct foo{
 	explicit foo(int);
 };
-
 foo f0 (42);  // OK
 foo f1 = 42;  // not allowed
+
+std::string s = "test";        // OK: constructor is non-explicit
+std::string s2 = std::move(s); // this copy-initialization performs a move
+
+//  std::unique_ptr<int> p = new int(1); // error: constructor is explicit
+std::unique_ptr<int> p(new int(1));  // OK: direct-initialization
 \end{lstlisting}
 
 		\item Direct initialization can be thought of as a function call to an overloaded function, where the constructors of T (including explicit ones) act as functions, and x serves as the argument. Overload resolution is used to find the best matching constructor, and implicit conversions are performed as needed. Direct initialization has access to all available constructors and can perform any implicit conversions required to match the argument types.
+
+\begin{lstlisting}[]
+struct A {
+	operator int() { return 12;}
+};
+struct B {          //conversion link is: A-->int-->B 
+	B(int) {}
+};
+
+A a;
+//B b1 = a;  // it's copy initialization, but fail. why? In the right side of =, we need two user-defined conversion, A-->int, then int-->B. Usually, only one user-define conversion is allowed in one expression. 
+
+B b2{a};     //OK, calling A::operator int(), then B::B(int)
+B b3 = {a};  //OK, like line 12. not copy, but list initialization.
+auto b4 = B{a}; //OK, like line 12. not copy initialization, but direct init.
+\end{lstlisting}
+
 		
 %		\item Copy initialization constructs an implicit conversion sequence: It tries to convert x to an object of type T. (It then may copy over that object into the to-initialized object, so a copy constructor is needed too - but this is not important below) copy initialization can just set up one implicit conversion sequence.
 %
@@ -3656,11 +3684,11 @@ foo f1 = 42;  // not allowed
 
 	\item Summary:
 \begin{enumerate}
-	\item In one word, whether it's copy initialization or direct initialization doesn't depend on whether it calls the copy constructor. On the syntax level, it checks if there is an equal sign, or if there is implicit conversion sequence(convert \texttt{x} to an object of type \texttt{T}) in expression \texttt{T t = x;}
+	\item In one word, whether it's copy initialization or direct initialization doesn't depend on whether it calls the copy constructor. On the syntax level, it checks if there is an equal sign and there is only one argument on the right side of wqual sign.
 			
-	\item For explicit constructor, only direct initialization work. It call constructor directly, and do any implicit conversion it needs to match up argument types.
+	\item For explicit constructor, only direct initialization work. It call constructor directly and do any implicit conversion it needs to match up argument types.
 	
-	\item For copy init, 1) make sure copy constructor accessible(not private) 2) one the right side of =, just set up one implicit conversion sequence.
+	\item For a successful copy initialization, 1) make sure copy constructor accessible (not private) 2) on the right side of =, just one implicit conversion is allowed.
 
     \item Usually, we don't make copy constructor explicit, because it will disable function call and return value. \textbf{We only make one parameter constructor explicit.}
 \end{enumerate}
@@ -3784,36 +3812,36 @@ foo f1 = 42;  // not allowed
 \begin{itemize}
 	
 
-    \item You can use brace elision in aggregate initialization, which makes the syntax a bit simpler.
-\begin{lstlisting}
-struct A{
-	int foo;
-	double bar;
-};
-struct Aarray{
-	A data[2];  //data is an internal array
-};
-int main() {
-	array<int, 5> a{1,2,3,4,5}; // no =, no nested aggregated.
-	
-	Aarray a1{ { {0, 0,1},{2, 3.4} } } // OK, must has a extra {} here,
-	Aarray a1 { //this is start of list initialization
-		{  //<--this tells the compiler that initialization of `data` starts
-			{ //<-- initialization of `data[0]` starts
-				0, 0.1
-			}, //<-- initialization of `data[0]` ends
-			
-			{2, 3.4}  //initialization of data[1] starts and ends, as above
-		} //<--this tells the compiler that initialization of `data` ends
-	};
-	Aarray a2{ {0, 0.1}, {2, 3.4} }; //error, this is too many initializers error
-	Aarray a3 = {0, 0.1, 2, 3.4}; //you can use brace elision
-	Aarray a4{0, 0.1, 2, 3.4}; //After c++ 14, you don't need =
-}	
-\end{lstlisting}
-\begin{description}
-	\item[Line 11:] If you don't want to use brace elision, you have to tell where the initialization begin by adding extra \{\}.
-\end{description}
+%    \item You can use brace elision in aggregate initialization, which makes the syntax a bit simpler.
+%\begin{lstlisting}
+%struct A{
+%	int foo;
+%	double bar;
+%};
+%struct Aarray{
+%	A data[2];  //data is an internal array
+%};
+%int main() {
+%	array<int, 5> a{1,2,3,4,5}; // no =, no nested aggregated.
+%	
+%	Aarray a1{ { {0, 0,1},{2, 3.4} } } // OK, must has a extra {} here,
+%	Aarray a1 { //this is start of list initialization
+%		{  //<--this tells the compiler that initialization of `data` starts
+%			{ //<-- initialization of `data[0]` starts
+%				0, 0.1
+%			}, //<-- initialization of `data[0]` ends
+%			
+%			{2, 3.4}  //initialization of data[1] starts and ends, as above
+%		} //<--this tells the compiler that initialization of `data` ends
+%	};
+%	Aarray a2{ {0, 0.1}, {2, 3.4} }; //error, this is too many initializers error
+%	Aarray a3 = {0, 0.1, 2, 3.4}; //you can use brace elision
+%	Aarray a4{0, 0.1, 2, 3.4}; //After c++ 14, you don't need =
+%}	
+%\end{lstlisting}
+%\begin{description}
+%	\item[Line 11:] If you don't want to use brace elision, you have to tell where the initialization begin by adding extra \{\}.
+%\end{description}
 
 \item \texttt{std::array} doesn't have any constructors, so it is an aggregate type. Both \texttt{S1} and \texttt{S2} are aggregates, which means we can use brace elision. We recommend using brace elision. Whether you use braces with or without an equal sign, the semantics are the same. However, if an element in the aggregate list is not an aggregate type, you cannot use brace elision. For example, \texttt{S3} is not an aggregate, so you must use correct nested braces.
 
@@ -3835,14 +3863,23 @@ struct S3 {
 	int x;
 	int y;
 };
-
 std::array<S1, 3> a11{1, 2, 3, 4, 5, 6};
 std::array<S1, 3> a12={1, 2, 3, 4, 5, 6};
 std::array<S2, 3> a21{1, 2, 3, 4, 5, 6};
 std::array<S2, 3> a21={ 1, 2, 3, 4, 5, 6};  
 
-std::array<S3, 3> a31{1, 2, 3, 4, 5, 6};// compile fail   
+//std::array<S3, 3> a31{1, 2, 3, 4, 5, 6}; compile fail  here
 std::array<S3, 3> a31{{{1, 2}, {3, 4}, {5, 6}}};	
+Aarray a31 { //this is start of list initialization
+	{  //<--this tells the compiler that initialization of array inside a31 begin
+		{ //<-- initialization of `a31[0]` starts
+			1, 2
+		}, //<-- initialization of `a31[0]` ends
+			
+		{3, 4}  //initialization of a31[1] starts and ends, as above
+	} //<--this tells the compiler that initialization of array inside a31 ends
+};
+
 \end{lstlisting}
 
 \item Regarding aggregate initialization, more explanation is needed. Here are some points to consider:
@@ -3859,7 +3896,6 @@ std::array<S3, 3> a31{{{1, 2}, {3, 4}, {5, 6}}};
 
 \section{List initialization}
 
-\subsection{Basic syntax}
 \begin{itemize}
 		
 	\item List initialization is a new syntactic form that supports three initialization methods. It's important to note that value list initialization can also be considered as a form of value initialization.
@@ -3902,7 +3938,7 @@ return {arg, ...};  //Initializes temporary for return value
 
 \begin{itemize}
 	
-	 \item copy list initialization is identical to direct list initialization except in one situation: copy constructor has been declared as "explicit".
+	 \item Copy list initialization is identical to direct list initialization except in one situation: copy constructor has been declared as "explicit".
 	
 \begin{lstlisting}
 struct foo{
@@ -3927,8 +3963,9 @@ A a2 = b;    // this doesn't because of deleted copy-ctor
 
 	\item Difference between direct initialization, copy initialization and copy list initialization.
 \begin{lstlisting}
+A a(b); vs A a = b;    // 
+A a(b); vs A a = {b};  // The are the same, only different with "explicit"
 A a = b; vs A a = {b}; // they are different although look similar
-A a(b); vs A a = {b}; //The are the same, only different with "explicit"
 \end{lstlisting}
 	
 
@@ -3970,8 +4007,7 @@ A a(b); vs A a = {b}; //The are the same, only different with "explicit"
 	
 	\item Copy list initialization also supports multiple arguments, which can be useful in function argument and return contexts. 
 \begin{lstlisting}[frame=single, language=c++]
-class A{
-public:
+struct A{
 	int i;
 	explicit A(int a = 0):i(a){cout<<"one";}
 	A(int a , int b ):i(a){cout<<"two";}
@@ -3981,12 +4017,12 @@ public:
 A too = (1,2); //comma is operator, (1,2) became 2, then call single constructor
 A too = {1,2}; //work, call two parameter constructor. 
 A fun(A); 
-fun({1,2}) {return{3,4};} //fun argument and return by using a copy list initialization form
+fun({1,2}) {return{3,4};}//argument and return by using copy list initialization
 \end{lstlisting}	
 	
 	\item Summary:
 	\begin{enumerate}
-		\item Copy list initialization is a technique used to initialize objects by performing overload resolution among applicable constructors. This allows the most appropriate constructor to be selected based on the arguments provided. 
+		\item Copy list initialization with single argument is just a direct initialization although they have the different syntax. 
 		
 		\item Copy list initialization with multiple arguments constructor make function call and return easier, illustrated by the previous source code.
 	\end{enumerate}
@@ -4000,10 +4036,9 @@ fun({1,2}) {return{3,4};} //fun argument and return by using a copy list initial
 			 
 \begin{itemize}
 	
-	 \item Empty braces denote value initialization, which typically initializes types to binary zeros. Pay attention here, we can't use () instead of \{\}.
+	 \item Empty braces denote value initialization, which typically initializes types to binary zeros. Pay attention here, we can't use () instead of \{\} because vexing parsing problem.
 \begin{lstlisting}[numbers = none]
-int i{};     //i becomes 0, can't use () here         
-double d{}; //  d becomes 0.0, can't use () here        
+int i{}, double d{};     //i becomes 0, d become 0.0, can't use () here         
 int *p{};   //initialized to nullptr
 char s[12]{}; // all 12 characters are initialized to '\0'
 char *p=new char [5]{};  //all five chars are initialized to '\0'		
@@ -4092,7 +4127,9 @@ private:
   	\end{lstlisting}
 	
 
-	\item A good reference article is GotW \#1 Solution: Variable Initialization or Is It? Another good one is Overview of C++ Variable Initialization. address is \\ \verb=https://greek0.net/cpp/initialization.html=
+	\item A good reference article is GotW \#1 Solution: Variable Initialization or Is It? Another good one is: Overview of C++ Variable Initialization. 
+	
+	%address is \\ \verb=https://greek0.net/cpp/initialization.html=
 	
 	\item \textbf{Summary of list initialization advantage:}
 \begin{enumerate}
@@ -4107,13 +4144,13 @@ private:
 
 \subsubsection{Vexing parsing}
 \begin{enumerate}
-	\item The basic reason behind of vexing parsing come from C++ standard: \textbf{"If it can be a function declaration, it is".}
+	\item The basic reason behind of vexing parsing comes from C++ standard: \textbf{"If it can be a function declaration, it is".}
 	
 	\item Using parentheses to group variable names when declaring them is a legal and common practice in C++. This can be especially useful when declaring function pointers or other complex types. For example, to declare a function pointer, you must use parentheses to group the name of the function pointer and its arguments. Here are a few examples of how to use parentheses when declaring variables:
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 int f(int);   //a function return a int
 int *f(int);  //a function return pointer
-int (*f)(int); //a function pointer;  
+int (*f)(int); //a function pointer, you must use () here to group varaible name.
 \end{lstlisting}
 	
 	\item It also means that you can have below C++ statements. Although unnecessary, but line 2 and line 4 are all legal statements.
@@ -4140,14 +4177,12 @@ class A{
 ...}
 	
 int a = 10; 
-A(a); //you want to define a temporary object, but compile fail here. 
+A(a); //you want to define a temporary object, but compile think its as A a; It trigger compiler error, redefine a, because a has been defined in line 7.
 const A& ar = A(a); //this is OK
 
 (A(a)); //If you really want a temporary A object, use another parentheses. 
 \end{lstlisting}
-\begin{description}
-	\item[Line 8:] You want to create a temporary obj, but compile think it as A a; It trigger compiler error, redefine \texttt{a}, because \texttt{a} has been defined in line 7.
-\end{description}
+
 	
 	\item From the perspective of the compiler, the following three function declarations are all interpreted as the same function:
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
@@ -4173,9 +4208,9 @@ Foo x(Foo (i)); //a function, Foo(i) equal Foo i; because () can be omitted.
 Foo y{Foo{}};  // a variable, build with a temporary Foo
 \end{lstlisting}
 \begin{description}
-	\item[Line 7:] declare a function \texttt{x}, receive a function pointer \texttt{Foo ()}, return \texttt{Foo}. Here, We omit the function parameter name, That is to say,  \texttt{Foo (*para) ()}  equals \texttt{Foo  ()} in this context.
+	\item[Line 7:] Declare a function \texttt{x}, receive a function pointer \texttt{Foo ()}, return \texttt{Foo}. Here, We omit the function parameter name, That is to say, \texttt{Foo (*para) ()}  equals \texttt{Foo  ()} in this context.
 	
-	\item[Source code:]  Why \texttt{Foo(i)} equal \texttt{Foo i}; but \texttt{Foo()} equal a function pointer? If \texttt{Foo(int)}, then it will be a function pointer.  function declaration need type name, not a variable name, such as \texttt{i}.	
+	\item[Line 8:]  Why \texttt{Foo(i)} equal \texttt{Foo i}; but \texttt{Foo()} in line 7 is a function pointer? If \texttt{Foo(int)}, then it will be a function pointer.  function declaration need type name, not a variable name, such as \texttt{i}.	
 \end{description}
 
 %	\item Before C++11, you need add another pair parentheses to change it from declaration to expression. After C++11, you can use braces.
@@ -4185,17 +4220,15 @@ Foo y{Foo{}};  // a variable, build with a temporary Foo
 %\end{lstlisting} 
 
 	
-	\item The most complex problem. A range container constructor. 
+	\item The most complex problem. A range container constructor. \texttt{data} in line 1 is a function declaration. The first parameter is \texttt{dataFile}, type \texttt{istream\_iterator<int>}, second parameter is function pointer. For the first parameter, you can add () around its name; For the second, you can omit parameter name.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 list<int> data(istream_iterator<int>(dataFile), istream_iterator<int>()); //error
 list<int> data(istream_iterator<int>{dataFile}, istream_iterator<int>{}));//OK
 \end{lstlisting}
-\begin{description}
-	\item[Line 1:] \texttt{data} is function. First parameter is \texttt{dataFile}, type \texttt{istream\_iterator<int>}, second parameter is function pointer. The First, you can add () around parameter name;  the second, you can omit parameter name.
-\end{description}
+
 		
 	\item The main reason for the vexing problem is that parentheses can be used to both grouping variable and function pointer declarations, which can create ambiguity when declaring temporary objects. In other words, the vexing problem occurs when using parentheses and an unnamed temporary variable to initialize another variable. To fix this issue, we can use list initialization instead. A good reference is \verb|https://timesong-cpp.github.io/cppwp/n4140/stmt.ambig| or google search 
-	"everything that can be a declaration is a declaration" 
+	"everything that can be a declaration is a declaration".
 	
 \end{enumerate}
 
@@ -4213,36 +4246,29 @@ vector( std::initializer_list<T> init)
 vector<int> vt = {1,2,3,4,5} //Work, call previous constructor
 \end{lstlisting}
 		
-	\item In STL library container, \texttt{list}, \texttt{vector}, \texttt{map} all support \texttt{initializer\_list} constructor. You also can use it in your own class, function or range.
+	\item STL library container, \texttt{list}, \texttt{vector} and \texttt{map} all support \texttt{initializer\_list} constructor. You also can use it in your own class, function or range.
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 void f(const initializer_list<string> &slst){
 	....
 }
 f({ "Good", "morning", "!" });
 	
-// A braced-init-list can be implicitly converted to a return type.
+// A braced-init-list can be implicitly converted to a return or parameter.
 vector<int> test_function() { return {1, 2, 3}; }
-	
-for (int i : {-1, -2, -3}) {} // Iterate over a braced-init-list.
-	
 void TestFunction2(vector<int> v) {}
 TestFunction2({1, 2, 3}); // Call a function using a braced-init-list.
+	
+for (int i : {-1, -2, -3}) {} // Iterate over a braced-init-list.
 \end{lstlisting}
 
-	\item  You should not only judge \texttt{initializer\_list} by braces. 1) \texttt{initializer\_list} should be class constructor parameter. 2) It uses braces to initialize. 3) The number of parameter inside braces is flexible but the type should be the same.
+	\item  Common usage of \texttt{initializer\_list} pattern: 1) \texttt{initializer\_list} should be class constructor parameter. 2) It uses braces to initialize. 3) The number of parameter inside braces is flexible but the type should be the same.
 
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 vector( std::initializer_list<T> init)
 vector<int> vt = {1,2,3,4,5} //call the constructor in line 1.
-	
-struct A{
-	int i;
-	int j;
-};	
-A a = {1, 2} // list initilization, don't use  initializer_list
 \end{lstlisting}
 	
-	\item Mostly, list initilization and \texttt{initializer\_list} can be used together. For example if you want to initialize a map you can use an \texttt{initializer\_list} of list initialization of the key value pairs: Here, the type of the pairs is clear and the compiler will deduce, that '{"Alex", 522}' in fact means \texttt{std::pair<std::string const, int>\{"Alex", 522\}}.
+	\item Mostly, list initilization and \texttt{initializer\_list} can be used together. For example if you want to initialize a map you can use an \texttt{initializer\_list} of list initialization of the key value pairs: Here, the type of the pairs is clear and the compiler will deduce, that '\{"Alex", 522\}' in fact means \texttt{std::pair<std::string const, int>\{"Alex", 522\}}.
 	
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 std::map<std::string, int> scores{ 
@@ -4253,7 +4279,6 @@ std::map<std::string, int> scores{
 	\item An empty pair of braces can indicate either value initialization or an empty \texttt{std::initializer\_list}, so it's important to know how to distinguish between the two.
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 class Widget{
-	...
 	Widget(){cout<<"default";}
 	Widget(initializer_list<int>){cout<<"init";}
 };
@@ -4264,29 +4289,23 @@ Widget w4({});//std::initializer_list constructor with empty list
 Widget w5{{}}; //Same
 \end{lstlisting}
 	
-	\item When non-empty list initialization is used and there are overload \texttt{initializer\_list}.
-	\textbf{it always match initializer\_list}.
+	\item When non-empty list initialization is used and there are overload \texttt{initializer\_list},
+	\textbf{it always match initializer\_list}. Compilers' determination to use \texttt{initializer\_list} constructors is so strong, even there is exact match available. 
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
-class Widget {
-public:
-	Widget(int i, bool b); // as before
-	Widget(int i, double d); // as before
-	Widget(std::initializer_list<long double> il);
+struct Widget {
+	Widget(int i, bool b); // #1
+	Widget(int i, double d); // #2
+	Widget(std::initializer_list<long double> il); #3
 };
 	
-Widget w1(10, true); //  calls first constructor
-Widget w1{10, true}; // std::initializer_list constructor
-// (10 and true convert to long double)
+Widget w1(10, true); //  calls #1
+Widget w1{10, true}; // call #3, 10 and true convert to long double
 
-Widget w2(10, 5.0); //  calls second constructor
-Widget w2{10, 5.0}; // std::initializer_list constructor
-// (10 and 5.0 convert to long double)
+Widget w2(10, 5.0); //  calls #2
+Widget w2{10, 5.0}; // call #3, 10 and 5.0 convert to long double
 \end{lstlisting}
-\begin{description}
-    \item[Line8-9] Compilers' determination to match braced initializers with constructors taking \\ \texttt{std::initializer\_lists} is so strong, even it is not best-match. 
-\end{description}
-	
-	\item An example highlights semantic difference between parentheses and braces in the \texttt{std::vector} class. 
+
+	\item Semantic difference between parentheses and braces in the \texttt{std::vector} class. 
 \begin{enumerate}
 	\item When initializing a vector with a list of values to be stored in the object (such as the elements of a vector), it is recommended to use curly brace initialization. 
 	
@@ -4306,33 +4325,29 @@ std::vector<int> v2{10, 20};  //create 2-element vector, element are 10 and 20
 
 \subsubsection{Basic usage}
 \begin{itemize}
-	\item Three main usage of \texttt{auto}:
-	\begin{enumerate}
-		\item Initialization. For example, you can assign lambda to an auto type.
-		\item \texttt{auto} parameter in lambda.
-		\item \texttt{auto} return type.  with help of \texttt{auto} parameter and \texttt{auto} type, you can build \textbf{generic lambda}. in this field, you need to know when to use \texttt{decltype(auto)}.
-	\end{enumerate}
+	\item Three main usage of \texttt{auto}: 
+	    1) Initialization. For example, you can assign lambda to an \texttt{auto} type;
+		2) \texttt{auto} parameter in lambda;
+		3) \texttt{auto} return type.  
+%		with help of \texttt{auto} parameter and \texttt{auto} type, you can build \textbf{generic lambda}. 
 
-	\item Auto initialization sets the type of a declared variable from its initializing expression at compile-time. It is recommended to use 'auto' when initializing a variable with an expression.
+	\item Auto initialization sets the type of a declared variable from its initializing expression at compile-time. It is recommended to use \texttt{auto} when initializing a variable with an expression.
 \begin{lstlisting}[numbers=none]
 auto a = expr
-auto a = T{expr} //when you want to commit to type
+auto a = T{expr} //when you want to commit to a certain type
 
 auto s = "Hello";  //s is const char* just like const char* s = "Hello";
 auto str = string{"Hello"} // this time is string
 auto p = &x  //prefer to use auto* p, because it stresses the intent
 auto v = {1, 2, 3}    // std::initializer_list
-auto vect = vector<int>{1,2,3} // this time is vector.
 
-auto p = new vector<pair<int, string> >; //don't need pointer type
+auto* p = new vector<pair<int, string> >; //save typing on the left side.
 std::vector<std::pair<int, std::string>> array;
 auto it = array.begin();    //don't need container iterator type
 //unique_ptr<widget> w = make_unique<widget>();
 auto w = make_unique<widget>(); //template class or function.
 
 auto l = [](){..}; //lambda
-double fm(double, int);
-auto pf = fm  //pf is function pointer.        
 \end{lstlisting}
 	
 	\item About the auto \texttt{type} deduction, please refer to the later chapter "Generic programming". The basic idea is quite simple: take exactly the type on the right-hand side, but strip off top-level const/volatile and reference \&/\&\&. If you want your auto declaration to be \texttt{const}, or if you want your \texttt{auto} declaration to be a reference, you have to add them explicitly.
@@ -4349,12 +4364,10 @@ for (const auto& element : myarray) {
 	\item \texttt{auto} can be used in template function return type.
 \begin{lstlisting}
 template <typename F, typename T>
-auto apply(F&& f, T value){
-	return f(value);
-}
+auto apply(F&& f, T value){ return f(value); }
 \end{lstlisting}
 
-	\item Four advantages of using \texttt{auto}:
+	\item Advantages of using \texttt{auto}:
 	\begin{enumerate}
 		\item Avoidance of uninitialized variables.
 \begin{lstlisting}[numbers=none]
@@ -4362,14 +4375,14 @@ auto x2; // error! initializer required
 auto x3 = 0; // fine, x's value is well-defined
 \end{lstlisting}
 
-		\item Avoidance of verbose variable declarations.
+		\item Avoidance of verbose variable declarations on the left side of =.
 \begin{lstlisting}[frame=single, language=c++]
 template<typename It>
 void fun(It b, It e) {
-//with auto, you have to use 
-//typename std::iterator_traits<It>::value_type currValue = *b;
-auto currValue = *b; //using auto is much simpler.
-	
+	//typename std::iterator_traits<It>::value_type currValue = *b;
+	auto currValue = *b; //using auto is much simpler.
+}
+
 auto ii = find_if(people.begin(), people.end(), match_name );               
 if (ii != people.end()){...}
 \end{lstlisting}
@@ -4377,38 +4390,39 @@ if (ii != people.end()){...}
 		\item Avoid what I call problems related to "type shortcuts." It's very importance here because \texttt{auto} guarantees correct and performance.
 \begin{lstlisting}[frame=single, language=c++]
 std::vector<int> v;
-		...
 int sz = v.size(); 
 auto sz = v.size(); //v.size() return size_t, not int
 		
 std::unordered_map<std::string, int> m;
-for (const std::pair<std::string, int>& p : m){
+for (const std::pair<std::string, int>& p : m){//bad style, manual defined type
 	... 
 }  //pair type should be pair<const std::string, int>
 
-for (const auto& p : m){
+for (const auto& p : m){  //better style with auto 
 	... // as before
 } //fix the previous error.
 \end{lstlisting}
 
-	\item Good maintenance. First, change id type in line 3 to line 4, if we use \texttt{auto} in line 8, we don't need to change at all. But if we use \texttt{int}, then we need to change from \texttt{int} to \texttt{GUID} too.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-struct record {
-	std::string name;
-	int id;
-	//GUID id; 
-};
-
-//int id =  find_id(const std::vector<record> &people...
-auto id = find_id(const std::vector<record> &people, const std::string &name)
-\end{lstlisting}
+	\item Good maintenance for future change. 
+	
+%	First, change id type in line 3 to line 4, if we use \texttt{auto} in line 8, we don't need to change at all. But if we use \texttt{int}, then we need to change from \texttt{int} to \texttt{GUID} too.
+%\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+%struct record {
+%	std::string name;
+%	int id;
+%	//GUID id; 
+%};
+%
+%//int id =  find_id(const std::vector<record> &people...
+%auto id = find_id(const std::vector<record> &people, const std::string &name)
+%\end{lstlisting}
 	\end{enumerate}
 \end{itemize}
 	
 \subsubsection{Pitfall of auto}
 	There are two points need to be noticed. The first one is using \texttt{auto} with \texttt{vector<bool>}, The second is combining \texttt{auto} with list initialization.
 	\begin{enumerate}
-		\item "invisible" proxy classes. An invisible proxy class example is \texttt{vector<bool> operator []}. \\ \texttt{vector<bool>::operator[]} neither yields a bool nor a reference to a bool. It just returns a little proxy object that acts like a reference. This is because there are no references to single bits and vector<bool> actually stores the bools in a compressed way. So by using auto you just created a copy of that reference-like object. The problem is that C++ does not know that this object acts as a reference. You have to force the "decay to a value" here by replacing auto with T.  If you don't understand why, no worry. I will introduce \texttt{std::ref} in the Concurrent chapter, you can go there to look the introduction of \texttt{std::ref}. Both "proxy" class and \texttt{std::ref} share the same idea.
+		\item An invisible proxy class example is \texttt{vector<bool> operator []}. \texttt{vector<bool>::operator[]} neither yields a bool nor a reference to a bool. It just returns a little proxy object that acts like a reference. This is because there are no references to single bits and \texttt{vector<bool>} actually stores the bools in a compressed way. So by using auto you just created a copy of that reference-like object. The problem is that C++ does not know that this object acts as a reference. You have to force the "decay to a value" here by replacing auto with T.  If you don't understand why, no worry. I will introduce \texttt{std::ref} in the Concurrent chapter, you can go there to look the introduction of \texttt{std::ref}. Both "proxy" class and \texttt{std::ref} share the same idea.
 \begin{lstlisting}
 template <typename T>
 void Test(const T& oldValue, const T& newValue, const char* message){
@@ -4417,8 +4431,8 @@ void Test(const T& oldValue, const T& newValue, const char* message){
 	auto x = v[0]; // for vector<bool> get proxy class
 	x = newValue;
 }
-Test<int>(10, 20, "Testing vector<int>"); // no change v[0]
-Test<bool>(true, false, "Testing vector<bool>"); //change v[0]
+Test<int>(10, 20, "Testing vector<int>"); // no change v[0], it's correct.
+Test<bool>(true, false, "Testing vector<bool>"); //change v[0], it's WRONG.
 \end{lstlisting}
 \begin{center}
 	\includegraphics[width=0.45\linewidth]{pics/auto2.png}
@@ -4430,12 +4444,12 @@ Test<bool>(true, false, "Testing vector<bool>"); //change v[0]
 		
 \begin{lstlisting}[numbers=none]
 auto a = {42};   // std::initializer_list<int> //Before C++ 17, it's not nature
-auto b {42};     // std::initializer_list<int> //more like direct-list-initialization
+auto b {42};     // std::initializer_list<int> //direct-list-initialization
 auto c = {1, 2}; // std::initializer_list<int>
 auto d {1, 2};   // std::initializer_list<int>
 
 auto a = {42};   // std::initializer_list<int>// After C++ 17
-auto b {42};     // int
+auto b {42};     // b is int type
 auto c = {1, 2}; // std::initializer_list<int>
 auto d {1, 2};   // error, too many 
 auto e = { 1, 2.0 }; // error: cannot deduce element type
@@ -4446,69 +4460,69 @@ auto e = { 1, 2.0 }; // error: cannot deduce element type
 
 \section{Initialization Examples}
 
-\subsection{How to analyze initialization expression}
-\begin{itemize}
-	
-	\item List initialization must be able to handle different kinds of types, such as built-in types, aggregates, and classes with different constructors. This adds complexity to the analysis, and it's important to read the C++ reference carefully to analyze the initialization syntax step by step.
-\begin{lstlisting}
-A a{}; //value initilization
-A a{1};	 // direct initilization or aggregate initilization depends on A type	
-\end{lstlisting}		
-	
-	
-	\item I will provide a real example to demonstrate how to analyze a initialization statement with help of a reference to the C++ standard document for further understanding.
-\begin{lstlisting}
-struct A {
-	A(int i) : i(i) {}
-	A() = default;
-	int i;
-};
-
-A a{};  //a.i is 0, not random value	
-\end{lstlisting}	
-	
-	\begin{description}
-		\item[Line 7:]  The list initialization of \texttt{A}, Why it's list initilization? Because it use \{\}; *1 item satisfied, so perform value initialization. Please note here, *1~*5 item refer to "Excerpts from C++ standard" below. Check *3 item, not satisfied, because we have default constructor. Then it meets all requirements in *4 item, so perform zero-init.
-	\end{description}
-	
-\begin{lstlisting}
-struct A {
-	int i;
-	int j;
-};
-cout<<is_aggregate_v<A><<endl; //output: 1
-A a{1};  //  i = 1, j = 0;	
-\end{lstlisting}	
-	
-	
-	\begin{description}
-		\item[Line 7] List initialization of A, Check *1 item but fail, \texttt{A} has no default constructor. \texttt{A} is aggregated type, according to *2 item, aggregate-initialization kick off. According to *5 item, \texttt{j} is initialized to 0		
-	\end{description}
-	
-	\item  Excerpts from C++ standard: 
-				
-	{\footnotesize \verb|https://en.cppreference.com/w/cpp/language/list_initialization| \newline
-	*1 (\textbf{For list initialization})If the braced-init-list is empty and T is a class type with a default constructor, value-initialization is performed. 
-	\newline
-	*2 Otherwise, if T is an aggregate type, aggregate initialization is performed.
-	
-	
-	\verb|https://en.cppreference.com/w/cpp/language/value_initialization|	\newline
-	*3 if T is a class type with no default constructor or with a user-provided or deleted default constructor, the object is default-initialized; 
-	\newline		
-	*4 if T is a class type with a default constructor that is neither user-provided nor deleted (that is, it may be a class with an implicitly-defined or defaulted default constructor), the object is zero-initialized and then it is default-initialized if it has a non-trivial default constructor; 
-	
-	\verb|https://en.cppreference.com/w/cpp/language/aggregate_initialization|\newline
-	*5 If the number of initializer clauses is less than the number of members and bases (since C++17) or initializer list is completely empty, the remaining members and bases (since C++17) are initialized by their default member initializers,}
-
-
-	
-	\item Based on previous introductions, you can follow below logic to analyze C++ initialization.
-	\begin{center}
-		\includegraphics[width=0.95\linewidth]{pics/init.png}
-	\end{center}
-		
-\end{itemize}
+%\subsection{How to analyze initialization expression}
+%\begin{itemize}
+%	
+%	\item List initialization must be able to handle different kinds of types, such as built-in types, aggregates, and classes with different constructors. This adds complexity to the analysis, and it's important to read the C++ reference carefully to analyze the initialization syntax step by step.
+%\begin{lstlisting}
+%A a{}; //value initilization
+%A a{1};	 // direct initilization or aggregate initilization depends on A type	
+%\end{lstlisting}		
+%	
+%	
+%	\item I will provide a real example to demonstrate how to analyze a initialization statement with help of a reference to the C++ standard document for further understanding.
+%\begin{lstlisting}
+%struct A {
+%	A(int i) : i(i) {}
+%	A() = default;
+%	int i;
+%};
+%
+%A a{};  //a.i is 0, not random value	
+%\end{lstlisting}	
+%	
+%	\begin{description}
+%		\item[Line 7:]  The list initialization of \texttt{A}, Why it's list initilization? Because it use \{\}; *1 item satisfied, so perform value initialization. Please note here, *1~*5 item refer to "Excerpts from C++ standard" below. Check *3 item, not satisfied, because we have default constructor. Then it meets all requirements in *4 item, so perform zero-init.
+%	\end{description}
+%	
+%\begin{lstlisting}
+%struct A {
+%	int i;
+%	int j;
+%};
+%cout<<is_aggregate_v<A><<endl; //output: 1
+%A a{1};  //  i = 1, j = 0;	
+%\end{lstlisting}	
+%	
+%	
+%	\begin{description}
+%		\item[Line 7] List initialization of A, Check *1 item but fail, \texttt{A} has no default constructor. \texttt{A} is aggregated type, according to *2 item, aggregate-initialization kick off. According to *5 item, \texttt{j} is initialized to 0		
+%	\end{description}
+%	
+%	\item  Excerpts from C++ standard: 
+%				
+%	{\footnotesize \verb|https://en.cppreference.com/w/cpp/language/list_initialization| \newline
+%	*1 (\textbf{For list initialization})If the braced-init-list is empty and T is a class type with a default constructor, value-initialization is performed. 
+%	\newline
+%	*2 Otherwise, if T is an aggregate type, aggregate initialization is performed.
+%	
+%	
+%	\verb|https://en.cppreference.com/w/cpp/language/value_initialization|	\newline
+%	*3 if T is a class type with no default constructor or with a user-provided or deleted default constructor, the object is default-initialized; 
+%	\newline		
+%	*4 if T is a class type with a default constructor that is neither user-provided nor deleted (that is, it may be a class with an implicitly-defined or defaulted default constructor), the object is zero-initialized and then it is default-initialized if it has a non-trivial default constructor; 
+%	
+%	\verb|https://en.cppreference.com/w/cpp/language/aggregate_initialization|\newline
+%	*5 If the number of initializer clauses is less than the number of members and bases (since C++17) or initializer list is completely empty, the remaining members and bases (since C++17) are initialized by their default member initializers,}
+%
+%
+%	
+%	\item Based on previous introductions, you can follow below logic to analyze C++ initialization.
+%	\begin{center}
+%		\includegraphics[width=0.95\linewidth]{pics/init.png}
+%	\end{center}
+%		
+%\end{itemize}
 
 \subsection{Common used forms in initialization}
 
@@ -4516,25 +4530,22 @@ A a{1};  //  i = 1, j = 0;
 	
 	\item Initialization syntax analysis and comparison.
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
-widget w;               // (a)
-widget w();             // (b)
-widget w{};             // (c)
+widget w;          // (a) default initialization with default constructor.
+widget w();        // (b) function declaration, vexing parsing problem.
+widget w{};        // (c) coreect value initialization with vexing parsing problem
 
-widget w(x);            // (d)
-widget w{x};            // (e)
+widget w(x);       // (d)
+widget w{x};       // (e)
 
-widget w = x;           // (f)
-widget w = {x};         // (g)
+widget w = x;      // (f)
+widget w = {x};    // (g)
 
-auto w = x;             // (h)
-auto w = widget{x};     // (i)
+auto w = x;        // (h)
+auto w = widget{x};// (i)
 \end{lstlisting}	
 	
 	\begin{enumerate}
-		\item (a) is just default initialization with default constructor.
-		
-		\item (b) is function declaration. That is why we prefer to use brace initialization (c), it will avoid this vexing problem.
-		
+	
 		\item For (d) and (e), These are both direct initialization. The variable w is initialized "directly" from the value of x by calling \texttt{widget::widget(x)}. If x is also of type widget, this invokes the copy constructor. Otherwise, it invokes a converting constructor. (e) is better than (d) to avoid narrowing, for example: \texttt{int a(1.2)} pass, but \texttt{int a{1.2}} fail.
 		
 		\item For (e), it prefer to use constructor that takes an \texttt{initializer\_list}. We will introduce more in \texttt{initializer\_list.} section.
@@ -4547,90 +4558,90 @@ auto w = widget{x};     // (i)
 		
 		\item (i) is the most consistent spelling when you do want to commit to a specific type and explicitly request a conversion if needed, and once again the \{ \} syntax happily avoids lossy narrowing conversions. In practice on most compilers, only a single constructor is called-similarly to what we saw with (f) and (g).
 		
-		\item Some initialization examples based on previous introductions.
-		
-\begin{lstlisting}[frame=single, language=c++,mathescape=true]
-class Test{
-public:
-	int i;
-	explicit Test(int a = 0):i(a){}
-	Test(const Test &T){ cout<<"copy constructor";} 
-};
-
-Test too = 2;  //test for (f) 
-Test too = {2} // test for (g)
-
-Test too;  
-auto w = too //test for (h)
-auto w = Test{2} //test for (i), no semantic difference with: Test w{2};	
-\end{lstlisting}		
-		\begin{description}
-			\item[Line 8 and 9:] Both (f) and (g) work and no call copy constructor (no output:"copy ctor"); If converting constructor has explicit both fail, If copy constructor is private, (f) fail, but (g) is still OK. Because \texttt{A a = \{b\};} is just like \texttt{A a(b);}
-			
-			
-			\item[Line 13:] you can use \texttt{auto w = Test(2)}, it just call converting constructor, even converting constructor is explicit, it can work too. No copy constructor is called at all. \texttt{w} is not const reference. List initilization \{\} is better, it more generic and avoid narrow \texttt{auto w = Test\{1.2\}} fail. 
-		\end{description}
+%		\item Some initialization examples based on previous introductions.
+%		
+%\begin{lstlisting}[frame=single, language=c++,mathescape=true]
+%class Test{
+%public:
+%	int i;
+%	explicit Test(int a = 0):i(a){}
+%	Test(const Test &T){ cout<<"copy constructor";} 
+%};
+%
+%Test too = 2;  //test for (f) 
+%Test too = {2} // test for (g)
+%
+%Test too;  
+%auto w = too //test for (h)
+%auto w = Test{2} //test for (i), no semantic difference with: Test w{2};	
+%\end{lstlisting}		
+%		\begin{description}
+%			\item[Line 8 and 9:] Both (f) and (g) work and no call copy constructor (no output:"copy ctor"); If converting constructor has explicit both fail, If copy constructor is private, (f) fail, but (g) is still OK. Because \texttt{A a = \{b\};} is just like \texttt{A a(b);}
+%			
+%			
+%			\item[Line 13:] you can use \texttt{auto w = Test(2)}, it just call converting constructor, even converting constructor is explicit, it can work too. No copy constructor is called at all. \texttt{w} is not const reference. List initilization \{\} is better, it more generic and avoid narrow \texttt{auto w = Test\{1.2\}} fail. 
+%		\end{description}
 		
 	\end{enumerate}
 
-	\item A similar example, given below code snippet, the syntax analysis and comparison: 
-	
-\begin{lstlisting}[frame=single, language=c++]
-class A{
-public:
-	A(){};
-	A(int k):m_a(k){};
-	A(const A& rhs){m_a = rhs.m_a;};
-	int m_a;
-};
-void fun(const A &a){}
-int i = 3;	
-\end{lstlisting}		
-	
-
-	The syntax analysis for the default constructor is given below. \\
-	\begin{tabular}{|p{0.23\textwidth}|p{0.68\textwidth}|}
-		\tophline
-		Expression & Syntax analysis \\
-		\tophline
-		\texttt{A a, A a\{\}} & \texttt{a} is object, call default constructor. \\
-		\tophline
-		\texttt{A a()} & \textbf{declare function a,vexing problem happens here.} \\
-		\tophline
-		\texttt{A()} & A temporary A obj or declaration, detail is in vexing problem \\
-		\tophline
-		\texttt{B b(A())} & \textbf{declare function, vexing problem}, A() is function pointer \\
-		\tophline
-		\texttt{B b(A\{\})} & construct \texttt{b} object with temporary A object. \\
-		\tophline
-		\texttt{fun(A()),fun(A\{\})} & pass a temporary \texttt{A} object to \texttt{fun} 
-		\bottomhline
-	\end{tabular}
-	
-	The syntax analysis for the single parameter constructor is given below. 
-	
-	\begin{tabular}{|p{0.23\textwidth}|p{0.68\textwidth}|}
-		\tophline
-		Expression & Syntax analysis \\
-		\tophline
-		\texttt{A a(i), A a\{i\}} & parameterized constructor, direct initialization\\
-		\tophline
-		\texttt{A (i)} & \textbf{just like \texttt{A i}, you have define \texttt{i}, so compiler barks.} \\
-		\tophline
-		\texttt{A\{i\}} & A temporary A obj\\
-		\tophline
-		\texttt{B b(A(i))} & declare a function \texttt{B b(A i)}; vexing problem \\
-		\tophline
-		\texttt{B b(A\{i\})} & build \texttt{b} with temporary \texttt{A} object \\
-		\tophline
-		\texttt{fun(A(i)),fun(A\{i\})} & work, fun(A i) will not a declaration, because there are no return value.\\
-		\tophline
-		\texttt{B b(A a(i))}  & compile error, because \texttt{A a(i)} is not a expression(it doesn't yield a value). Compiler will first interpret it as function declaration first, but \texttt{A a(i)} is not declaration (it defines a variable a), ( \texttt{A(i)} and \texttt{A()} are both type). So it continue to interpret as B constructor, then it ask a value from expression, but \texttt{A a(i)} is not expression either, in the end, compiler is not happy.  \\
-		\tophline
-		\texttt{fun(A a(i))} & Same as above.
-		\bottomhline
-	\end{tabular}
-	
+%	\item A similar example, given below code snippet, the syntax analysis and comparison: 
+%	
+%\begin{lstlisting}[frame=single, language=c++]
+%class A{
+%public:
+%	A(){};
+%	A(int k):m_a(k){};
+%	A(const A& rhs){m_a = rhs.m_a;};
+%	int m_a;
+%};
+%void fun(const A &a){}
+%int i = 3;	
+%\end{lstlisting}		
+%	
+%
+%	The syntax analysis for the default constructor is given below. \\
+%	\begin{tabular}{|p{0.23\textwidth}|p{0.68\textwidth}|}
+%		\tophline
+%		Expression & Syntax analysis \\
+%		\tophline
+%		\texttt{A a, A a\{\}} & \texttt{a} is object, call default constructor. \\
+%		\tophline
+%		\texttt{A a()} & \textbf{declare function a,vexing problem happens here.} \\
+%		\tophline
+%		\texttt{A()} & A temporary A obj or declaration, detail is in vexing problem \\
+%		\tophline
+%		\texttt{B b(A())} & \textbf{declare function, vexing problem}, A() is function pointer \\
+%		\tophline
+%		\texttt{B b(A\{\})} & construct \texttt{b} object with temporary A object. \\
+%		\tophline
+%		\texttt{fun(A()),fun(A\{\})} & pass a temporary \texttt{A} object to \texttt{fun} 
+%		\bottomhline
+%	\end{tabular}
+%	
+%	The syntax analysis for the single parameter constructor is given below. 
+%	
+%	\begin{tabular}{|p{0.23\textwidth}|p{0.68\textwidth}|}
+%		\tophline
+%		Expression & Syntax analysis \\
+%		\tophline
+%		\texttt{A a(i), A a\{i\}} & parameterized constructor, direct initialization\\
+%		\tophline
+%		\texttt{A (i)} & \textbf{just like \texttt{A i}, you have define \texttt{i}, so compiler barks.} \\
+%		\tophline
+%		\texttt{A\{i\}} & A temporary A obj\\
+%		\tophline
+%		\texttt{B b(A(i))} & declare a function \texttt{B b(A i)}; vexing problem \\
+%		\tophline
+%		\texttt{B b(A\{i\})} & build \texttt{b} with temporary \texttt{A} object \\
+%		\tophline
+%		\texttt{fun(A(i)),fun(A\{i\})} & work, fun(A i) will not a declaration, because there are no return value.\\
+%		\tophline
+%		\texttt{B b(A a(i))}  & compile error, because \texttt{A a(i)} is not a expression(it doesn't yield a value). Compiler will first interpret it as function declaration first, but \texttt{A a(i)} is not declaration (it defines a variable a), ( \texttt{A(i)} and \texttt{A()} are both type). So it continue to interpret as B constructor, then it ask a value from expression, but \texttt{A a(i)} is not expression either, in the end, compiler is not happy.  \\
+%		\tophline
+%		\texttt{fun(A a(i))} & Same as above.
+%		\bottomhline
+%	\end{tabular}
+%	
 	%	\item Further explanation about previous table. Here we follow the basic C++ parsing rule: \textbf{If there is possible, it will use declaration first. }.
 	%\begin{lstlisting}
 	%int i = 5;
@@ -4661,11 +4672,11 @@ int i = 3;
 	\item Six initilization methods and list initialization are irrelevant and orthogonal. List initialization syntax can be interpreted as aggregated init, value init, direct initialization or copy initialization and it brings its own advantage.
 	
 	\item Know the difference between value initialization and default initialization. Know the difference between direct init, copy initialization and list copy initialization.  
-\begin{lstlisting}
-A a(1) or A a{1} //direct initialization
-A a = 1;  //copy initialization
-A a = {1}; //list copy initialization, same as direct initialization	
-\end{lstlisting}	
+%\begin{lstlisting}
+%A a(1) or A a{1} //direct initialization
+%A a = 1;  //copy initialization
+%A a = {1}; //list copy initialization, same as direct initialization	
+%\end{lstlisting}	
 		 
 	\item Know when to use list initialization and it's advantage. Know the basic usage of \texttt{initializer\_list} and the difference between list initialization. Just pay attention when the class has \texttt{list\_initiaizer} constructor, and know the auto usage and its pitfall.
 	
@@ -4684,32 +4695,59 @@ A a = {1}; //list copy initialization, same as direct initialization
 \subsection{Initialize suggestions}
 
 \begin{itemize}
-		\item I don't intend to make this chapter overly complex or confusing, but the intricacies arise from the C++ standard's attempt to introduce uniform list initialization while maintaining compatibility with older standards and existing code. It's akin to making an elephant dance with a heavy chain – no easy task. For developers who aren't compiler developers or language experts, following below simple rules can suffice:
+		\item I don't intend to make this chapter overly complex or confusing, but the intricacies arise from the C++ standard's attempt to introduce uniform list initialization while maintaining compatibility with older standards and existing code. It's akin to making an elephant dance with a heavy chain – no easy task. For developers who aren't compiler developers or language experts, following below simple rules can suffice: \textbf{Use \texttt{auto} when there is an expression, and use \{\} when there isn't.}
 		
 		
 	\begin{enumerate}
-		\item If right side is expression, new or function, Use \textbf{\texttt{auto var = expr;}}. 
-		
-		\item Otherwise, Use \textbf{list initialization if possible.}   Default initialization, use \{\}. Maybe it's redundant for some types, but it's good habit and keep your style consistency. For example, use \texttt{String str\{\}} instead of \texttt{String str}. When using list initialization, pay attention two traps for \texttt{std::initilizaer\_list.} 
-		\begin{enumerate}
-			\item If type has list initialization constructor, list initialization will use it first, and very strongly. 
-			
-			\item When we combine \texttt{auto} and list initialization together, it maybe deducts \\ \texttt{std::initilizaer\_list} type, maybe not.  You can see the section "pitfall of auto" 
-		\end{enumerate}
-		
-		\item If the (single) value you are initializing with is intended to be the exact value of the object, use copy (=) initialization (because then in case of error, you'll never accidentally invoke an explicit constructor, which generally interprets the provided value differently).
+		\item If right side is expression, \texttt{new} operator or function, use \textbf{\texttt{auto var = expr;}}.  Pay attention two pitfalls when use \texttt{auto}.
 \begin{lstlisting}
-Foo f1 = f2; //good style
-Foo f1(f2);  
-Foo f1 = {f2};  //good style too, use { } consistently.
+auto with vector<bool>      // 1) the first pitfalls of auto
+auto with initializer_list  // 2) the second pitfalls of auto
+\end{lstlisting}		
+		
+		\item Otherwise, Use \textbf{list initialization if possible.}  Use \{\} even in Default initialization, maybe it's redundant for some types, but it's good habit and keep your style consistency. For example, use \texttt{String str\{\}} instead of \texttt{String str}. When using list initialization, pay attention two traps for \texttt{std::initilizaer\_list} when class has overload constructor with \texttt{initializer\_list} argument.
+\begin{lstlisting}
+foo{1, 2} //1) Always call constructor with initializer_list(conversion match)
+	      //even there is non initializer_list constructor(exact match).
+	
+vector v(10, 2) and vector v{10, 2}; // 2) difference between () and {}.
+\end{lstlisting}
+%		\begin{enumerate}
+%			\item If type has list initialization constructor, list initialization will use it first, and very strongly. 
+%			
+%			\item Semantic difference between \texttt{vector v(10, 2)} and \texttt{vector v\{10, 2\}}. 
+%		\end{enumerate}
+		
+		\item For a specific scenario, if you intend to initialize a variable \texttt{f1} with the same type another variable \texttt{f2}, use copy initialization. Because in case of they have different type, you'll never accidentally invoke an explicit conversion constructor, which generally interprets the provided value differently.
+\begin{lstlisting}
+class Foo{
+	explicit Foo(int);
+	Foo(const Foo& other);
+};	
+	
+Foo f1 = f2; //good style, in case of f2 is int, it will report error here,
+Foo f1(f2);  //bad style, if f2 is int, it will call Foo(int) here. 
+Foo f1 = {f2};  //good style too, just like line 1 and use { } consistently.
 \end{lstlisting}		
 		\begin{description}
-			\item[Line 2:] If \texttt{f2} is not \texttt{Foo} type, then line 1 will fail with explicit single parameter constructor, but Line 2 will implicit convert and pass. That is not good.
-			
-			\item[Line 3:] It is just like line 2, it will fail with explicit single parameter constructor.
+			\item[Line 2:] If \texttt{f2} is not \texttt{Foo} type, line 6 will fail with explicit single parameter constructor. You think that \texttt{f1} and \texttt{f2} are the same type, but this failure indicates that they have different type. However, line 7 will call explicit single parameter constructor directly and doesn't give you this kind of helpful hint. 
 		\end{description}
 		
 	\end{enumerate}
+
+%\item The idea of the whole chapter can be summaried by one word: \textbf{Use \texttt{auto} when there is an expression, and use \{\} when there isn't.} and two precautions when use \{\} when class has overload constructor with \texttt{initializer\_list} argument.
+%
+%\begin{lstlisting}
+%auto with vector<bool>      // 1) the first pitfalls of auto
+%auto with initializer_list  // 2) the second pitfalls of auto
+%
+%foo{1, 2}    //1) Always call constructor with initializer_list with legal conversion
+%             //even there is best match non initializer_list constructor.
+%             
+%vector v(10, 2) and vector v{10, 2}; // 2) difference between () and {}.
+%\end{lstlisting}
+
+
 
 \item The whole idea can be illustrated by below graph:
 \begin{center}
@@ -4754,15 +4792,11 @@ Foo f1 = {f2};  //good style too, use { } consistently.
 	
 \begin{lstlisting}[frame=single, language=c++]
 // include "stdlib.h"
-int *sieve = (int *)malloc(sizeof(int)*length);	
-int *sieve = malloc(sizeof(int)*length);
+int *sieve = (int *)malloc(sizeof(int)*length);	// suppress warning 
+int *sieve = malloc(sizeof(int)*length); // produce a warning
 \end{lstlisting}
-\begin{description}
-	\item[Line 2:] With explicit cast, it will NOT produce a (missing prototype) warning.
-	\item[Line 3:] Without explicit cast, it will produce a warning.
-\end{description}
 
-	\item We don't recommend using the \texttt{(int*)} cast at all. The next question is whether malloc actually returns \texttt{void*} and whether \texttt{void*} can be implicitly cast to \texttt{int*} or other pointer types in assignment. The answer is \textbf{YES}.
+	\item \texttt{malloc} actually returns \texttt{void*} type. We don't recommend using the \texttt{(int*)} cast at all, so the next question is whether \texttt{void*} can be implicitly cast to \texttt{int*} or other pointer types in assignment. The answer is \textbf{YES}.
 		
 	
 	\item In the C language, we can use \texttt{NULL} to initialize pointer types.
@@ -4776,18 +4810,11 @@ FILE * f = NULL;  //legal
 	
 \begin{lstlisting}[numbers=none]
 int *p = NULL; //illegal in C++
-
 cout<<is_integral<decltype(nullptr)>::value; //false
 cout<<is_integral<decltype(NULL)>::value; //true
-\end{lstlisting}
 
-	
-\begin{lstlisting}[numbers=none]
-int *p = NULL; //illegal in C++
---------------------------------------
 f(int i)
-f(int * p);
-
+f(int * p); 
 f(NULL);  //will call f(int i).
 f(nullptr) //will call f(int *p)
 \end{lstlisting}
@@ -4811,8 +4838,8 @@ strcat(str, ".");
 printf("String = %s,  Address = %p\n", str, str);
 \end{lstlisting}
 	
-	\item Don't return the value assigned to the input pointer \texttt{ptr}. Instead, use another local pointer, such as \texttt{new\_ptr}, because if \texttt{realloc} fails, it will not overwrite the original \texttt{ptr}."
-\begin{lstlisting}[numbers=none]
+	\item When you use \texttt{realloc}, don't return the value assigned to the input pointer \texttt{ptr}. Instead, use another local pointer, such as \texttt{new\_ptr}, because if \texttt{realloc} fails, it will not overwrite the original \texttt{ptr}.
+\begin{lstlisting}[numbers=none]	
 void *new_ptr = realloc(ptr, new_size);
 if (!new_ptr) {
 	// deal with error;
@@ -4825,36 +4852,35 @@ ptr = new_ptr
 \section{new operator in C++}
 \subsection{Basic}
 \begin{itemize}
-	\item There are four sub-topics related to the new operator: 1) new\_handler, 2) no throw, but return \texttt{nullptr} (since C++11), 3) placement new (which does not allocate, only constructs), and 4) operator new (which only allocates, without constructing). For the default new operator, you can use \texttt{set\_new\_handler} to adjust the behavior when enough memory cannot be allocated. More details can be found in the next section.
+	\item There are four sub-topics related to the new operator: 1) new\_handler, 2) no throw, but return \texttt{nullptr} (since C++11), 3) placement new (which does not allocate, only constructs), and 4) operator \texttt{new} (which only allocates, without constructing). For the default new operator, you can use \texttt{set\_new\_handler} to adjust the behavior when enough memory can't be allocated. More details can be found in the next section.
 	
 	\item There are four sub-topics related to the \texttt{new} operator: 1) \texttt{new\_handler}, 2) \texttt{no\_throw}, but return \texttt{nullptr} (since C++11), 3) placement new (which does not allocate, only constructs), and 4) operator new (which only allocates, without constructing). For the default \texttt{new} operator, you can use \texttt{set\_new\_handler} to adjust the behavior when enough memory cannot be allocated. More details can be found in the next section.
 	
 \begin{lstlisting}[frame=single, language=c++]
 std::set_new_handler(noMem);
-MyClass* p1 = new MyClass;//call noMem if fail, throw exception if no new handler
+Foo* p1 = new Foo;//call noMem if fail, throw exception if no new handler
 
-MyClass * p2 = new (std::nothrow) MyClass; // no throw
-new (p2) MyClass;   //placement new
+Foo * p2 = new (std::nothrow) Foo; // no throw
+new (p2) Foo;   //placement new
 
-MyClass * p3 = (MyClass*)::operator new (sizeof(MyClass));	
+Foo* p3=(Foo*)::operator new(sizeof(Foo));//only allocate, no consturct
 \end{lstlisting}
-\begin{description}
-	\item[Line 7:] operator new, allocates memory by calling: \texttt{operator new}. but does not call MyClass's constructor
-\end{description}	
+	
 
-	\item The \texttt{nothrow} \texttt{new} operator only ensures that the \texttt{operator new} inside it will not throw an exception, but will return \texttt{nullptr} if the allocation fails. However, it does not guarantee that the constructor of \texttt{MyClass} will not throw an exception. Therefore, it is not a fully mature design. In other words, we do not recommend using this type of \texttt{nothrow new} operator in production code.
+	\item The \texttt{nothrow} \texttt{new} operator only ensures that the \texttt{operator new} inside it will not throw an exception, but will return \texttt{nullptr} if the allocation fails. However, it does not guarantee that the constructor of \texttt{MyClass} will not throw an exception. Therefore, it is not a fully mature design. In other words, we do not recommend using this type of \texttt{nothrow new} operator in the production code.
 
 	
 	\item The \texttt{new} operator will call the constructor function of a class, but \texttt{malloc} will not call the constructor function. Therefore, in C++, you should use the \texttt{new} operator instead of \texttt{malloc}.
-	
 		
 	
-	\item If you use \texttt{new int[100]}, don't forget to use \texttt{delete []} to deallocate the memory. Any time you want to use \texttt{new} to allocate an array, ask yourself if you can replace it with \texttt{vector} or \texttt{string}. If the answer is 'yes', don't use array new. When you have to use array new to allocate an array, you must use the array delete. If you don't use array delete, you may end up deleting only the first object in the array. If you use array delete on a single \texttt{new}, it's undefined behavior. The system will remember the size corresponding to \texttt{pa}. With \texttt{[]}, it will iterate with the size. When you forget \texttt{[]}, it will only free the first object, causing a memory leak.
+	\item When you have to use array new to allocate an array, you must use the array delete. If you don't use array delete, you may end up deleting only the first object in the array. If you use array delete on a single \texttt{new}, it's undefined behavior. Any time you want to use \texttt{new} to allocate an array, ask yourself if you can replace it with \texttt{vector} or \texttt{string}. If the answer is 'yes', don't use array new. 
+	
+%	The system will remember the size corresponding to \texttt{pa}. With \texttt{[]}, it will iterate with the size. When you forget \texttt{[]}, it will only free the first object, causing a memory leak.
 	
 	
 \begin{lstlisting}[frame=single, language=c++]
-Foo pa* = new Foo[10];
-delete [] pa;
+Foo pa* = new Foo[10]; //array new
+delete [] pa;  //array delete
 \end{lstlisting}	
 	
 	\item Basic logic of array new. An basic implementation can be found in "Inside the C++ Object Model" 6.2 chapter
@@ -4864,7 +4890,7 @@ vec_new(int elem_count, int size, funptr constructor){
 	ptr_array = new char[total_size];
 	registrate pair of ptr_array elem_count to system
 	while(elem<end of address){
-		(*constructor)(elem) //call the ctor
+		(*constructor)(elem) //call the constructor
 		elem+=size;
 	}
 }	
@@ -4886,20 +4912,20 @@ b = d;  // slice happens, but  new and pointer hide the detail behind the scene.
 \begin{itemize}
 
    
-    \item When you call the \texttt{new} operator, it invokes \texttt{operator new}, which in turn can invoke \texttt{new\_handler}. This provides two opportunities to customize the behavior of the operator: you can customize \texttt{operator new}, and you can customize \texttt{new\_handler}.
+    \item When you call the \texttt{new} operator, it invokes \texttt{operator new}, which in turn invoke \texttt{new\_handler}. This provides two opportunities to customize the behavior of the operator: you can customize \texttt{operator new} and you can customize \texttt{new\_handler}.
     
     
 	\item Basic logic of new operator and delete operator. Below is C++ pseudo code.
 \begin{lstlisting}[]
 Point3d *origin = new Point3d;
-	
+//will be converted to below code:	
 if(origin = operator new(sizeof(Point3d))){ //operator new to allocate memory
 	try{
-		origin = Point3d::Point3d(origin); //call constructor
+		origin = Point3d::Point3d(origin); //call constructor on the address
 	}
 	catch(...){  //if constructor throw an exception, no memory leak
 		operator delete(origin);
-		throw
+		throw; //rethrow it to outside.
 	}
 }
 \end{lstlisting}
@@ -4925,7 +4951,7 @@ using namespace std;
 		*last_alloc = malloc(size)
 		if (last_alloc)
 			return last_alloc;
-		new_handler globalHandler = set_new_handler(0); 
+		new_handler globalHandler = set_new_handler(nullptr); 
 		set_new_handler(globalHandler); // allocation was unsuccessful,
 		if (globalHandler)           //find current new-handling function
 			(*globalHandler)();      // and call it.
@@ -4935,7 +4961,9 @@ using namespace std;
 }
 	\end{lstlisting}
 \begin{description}	
-    \item[Source code:] Why we need to call \texttt{set\_new\_handler} twice, The first one get the current handler, and the second one changes it back. That is only way we can get the current handler. This idiom is also used in \texttt{set\_terminate} and \texttt{set\_unexpect}. In C++11, introduce \texttt{get\_new\_handler()} function. We don't need to call \texttt{set\_new\_handler} twice. 
+    \item[Line 11-12] Why we need to call \texttt{set\_new\_handler} twice, The first one get the current handler, and the second one changes it back. That is only way we can get the current handler. This idiom is also used in \texttt{set\_terminate} and \texttt{set\_unexpect}. In C++11, introduce \texttt{get\_new\_handler()} function. We don't need to call \texttt{set\_new\_handler} twice. 
+    
+    \item[Line 13] At program startup, the value of \texttt{new\_handler} is a nullptr pointer. If an allocation fails inside of operator new, and\texttt{ std::get\_new\_handler} returns a null pointer value, then operator new will throw \texttt{std::bad\_alloc} in line 16.
 \end{description}
 
 \item Basic logic of operator delete.
@@ -4945,8 +4973,13 @@ operator delete (void *ptr){
 		free(ptr)
 	}
 \end{lstlisting}
+
+	\item More knowledge about \texttt{new\_handler}:
+\begin{enumerate}
 	
-	\item An example of a function pointer in the C++ standard library is \texttt{set\_new\_handler}. It accepts a function pointer and returns the same type function pointer, which can make declaring this type of function a little difficult.
+
+	
+	\item \texttt{set\_new\_handler} accepts a function pointer and returns the same type function pointer, which can make declaring this type of function a little difficult.
 \begin{lstlisting}[frame=single, language=c++]
 void failNew(){
 	cerr<<"operator new fail!!!"<<endl
@@ -4961,9 +4994,13 @@ FunPtr (*set_new_handler) (FunPtr);
 set_new_handler(failNew);
 \end{lstlisting}
 		
-	
-
-	\item At program startup, the value of \texttt{new\_handler} is a null pointer. If an allocation fails inside of operator new, and\texttt{ std::get\_new\_handler} returns a null pointer value, then operator new will throw \texttt{std::bad\_alloc}.
+	\item When you simply want to allocate memory, operator new is generally better than using \texttt{malloc} because it offers more options. For example, you can use \texttt{set\_new\_handler} or choose whether to throw an exception.
+\begin{lstlisting}[frame=single, language=c++]
+	Foo* p;
+	char* raw = operator new(sizeof(Foo)*100, std::nothrow);
+	//char* raw = new char[sizeof(Foo)*100]; //Also work!
+	if (raw == nullptr) abort();
+\end{lstlisting}
 	
 	\item As demonstrated in the previous code, the function \texttt{new\_handler} is called by allocation functions when a memory allocation attempt fails. Its intended purpose is one of three things:
 	
@@ -4981,31 +5018,36 @@ void noMemory(){
 	set_new_handler(nullptr);  //method2, default throw bad_alloc exception.
 	abort();  //method3, end application.
 }
-//in the beginning of main() function.
-set_new_handler(noMemory)
-\end{lstlisting}
-	
 
-	\item If you want to have customized \texttt{new\_handler} for specific class, "effective C++ item 49" gives a good example. It use Mixin idiom. Detail can be found in generic programming section in this book.
+set_new_handler(noMemory) //in the beginning of main() function.
+\end{lstlisting}
+
+\end{enumerate}
+
+	\item The whole idea can be illustrated by below figure. 
+\begin{center}
+\includegraphics[width=0.90\linewidth]{pics/new1.png}
+\end{center}
+
+	
+	\item If you want to have customized \texttt{new\_handler} for specific class, please refer to "effective C++ item 49". It uses Mixin idiom, which can be found in generic programming section in this book.
 \end{itemize}
 
 \subsection{Placement new}
 
 \begin{itemize}
-	\item To construct an object in memory that you already have a pointer to, you can use placement new. If you use placement new to create an object in some memory, you should avoid using the delete operator on that memory. When you simply want to allocate memory, operator new is generally better than using \texttt{malloc} because it offers more options. For example, you can use \texttt{set\_handler} or choose whether to throw an exception.
+	\item To construct an object in memory that you already have allocated and had a pointer to, you can use placement new. If you use placement new to create an object in some memory, you should avoid using the \texttt{delete} operator on that memory. A demonstration code is below:
 \begin{lstlisting}[frame=single, language=c++]
 Foo* p;
 char* raw = operator new(sizeof(Foo)*100, std::nothrow);
-//char* raw = new char[sizeof(Foo)*100]; //Also work!
 if (raw == nullptr) abort();
 	
 try {
-	p = new(raw) Foo();  //Call the constructor with raw
-	p1 = new(raw+sizeof(Foo) ) Foo();
+	p = new(raw) Foo{};  //Call the constructor on raw
+	p1 = new(raw+sizeof(Foo) ) Foo{};
 }
 catch (...) {
-	// oops, constructor throw an exception
-	operator delete(raw);
+	operator delete(raw); // oops, constructor throw an exception
 	throw;  // rethrow the constructor's exception
 }
 
@@ -5052,7 +5094,7 @@ void* operator new (std::size_t size, void* ptr) noexcept;
 \end{lstlisting}	
 		
 	
-	\item You can't change the behavior of the new operator itself, but you can override the global operator new and overload it within a class. Pay attention to its arguments and return type, which is \texttt{void*}. The following code provides a simple demo. In the \texttt{new\_handler} section, you can see an improved operator new demonstration that supports calling your own \texttt{new\_handler}. The operator new function typically invokes the malloc function, which in turn typically calls brk for small chunks and mmap for larger chunks. Therefore, at its core, C language handles low-level memory allocation and release.
+	\item You can't change the behavior of the new operator itself, but you can override the global operator new and overload it within a class. Pay attention to its arguments and return type, which is \texttt{void*}. The following code provides a simple demo without using texttt{new\_handler}. The operator new function typically invokes the \texttt{malloc} function, which in turn typically calls brk for small chunks and mmap for larger chunks. Therefore, at its core, C language handles low-level memory allocation and release.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 void* operator new(size_t size){ //global operator new
 	cout<<"Yan's own operator new" ;
@@ -5073,9 +5115,50 @@ void* Foo::operator new(size_t size){
 	....
 }
 	
-int *p = new int[100]; //output Yan's own operator new
-Foo* fp = new Foo();  //output Foo's own operator new
+int *p = new int[100]; //output "Yan's own operator new" here
+Foo* fp = new Foo();  //output "Foo's own operator new" here
 \end{lstlisting}
+
+	\item In C++, after you define a name in a scope (e.g., in a class scope), it will hide the same name in all enclosing scopes (e.g., in base classes or enclosing namespaces), and overloading never happens across scopes. I have introduced this knowledge in the second chapter's "Name Lookup" section. When the name is operator new, if you provide any class-specific placement new, you should provide all of the standard forms (plain, placement, and nothrow). In the below code, your own placement operator new will hide plain new and nothrow new in the global scope.
+
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+class C {
+	static void* operator new(size_t, MemoryPool&); //placement operator new
+	// hides normal forms operator new 
+};
+
+C* pc = new C() //compile failed.	
+\end{lstlisting}
+
+	In order to resolve the name hiding problem, you can define a Base class that includes the regular \texttt{operator new} and then have your own class inherit from it. More details can be found in "Effective C++ Item 52".
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+class StandardNewDeleteForms {
+public:
+	static void* operator new(std::size_t size) throw(std::bad_alloc) { 
+		return ::operator new(size); }
+	static void operator delete(void *pMemory) throw() { 
+		::operator delete(pMemory); }
+	static void* operator new(std::size_t size, void *ptr) throw() { 
+		return ::operator new(size, ptr); }
+	static void operator delete(void *pMemory, void *ptr) throw() { 
+		return ::operator delete(pMemory, ptr); }
+	...
+};
+
+class Widget: public StandardNewDeleteForms { // inherit std forms
+public:
+	using StandardNewDeleteForms::operator new; // make those three forms
+	using StandardNewDeleteForms::operator delete; //in base class visible here
+	
+	static void* operator new(size_t size,  ostream& ls) throw(std::bad_alloc){
+		// add a custom placement new here.
+	}	
+	static void operator delete(void *pMemory, std::ostream& logStream){}
+		// corresponding placement delete
+	}
+};
+\end{lstlisting}
+
 	
 	\item When you should provide your own operator new?  You want to add log function; You want to add some cookie before and after allocated memory(Visual Studio use this way to detect overflow in debug mode). You want to have quicker speed(memory pool). You want to have better alignment and so on. In summary, in below three contexts:
 	\begin{enumerate}
@@ -5102,44 +5185,6 @@ void* operator new[](size_t); //operator array new
 int* p = new int[5]; // call operator array new.
 \end{lstlisting}
 
-	\item In C++, after you define a name in a scope (e.g., in a class scope), it will hide the same name in all enclosing scopes (e.g., in base classes or enclosing namespaces), and overloading never happens across scopes. I have introduced this knowledge in the second chapter's "Name Lookup" section. When the name is operator new, if you provide any class-specific placement new, you should provide all of the standard forms (plain, placement, and nothrow). In the below code, your own placement operator new will hide plain new and nothrow new in the global scope.
-	
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-class C {
-	static void* operator new(size_t, MemoryPool&); //placement operator new
-	// hides three normal forms
-};
-
-C* pc = new C() //compile failed.
-\end{lstlisting}
-
-	\item  To resolve the name hiding problem, you can define a Base class that includes the regular \texttt{operator new} and then have your own class inherit from it. More details can be found in "Effective C++ Item 52".
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-class StandardNewDeleteForms {
-public:
-	static void* operator new(std::size_t size) throw(std::bad_alloc) { 
-		return ::operator new(size); }
-	static void operator delete(void *pMemory) throw() { 
-		::operator delete(pMemory); }
-	static void* operator new(std::size_t size, void *ptr) throw() { 
-		return ::operator new(size, ptr); }
-	static void operator delete(void *pMemory, void *ptr) throw() { 
-		return ::operator delete(pMemory, ptr); }
-	...
-};
-	
-class Widget: public StandardNewDeleteForms { // inherit std forms
-public:
-	using StandardNewDeleteForms::operator new; // make those
-	using StandardNewDeleteForms::operator delete; // forms visible
-	static void* operator new(std::size_t size,  std::ostream& logStream)  throw(std::bad_alloc);
-	// add a custom placement new here.
-		
-	static void operator delete(void *pMemory, std::ostream& logStream) 
-	// corresponding placement delete
-	...
-};
-\end{lstlisting}
 	
 \end{itemize}
 
@@ -5218,14 +5263,14 @@ void operator delete(void* p){
 	\item A good article is "The many faces of operator new in C++", It give  detail information about operator new and how to rewrite it. You can google it.
 \end{itemize}
 
-\section{Summary}
-Below figure illustrates what happen inside new operator and delete operator.
-\begin{figure}[ht]
-	\centering
-	\includegraphics[width=0.90\linewidth]{pics/new.png}
-	\caption{new operator and operator new.}
-	\label{fig:smartpointer1}
-\end{figure}
+%\section{Summary}
+%Below figure illustrates what happen inside new operator and delete operator.
+%\begin{figure}[ht]
+%	\centering
+%	\includegraphics[width=0.90\linewidth]{pics/new.png}
+%	\caption{new operator and operator new.}
+%	\label{fig:smartpointer1}
+%\end{figure}
 
 
 \chapter{Pointer and smart pointer}
