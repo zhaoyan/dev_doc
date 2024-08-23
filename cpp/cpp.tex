@@ -7149,9 +7149,9 @@ Derived(Derived&& rhs) : Base(std::move(rhs)){//correct, call base move construc
 \begin{itemize}
 	\item \textbf{In new C++ standard, universal reference has been renamed as forwarding reference}. It's more descriptive name, It tell you universal reference should always been used as forwarding a parameter. Forwarding references arise in two contexts. The most common is function template parameters; The second context is \texttt{auto\&\&}.  
 	
-	\item How can we recognize if something is a forwarding reference? 1)must be constrained \texttt{T\&\&} form, 2) type deduction happen. If the form of the type declaration isn't precisely type\&\&, or if type deduction does not occur, type\&\& denotes an rvalue reference.
+	\item How can we recognize if variable's type is a forwarding reference? 1)must be constrained \texttt{T\&\&} form, 2) type deduction happen. If the form of the type declaration isn't precisely \texttt{type\&\&}, or if type deduction does not occur, \texttt{type\&\&} denotes an rvalue reference.
 \begin{lstlisting}
-auto&& var2 = var1; // forwarding reference
+auto&& var2 = var1; // var2's type is forwarding reference
 
 template<typename T>
 void f(T&& param); // forwarding  reference
@@ -7161,53 +7161,46 @@ class vector {
 	template <class... Args>
 	void emplace_back(Args&&... args); //args is forwarding reference. 
 };
-
 //------------below are not universal reference----
 template<typename T>
 void f(std::vector<T>&& param); // rvalue reference, because it isn't T&& form
 
 template<typename T>
-void f(const T&& param); // with const
+void f(const T&& param); // with const, so it's NOT forwarding reference.
 
 template<class T, class Allocator = allocator<T>>
 class vector { 
-	public:
 	void push_back(T&& x);//no type deduction happen here, it's a rvalue reference
 };	
 \end{lstlisting}	
 	
 	
-	\item C++ defines the forwarding reference type deduction rules: for lvalues and rvalues, we use different rules to deduce the type. If you pass an lvalue, then \texttt{T} will deduce to \texttt{T\&}, while for rvalues, it will deduce to \texttt{T}.
-	
-		
-	\item In pre-11 C++, it was not allowed to take a reference to a reference: something like \texttt{A\&\&} would cause a compile error. C++11, by contrast, introduces the following reference collapsing rules:
+	\item C++ defines the forwarding reference type deduction rules: for lvalues and rvalues, we use different rules to deduce the type. If you pass an lvalue, then \texttt{T} will deduce to \texttt{T\&}, while for rvalues, it will deduce to \texttt{T}. In pre-11 C++, it was not allowed to take a reference to a reference: something like \texttt{A\&\&} would cause a compile error. C++11, by contrast, introduces the following reference collapsing rules:
 	
 \begin{lstlisting}[numbers=none]
-A& & becomes A&
-A& && becomes A&
-A&& & becomes A&
-A&& && becomes A&&
+1) A& & becomes A&  2) A& && becomes A&  3) A&& & becomes A& 4) A&& && becomes A&&
 \end{lstlisting}
 
-	\item With forwarding reference type deduction rules and reference collapsing rules, I will provide a toy code to illustrate how and where to use these two rules? We define a forearding reference in line 7 in the funciton \texttt{make\_obj}.
+	\item With forwarding reference type deduction rules and reference collapsing rules, I will provide a toy code to illustrate how and where to use these two rules? We define a forwarding reference in line 7 in the funciton \texttt{make\_obj}.
 \begin{enumerate}
-	\item When we input lvalue(line 11), according to forwarding reference type deduction rules, T\&\& will be deducted by T\&. Then when forward function return(line 2), it will return T\& \&\&, according to the reference collapsing rule, it will return T\&, return is lvalue. 
+	\item When we input lvalue (line 13), according to forwarding reference type deduction rules, T\&\& will be deducted by T\&. Then when \texttt{std::forward function} return (line 2), it will return \texttt{T\& \&\&}, according to the reference collapsing rule, it will return \texttt{T\&}, return is lvalue. 
 	
-	\item When we input rvalue(line 12), according to forwarding reference type deduction rules, T\&\& will be deducted to T. Then when forward function return(line 2), it will return T \&\&, return is rvalue. 
+	\item When we input rvalue (line 14), according to forwarding reference type deduction rules, \texttt{T\&\&} will be deducted to \texttt{T}. Then when forward function return(line 2), it will return \texttt{T\&\&}, return is rvalue. 
 	
-	\item forward function(line 1) just do what it expects to do, keep function parameter(forwarding reference T\&\&) value category, and pass it to next step.(T's copy constructor in our toy example). 
+	\item \texttt{std::forward} function (line 1) just do what it expects to do, keep function parameter (forwarding reference \texttt{T\&\&}) value category, and pass it to next step. The next step is invoking T's copy constructor in our toy example. 
 	 
 \end{enumerate}
 
 \begin{lstlisting}[]
 template<typename T>
-T&& forward(typename remove_reference<T>::type& param){
+T&& std::forward(typename remove_reference<T>::type& param){
 	return static_cast<T&&>(param);
 }
 
 template<typename T>
 T make_obj(T&& t){ //T&& is forwarding reference
-	T v{forward<T>(t)};
+	T v{std::forward<T>(t)};
+	return v;
 }
 	
 class Foo f;	
@@ -7230,24 +7223,19 @@ is_lvalue(a); // return true
 
 
 	
-	\item You also can determine programmatic if an expression is rvalue or lvalue.
-\begin{lstlisting}[numbers=none]
-if (std::is_lvalue_reference<decltype(var)>::value) {
-	// var was initialised with an lvalue expression
-} else if (std::is_rvalue_reference<decltype(var)>::value) {
-	// var was initialised with an rvalue expression
-}
-
-string&& xvalue_fun();
-std::is_rvalue_reference<decltype(xvalue_fun())>::value //return true	
-\end{lstlisting}	
+%	\item You also can determine programmatic if an expression is rvalue or lvalue.
+%\begin{lstlisting}[numbers=none]
+%if (std::is_lvalue_reference<decltype(var)>::value) {
+%	// var was initialised with an lvalue expression
+%} else if (std::is_rvalue_reference<decltype(var)>::value) {
+%	// var was initialised with an rvalue expression
+%}
+%
+%string&& xvalue_fun();
+%std::is_rvalue_reference<decltype(xvalue_fun())>::value //return true	
+%\end{lstlisting}	
 	
-	\item \texttt{auto\&\&} is also a forwarding reference, although it isn't used very often. If you don't want to dig too deep, you can skip below. If you use \texttt{std::forward} on your \texttt{auto\&\&} reference to preserve the fact that it was originally either an lvalue or an rvalue, your code says: Now that I've got your object from either an lvalue or rvalue expression, I want to preserve whichever valueness it originally had so I can use it most efficiently. For \texttt{auto\&\&}, the basic idea is just like with universal references: you need to use \texttt{decltype(var)} to get type information when you use the forward function on the universal reference. Please pay attention here: \texttt{var} was initialized with either an lvalue or rvalue, but \texttt{var} itself is an lvalue because named rvalues are lvalues.
 	
-\begin{lstlisting}[frame=single, language=c++]
-auto&& var = some_expression_that_may_be_rvalue_or_lvalue;
-use_it_elsewhere(std::forward<decltype(var)>(var));
-\end{lstlisting}
 
 %	\item When to use \texttt{auto\&\&}? I will accept any initializer regardless of whether it is an lvalue or rvalue expression and I will preserve its constness. A good example of \\ "some\_expression\_that\_may\_be\_rvalue\_or\_lvalue;" is illustrated below:
 %\begin{lstlisting}[frame=single, language=c++]
@@ -7278,12 +7266,119 @@ use_it_elsewhere(std::forward<decltype(var)>(var));
 
 \end{itemize}
 
-\subsection{pros and cons of forwarding reference}
+\subsection{Usage of forwarding reference}
+\begin{itemize}
+	\item First and foremost, forwarding reference is mainly used as a function parameter. The function can be a function template or \texttt{fun(auto\&\& var)} format.
+	
+	\item The basic usage of forwarding reference can be illustrated by belwo figure.
+	
+	\begin{center}	
+		\includegraphics[width=0.7\linewidth]{pics/forward.drawio.png}
+	\end{center}
+	
+	\begin{enumerate}
+				
+		\item The primary capability of a forwarding reference function parameter is that it can bind to both lvalue expressions \texttt{t} and rvalue expressions \texttt{T \{\}} as illustrated by the above figure.
+		
+		\item Inside \texttt{forwarding\_fun}, you must use \texttt{std::forward} to forward \texttt{param} to \texttt{fun} function. 
+		
+		\item At the same time, \texttt{fun} must take different action toward lvalue and rvlaue. \texttt{std::forward} will return different type(lvalue reference or rvalue reference) according to initial input. In another word, for lvalue input, \texttt{forwarding\_fun(t)}, \texttt{fun(T \&t)} will be called (path 1 in the above figure);  for rvalue input, \texttt{forwarding\_fun(T{})}, \texttt{fun(T \&\&t)} will be called (path 2 in the above figure);  
+		
+		\item The basic idea is illustrated cleary by the above figure, but why don't we call \texttt{fun} directly? In fact, forwarding reference usually used in below two a little complicated scenarios, but still follow the same basic previous idea.
+		
+		\begin{enumerate}
+			\item Forward parameter to construct an object. Three important STL functions \texttt{emplace\_back}, \texttt{make\_shared} and \texttt{make\_unique} follow this idea. They are \textbf{variadic template} function template, because it need to receive \textbf{any number and any type} parameter. These three functions has "COPY" semantic inside the function, want to keep rvalue semantic of parameter to improve efficiency.
+			
+			\item Add additional functionality to an existing function 
+\begin{lstlisting}
+template<typename T>
+void measureTimeFun(Args&&... args){ //T&& is forwarding reference
+	//start time
+	fun(std::forward<Args>(args)...)
+	//stop and output time
+}
+\end{lstlisting}
+			\item Most of time, we use variadic forwarding reference. 
+
+		\end{enumerate}
+		
+%		\item Most of time, in your forwarding function, you have a container(string is container too), because move container is much cheaper than copy it. You have to use reference, means that need refer a existing one, you refer it because you want to copy it inside of your template function.
+%		
+%		\item I will accept any initializer regardless of whether it is an lvalue or rvalue expression and I will preserve its constness.  This is typically used for forwarding (usually with \texttt{T\&\&}). The reason this works is because a "forwarding reference", \texttt{auto\&\&} or \texttt{T\&\&}, will bind to anything.  
+		
+
+	\end{enumerate}
+	
+	\item \texttt{auto\&\&} is also a forwarding reference. If you use \texttt{std::forward} on your \texttt{auto\&\&} reference to preserve the fact that it was originally either an lvalue or an rvalue, your code says: Now that I've got your object from either an lvalue or rvalue expression, I want to preserve whichever valueness it originally had so I can use it most efficiently. You need to use \texttt{decltype(var)} to get type information when you use the \texttt{std::forward} function on \texttt{var}. Please pay attention here: \texttt{var} was initialized with either an lvalue or rvalue, but \texttt{var} itself is an lvalue because named rvalues are lvalues.
+
+\begin{lstlisting}[frame=single, language=c++]
+auto&& var = some_expression_that_may_be_rvalue_or_lvalue;
+use_it_elsewhere(std::forward<decltype(var)>(var));
+\end{lstlisting}
+
+	\item \texttt{auto\&\&} can bind to both lvalue and rvalue. You might say, well why not just use a \texttt{const auto\&} because that will also bind to anything? The problem with using a const reference is that it's const! You won't be able to later bind it to any non-const references or invoke any member functions that are not marked const.
+\begin{lstlisting}[frame=single, language=c++]
+auto&& vec=some_expression_that_may_be_rvalue_or_lvalue_vector;
+auto i = std::begin(vec);
+(*i)++;  //only auto&& work in this scenario
+
+//below are other options, none of them work with (*i)++;
+auto vec         = .. // will copy the vector, we wanted a reference
+auto& vec        = .. // will only bind to modifiable lvalues
+const auto& vec  = .. // bind to anything, vec is const, so i is const_iterator
+const auto&& vec = .. // bind only to const rvalues, not univerisal reference	
+\end{lstlisting} 	
+	
+	\item There are two points you need to know when you want to use forwarding reference:
+\begin{enumerate}
+	\item Most of time we use \texttt{std::forward} and forwarding reference together, but for a special scenario, we don't use \texttt{std::forward} on forward reference. Pay attention here, if we use void print(const T\& container) here, vec|view::filter(...) will fail, because in C++ 20, some view only can bind to non-const variable. 
+\begin{lstlisting}
+template<typename T>
+void print(T&& container){
+	for(const auto& e : container){
+		std::cout<<e <<" ";
+	}
+	cout<<endl;
+}
+//void print(auto&& conainter) the same as previous function template
+
+print(vec|std::view::drop(3)); //ok
+print(vec|std::view::filter(...)); //ok with view::filter
+\end{lstlisting}
+	
+	 
+	\item use forward the last time inside your forwarding function. 
+\begin{lstlisting}
+template<typename F, typename... Args>
+void invoke_n_times(F&& f, std::size_t count, Args&&... args){
+	while(count-- > 1){
+		std::invoke(f, args...);
+	}
+	// Move only the last one, if anything is movable.
+	if(count == 0){
+		std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
+	}
+}
+\end{lstlisting}
+\end{enumerate}
+	
+%	\item Forwarding reference is used in three important STL functions \texttt{emplace\_back}, \texttt{make\_shared} and \texttt{make\_unique}. You can use them as a good example to study when and where you can use forwarding reference in your own project.
+%	\begin{enumerate}
+%		\item 
+%		
+%		\item \textbf{Forwarding reference}, because it's template, and I also want to keep rvalue semantic to improve efficiency.  The more you know these three functions, the better you understand forwarding reference.
+%	\end{enumerate}
+
+
+\end{itemize}
+
+
+\subsection{Pros and cons of forwarding reference}
 \begin{itemize}
 
 %	\item If you have a template class or template fun, universal reference is your only choice. An example can be seen in the last chapter, "decltype deduction" section.
 
-	\item For overload method, more source code to write and maintain (two functions instead of a single template), it can be less efficient. For example, consider this use of setName: \texttt{w.setName("Adela Novak")}; With the version of setName taking a forwarding reference, the string literal "Adela Novak" would be passed to setName, where it would be conveyed to the assignment operator for the \texttt{std::string} inside w. w's name data member would thus be assigned directly from the string literal; no temporary \texttt{std::string} objects would arise. With the overloaded versions of setName, however, a temporary \texttt{std::string} object would be created for setName's parameter to bind to, and this temporary \texttt{std::string} would then be moved into w's data member.
+	\item For lvalue reference and rvalue reference overload method, more source code to write and maintain because there are two functions instead of a single function template. Furthermore, in some type conversion scenario, it can be less efficient. For example, consider this use of setName: \texttt{w.setName("Adela Novak")}; With the version of \texttt{setName} taking a forwarding reference, the string literal "Adela Novak" would be passed to \texttt{setName}, where it would be conveyed to the assignment operator for the \texttt{std::string name}. Data member \texttt{name} would thus be assigned directly from the string literal; no temporary \texttt{std::string} objects would arise. With the overloaded versions of \texttt{setName}, however, a temporary \texttt{std::string} object would be created for \texttt{setName}'s parameter to bind to, and this temporary \texttt{std::string} would then be moved into \texttt{name}.
 
 \begin{lstlisting}[numbers=none]
 class Widget {
@@ -7307,41 +7402,12 @@ template<class T, class... Args>
 unique_ptr<T> make_unique(Args&&... args); 
 \end{lstlisting}
 
-    \item You can use forwarding references, but inside, you have to use the \texttt{std::forward} function, and implementation can be a bit complex. As a template, implementations must typically be in a header file. There are argument types that cannot be passed by universal reference (see Item 30), and if clients pass improper argument types, compiler error messages can be intimidating (see "Effective Modern C++ Item 27").
+    \item You can use forwarding references, but inside, you have to use the \texttt{std::forward} function, and implementation can be a bit complex. As a template, implementations must typically be in a header file. There are argument types that cannot be passed to forwarding reference (such as braced initializer: \{1, 2, 3\} and bitfields). If clients pass improper argument types, compiler error messages can be intimidating. (Detail can be seen in "Effective Modern C++" Item 27 and 30.)
 
-    \item Overloading on forwarding references often results in the forwarding reference overload being called more frequently than expected. Perfect-forwarding constructors are particularly problematic because they typically provide better matches than copy constructors for non-const lvalues, and they can intercept calls from derived class constructors to base class copy and move constructors. For more details, refer to "Effective Modern C++ Item 26."
+    \item Avoid overloading on forwarding references, because it often results in the forwarding reference overload being called more frequently than expected. For more details, please refer to "Effective Modern C++" Item 26.
+    
+    %Perfect-forwarding constructors are particularly problematic because they typically provide better matches than copy constructors for non-const lvalues, and they can intercept calls from derived class constructors to base class copy and move constructors.
 
-\end{itemize}
-
-\subsection{Usage of forwarding reference}
-\begin{itemize}
-\item When to use forwarding references? 
-	\begin{enumerate}
-		\item First and foremost, it is only used in a template function. Inside the function, if you only need to read or write a value, you should use a reference or a const reference directly to avoid copying.
-		
-		\item For forwarding reference, you must forward it to constructor, container, object or function. And these four things will take different action toward lvalue and rvlaue. Most of time, in your forwarding function, you have a container(string is container too), because move container is much cheaper than copy it. You have to use reference, means that need refer a existing one, you refer it because you want to copy it inside of your template function.
-		
-		\item I will accept any initializer regardless of whether it is an lvalue or rvalue expression and I will preserve its constness.  This is typically used for forwarding (usually with \texttt{T\&\&}). The reason this works is because a "forwarding reference", \texttt{auto\&\&} or \texttt{T\&\&}, will bind to anything.  
-		
-		\item You might say, well why not just use a const auto\& because that will also bind to anything? The problem with using a const reference is that it's const! You won't be able to later bind it to any non-const references or invoke any member functions that are not marked const.
-\begin{lstlisting}[frame=single, language=c++]
-auto&& vec=some_expression_that_may_be_rvalue_or_lvalue;
-auto i = std::begin(vec);
-(*i)++;
-
-auto        // will copy the vector, but we wanted a reference
-auto&       // will only bind to modifiable lvalues
-const auto& // will bind to anything but make it const, giving us const\_iterator
-const auto&& //will bind only to rvalues with const, It's not univerisal reference any more. 
-\end{lstlisting} 
-	\end{enumerate}
-
-	\item Forwarding reference is used in three important STL functions \texttt{emplace\_back}, \texttt{make\_shared} and \texttt{make\_unique}. You can use them as a good example to study when and where you can use forwarding reference in your own project.
-	\begin{enumerate}
-		\item \textbf{variadic template}, because it need to receive \textbf{any number and any type} parameter.
-
-		\item \textbf{Forwarding reference}, because it's template, and I also want to keep rvalue semantic to improve efficiency. These three functions has "COPY" semantic inside the function. The more you know these three functions, the better you understand forwarding reference.
-	\end{enumerate}
 \end{itemize}
 
 
@@ -7350,7 +7416,7 @@ const auto&& //will bind only to rvalues with const, It's not univerisal referen
 	
 	\item Both \texttt{std::move} and \texttt{std::forward} are just type-casting operations, not performing any real operations inside these two functions.
 	
-	\item Basic implementation of \texttt{std::move}. It has forwarding reference parameter, and return rvalue reference. 
+	\item \texttt{std::move} has forwarding reference parameter, and return rvalue reference. It just uses \texttt{static\_cast} to perform type converting operation. 
 \begin{lstlisting}[numbers=none]
 template<typename T> // in namespace std
 typename remove_reference<T>::type&&  move(T&& param){
@@ -7358,8 +7424,17 @@ typename remove_reference<T>::type&&  move(T&& param){
 	return static_cast<ReturnType>(param);
 }
 \end{lstlisting}
+	   \item Why \texttt{std::move} use forwarding reference as parameter. Just for more generic. We have introduced \texttt{vector<bool>} before, it returns a proxy value and it's rvalue. It's a extreme case, and I admit that. But in generic(template) programming, you will meet it too.
+\begin{lstlisting}[]
+std::vector<bool> v{true};
+std::move(v[0]); // std::move on rvalue, OK
+\end{lstlisting}	
+	\item The implementation of \texttt{std::move} can be illustrated by below figure.
+\begin{center}
+\includegraphics[width=0.95\linewidth]{pics/rvalue_ref_1.png}
+\end{center}	
 	
-	\item Basic implementation of \texttt{std::forward}. It has lvalue reference parameter, and return lvalue reference or rvalue reference according to the T type inside \texttt{std::forward<T>(t)} expression.
+	\item Basic implementation of \texttt{std::forward}. It has lvalue reference parameter, and return lvalue reference or rvalue reference according to the T type inside \texttt{std::forward<T>(t)} expression. 
 \begin{lstlisting}numbers=none]
 template<typename T>
 T&& forward(typename remove_reference<T>::type& param){
@@ -7367,39 +7442,32 @@ T&& forward(typename remove_reference<T>::type& param){
 }
 \end{lstlisting}
 
-	\begin{figure}[h]
-	\centering
-	\includegraphics[width=0.85\linewidth]{pics/rvalue_ref.png}
-	\caption{move and forward implementation}
-	\label{fig:rvalueref}
-\end{figure}
+%	\begin{figure}[h]
+%	\centering
+%	\includegraphics[width=0.85\linewidth]{pics/rvalue_ref.png}
+%	\caption{move and forward implementation}
+%	\label{fig:rvalueref}
+%\end{figure}
 
-    \item A few more explanations about previous implementation:
-    \begin{enumerate}
-        \item In forward function, why parameter is \texttt{std::remove\_reference\_t<T>\& t}? Forward mainly used inside another funciton, outside function parameter has name, so the parameter is lvalue.
+ \item In forward function, why parameter is \texttt{std::remove\_reference\_t<T>\& t}? Forward mainly used inside another funciton and function parameter has name, so it is lvalue.
 \begin{lstlisting}
 forward(int& r1); #1
 forward(int&& r1); #2
-	
+
 void fun(int&& r){
 	int& r1 = r;  //OK, r has name, so r is lvalue
-	//int&& r1 = r;  //error: cannot bind 'int' lvalue to 'int&&'
+	//int&& r1 = r;  //Error: cannot bind 'int' lvalue to 'int&&'
 	forward(r) //it will call #1, not #2, because r is lvalue.
 }
-int r = 2;
-fun(std::move(r));
 \end{lstlisting}
 
-    \item Why \texttt{std::move} use forwarding reference as parameter. Just for more generic. We have introduced \texttt{vector<bool>} before, it returns a proxy value and it's rvalue. It's a extreme case, and I admit that. But in generic(template) programming, you will meet it too.
-\begin{lstlisting}[]
-std::vector<bool> v{true};
-std::move(v[0]); // std::move on rvalue, OK
-\end{lstlisting}
-        \end{enumerate}
-        
-     \item There are two important points to help you understand \texttt{std::move} and \texttt{std::forward}. One is forwarding reference deduct rule, the other is reference collapse rules.
+	\item The implementation of \texttt{std::forward} can be illustrated by below figure.
+\begin{center}
+	\includegraphics[width=0.85\linewidth]{pics/rvalue_ref_2.png}
+\end{center}	
+
     
-    \item The new standard has two overloaded \texttt{std::forward} template functions. The next part is a little theoretical. If you don't want to go that deep, you can skip it because you can still use \texttt{std::forward} properly even if you don't know the implementation details behind it.
+    \item The new standard has two overloaded \texttt{std::forward} template functions. The next part is a little theoretical and if you don't want to go that deep, you can skip the below content in this section because you can still use \texttt{std::forward} properly even if you don't know the implementation details behind it.
     
 \begin{lstlisting}
 template< class T >
@@ -7409,7 +7477,7 @@ template< class T >
 constexpr T&& forward( std::remove_reference_t<T>&& t ) noexcept;	
 \end{lstlisting}
 	
-	\item Why do we need the second overloaded function? It is for a very special case. The below code shows a scenario where we will use the second overload. The key point to understand this code is: Most of the time, we just forward function parameters, but in the code below(line 18), we forward a function return value, and the function return value is an rvalue.
+	\item Why do we need the second overloaded function? It is for a very special case. The below code shows a scenario where we will use the second overload. The key point to understand this code is: Most of the time, we just forward function parameters, but in the code below(line 19), we forward a function return value, and the function return value is an rvalue.
 	
 	
 \begin{lstlisting}
@@ -7430,7 +7498,8 @@ void g(int&&) { std::cout << __PRETTY_FUNCTION__ << '\n'; }
 template<class T>
 auto f(T&& t){
 	std::cout << __PRETTY_FUNCTION__ << '\n';
-	g(forward<decltype(forward<T>(t).get())>(forward<T>(t).get()));
+	//forward<T>(t).get() return different type here. 
+	g( forward<decltype( forward<T>(t).get() )>( forward<T>(t).get() ) );
 }
 
 struct foo{
@@ -7454,38 +7523,38 @@ void g(int &&) #5
     \begin{enumerate}
     	\item template \texttt{f} function has forwarding reference. When we input rvalue, template parameter will be deducted by \texttt{T}, not \texttt{T\&}, \#1 shows the function type.
     	
-    	\item Inside \texttt{f}, t is \texttt{foo\&\&}, but t itself is lvalue. The third forward function in line 18 returns T\&\&(foo\&\&), that is to say \texttt{forward<T>(t)} return a rvalue. \#2 shows the third forward function type. 
+    	\item Inside \texttt{f}, t is \texttt{foo\&\&}, but t itself is lvalue. The third forward function in line 18 returns \texttt{T\&\& (foo\&\&)}, that is to say \texttt{forward<T>(t)} return a rvalue. \#2 shows the third forward function type. 
     	
     	\item Once we have \texttt{foo\&\&}, we use it call \texttt{foo::get()}, it will call rvalue reference version. \#3 demonstrate it. 
     	
     	\item In line 18, from \#3 we know that get return int, so 1) The first forward will be deducted by int. 2) get which return int is rvalue, so we need forward function can recieve the rvalue, so the first forward function is dedecuted by \texttt{std::remove\_reference<T>::type \&\&}, \#4 proves this.
     	
-    	\item The first forward return int \&\&, so it call g(int \&\&) just like \#5 shows . 
+    	\item The first forward return \texttt{int \&\&}, so it calls \texttt{g(int \&\&)} just like \#5 shows . 
     	
     	\item \texttt{PRETTY\_FUNCTION} is a powerful tool when you analyze the instantiation of a template function.
     \end{enumerate}
     
-    
-   
 \end{itemize}
 
 
 \section{Function interface-parameter}
 
-\subsection{read-copy function parameter design}
+\subsection{Read-copy function parameter design}
 
 \begin{itemize}
 
-	\item By now, you may imagine a function with parameters where three main operations are performed: 1) reading from the parameters, 2) copying from the parameters, and 3) writing to the parameters. When only reading is required, "\texttt{const type\&}" is the best option. For writing, "\texttt{type\&}" is suitable because it allows modifications without the need to write anything new into the prvalue. Based on the previous explanation, the code below will not compile.
+	\item By now, you may imagine a function with parameters where three main operations are performed: 1) reading from the parameters, 2) copying from the parameters, and 3) writing to the parameters. When only reading is required, "\texttt{const type\&}" is the best option. For writing, "\texttt{type\&}" is suitable.
+	
+	%because it allows modifications without the need to write anything new into the prvalue. Based on the previous explanation, the code below will not compile.
 \begin{lstlisting}[numbers=none]
 writeFun(Foo &);
-writeFun(foo1+foo2) //ERROR
+writeFun(foo1+foo2) //ERROR, Foo & can't bind to rvalue.
 \end{lstlisting}
 
-	\item In the 'read-copy' scenario, things become interesting. You start with an original object, but inside your function, you might want to copy from it: such as assign it to others, build something new based on it(call constructor), or push it into a container, or return it. In all these cases, a form of 'copy' operation occurs within the function. For examples \texttt{make\_unique,} \texttt{emplace\_back} are this kind of functions.
+	\item In the "read-copy" scenario, things become interesting. You start with an original object, but inside your function, you might want to perform "copy semantic" from it: such as assign it to others, build something new based on it (call constructor), or push it into a container, or return it. In all these cases, a form of "copy semantic" operation occurs within the function. For examples \texttt{make\_unique,} \texttt{emplace\_back} are this kind of functions.
 
     
-	\item \textbf{Please remember, move semantics are only applicable in scenarios involving read-copy operations.} The move constructor and move assignment operator offer insights into improving function interface design. For rvalues, direct moves are possible. Our goal is to utilize move semantics for rvalues, providing us with four options:
+	\item \textbf{Please remember, move semantics are only applicable in scenarios involving read-copy operations.} The move constructor and move assignment operator offer insights into improving function interface design. Our goal is to utilize move semantics for rvalues, providing us with four options:
 	
 	\begin{enumerate}
 		\item Overload fun to support \texttt{const Foo\&} and \texttt{Foo \&\&}. Copy constructor is typical example of this strategy. So usually function which accepts rvalue reference doesn't exist by itself, it just stay with another version to accept lvalue, \texttt{fun(const Foo\& foo);}
@@ -7496,15 +7565,11 @@ fun(foo1+foo2)  // call move constructor.
 fun(f_return_foo()); // call move constructor.
 \end{lstlisting}		
 		
-		\item Use pass-value \texttt{fun(Foo)}. We will introduce it later.
+		\item Use pass-value \texttt{fun(Foo)}, we will introduce it in the next section.
 		\item Use pass-rvalue-reference \texttt{Foo \&\&)}. 
 		\item Use forwarding reference \texttt{fun(T\&\&)}.
 	\end{enumerate}
 	
-
-	
-	
-\begin{center}
 
 
 \begin{tabular}{|p{0.25\textwidth}|p{0.32\textwidth}|p{0.32\textwidth}|}
@@ -7526,24 +7591,27 @@ copyFun(T \&\&)}  & copy inside & move inside
 
 	\item For only read build-in type, such as \texttt{int, char, short, double}. You can use value directly, it has the same performance as reference. If you want to change it, you still need to use reference. 
 
-\end{center}
+\end{itemize}
+
 
 \subsubsection{Only value solution}
 
+\begin{itemize}
+	
 	\item In the book 'Effective Modern C++', Item 41 expresses the idea very clearly that copyable parameters that are cheap to move should be passed by value, and it also provides some good examples. A value parameter example can be see in the below code:
 
 \begin{lstlisting}[frame=single, language=c++]
-std::vector<std::string> sorted(std::vector<std::string> names){
+std::vector<std::string> getNewSortedVector (std::vector<std::string> names){
 	std::sort(names);
 	return names;
 }
 
-std::vector<std::string> sorted_names1 = sorted( input_names ); //copy here
-std::vector<std::string> sorted_names2 = sorted( get_names() ); //copy elision
+auto sn1= getNewSortedVector(input_names); //copy here
+auto sn2= getNewSortedVector(get_names());//copy elision, construct directly
 \end{lstlisting}
-\begin{description}
-	\item[Line 7:] \texttt{get\_names()} is an rvalue expression; move or omit the copy with copy elision optimization.
-\end{description}
+%\begin{description}
+%	\item[Line 7:] \texttt{get\_names()} is an rvalue expression; move or omit the copy with copy elision optimization.
+%\end{description}
 
 %    \item If we use reference parameter instead value parameter, we have to copy it inside of function. We can't change because it's const reference, so have to copy it inside first. 
 %
@@ -7638,7 +7706,7 @@ Class A{
 
 \subsubsection{Use rvalue reference or forwarding reference}
 
-    \item A more academic approach is to simply pass rvalue references to handle both lvalues and rvalues simultaneously. This concept can be further explored by searching for "Pass By Rvalue Reference Or Pass By Value". However, for lvalues, an auxiliary function is required to manage them effectively.
+    \item A more academic approach is to simply pass rvalue references to handle both lvalues and rvalues simultaneously. This concept can be further explored by searching for "Pass By Rvalue Reference Or Pass By Value". However, for lvalues, an auxiliary function is required to manage them effectively. Frankly speaking, it's not mainstream idea, because it's a little difficult to understand and need extra help funciton. keep it just for an option.
 \begin{lstlisting}[frame=single, language=c++]
 template<typename T>
 T copy_to_temp(const T& t) { return t; }
@@ -7647,19 +7715,17 @@ SomeType t;
 s.initByRef(copy_to_temp(t)); //t is lvalue, need copy first.
 \end{lstlisting}
 
-    \item The same idea can be applied to move-only types (such as \texttt{unique\_ptr<T>})
-\begin{lstlisting}[frame=single, language=c++]
-template<typename T>
-T move_to_temp(T& t) { return std::move(t); }
+%    \item The same idea can be applied to move-only types (such as \texttt{unique\_ptr<T>})
+%\begin{lstlisting}[frame=single, language=c++]
+%template<typename T>
+%T move_to_temp(T& t) { return std::move(t); }
+%
+%void foo(unique_ptr<SomeType>&& param);
+%unique_ptr<SomeType> p;
+%foo(move_to_temp(p)); //note: this does move, p will become empty 
+%foo(std::move(p)); //here, p will not become empty.  
+%\end{lstlisting}
 
-void foo(unique_ptr<SomeType>&& param);
-unique_ptr<SomeType> p;
-foo(move_to_temp(p)); //note: this does move, p will become empty 
-foo(std::move(p)); //here, p will not become empty.  
-\end{lstlisting}
-
-
-    \item Frankly speaking, it's not mainstream idea, because it's a little difficult to understand and need extra help funciton. keep it just for an option.
 
 %VMore interesting example:
 %\begin{lstlisting}[frame=single, language=c++]
@@ -7690,7 +7756,7 @@ Fraction reduceAndCopy(T&& frac){ //only used in template function
 } 
 \end{lstlisting}
 
-	\item Below is a very important summary. Please read it carefully and make sure you understand them.
+	\item Comparison of previous three function interfaces design. 
 	\begin{enumerate}
 		\item Overloading with const lvalue reference and rvalue reference is the most common strategy for designing read-copy function interfaces. It offers high efficiency but requires writing two separate functions.
 \begin{lstlisting}[numbers=none]
@@ -7703,7 +7769,7 @@ void addName(std::string&& newName) {
 } 
 \end{lstlisting}
 
-		\item Using only a value parameter is also an option when ensuring that the copy occurs inside the function and the move operation is inexpensive. The advantage is that you only need to write one function, but there will be an additional move operation for both lvalues and rvalues. However, this approach has more restrictions on its application context.
+		\item Using only a value parameter is also an option when ensuring that the copy occurs inside the function and \textbf{the move operation is inexpensive.} The advantage is that you only need to write one function, but there will be an additional move operation for both lvalues and rvalues. 
 		
 \begin{lstlisting}[numbers=none]
 void addName(std::string newName) { 	
