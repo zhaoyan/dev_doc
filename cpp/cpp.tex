@@ -10337,45 +10337,16 @@ Class LandVehicleGasPowered: public LandVehicle
 
 
 \chapter{Exception and error}
-\section{Debug}
-\begin{itemize}
-	\item A few useful debugger commands in linux:
-	\begin{enumerate}
-		\item cgbd: terminal-based frontend for gdb, sudo apt-get install cgbd (sudo apt install -y cgdb)
-		\item gdbgui: brower-based frontend for gdb, https://gdbgui.com,  sudo pip install gdbgui
-		\item visual studio code: can connect to gdb. 
-	\end{enumerate}
-	
-	\item Common use compiler command switch and tool.
-\begin{lstlisting}
-g++ a.cpp -o a -fsanitize=address
-g++ a.cpp -o a -fsanitize=undefined
 
-valgrind [options] ./a [program options]
-valgrind --tool=memcheck ./a
-valgrind --tool=callgrind ./a // runtime profiling
-valgrind --tool=drd ./a // multithreading error detection	
-\end{lstlisting}	
-	
-	\item Recommended compiler flags for your first programs.
-\begin{lstlisting}
-g++ -std=c++20 -Wall -Wextra -Wpedantic -Wshadow -Werror input.cpp -o output	
-
-// below is production level recommended set
--Wall -Wextra -Wpedantic -Wshadow -Wconversion -Werror -fsanitize=undefined,address -Wfloat-equal -Wformat-nonliteral -Wformat-security -Wformat-y2k -Wformat=2 -Wimport -Winvalid-pch -Wlogical-op -Wmissing-declarations -Wmissing-field-initializers -Wmissing-format-attribute -Wmissing-include-dirs -Wmissing-noreturn -Wnested-externs -Wpacked -Wpointer-arith -Wredundant-decls -Wstack-protector -Wstrict-null-sentinel -Wswitch-enum -Wundef -Wwrite-strings	
-\end{lstlisting}	
-	
-	
-\end{itemize}
 
 \section{Terminate application}
 %\subsection{Different methods to terminate}
 \begin{itemize}
-	\item In the C language, you can call \texttt{abort()}, \texttt{exit()}, \texttt{quick\_exit()}, and \texttt{\_exit()} to end your program at any time. They are all declared in the \texttt{<cstdlib>} header file.
+	\item In the C language, you can call \texttt{abort()}, \texttt{exit( status )}, \texttt{quick\_exit()}, and \texttt{\_exit()} to end your program at any time. They are all declared in the \texttt{<cstdlib>} header file.
 	
-	\item \texttt{exit( status )} terminates the process normally. A status value of 0 or EXIT\_SUCCESS indicates success, and any other value or the constant EXIT\_FAILURE is used to indicate an error. \texttt{exit()} performs the following operations: 1) flushes any unwritten buffered data, 2) closes all open files, and 3) may remove any temporary files that were created by the program (depending on how they are managed). When you call exit or execute a return statement from main, static objects are destroyed in the reverse order of their initialization.
+	\item \texttt{exit( status )} terminates the process normally. A status value of 0 or EXIT\_SUCCESS indicates success, and any other value or the constant EXIT\_FAILURE is used to indicate an error. \texttt{exit( status )} performs the following operations: 1) flushes any unwritten buffered data, 2) closes all open files, and 3) may remove any temporary files that were created by the program (depending on how they are managed). When you call \texttt{exit( status )} or execute a return statement from main, static objects are destroyed in the reverse order of their initialization.
 	
-	\item \texttt{atexit()} registers a function to be called on normal program termination (via \texttt{std::exit()} or returning from the main function)
+	\item \texttt{atexit()} registers a function to be called on normal program termination (via \texttt{exit( status )} or returning from the main function)
 \begin{lstlisting}[]
 void myProgramIsTerminating1(void){
 	cout<<"exit main function"<<endl;
@@ -10415,7 +10386,8 @@ assert(! "You should not reach here");
 	
 	\item \texttt{std::terminate()} will be automatically called in a C++ program when there is an unhandled C++ exception. This is essentially the C++ equivalent of \texttt{abort()}. \texttt{std::terminate()} calls a handler that is set by the \texttt{std::set\_terminate()} function, which by default simply calls \texttt{abort()}.
 	
-	\item Don't use \texttt{exit()} in \texttt{main()}. It will not destroy local objects in the \texttt{main()} function. Instead, catch the exceptions that you can't handle in \texttt{main()} and simply return from there. This guarantees that stack unwinding happens correctly and all destructors are called.
+	
+	\item In C, issuing a return statement from the main function is equivalent to calling the exit function with the return value as its argument. However, in C++, there are significant differences. When you use return in \texttt{main()}, destructors will be called for locally scoped objects. On the other hand, if you call \texttt{exit()}, no destructors will be called for locally scoped objects. Therefore, it's advisable not to use \texttt{exit()} in C++. Instead, use try-catch blocks and return \texttt{EXIT\_FAILURE} to ensure proper stack unwinding. \texttt{exit()} is a C function and is not aware of, nor compatible with, C++ idioms. It does not perform cleanup on objects, including those in the same scope. This means that files may not be closed properly, potentially resulting in unwritten content.
 \begin{lstlisting}[numbers=none]
 int main() {
 	try {
@@ -10424,15 +10396,12 @@ int main() {
 	catch( ... ) { // catch all exceptions.
 		return EXIT_FAILURE;
 	}
-}	
+}		
 \end{lstlisting}	
-	
-	\item In C, issuing a return statement from the main function is equivalent to calling the exit function with the return value as its argument. However, in C++, there are significant differences. When you use return in \texttt{main()}, destructors will be called for locally scoped objects. On the other hand, if you call \texttt{exit()}, no destructors will be called for locally scoped objects. Therefore, it's advisable not to use \texttt{exit()} in C++. Instead, use try-catch blocks and return \texttt{EXIT\_FAILURE} to ensure proper stack unwinding. \texttt{exit()} is a C function and is not aware of, nor compatible with, C++ idioms. It does not perform cleanup on objects, including those in the same scope. This means that files may not be closed properly, potentially resulting in unwritten content.
-	
 	
 	\item The difference between \texttt{exit} and \texttt{abort} is that exit allows the C++ run-time termination processing to take place, including calling global object destructors. On the other hand, abort terminates the program immediately. The \texttt{abort} function bypasses the normal destruction process for initialized global static objects and also bypasses any special processing specified using the \texttt{atexit} function. In other words, if you use \texttt{abort()}, no objects will have their destructors called—neither global objects, static objects, nor local objects.
 	
-	\item According to previous introduction, if you want to end application in the other fun, you need to throw a exception, then leave it un-handle or re-throw it until it reaches \texttt{main}. In this way, stack unwinding will make sure all the destructor will be called.
+	\item According to previous introduction, if you want to end application in the other fun, you need to throw a exception, then leave it un-handle or re-throw it until it reaches \texttt{main}. When \texttt{main} returns, it will perform the necessary flush operations and destruct all local objects. In this way, stack unwinding will make sure all the destructor to be called. You can also skip the entire \texttt{catch} block. 
 \begin{lstlisting}[frame=single, language=c++]
 try{
 	fun(){
@@ -10443,10 +10412,11 @@ catch(end_exception& ex){
 	//do something here
 	throw;
 }		
-\end{lstlisting}		
-	\begin{description}
-		\item[Source code:] Just skip the entire catch block. When the exception reaches the end of the catch block or is not caught at all, it will propagate to the \texttt{main} function where all local objects will be cleaned up properly. When \texttt{main} returns, it will perform the necessary flush operations and destruct all local objects.
-	\end{description}
+\end{lstlisting}	
+	
+%	\begin{description}
+%		\item[Source code:] Just skip the entire catch block. When the exception reaches the end of the catch block or is not caught at all, it will propagate to the \texttt{main} function where all local objects will be cleaned up properly. 
+%	\end{description}
 	
 \end{itemize}
 
@@ -10475,7 +10445,7 @@ catch(end_exception& ex){
 \subsection{Handle error in C}
 \begin{itemize}
 
-	\item There are three common error handling methods: 1) global error code or error state (C/C++), 2) return value, and 3) exception.
+	\item There are three common error handling methods: 1) global error code or error state, 2) return value, and 3) exception.
 \begin{lstlisting}[frame=single, language=c++]
 errno(), strerror()  //C language
 cin.fail()  //C++ language
@@ -10501,7 +10471,7 @@ perror ("The following error occurred");
 errno = 0  // set it zero before call any math library function.
 double not_a_number = std::log(-1.0);
 if (errno == EDOM) 
-std::cout << "log(-1) failed: " <<std::strerror(errno) << '\n';	
+std::cout << "log(-1) failed: " <<std::strerror(errno); //use strerror with errno
 \end{lstlisting}	
 	\item You can detect errors by setting \texttt{errno} to 0, calling the function, and then testing \texttt{errno}. Setting \texttt{errno} to 0 first is important, as no library function ever does that for you.
 \end{enumerate}
@@ -10534,7 +10504,7 @@ if (math_errhandling  &MATH_ERREXCEPT) {
 \subsection{Exceptions or Bug?}
 \begin{itemize}
 
-\item \textbf{Is it a bug or exception?} Exceptions are typically events that are beyond the control of the program or the user, while bugs are problems that are within the control of the program and can be fixed by changing the code. In other words, exceptions are things that can happen even if the program is perfectly correct, while bugs are things that should never happen if the program is written correctly. A practical example of an exception is a dead battery in a cell phone, whereas having diarrhea is an abnormality and not an exception. For instance, a failure to open a file is an exception and should be handled by throwing an exception. On the other hand, if \texttt{age < 0}, it indicates a bug that needs fixing immediately.
+	\item \textbf{Is it a bug or exception?} Exceptions are typically events that are beyond the control of the program or the user, while bugs are problems that are within the control of the program and can be fixed by changing the code. In other words, exceptions are things that can happen even if the program is perfectly correct, while bugs are things that should never happen if the program is written correctly. An example of exception is a failure to open a file. For exceptions, we should use \texttt{try\{\}} block and \texttt{catch\{\}} block to deal with them. On the other hand, if \texttt{age < 0}, it indicates a bug that needs fixing immediately.
 
 \begin{lstlisting}[numbers=none]
 FILE *f = fopen("hr.dat".....);
@@ -10548,17 +10518,17 @@ fprintf(f, %d, age);
 \end{lstlisting}
 
 
-\item You can also think of an exception as a runtime error and a bug as a logical error. For logical errors, you need to rewrite the code to fix them. For runtime errors, you need to throw and catch exceptions to handle them. Logical errors should be identified as soon as possible using assertions or unit tests. Distinguishing between these two different conditions is important and it does not depend on the phenomenon but rather on the cause. For example, in the function \texttt{f(Foo* p)}, if \texttt{p} is \texttt{nullptr}, there are two possibilities reasons:
-
-
+	\item You can also think of an exception as a runtime error and a bug as a logical error. Bugs should be found as early as possible. There are two basic methods to find bugs: using assertions and conducting unit tests. I will introduce unit testing in the 'Testing' chapter. When you find bugs, you need to rewrite the code to fix them. 
+	
+	For runtime errors, you need to throw and catch exceptions to handle them. Distinguishing between exceptions or bugs is important and it does not depend on the phenomenon but rather on the cause. For example, in the function \texttt{f(Foo* p)}, if \texttt{p} is \texttt{nullptr}, there are two possibilities reasons:
 
 \begin{enumerate}
-	\item They may be passing \texttt{nullptr} because they received bad data from an external user (for example, the user forgot to fill in a field and the database connection failed). In this case, you should throw an exception since it is a runtime situation (i.e., something that cannot be detected by a careful code-review; it is not a bug). 
+	\item \texttt{nullptr} is passed because application received bad data from an external user (for example, the user forgot to fill in a field and the database connection failed). In this case, you should throw an exception since it is a runtime situation (i.e., something that can't be detected by a careful code-review; it is not a bug). 
 	
-	\item \texttt{nullptr} is caused by a mistake in their own code. you should definitely fix the bug in the caller's code. but you must not merely change the code within \texttt{f(Foo* p);} you must, Must, MUST fix the code in the caller(s) of \texttt{f(Foo* p)}.
+	\item \texttt{nullptr} is caused by a mistake in the code. You should definitely fix the bug in the caller's code. You can't merely change the code within \texttt{f(Foo* p);}, you must, Must, MUST fix the code in the caller(s) of \texttt{f(Foo* p)}.
 \end{enumerate}
 
-	\item In previous example, You can use assert first, after you code-review, found that It's not bug, but cause by an exception, such as net disconnect. so you can change assert to throw. THAT IS  A GOOD STRATEGY!
+	\item In previous example, You can use \texttt{assert} first, after you code-review, found that it's not a bug, but cause by an exception, such as net disconnect, then you can change assert to throw. THAT IS  A GOOD STRATEGY!
 
 \begin{lstlisting}[frame=single, language=c++]
 fun(int* pi, int j){
@@ -10566,10 +10536,26 @@ fun(int* pi, int j){
 	assert(pi == nullptr)
 	
 	if(file.open()) //runtime error
-	throw runtime_error();
+		throw runtime_error();
 }		
 \end{lstlisting}
 
+	\item the usage of assert depends on the context, but it's not always recommended to use assert to its fullest. Precondition and postcondition assertions are two important types of assertions, but there are other types of assertions that can also be useful, such as invariants, boundary checks, and null checks. Precondition assertions are used to test the validity of the arguments passed to a method before the method is executed. Postcondition assertions are used to test the validity of the results produced by the method after the method has completed its execution. 
+	
+	\item The idea behind using \texttt{assert} as precondition check is to immediately spot an abnormal case that may otherwise cause errors in other parts of the code. Without these \texttt{assert} precondition check, it may be difficult to trace the error back to its source position.
+\begin{lstlisting}[frame=single, language=c++]
+fun(char* p){
+	assert(p!=nullptr); //use assert to do precodition check.
+	...... // a lot of codes here
+	.......//
+	strcpy(p)  //application crash here. 
+	fun1(p);  //or it will cause error in other place.
+}			
+\end{lstlisting}
+	
+	\item The syntax knowledge about \texttt{assert}:
+\begin{enumerate}
+	
 	\item Because assert is a function-like macro, commas anywhere in the argument that are not protected by parentheses are interpreted as macro argument separators.
 \begin{lstlisting}
 assert( min(1,2) == 1 );  // 1 ,(comma here) 2  ERROR
@@ -10577,34 +10563,23 @@ assert( (min(1,2) == 1) );  //  OK
 \end{lstlisting}
 
 	\item Assertions are deactivated by defining preprocessor macro NDEBUG, e.g., with compiler switch: \texttt{g++ -DNDEBUG …}
-
-	\item Bugs should be found as early as possible. There are two basic methods to achieve this: using assertions and conducting unit tests. I will introduce unit testing in the 'Testing' chapter.
-
-	\item The idea behind using \texttt{assert} is to immediately spot an abnormal case that may otherwise cause errors in other parts of the code. Without an \texttt{assert}, it may be difficult to trace the error back to its source position.
-\begin{lstlisting}[frame=single, language=c++]
-fun(char* p){
-	assert(p!=nullptr);
-	...... // a lot of codes here
-	strcpy(p)  //error happen here
-	fun1(p);  //or it will cause error in other place.
-}		
-\end{lstlisting}
-
+	
+	\item Assert is just \texttt{if()}+\texttt{abort()}: Difference of assert and return error(throw exception) is that abort will terminate you application immediately, and you can use GDB to trace back source easily.
+	
 	\item You can use \&\& to make assert print out more useful information. string literal is always true; when \texttt{I<5} is false, the whole condition will be printed out.
 \begin{lstlisting}[frame=single, language=c++]
 #include <cassert>
 assert(I<5 && "I is more than 5");	
 \end{lstlisting}
 
-	\item Assert is just \texttt{if()}+\texttt{abort()}: Difference of assert and return error(throw exception) is that abort will terminate you application immediately, and you can use GDB to trace back source easily.
+\end{enumerate}	
 
-	\item the usage of assert depends on the context, but it's not always recommended to use assert to its fullest. Precondition and postcondition assertions are two important types of assertions, but there are other types of assertions that can also be useful, such as invariants, boundary checks, and null checks. Precondition assertions are used to test the validity of the arguments passed to a method before the method is executed. Postcondition assertions are used to test the validity of the results produced by the method after the method has completed its execution.
-
+	
 \end{itemize}
 
 \subsection{Exceptions in C++}
 \begin{itemize}
-	\item If you're unsure whether to use exceptions, it's generally recommended to use them in your project. In other words, if you don't have a solid reason against using them, just implement them. Exceptions are primarily used to handle runtime errors—potentially recoverable errors such as attempting to open an unavailable file or requesting more memory than is available.
+	\item If you're unsure whether to use exceptions, it's generally recommended to use them in your project. In other words, if you don't have a solid reason against using them, just use them. Exceptions are primarily used to handle runtime, potentially recoverable errors such as:
 \begin{enumerate}
 	\item A file write operation failed or file access operation failed because this file doesn't exist.
 	
@@ -10615,27 +10590,35 @@ assert(I<5 && "I is more than 5");
 	\item System communication software invalid protocol, format, or no response.
 \end{enumerate}
 
-	\item unwinding the stack has cost problems, it make program 10\% larger and slower. So you can use \texttt{-fno-exceptions} to stop it.
+	\item unwinding the stack has cost problems, it make program 10\% larger and slower. So you can use \texttt{-fno-exceptions} to stop using it.
 
-	\item Exception specification is add \texttt{throw} keyword in the end of function,  \texttt{throw()} means it will not throw any exceptions. In modern C++, exception specifications like throw() have been deprecated, and \texttt{noexcept} is preferred. noexcept is used to indicate that a function will not throw any exceptions. It's important to note that exception specifications do not integrate well with templates. Constructors, destructors, and assignment operators will automatically become noexcept if the functions they invoke are noexcept.
-
-	\item Standard exception includes \textbf{logic\_error, domain\_error,  runtime\_error.  Invalid\_argument, out\_of\_bounds, range\_error, overflow\_error.}
+	\item Exception specification is add \texttt{throw} keyword in the end of function,  \texttt{throw()} means it will not throw any exceptions. In modern C++, exception specifications like \texttt{throw()} have been deprecated, and \texttt{noexcept} is preferred. \texttt{noexcept} is used to indicate that a function will not throw any exceptions. It's important to note that exception specifications do not integrate well with templates. Constructors, destructors, and assignment operators will automatically become \texttt{noexcept} if the functions they invoke are \texttt{noexcept}.
+	
+		\item All standard containers are required to implement the strong exception guarantee for most operations, ensuring commit-or-rollback semantics. This means operations like insertions either complete successfully or leave the container unchanged. "No change" also ensures that failed operations do not invalidate any iterators pointing to the container. However, there are two exceptions to this rule:
+	\begin{enumerate}
+		\item Multi-element inserts (iterator range inserts) are never strongly exception-safe across all containers.
+		
+		\item For \texttt{vector<T>} and \texttt{deque<T>}, inserts and erases (both single and multi-element) are strongly exception-safe, provided that type T's copy constructor and assignment operator do not throw exceptions.
+	\end{enumerate}
+	Inserting into or erasing from containers holding complex types (e.g., \texttt{vector<string>} or \\ \texttt{vector<vector<int> >}) are not strongly exception-safe.
+	
+	
+	\item Standard exception includes logic\_error, domain\_error,  runtime\_error. Invalid\_argument, \\ out\_of\_bounds, range\_error, overflow\_error.
 
 \begin{center}
-	\includegraphics[scale=0.8]{pics/exception.jpg}
+	\includegraphics[scale=0.5]{pics/exception.drawio.png}
 \end{center}
 
 
-	\item A simple exception can be represented by a \texttt{const char*}, which can be caught using \texttt{const char* c}. A more complex example involves defining an exception class. You can create an exception class, throw an instance of it (throw \texttt{exception\_class}), and catch it using a reference (\texttt{exception\_class\&} ec). You don't need explicit define \texttt{exception\_class} object and throw this object; throw  \texttt{exception\_class()}; will avoid copy and is recommend way to follow.
+	\item A simple exception can be represented by a \texttt{const char*}, which can be caught using \texttt{const char* c}. A more complex example involves defining an exception class. You can create an exception class, throw an instance of it (throw \texttt{my\_exception\_class}), and catch it using a reference (\texttt{my\_exception\_class\&} ec). You don't need explicit define \texttt{my\_exception\_class} object and throw this object; throw  \texttt{my\_exception\_class()}; will avoid copy and is recommend way to follow.
 \begin{lstlisting}[numbers=none]
-throw exception_class{}; //good style
+throw my_exception_class{}; //good style
 
-exception_class ex; //bad style.
+my_exception_class ex; //bad style.
 throw ex	
 \end{lstlisting}
 
-
-	\item You can build an exception class inside the C++ standard exception system. It needs to derive your class from base \texttt{exception} class and redefine the function what(). If your exception class has a very tight relationship with your real class, it can be declared as a nested class too.
+	\item You can also build an exception class inside the C++ standard exception system. It needs to derive your class from base \texttt{exception} class and redefine the function \texttt{what()}. If your exception class has a very tight relationship with your real class, it can be declared as a nested class too.
 
 \begin{lstlisting}[numbers=none]
 Class my_ex :public std::exception{
@@ -10643,7 +10626,10 @@ Class my_ex :public std::exception{
 }	
 \end{lstlisting}
 
-	\item Common pattern of try catch block:
+
+
+
+	\item Common usage pattern of \texttt{try} and \texttt{catch} block:
 \begin{enumerate}
 	\item Handle an exception and continue executing, place the code in separate try-catch blocks. 
 	
@@ -10659,12 +10645,12 @@ try{
 	// this code will execute unless the previous catch block 
 	// throws an exception (re-throw or new exception) 
 }
-catch (Exception2 ex){
+catch (Exception2& ex){
 	// handle
 }			
 \end{lstlisting}
 	
-	\item When exception happen, we have to deal with immediately and don't want to continue to run, Use one try and multi catch blocks. 
+	\item When exception is thrown, we have to deal with immediately and don't want to continue to run, Use one try and multi catch blocks. 
 \begin{lstlisting}[frame=single, language=c++]
 try{ 
 	// code that throws an exception	
@@ -10673,7 +10659,7 @@ try{
 catch (Exception1& ex){
 	// handle
 }
-catch (Exception2 ex){
+catch (Exception2& ex){
 	// handle
 }				
 \end{lstlisting}		
@@ -10688,7 +10674,7 @@ void f(){
 	}
 	catch (Base& b) { /* ... */ }  //The order is WRONG here!
 	catch (Derived& d) { /* ... */ } //base shadows Derived
-	catch (...) { /* ... */ }        //... shadows std::exception&
+	catch (...) { /* ... */ }        //... shadows std::exception& below
 	catch (std::exception& e) { /* ... */ }
 }	
 \end{lstlisting}	
@@ -10720,22 +10706,15 @@ catch(my_base_ex &ex){
 \end{enumerate}
 
 
-	\item \textbf{Never throw any exception in destructor.} In another word, Destructors and deallocation must never fail. In you destructor, don't throw any exception, or catch all the exception inside of it. Otherwise it will call \texttt{std::terminate} to stop the application. See more effective C++ exception chapter. However, throwing an exception in constructor is the best way to signal an error during object construction, since there's no return value.
+	\item \textbf{Never throw any exception in destructor.} In another word, Destructors and deallocation must never fail. In you destructor, don't throw any exception, or catch all the exception inside of it. Otherwise it will call \texttt{std::terminate} to stop the application.
 	
-	\item In C++, the lifetime of an object begins when its constructor completes and ends when its destructor is called. If the constructor throws an exception, the destructor is not called for that object. However, the destructors of any member variables whose constructors have already completed are still called.
+	\item throwing an exception in constructor is the best way to signal an error during object construction, since there's no return value. In C++, the lifetime of an object begins when its constructor completes. If the constructor throws an exception, the destructor is not called for that object. However, the destructors of any member variables whose constructors have already completed are still called.
 
 \end{itemize}
 
 \section{Usage suggestions}
+\subsection{exception usage suggestion}
 \begin{itemize}
-	\item All standard containers are required to implement the strong guarantee for most operations, ensuring commit-or-rollback semantics. This means operations like insertions either complete successfully or leave the container unchanged. 'No change' also ensures that failed operations do not invalidate any iterators pointing to the container. However, there are two exceptions to this rule:
-	\begin{enumerate}
-		\item Multi-element inserts (iterator range inserts) are never strongly exception-safe across all containers.
-		
-		\item For \texttt{vector<T>} and \texttt{deque<T>}, inserts and erases (both single and multi-element) are strongly exception-safe, provided that type T's copy constructor and assignment operator do not throw exceptions.
-	\end{enumerate}
-		
-	Operations like inserting into or erasing from containers holding complex types (e.g., \texttt{vector<string>} or \texttt{vector<vector<int>>}) are not strongly exception-safe.
 
 	\item Exception handling is highly dependent on your application context. So it should be designed into a program rather than just added on. Consciously specify, and conscientiously apply, what so many projects leave to adhoc (mis)judgment: Develop a practical, consistent, and rational error handling policy early in design, and then stick to it. Ensure that it includes:
 
@@ -10759,14 +10738,14 @@ catch(my_base_ex &ex){
 	\item Errors can be serious and prevent an application from continuing, in which case it should stop gracefully (by throwing an exception to main function and return from there), or request debugging (by calling abort).
 \end{enumerate}
 
-\item When to use assert ?
-\begin{enumerate}
-	\item Your problem comes from your own bad code, including you coding error or addition overflow.
-	
-	\item Bugs in your program are not something the user can handle, user can do nothing when he face "age should be not negative" unless age is inputted by a user (at this time, you should use return error code or exception to ask user input again)
-	
-	\item You have to stop your application. If you write negative age back to database, It may cause futuristic error for other user later, and it's very difficult to trace back.
-\end{enumerate}
+%\item When to use assert ?
+%\begin{enumerate}
+%	\item Your problem comes from your own coding error.
+%	
+%	\item Bugs in your program are not something the user can handle, user can do nothing when he face "age should be not negative" unless age is inputted by a user (at this time, you should use return error code or exception to ask user input again)
+%	
+%	\item You have to stop your application. If you write negative age back to database, It may cause futuristic error for other user later, and it's very difficult to trace back.
+%\end{enumerate}
 
 	\item When to throw a exception( or return error code)? Exception and return a error code has the same philosophy. \textbf{let caller decide what to do next}.
 
@@ -10776,20 +10755,54 @@ catch(my_base_ex &ex){
 	\item Identify problems that the program can't handle and inform the user about them, because the user can handle them. For example, running out of memory space, non-existent file, no net connection, failed object construction, and receiving invalid data from the server, etc.
 \end{enumerate}
 
-	\item What to do in catch clause?
-
-\begin{enumerate}
-	\item You can actually handle the exception. Your catch clause deals with the error and continues execution without throwing any additional exceptions. Your caller never knows that the exception occurred.
-	
-	\item I can have a catch clause that does blah blah blah, after that I will rethrow the exception. In this case, consider changing the try block into an object whose destructor does blah blah blah. For instance, if you have a try block whose catch clause closes a file then rethrows the exception, consider replacing the whole thing with a File object whose destructor closes the file. This is commonly called RAII. 
-	
-	\item Show some message or log exception, or give user a list options to select, then rethrow.
-\end{enumerate}
+%	\item What to do in catch clause?
+%
+%\begin{enumerate}
+%	\item You can actually handle the exception. Your catch clause handle the exception and continues execution without throwing any additional exceptions. Your caller never knows that the exception occurred.
+%	
+%	\item You can have a catch clause that does blah blah blah, after that you will rethrow the exception. 
+%	
+%%	In this case, consider changing the try block into an object whose destructor does blah blah blah. For instance, if you have a try block whose catch clause closes a file then rethrows the exception, consider replacing the whole thing with a File object whose destructor closes the file. This is commonly called RAII. 
+%	
+%	\item Show some messages or log exception, or give user a list options to select, then rethrow.
+%\end{enumerate}
 
 	\item Exception in C++ is a tool; use it properly and it will help you; Don't blame the tool if you use it improperly. "Wrong exception-handling mindsets" in c++ FAQ website section 17 is good reference paper. 
 
 \end{itemize}
 
+\subsection{Debug program}
+\begin{itemize}
+	\item Beside gdb, there are still a few useful debugger in linux:
+	\begin{enumerate}
+		\item cgbd: terminal-based frontend for gdb, sudo apt-get install cgbd (sudo apt install -y cgdb)
+		\item gdbgui: brower-based frontend for gdb, https://gdbgui.com,  sudo pip install gdbgui
+		\item visual studio code: can connect to gdb. 
+	\end{enumerate}
+	
+	\item When compiling your C++ code with g++, use the -g flag to include debugging information in the binary. This will allow gdb to map the executable code back to the source code, making it easier to inspect variables, set breakpoints, and step through the code. Also compile with -O0 to disable optimizations. Optimizations can rearrange or remove code, making it harder to debug.
+\begin{lstlisting}
+g++ a.cpp -g -O0 -o a -fsanitize=address
+g++ a.cpp -g -O0 -o a -fsanitize=undefined
+\end{lstlisting}
+
+	\item Valgrind is a powerful tool for memory debugging, memory leak detection, and profiling in Linux programs. It helps developers identify issues like memory leaks, invalid memory access, and improper use of memory.
+\begin{lstlisting}
+valgrind [options] ./a [program options]
+valgrind --tool=memcheck ./a
+valgrind --tool=callgrind ./a // runtime profiling
+valgrind --tool=drd ./a // multithreading error detection		
+\end{lstlisting}		
+	
+	\item Recommended compiler flags for your first programs. Turn on the warning switch as many as possible.
+\begin{lstlisting}
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Wshadow -Werror input.cpp -o output	
+
+// below is production level recommended set
+-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Werror -fsanitize=undefined,address -Wfloat-equal -Wformat-nonliteral -Wformat-security -Wformat-y2k -Wformat=2 -Wimport -Winvalid-pch -Wlogical-op -Wmissing-declarations -Wmissing-field-initializers -Wmissing-format-attribute -Wmissing-include-dirs -Wmissing-noreturn -Wnested-externs -Wpacked -Wpointer-arith -Wredundant-decls -Wstack-protector -Wstrict-null-sentinel -Wswitch-enum -Wundef -Wwrite-strings		
+\end{lstlisting}		
+	
+\end{itemize}
 
      
 \chapter{Generic programming}
