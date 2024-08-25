@@ -10015,7 +10015,7 @@ class School{
 \end{itemize}
 
 
-\section{Class design}
+\section{Class interface design}
 
 \subsection{Three big principles}
 \begin{itemize}
@@ -10059,38 +10059,42 @@ car.start();
 
 \begin{itemize}
 
-	\item Inheritance has three usages: 
+	\item non-leaf classes abstract rules states that don't derive from concrete classes. A problem with inheriting from a concrete type is that it creates some ambiguity as to whether code which specifies a certain type really wants an object of the specific concrete type (value semantic), or wants an object of a type which behaves in the fashion that the concrete type behaves (reference semantic). This distinction is vital in C++, since there are many cases where operations which will work correctly on objects of a certain type will fail badly on objects of derived types. The problem can be illustrated by the assignment of pointer to base class. That is why we should follow the "non-leaf classes abstract" rule and C++ coding standards 36 "Prefer providing abstract interfaces." They all suggest that you should only inherit from abstract interfaces. It also follows the Dependency Inversion Principle (DIP). When an abstract conception appears in more than one context, you need to build an abstract interface for it. More details can be found in "More Effective C++," Item 33.
+
+
+	\item NVI is making virtual functions nonpublic, and public function nonvirtual. This is similar with Template Method design pattern. About NVI, more detail can be found in "C++ coding standards Item 39" and "Virtuality herb sutter"
+
 \begin{enumerate}
-	\item I want to inherit a interface. (pure virtual, you have to rewrite it in your child class by yourself) 
+	\item Prefer to make interfaces nonvirtual, using Template Method design pattern.
 	
-	\item I want to inherit a implementation, but I may or may not change it. (virtual, you may or may not rewrite it in your child class)
+	\item Prefer to make virtual functions private.
 	
-	\item I want to inherit a implementation, but I don't want to change it. (Non-virtual, you can't rewrite it at all)
-\end{enumerate}
- 
+	\item Only if derived classes need to invoke the base implementation of a virtual function, make the virtual function protected. For the special case of the destructor only: A base class destructor should be either public and virtual, or protected and nonvirtual.
+	
+		\item Inheritance usually has three common usage patterns: 
+	\begin{enumerate}
+		\item I want to inherit a interface. (pure virtual, you have to rewrite it in your child class by yourself) 
+		
+		\item I want to inherit a implementation, but I may or may not change it. (virtual, you may or may not rewrite it in your child class)
+		
+		\item I want to inherit a implementation, but I don't want to change it. (Non-virtual, you can't rewrite it at all)
+	\end{enumerate}
+	
 \begin{lstlisting}[numbers=none]
 class shape{
 public:
 	virtual draw() = 0 // you have to re-implement.
 	virtual error(); // there is default implementation, but you may change it.
 	int objectID(); // you should not rewrite it.
-}	
-\end{lstlisting}
-
-	\item A problem with inheriting from a concrete type is that it creates some ambiguity as to whether code which specifies a certain type really wants an object of the specific concrete type, or wants an object of a type which behaves in the fashion that the concrete type behaves. This distinction is vital in C++, since there are many cases where operations which will work correctly on objects of a certain type will fail badly on objects of derived types. The problem can be illustrated by the assignment of pointer to base class. That is why we should follow the "non-leaf classes abstract" rule and C++ coding standards 36 "Prefer providing abstract interfaces." They all suggest that you should only inherit from abstract interfaces. It also follows the Dependency Inversion Principle (DIP). When an abstract conception appears in more than one context, you need to build an abstract interface for it. More details can be found in "More Effective C++," Item 33.
-
-
-	\item NVI is making virtual functions nonpublic, and public function nonvirtual. This is similar with Template Method design pattern. About NVI, more detail can be found in "C++ coding standards Item 39" and "Virtuality herb sutter"
-
-\begin{enumerate}
-	\item Prefer to make interfaces nonvirtual, using Template Method.
-	
-	\item Prefer to make virtual functions private.
-	
-	\item Only if derived classes need to invoke the base implementation of a virtual function, make the virtual function protected. For the special case of the destructor only: A base class destructor should be either public and virtual, or protected and nonvirtual.
+}		
+\end{lstlisting}	
 \end{enumerate}
 
-	\item A typical C++ design looks like this, we have a Pilot class can AirPlane class. The design violate both NVI and non-leaf class abstract rule, so it's not good design. 
+	\item A typical C++ design looks like this, we have a \texttt{Pilot} class can \texttt{AirPlane} class. This design violate both NVI and non-leaf class abstract rule, so it's not good design. 
+\begin{enumerate}
+	\item \texttt{fly()} is public virtual function, it violates NVI rule.
+	\item AirPlane is not a abstract class, so it violates non-leaf classes abstract rule. If it's a abstract class, dereference pointer \texttt{*a1} in line 19 can't compile. 
+\end{enumerate}
 \begin{lstlisting}
 class AirPlane{ //not a good design
 	...
@@ -10108,7 +10112,7 @@ class Pilot{
 	AirPlane* plane;
 }
 
-AirPlane* a1 = new AirPlane_A();
+AirPlane* a1 = new AirPlane_A(); 
 AirPlane* a2 = new AirPlane_B();
 *a1 = *a2; //dangerous, slicing problem happen here. 
 \end{lstlisting}
@@ -10134,12 +10138,10 @@ class AirPlane_A{
 	virtual fly_imp(){default_fly();}
 	virtual AirPlane_A* clone(){return new AirPlane_A();}
 };
-
 class AirPlane_B{
 	virtual fly_imp(){ default_fly();}
 };	
-
-class AirPlane_B{
+class AirPlane_C{
 	virtual fly_imp(){ new fly implementation;}
 };	
 	
@@ -10155,107 +10157,58 @@ class AirPlane_B{
 
 \end{itemize}
 
-\subsection{Common design patterns}
-\subsubsection{Observer and Composite}
+\section{Common design patterns}
+\subsection{Observer and Composite}
 \begin{itemize}
 	
-		\item Observer pattern: A way of notifying change to a number of classes. Define a one-to-many dependency between objects so that when one object changes state, all its dependents are notified and updated automatically. Observer includes update(); Subject includes addObserve(), deleteObserve(), notify(). 
+		\item Observer pattern: A way of notifying change to a number of classes. Define a one-to-many dependency between objects so that when one object changes state, all its dependents are notified and updated automatically. Observer includes \texttt{update()}; Subject includes \texttt{addObserve()}, \texttt{deleteObserve()}, \texttt{notify()}. 
 	
 	\begin{center}
 		\includegraphics[scale=0.5]{pics/observer.png}
 	\end{center}
 	
 	
-	\item Composite pattern: It represents a tree structure of simple and composite objects by composing objects into hierarchies that depict part-whole relationships. The Composite pattern allows clients to treat individual objects and compositions of objects uniformly. It can be used as a recursive tree structure, such as in a file system tree. In this context, a folder serves as a composite, containing files as components, and a folder itself can be a component within another composite.
+	\item Composite pattern: It represents a tree structure of simple and composite objects by composing objects into hierarchies that depict part-whole relationships. The Composite pattern allows clients to treat individual objects and compositions of objects uniformly. It can be used as a recursive tree structure, such as in a file system tree. In this context, a folder serves as a composite, containing files as components, and a folder itself can be a component within another composite. 
 
 	\begin{center}
 	\includegraphics[width=0.49\linewidth]{pics/composite.png}
 	\includegraphics[width=0.49\linewidth]{pics/com_file.png}
 	\end{center}
 
- 
+ 	\item An interesting aspect lies in the relationship between Component and Composite. Composite inherits from Component and, at the same time, contains Component. \textbf{For external clients}, through inheritance, Composite can be treated as a Component. \textbf{For internal implementation}, through composition, Composite can be implemented by using multiple Components. The similar design pattern is Chain of Responsibility. If you know how to understand from both external clients and internal implementation, you also can understand Chain of Responsibility without any difficulties. 
+ 	
+\begin{center}
+	\includegraphics[scale=0.5]{pics/cr.png}
+\end{center}
 	
-%\begin{center}
-%	\includegraphics[scale=0.6]{pics/com_file.png}
-%\end{center}
-	
-	
-\end{itemize}
-
-\subsubsection{MI or bridge}
-\begin{itemize}
-	
-	\item When a class inherits from two superclasses that share a common base class, multiple inheritance can lead to the diamond problem. This occurs when a subclass inherits two copies of the shared base class. To resolve this issue, the virtual keyword is used to ensure that only one instance of the base class is inherited. This approach follows specific constructor rules, detailed in C++ Primer on page 815. It's crucial to use multiple inheritance judiciously, applying it only when necessary to avoid such complexities.
-	
-\begin{lstlisting}[numbers=none]
-Father 1: virtual public grandfather
-Father2: virtual public grandfather
-son : public Father1, public Father2	
-\end{lstlisting}	
-	
-	\item Suppose you have land vehicles, water vehicles, air vehicles, and space vehicles. (Forget the whole concept of amphibious vehicles for this example; pretend they don't exist for this illustration.) Suppose we also have different power sources: gas powered, wind powered, nuclear powered, pedal powered, etc. We could use multiple inheritance to tie everything together, but before we do, we should ask a few tough questions:
-	
-	\begin{enumerate}
-		\item Will the users of Land Vehicle need to have a Vehicle\& that refers to a LandVehicle object? In particular, will the users call methods on a Vehicle-reference and expect the actual implementation of those methods to be specific to LandVehicles?
-		
-		\item Ditto for GasPoweredVehicles: will the users want a Vehicle reference that refers to a GasPoweredVehicle object, and in particular will they want to call methods on that Vehicle reference and expect the implementations to get overridden by GasPoweredVehicle?
-	\end{enumerate}
-	If both answers are "yes," multiple inheritance is probably the best way to go.
-\begin{lstlisting}[numbers=none]
-Class GasPowered :public Power //method 1: Multiple inheritance
-Class LandVehicle :public Vehicle
-Class LandVehicleGasPowered :public GasPowered, LandVehicle 
-
-Class Vehicle{   //method 2: Bridge design pattern
-	//
-	Power * _power;
-}
-
-Class LandVehicle :public Vehicle  // method 3: Nested generalization.
-Class LandVehicleGasPowered: public LandVehicle
-\end{lstlisting}
-	
-	\item There are at least three choices for the overall design: the bridge pattern, nested generalization, and multiple inheritance. Each has its pros/cons:
-	
-%	\begin{center}
-%		\includegraphics[scale=0.38]{pics/MI.png}
-%	\end{center}
-%	
-{\footnotesize 
-	\begin{tabular}{| p{0.12\textwidth}|p{0.1\textwidth}|p{0.13\textwidth}|p{0.1\textwidth}|p{0.1\textwidth}|p{0.1\textwidth}|p{0.1\textwidth}|}
-		\hline
-		&  Grow \newline Gracefully? & Low \newline Code Bulk?  & Fine Grained Control? & Static \newline Detect Bad Combos?   & Polymorphic on Both Sides? & Share \newline Common Code?   \\
-		\hline
-		Bridge & Yes & Yes \newline(N+M chunks) & No & No  & No & Yes  \\
-		\hline
-		Nested \newline generalization & No & No \newline (NxM chunks) & Yes & Yes  & No & No  \\
-		\hline
-		Multiple inheritance & No & No \newline (NxM chunks) & Yes & Yes  & Yes & Yes \\
-		\hline
-	\end{tabular}
-}	
-	
-	\item Try especially hard to use ABCs when you use MI. In particular, most classes above the join class (and often the join class itself) should be ABCs. In this context, "ABC" doesn't simply mean "a class with at least one pure virtual function;" it actually means a pure ABC, meaning a class with as little data as possible (often none), and with most (often all) its methods being pure virtual.
-	
-	\item A design discussion can be seen in "C++ FAQ Inheritance-- Multiple and Virtual Inheritance"
 	
 \end{itemize}
 
 
-\subsubsection{factory method, strategy and template method}
+\subsection{Factory method, strategy and template method}
 \begin{itemize}
-	\item These three patterns share a similar UML structure but are applied in different contexts.
+	\item These three design patterns share a similar UML structure but are applied in different scenarios.
 	
 \begin{center}
-	\includegraphics[width=0.93\linewidth]{pics/template_method.png}
+	\includegraphics[width=0.93\linewidth]{pics/template_method1.png}
 \end{center}
+
+\begin{center}
+	\includegraphics[width=0.90\linewidth]{pics/template_method2.png}
+\end{center}
+
+
+\begin{center}
+	\includegraphics[width=0.93\linewidth]{pics/template_method3.drawio.png}
+\end{center}
+
 
 	\item The common point among these three patterns is pushing the responsibility of change down into the child class. In the Factory Method pattern, we push the generation algorithm down to the child class. In the Strategy pattern, the entire algorithm is pushed down. In the Template Method pattern, we push parts of the algorithm down to the child class. This concept is widely utilized in the famous 23 design patterns.
 	 
 \end{itemize}
 
 
-\subsubsection{Comparsion between factory, bridge and visitor}
+\subsection{Comparsion between factory, bridge and visitor}
 
 \begin{itemize}
 	\item Factory, Bridge, and Visitor—these three design patterns share the same UML structure, so I will introduce them together. One is a creational pattern, one is a structural pattern, and the last one is a behavioral pattern. However, it's important to note that design patterns are based on semantics and concrete applications, not solely on UML relationships and structures.
@@ -10279,6 +10232,67 @@ Class LandVehicleGasPowered: public LandVehicle
 	    \item visit pattern also support double dispatch, how to understand it? From semantic point of view, vehicle type and refillor type (two types) decide Refill method . From source code point of view, \texttt{Vehicle} first decide a \texttt{Refillor} (\texttt{Electric} or \texttt{Oil}), once it decide one(for example \texttt{Electric}), then pass \texttt{this} pointer to decide \texttt{Refill(Car*)} or \texttt{Refill(Bicyle*)} inside of ElectricRefill class. That is double dispatch, element(Vehicle) accept visitor(Refillor) base class pointer, and pass \texttt{this} pointer to visitor's visit method(Refill). 
 	    
 \end{itemize}
+
+\subsubsection{MI or bridge}
+\begin{itemize}
+	
+	\item What is virtual inheritance? When a class inherits from two superclasses that share a common base class, multiple inheritance can lead to the diamond problem. This occurs when a subclass inherits two copies of the shared base class. To resolve this issue, the virtual keyword is used to ensure that only one instance of the base class is inherited. This approach follows specific constructor rules, detailed can be found in \textit{"C++ Primer"}. It's crucial to use multiple inheritance judiciously, applying it only when necessary to avoid such complexities.
+	
+	\begin{lstlisting}[numbers=none]
+		Father 1: virtual public grandfather
+		Father2: virtual public grandfather
+		son : public Father1, public Father2	
+	\end{lstlisting}	
+	
+	\item Suppose you have land vehicles, water vehicles, air vehicles, and space vehicles. (Forget the whole concept of amphibious vehicles for this example; pretend they don't exist for this illustration.) Suppose we also have different power sources: gas powered, wind powered, nuclear powered, pedal powered, etc. We could use multiple inheritance to tie everything together, but before we do, we should ask a few tough questions:
+	
+	\begin{enumerate}
+		\item Will the users of Land Vehicle need to have a Vehicle\& that refers to a LandVehicle object? In particular, will the users call methods on a Vehicle-reference and expect the actual implementation of those methods to be specific to LandVehicles?
+		
+		\item Ditto for GasPoweredVehicles: will the users want a Vehicle reference that refers to a GasPoweredVehicle object, and in particular will they want to call methods on that Vehicle reference and expect the implementations to get overridden by GasPoweredVehicle?
+	\end{enumerate}
+	If both answers are "yes," multiple inheritance is probably the best way to go.
+	\begin{lstlisting}[numbers=none]
+		Class GasPowered :public Power //method 1: Multiple inheritance
+		Class LandVehicle :public Vehicle
+		Class LandVehicleGasPowered :public GasPowered, LandVehicle 
+		
+		Class Vehicle{   //method 2: Bridge design pattern
+			//
+			Power * _power;
+		}
+		
+		Class LandVehicle :public Vehicle  // method 3: Nested generalization.
+		Class LandVehicleGasPowered: public LandVehicle
+	\end{lstlisting}
+	
+	\item There are at least three choices for the overall design: the bridge pattern, nested generalization, and multiple inheritance. Each has its pros/cons:
+	
+	%	\begin{center}
+		%		\includegraphics[scale=0.38]{pics/MI.png}
+		%	\end{center}
+	%	
+	{\footnotesize 
+		\begin{tabular}{| p{0.12\textwidth}|p{0.1\textwidth}|p{0.13\textwidth}|p{0.1\textwidth}|p{0.1\textwidth}|p{0.1\textwidth}|p{0.1\textwidth}|}
+			\hline
+			&  Grow \newline Gracefully? & Low \newline Code Bulk?  & Fine Grained Control? & Static \newline Detect Bad Combos?   & Polymorphic on Both Sides? & Share \newline Common Code?   \\
+			\hline
+			Bridge & Yes & Yes \newline(N+M chunks) & No & No  & No & Yes  \\
+			\hline
+			Nested \newline generalization & No & No \newline (NxM chunks) & Yes & Yes  & No & No  \\
+			\hline
+			Multiple inheritance & No & No \newline (NxM chunks) & Yes & Yes  & Yes & Yes \\
+			\hline
+		\end{tabular}
+	}	
+	
+	\item Try especially hard to use ABCs when you use MI. In particular, most classes above the join class (and often the join class itself) should be ABCs. In this context, "ABC" doesn't simply mean "a class with at least one pure virtual function;" it actually means a pure ABC, meaning a class with as little data as possible (often none), and with most (often all) its methods being pure virtual.
+	
+	\item A design discussion can be seen in "C++ FAQ Inheritance-- Multiple and Virtual Inheritance"
+	
+\end{itemize}
+
+
 
 \chapter{Exception and error}
 \section{Debug}
