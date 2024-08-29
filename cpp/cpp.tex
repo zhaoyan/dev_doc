@@ -16202,14 +16202,22 @@ std::cout << std::accumulate(nums.begin(), nums.end(), std::string{},
    });// Init result, the first parameter and return of lambda have the same type.
 \end{lstlisting} 	
 	
-	\item Difference between \texttt{std::reduce} and \texttt{std::accumulate}
-	\begin{enumerate}
-		\item Use \texttt{std::reduce} when you want your accumulation to run in parallel.
+		\item Three differences between \texttt{std::reduce} and \texttt{std::accumulate}:
+	\begin{enumerate}	
+		\item Use \texttt{std::reduce} when you want your accumulation to run execution policies. Execution policies are a C++17 feature which allows programmers to ask for algorithms to be parallelised. There are three execution policies in C++17: \texttt{std::execution::seq}, \\
+		\texttt{std::execution::par} and 
+		\texttt{std::execution::par\_unseq}, which is parallelise and vectorise (requires that the operation can be interleaved, so no acquiring mutexes and such).
 		
 		\item Ensure that the operation you want to use is both associative and commutative.
 		
 		\item Remember that the default initial value is produced by default construction, and that this may not be correct for your operation.
-	\end{enumerate}
+	\end{enumerate}	
+	
+	
+\begin{lstlisting}
+auto sum3 = std::reduce(std::execution::par, begin(vec), end(vec)); //parallel
+\end{lstlisting}
+	
 	
 	\item \texttt{std::transform} has \textbf{"map"} semantic. Another important semantic in functional programming is \textbf{"filter"}, you can use \texttt{copy\_if} or \texttt{remove\_if} to implement it.
 	
@@ -16730,10 +16738,9 @@ host(T v){v();}
 \begin{itemize}
 	\item Change the right most 1 to zero. Pay attention to the usage of \texttt{n\&(n-1)}.
 \begin{lstlisting}[frame=single, language=c++]	
-n&(n-1);  // change the right most bit to 0.
-//110100-> 110000
-//when we n-1: 110100, the right most 1 will become 0, all zero after 
-//right most 1 will become 1. 
+n&(n-1);  // change the right most bit to 0. change 110100 to 110000
+//when we n-1: 110100, the right most 1 will become 0,
+//all zero after right most 1 will become 1. 
 110100  //n
 110011  //n-1	
 \end{lstlisting}
@@ -16746,7 +16753,7 @@ bool isPowerOfTwo(int n) {
 }			
 \end{lstlisting}
 	
-	\item The Hamming weight of an integer refers to the count of '1' bits (set bits) in its binary representation. It's a useful concept in computer science and is often used in algorithms that involve bit manipulation and binary operations
+	\item The Hamming weight of an integer refers to the count of '1' bits (set bits) in its binary representation. It's a useful concept in computer science and is often used in algorithms that involve bit manipulation and binary operations.
 \begin{lstlisting}[frame=single, language=c++]	
 int hammingWeight(uint32_t n) {
 	int res = 0;
@@ -16758,7 +16765,7 @@ int hammingWeight(uint32_t n) {
 }	
 \end{lstlisting}	
 	
-	\item Array has a lot of duplicated numbers, but has only one single numbers, how to find it? When you use the XOR (exclusive OR) operation on a series of numbers where every number except one appears in pairs, the XOR operation will cancel out the paired numbers because \texttt{x\^x = 0}. The number that does not have a pair will remain after all XOR operations are completed. This property makes XOR a very efficient way to find the single number in such an array. 
+	\item Array has a lot of duplicated numbers, but has only one single numbers, how to find it? When you use the XOR (exclusive OR) operation on a series of numbers where every number except one appears in pairs, the XOR operation will cancel out the paired numbers because \texttt{x\^{}x = 0}. The number that does not have a pair will remain after all XOR operations are completed. This property makes XOR a very efficient way to find the single number in such an array. 
 \begin{lstlisting}[frame=single, language=c++]	
 int singleNumber(vector<int>& nums) {
 	int res = 0; //[1, 2, 3, 2, 1], how to find 3 in this array? 
@@ -16783,7 +16790,7 @@ while (temp) {
 	\item Change bits to num. \texttt{std::accumulate} can be used in "folding" way, not "accumulating" way. The detail has been introduced in "Functional programming" chapter. 
 \begin{lstlisting}[frame=single, language=c++]	
 int i = 1001011;
-string str = to_string(i);
+string str = std::to_string(i); // you can use to_string directly.
 
 int base = 1;
 int result = accumulate(rbegin(str), rend(str), 0, [&](int result, char a) {
@@ -16859,7 +16866,7 @@ std::map<std::string, int> m2( values.begin(), values.end() );
 
 	
 
-	\item Filter and transform example. A container, filter some items and get the name of \texttt{person\_t}.
+	\item Filter and transform example. A container, filter some items and get the name in the class \texttt{person\_t}. In below code, you can change \texttt{is\_female} and \texttt{name} function to lambda. 
 \begin{lstlisting}
 std::string name(const person_t &person) {
 	return person.name();
@@ -16938,7 +16945,7 @@ cout<<str<<endl; //output "abc de f"
 	\item We can use \texttt{std::mt19937} in \texttt{std::sample}, \texttt{std::shuffle} and distribution. The basic step is: 
 \begin{enumerate}
 	\item Generate \texttt{random\_device rd;}  
-	\item Call \texttt{rd}'s \texttt{operator()}, aka, \texttt{rd()} generate a real random value from hardware, and use this real random value to build \texttt{mt19937} object: \texttt{mt19937 mt{rd()};}.
+	\item Call \texttt{rd}'s \texttt{operator()}, aka, \texttt{rd()} generate a real random value from hardware, and use this real random value to build \texttt{mt19937} object: \texttt{mt19937 mt\{rd()\};}.
 	\item Pass this \texttt{mt} object into \texttt{std::shuffle}, \texttt{std::sample}, or distribute object operator(mt).
 \end{enumerate}
 	
@@ -16955,25 +16962,25 @@ ranges::generate(v1,  [&](){
 
 random_device rd;
 mt19937 mt{rd()};
-ranges::shuffle(v1, mt);  //shuffle also need to use mt19937.
-
-ranges::sample(vi, std::back_inserter(out), 4, mt);
+ranges::shuffle(v1, mt);  //shuffle need to use mt19937.
+ranges::sample(vi, std::back_inserter(out), 4, mt); //sample also need to use mt
 \end{lstlisting}
 
 	\item Code snippet for k-max frequency problem. 
 \begin{lstlisting}
 map<int, int> map1;
-for(auto e: v1){ 
+for(auto e: v1){  //count 
 	++map1[e];  //you can use [] directly here, will insert
 	            //default value if it doesn't exist.
 }
 
-vector<pair<int, int> > v2{map1.begin(), map1.end()};  //range construct
-                           //don't use template deduct, otherwise it will be pair<const int, int>
+vector< pair<int, int> > v2{map1.begin(), map1.end()};  //range construct
+           //don't use template deduct, otherwise it will be pair<const int, int>
+           
 ranges::partial_sort(v2, v2.begin()+3, greater{}, &pair<int,int>::second);
-                          //pay attention projection here. 
+          //pay attention projection here. 
 
-for(auto [k,v]: v2){ //auto binding.
+for(auto& [k,v]: v2){ //auto binding.
 	cout<<k<<" "<<v<<endl;
 }
 
@@ -17084,11 +17091,10 @@ int partition(int nums[], int lo, int hi) {
 auto pivot = *next(first, distance(first, end1) / 2);  //get pivot value
 auto m1 = partition(first, end1, [pivot](const auto& em) { return em < pivot; });
 auto m2 = partition(m1, end1, [pivot](const auto& em) { return !(pivot < em); });	
-//The first step move smaller to m1, then move equal to m2. 
-return m2;		
+//The first step move smaller to m1, then move equal to m2. 		
 \end{lstlisting}
 	
-	\item With help of partition, we can use it to implement Kth largest element. 
+	\item With help of \texttt{std::partition}, we can use it to implement Kth largest element. 
 \begin{lstlisting}[frame=single, language=c++]	
 int findKthLargest(int[] nums, int k) {
 	int lo = 0, hi = nums.length - 1;	
@@ -17141,7 +17147,7 @@ auto slide(It f, It l, randIter p) -> std::pair<It, It>{
 \subsubsection{Other code examples}
 \begin{itemize}
 	
-	\item To move all zero elements to the end of a vector, you can't directly use \texttt{std::remove} because it only shifts non-zero elements forward, leaving the remaining elements unchanged (which might not be zeros). After using \texttt{std::remove}, you can then use \texttt{std::fill} to set all elements from the position of the last non-zero element to the end of the vector to 0. This approach effectively moves all zero elements to the end. This strategy is analogous to techniques used in interview questions where you might need to delete a specific node. Instead of removing the node directly, you can overwrite its value with the value of the next node and then delete the next node, achieving the desired outcome without rearranging the entire structure. Using \texttt{std::fill} after \texttt{std::remove} is not only efficient but also ensures that the vector maintains its size and all elements are correctly positioned as required.
+	\item To move all zero elements to the end of a \texttt{std::vector}, you can't directly use \texttt{std::remove} because it only shifts non-zero elements forward, leaving the remaining elements unchanged (which might not be zeros). After using \texttt{std::remove}, you can then use \texttt{std::fill} to set all elements from the position of the last non-zero element to the end of the vector to 0. This approach effectively moves all zero elements to the end. This strategy is analogous to techniques used in interview questions where you might need to delete a specific node. Instead of removing the node directly, you can overwrite its value with the value of the next node and then delete the next node, achieving the desired outcome without rearranging the entire structure. Using \texttt{std::fill} after \texttt{std::remove} is not only efficient but also ensures that the vector maintains its size and all elements are correctly positioned as required.
 \begin{lstlisting}[frame=single, language=c++]	
 void moveZeroes(vector<int>& nums) {
 	auto i = remove(begin(nums),end(nums), 0);
@@ -17201,16 +17207,8 @@ return i->first; // return 1, 1 occurs three times.
 #define watch(x) cout << (#x) << " is " << (x) << endl
 \end{lstlisting}
 	
-	\item How to generate permutation? Before you use \texttt{std::next\_permutation}, you need to use \texttt{std::sort} first.
-\begin{lstlisting}[frame=single, language=c++]
-std::sort(str.begin(), str.end());
-do {
-	cout << str << endl;
-} while (std::next_permutation(str.begin(), str.end()));			
-\end{lstlisting}	
-	
-	
-	\item Generate random number. Need to know \texttt{std::generate\_n} and \texttt{std::generate} difference. generate and fill use a pair of input iterators. \texttt{std::generate} use functor, \texttt{std::fill} use value. \texttt{std::generate\_n} and \texttt{std::fill\_n} use one output iterator. That is main differences. Why we use ref? because \texttt{rng} is not empty object, so we should avoid copying it. 
+		
+	\item Generate random number. Need to know \texttt{std::generate\_n} and \texttt{std::generate} difference. Both \texttt{std::generate} and \texttt{std::fill} use a pair of input iterators. \texttt{std::generate} use functor, \texttt{std::fill} use value. \texttt{std::generate\_n} and \texttt{std::fill\_n} use one output iterator. That is main differences. Why we use ref? because \texttt{rng} is not empty object, so we should avoid copying it. 
 \begin{lstlisting}[numbers=none]
 std::mt19937 rng; // default constructed, seeded with fixed seed
 std::generate_n(std::ostream_iterator<std::mt19937::result_type>(std::cout, " "), 5, std::ref(rng) );   		
@@ -17248,7 +17246,7 @@ while( (p = std::find_if(p, str.end(), ll)) != str.end()){   //2) test p
 \section{Introduction}
 \begin{itemize}
 	
-	\item Functional programming introduces algebraic data types such as \texttt{std::optional} and \texttt{std::variant}. It aligns closely with generic programming in C++, encouraging programmers to focus on higher-level abstractions rather than hardware-specific details. Ideally, mutable state (such as stack or global variables) and imperative loops should be avoided, replaced instead with direct use of STL algorithms. An example can be illustrated as shown below: in this code, \texttt{open\_file} and \texttt{count\_lines} are two functions. The C++20 ranges library enhances readability and expressiveness by replacing traditional loop constructs with more functional-style algorithms, promoting clearer, more maintainable code.
+	\item Functional programming introduces algebraic data types: \texttt{std::optional} and \texttt{std::variant}. It aligns closely with generic programming in C++, encouraging programmers to focus on higher-level abstractions rather than hardware-specific details. Ideally, mutable state (such as stack or global variables) and imperative loops should be avoided, replaced instead with direct use of STL algorithms. An example can be illustrated as shown below: in this code, \texttt{open\_file} and \texttt{count\_lines} are two functions. The C++20 ranges library enhances readability and expressiveness by replacing traditional loop constructs with more functional-style algorithms, promoting clearer, more maintainable code.
 	
 \begin{lstlisting}[frame=single, language=c++]
 std::vector<int> count_line_in_files(const vector<string> file_names){
@@ -17269,8 +17267,7 @@ std::vector<int> count_line_in_files(const vector<string> file_names){
 \end{enumerate}
 	
 	These higher-order functions promote a declarative style of programming, emphasizing composition and immutability, which are core principles of functional programming.
-	
-	
+		
 	
 	\item In general, folding, also known as reduction, does not mandate that the arguments and the result of the binary function passed to it must have the same type. In C++, we utilize \texttt{std::accumulate} to implement folding. This function aggregates the elements of a sequence using a specified binary operation, starting with an initial value.
 	
@@ -17284,21 +17281,6 @@ int count_lines(const string &s){
 }                                        //f: (R, T) -->R R is int, T is char here.
 \end{lstlisting} 
 		
-	\item Three differences between \texttt{std::reduce} and \texttt{std::accumulate}:
-	\begin{enumerate}	
-			\item Use \texttt{std::reduce} when you want your accumulation to run execution policies. Execution policies are a C++17 feature which allows programmers to ask for algorithms to be parallelised. There are three execution policies in C++17: \texttt{std::execution::seq}, \\
-			\texttt{std::execution::par} and 
-			\texttt{std::execution::par\_unseq}, which is parallelise and vectorise (requires that the operation can be interleaved, so no acquiring mutexes and such).
-			
-			\item Ensure that the operation you want to use is both associative and commutative.
-			
-			\item Remember that the default initial value is produced by default construction, and that this may not be correct for your operation.
-		\end{enumerate}	
-	
-	
-\begin{lstlisting}
-auto sum3 = std::reduce(std::execution::par, begin(vec), end(vec)); //parallel
-\end{lstlisting}
 
 
 	\item The erase-remove idiom and erase-find idiom are common examples of filtering in C++. The erase function is a container operation, while \texttt{find\_if} and \texttt{remove\_if} are STL algorithms used for filtering elements based on specific criteria.
@@ -17338,7 +17320,7 @@ std::transform(foo.begin(),foo.end(),bar.begin(),foo.begin(), std::plus<int>());
 \subsection{Lambda basic syntax}
 
 \begin{itemize}
-	\item Here is the basic syntax for a lambda expression and an example. Pay attention here: \texttt{divisor} is passed by copy. If you modify \texttt{divisor} inside the lambda, it does not affect \texttt{divisor} outside. This is different from \texttt{sum}.
+	\item Here is the basic syntax for a lambda expression and an example. Pay attention here: \texttt{divisor} is passed by copy. If you modify \texttt{divisor} inside the lambda, it does not affect \texttt{divisor} outside and this is different from \texttt{sum}.
 
 \begin{lstlisting}
 [ captures ] (parameters) -> returnTypesDeclaration { ..; }
@@ -17362,12 +17344,11 @@ auto myfun2 = [ cf = std::move(f) ](int x) {return cf(x);}
 
 	\item You need to add mutable if you want to change the value captured by copy because the \texttt{operator()} inside a lambda is implicitly \texttt{const} by default. A by-value capture cannot be modified in a non-mutable lambda.
 \begin{lstlisting}
-int main(){
-	int n;
-	[&](){n = 10;}();             // OK
-	[=]() mutable {n = 20;}();    // OK
-	// [=](){n = 10;}();          // Error: 
-}
+int n = 1;
+auto l1 = [&](){n = 10;}();             // OK
+auto l2 = [=]() mutable {n = 20;}();    // OK
+//auto l3 =  [=](){n = 10;}();          // Error: 
+
 \end{lstlisting}
 
 %	\item When lambda is used on complex type container. You can use typedef to save typing, remember, typedef is your good friend. This code is an example of Old C++, not modern one. In modern C++, you can use \texttt{using} alias to replace typedef. A better way is to use "generic lambda" with auto parameter. 
@@ -17397,12 +17378,12 @@ cout<<"12!="<<res<<endl; // 479001600
 
 \begin{lstlisting}[numbers=none]
 typedef int (*func)();
-func f = [] () -> int { return 2; };
+func f = [] () -> int { return 2; }; //assign it to a function pointer. 
 f(); // call this lambda by function pointer
 \end{lstlisting}
 
 
-	\item A delegate idea. \texttt{std::for\_each} accept a normal function, but we can delegate this function to a objec's member function. 
+	\item A delegate idea. \texttt{std::for\_each} accept a normal function, but we can delegate this function to a object's member function. 
 	
 \begin{lstlisting}[numbers=none]
 class MessageSizeStore{
@@ -17424,10 +17405,9 @@ for_each(s.begin(),s.end(), [&] (const std::string& message){
 	\item A functor is often preferred over a function pointer because it can be inlined. Similarly, a lambda is preferred over a functor because it creates an unnamed functor class, avoiding namespace pollution. Additionally, lambdas can be inlined, access automatic variables, and are less verbose, enhancing code clarity by keeping the code closer to where it's called.
 \begin{lstlisting}[numbers=none]
 int count3 = 0;
-std::count_if(v.begin(), v.end(), 
-                         [&count3](int x){
-							count3 += (x%3 == 0)
-						 });
+std::count_if(v.begin(), v.end(), [&count3](int x){
+							         count3 += (x%3 == 0)
+						           });
 \end{lstlisting}
 
 \end{itemize}
@@ -17435,7 +17415,7 @@ std::count_if(v.begin(), v.end(),
 \subsection{Generic lambda and auto return}
 	
 \begin{itemize}
-		\item Generic lambdas were introduced in C++14. They use \texttt{auto} as a parameter, allowing the lambda to accept arguments of any type. Behind the scenes, this generates a templated member operator(), enabling the lambda to work with various types.
+		\item Generic lambda was introduced in C++14. They use \texttt{auto} as a parameter, allowing the lambda to accept arguments of any type. Behind the scenes, this generates a templated member operator(), enabling the lambda to work with various types.
 \begin{lstlisting}
 auto glambda = [] (auto a) { return a; };
 
@@ -17459,12 +17439,12 @@ for_each( begin(v), end(v), [](const auto& x) { cout << x; } );
 sort( begin(w), end(w), [](const auto& a, const auto& b) { return *a<*b; } );
 \end{lstlisting}
 
-		\item Another example of a generic lambda is shown below. Note that this new version of size is not limited to any specific type; it can be invoked with any type that has a size() member function. Furthermore, because it implicitly deduces the return type, the return type will be whatever \texttt{m.size()} returns, which can vary depending on the input. This demonstrates the flexibility and power of generic lambdas. This is a good example of how generic lambdas can simplify code and enhance reusability by allowing functions to operate on a wide range of types.
+		\item Another example of a generic lambda is shown below. Note that this new version of \texttt{getSize} is not limited to any specific type; it can be invoked with any type that has a \texttt{size()} member function. Furthermore, because it implicitly deduces the return type, the return type will be whatever \texttt{m.size()} returns, which can vary depending on the input. This demonstrates the flexibility and power of generic lambdas. This is a good example of how generic lambdas can simplify code and enhance reusability by allowing functions to operate on a wide range of types.
 
 \begin{lstlisting}
-auto size=[](const unordered_map<wstring, vector<string>>& m){return m.size();};
+auto getSize=[](const unordered_map<string, vector<string>>& m){return m.size();};
 
-auto size = [](const auto& m) { return m.size(); }; // C++14: new expressive power
+auto getSize = [](const auto& m) { return m.size(); }; // C++14: expressive power
 \end{lstlisting}
 
 		\item C++14 supports return type deduction by using \texttt{auto}. The restriction is: All returned values must be of the same type.
@@ -17482,7 +17462,7 @@ auto g() {         // ok, deduces "-> some_type"
 }              
 \end{lstlisting}
 
-		\item In C++14, we also support auto return type deduction lambda. 
+		\item In C++14, we also support auto return type deduction in lambda. 
 
 \begin{lstlisting}
 template <typename A, typename B> //C++ 11
@@ -17501,8 +17481,8 @@ auto do_something(const A& a, const B& b){
 \begin{lstlisting}
 string  lookup1();
 string& lookup2();
-string  look_up_a_string_1() { return lookup1(); }
-string& look_up_a_string_2() { return lookup2(); }
+string  look_up_a_string_1(){ return lookup1(); }
+string& look_up_a_string_2(){return lookup2();} //hope to return reference here
 
 decltype(auto) look_up_a_string_1() { return lookup1(); } //same as previous 
 decltype(auto) look_up_a_string_2() { return lookup2(); } //C++ 14 idiom
@@ -17542,6 +17522,21 @@ concept forward_range =
 ranges::input_range<T> && std::forward_iterator<ranges::iterator_t<T>>;				
 \end{lstlisting}
 
+
+	\item There are two special range concept in C++20, one is sized\_range, the other is borrowed\_range. The sized\_range concept in C++20 is part of the Ranges library, which introduces a new way to work with sequences of elements. The sized\_range concept specifically applies to ranges that have a known size, meaning that it provides a constant-time size() member function or can otherwise be queried for its size in constant time. 
+
+	\item In the following code, the reason for the extra \texttt{ !disable\_sized\_range<remove\_cvref\_t<T> >} check is that some types can meet the syntactic requirements of \texttt{ranges::size} without meeting the semantic requirement that this call must have constant time. For instance, \texttt{MyLinkedList} had O(N) size(), but this wouldn’t be detectable, so the type trait exists to allow for such containers to opt out of being considered sized\_ranges.
+\begin{lstlisting}
+namespace std{
+	// MyLinkedList has O(n) size.
+	template <typename T>
+	constexpr bool disable_sized_range<MyLinkedList<T> > = true;
+}	
+
+template<class T>
+concept sized_range = range<T> && !disable_sized_range<remove_cvref_t<T>> &&
+requires(T& t) { ranges::size(t); };	
+\end{lstlisting}
 	
 \begin{center}
 	\begin{tabular}{|c|c|}
@@ -17573,24 +17568,6 @@ ranges::input_range<T> && std::forward_iterator<ranges::iterator_t<T>>;
 		\hline
 	\end{tabular}	
 \end{center}
-
-
-	\item There are two special range concept in C++20, one is sized\_range, the other is borrowed\_range. The sized\_range concept in C++20 is part of the Ranges library, which introduces a new way to work with sequences of elements. The sized\_range concept specifically applies to ranges that have a known size, meaning that it provides a constant-time size() member function or can otherwise be queried for its size in constant time. 
-	
-	\item In the following code, the reason for the extra \texttt{ !disable\_sized\_range<remove\_cvref\_t<T> >} check is that some types can meet the syntactic requirements of \texttt{ranges::size} without meeting the semantic requirement that this call must have constant time. For instance, \texttt{MyLinkedList} had O(N) size(), but this wouldn’t be detectable, so the type trait exists to allow for such containers to opt out of being considered sized\_ranges.
-\begin{lstlisting}
-namespace std{
-	// MyLinkedList has O(n) size.
-	template <typename T>
-	constexpr bool disable_sized_range<MyLinkedList<T>> = true;
-}	
-	
-template<class T>
-concept sized_range = range<T> && !disable_sized_range<remove_cvref_t<T>> &&
-requires(T& t) { ranges::size(t); };
-\end{lstlisting}
-
-
 	
 %	ranges::distance, get size of range( linear complexity);  ranges::empty, ranges::data. 
 	
@@ -17602,7 +17579,7 @@ auto min_val = ranges::min_element(get_vector()); //return a dangling iterator
 cout<< *min_val; // Error, no operator* in std::ranges::dangling
 \end{lstlisting}
 
-	\item Dangling iterators are a potential problem for most kinds of ranges – we need to be careful to make sure that we do not use a vector iterator after the parent object has been destroyed. However, this is not the case for all ranges though. A \texttt{std::string\_view}’s iterators for example actually point into some other character array – so we can safely use a \texttt{string\_view::iterator} after the \texttt{string\_view} itself has been destroyed. Types like \texttt{std::string\_view} are called borrowed ranges in the new C++20 terminology. A borrowed range is one whose iterators can safely outlive their parent object. So an rvalue \texttt{std::vector} is not a borrowed range, but an rvalue \texttt{std::string\_view} is.
+	\item Dangling iterators are a potential problem for most kinds of ranges – we need to be careful to make sure that we do not use a \texttt{std::vector} iterator after the parent object has been destroyed. However, this is not the case for all ranges though. A \texttt{std::string\_view}’s iterators for example actually point into some other character array – so we can safely use a \texttt{string\_view::iterator} after the \texttt{string\_view} itself has been destroyed. Types like \texttt{std::string\_view} are called borrowed ranges in the new C++20 terminology. A borrowed range is one whose iterators can safely outlive their parent object. So an rvalue \texttt{std::vector} is not a borrowed range, but an rvalue \texttt{std::string\_view} is.
 \begin{lstlisting}
 std::string str = "Hello world";
 auto iter = std::string_view{str}.begin(); //iter's parent object is string_view.
@@ -17634,9 +17611,10 @@ cout<< std::sentinel_for<std::vector<int>::iterator, decltype(i)>; //true
 \end{itemize}
 
 \subsection{constrained algorithms}
+\subsubsection{constrained algorithms introduction}
 \begin{itemize}
 		
-		\item C++20 provides constrained versions of most algorithms in the namespace \texttt{std::ranges}. The \texttt{std::ranges} namespace includes many of the algorithms from the traditional <algorithm> header, but with added constraints to ensure better compile-time checking and improved generic programming support.
+		\item C++20 provides constrained versions of most algorithms in the namespace \texttt{std::ranges}. The \texttt{std::ranges} namespace includes many of the algorithms from the traditional <algorithm> header, but with added constraints to ensure better compile-time checking and improved generic programming support. The main differences lie in the parameter they can received and the return type.
 		\begin{enumerate}
 			\item In these constrained algorithms, a range can be specified as either a iterator-sentinel pair or as a single range argument. These algorithms work seamlessly with the new range concepts, such as sized\_range, view, and common\_range.
 \begin{lstlisting}
@@ -17650,7 +17628,7 @@ ranges::transform(s, back_inserter(ordinals), [](unsigned char c) -> size_t
                                                  { return c; });
 \end{lstlisting}
 		
-		\item Projections and pointer-to-member callables(pointer to member function and pointer to member data) are supported. This is because \texttt{std::invoke} is used inside constrained algorithms. For more details, refer to "C++20 Ranges, Projections, \texttt{std::invoke} and if constexpr".
+		\item Projections and pointer-to-member callables (pointer to member function and pointer to member data) are supported. This is because \texttt{std::invoke} is used inside constrained algorithms. For more details, refer to "C++20 Ranges, Projections, \texttt{std::invoke} and if constexpr".
 \begin{lstlisting}
 std::vector vec { -1, 2, -3, 4, -5, 6 };
 auto print = [](int i) { std::cout << i << ", "; };
@@ -17669,11 +17647,16 @@ vector<Employee> v = {{"a1"}, {"a2"}, {"a2"} };
 ranges::for_each(v, &Employee::printName); //pointer member function here.
 \end{lstlisting}
 
-	\item The return types of most algorithms have been changed to include all potentially useful information computed during the execution of the algorithm. Most constrained algorithms now return \texttt{std::ranges::in\_out\_result}.
+	\item The return types of some constrained algorithms have been changed to include all potentially useful information computed during the execution of the algorithm.
+	\begin{enumerate}
+		
+	
+	\item  Some algorithms now return \texttt{std::ranges::in\_out\_result}.
 	
 \begin{lstlisting}
 //std::ranges::in_out_result
-constexpr char in[] = "transform" "\n";
+constexpr char in[] = "transform" "\n"; 
+//The compiler automatically concatenates two string literals during compilation
 std::array<char, sizeof(in)> out;
 
 const auto result = std::ranges::transform(in, out.begin(), [](char c){ 
@@ -17684,8 +17667,22 @@ auto print = [](char c) { std::cout << c; };
 std::ranges::for_each(std::cbegin(in), result.in, print);
 std::ranges::for_each(out.cbegin(), result.out, print);
 \end{lstlisting}
-	
+
+	\item \texttt{ranges::search} and \texttt{std::search} don't return the same value. \texttt{views::search} return subrange, while \texttt{std::search} return iterator.
+\begin{lstlisting}
+constexpr auto haystack {"abcd abcd"sv};
+constexpr auto needle {"bcd"sv};  //needle is string_view
+auto found = std::ranges::search(haystack, needle); //found is subrange.
+std::distance(haystack.begin(), found.begin());
+
+auto found = std::search(haystack.being(), haystack.end(), //found is iterator
+needle.begin(), needle.end() );
+std::distance(haystack.begin(), found); 	
+\end{lstlisting}		
+		
 	\end{enumerate}
+	
+\end{enumerate}
 	
 	\item The basic idea of a sentinel is as follows:
 \begin{enumerate}
@@ -17693,7 +17690,7 @@ std::ranges::for_each(out.cbegin(), result.out, print);
 	
 	\item To support this, existing algorithms only need to change their signatures to accommodate the sentinel.
 	
-	\item We can solve any problem by introducing an extra level of indirection, except for the problem of too many levels of indirection.
+	\item We can solve any problem by introducing an extra level of indirection, except for the problem of too many levels of indirection :). 
 \end{enumerate}
 
 	
@@ -17755,7 +17752,7 @@ void do_sth(const char* str) {
 \subsubsection{std::invoke}
 \begin{itemize}
 	
-	\item Behind the projection in the constraint algorithms is \texttt{std::invoke}, \texttt{std::invoke} brings to the table is that you can use it for other things beyond just functors.
+	\item Behind the projection in the constrained algorithms is \texttt{std::invoke}, \texttt{std::invoke} brings to the table is that you can use it for other things beyond just functors.
 \begin{lstlisting}
 struct S{
 	void do_something(int);
@@ -17767,8 +17764,8 @@ std::invoke(&S::do_something, s, 42); // same as s.do_something(42)
 std::invoke(&S::do_something, std::ref(s), 42);
 
 S* p = &s;
-std::invoke(&S::do_something, p, 42); //if p is pointer, then invoke means
-                                      //p->do_something(42)
+std::invoke(&S::do_something, p, 42); 
+//if p is pointer, then invoke means p->do_something(42)
 \end{lstlisting}
 
 	\item You can also use \texttt{std::invoke} with pointers to non-static data members.
@@ -17793,8 +17790,9 @@ std::invoke(std::invoke(&S::do_something, s)); //output "hello" too
 
 \subsection{View}
 
-\subsubsection{Composable Range views}
+\subsubsection{Basic views usage}
 \begin{itemize}
+	
 	\item Views are simply ranges that are cheap to copy and move (in constant time). Due to this, a view does not own the elements it is viewing. An exception to this rule is \texttt{std::views::single}, which owns the single element it is viewing. Creating a view prepares for future work but does not execute any operations immediately; work occurs only when accessing an element within the view.
 	
 \begin{lstlisting}
@@ -17807,35 +17805,14 @@ std::string_view sv = str;
 std::cout << sv.substr(5, 15) << '\n';		
 \end{lstlisting}
 
-	\item \texttt{views::transform} doesn't store element, so each element all are r-value(return by a function), in the below loop, you have to use \texttt{auto} or \texttt{const auto \&} to catch rvalue from \texttt{view::transform}. 
-	
-\begin{lstlisting}
-for(auto & e: dic|views::values<0>|views::transform(....)){//auto &e is not OK
-	
-for(auto & e: dic|views::values<0>|views::stride(2)){ //with -std=c++23
-	cout<<e;        //using auto &e is OK here, because stride return lvalue. 
-}
-\end{lstlisting}
-	
-	\item \texttt{views::search} and \texttt{std::search} don't return the same value. \texttt{views::search} return subrange, while \texttt{std::search} return iterator.
-\begin{lstlisting}
-constexpr auto haystack {"abcd abcd"sv};
-constexpr auto needle {"bcd"sv};  //needle is string_view
-auto found = std::ranges::search(haystack, needle); //found is subrange.
-std::distance(haystack.begin(), found.begin());
 
-auto found = std::search(haystack.being(), haystack.end(), //found is iterator
-						 needle.begin(), needle.end() );
-std::distance(haystack.begin(), found); 
-\end{lstlisting}	
-
-	\item Constrained algorithms only accept a range, not two iterators. While this may seem less flexible, we can achieve similar functionality using \texttt{std::views}. Let's compare the iterator-based version with the view-based version.
+	\item Instead of using two iterators to specify a subrange, we can use achieve similar functionality using \texttt{std::views}. Let's compare the iterator-based version with the view-based version.
 \begin{lstlisting}
 std::sort(v.begin() + 5, v.end())
 std::sort(v.rbegin(), v.rend());
 std::sort(v.rbegin() + 5, v.rend());
 
-std::ranges::sort(std::views::drop(v, 5));
+std::ranges::sort(std::views::drop(v, 5)); // more clear
 std::ranges::sort(std::views::reverse(v));
 std::ranges::sort(std::views::drop(std::views::reverse(v), 5));		
 \end{lstlisting}		
@@ -17845,11 +17822,10 @@ std::ranges::sort(std::views::drop(std::views::reverse(v), 5));
 \begin{lstlisting}
 int input[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 auto even = [](const int n) { return n % 2 == 0; };
-auto x = input | std::views::filter(even); 
-// create a view of the even elements from input
+auto x = input | std::views::filter(even); //create a view of the even elements.
 
-std::ranges::fill(x, 42); // changes the evens from input[] to 42
-//  input is 42 1 42 3 42 5 42 7 42 9 42 now.
+std::ranges::fill(x, 42); // changes the even in input[] to 42
+					//  input is 42 1 42 3 42 5 42 7 42 9 42 now.
 \end{lstlisting}
 
 	\item Pay attention to view and adapter, usually we use adapter more. Three different ways to use views. We recommend to use the first and the second method.
@@ -17859,14 +17835,14 @@ std::ranges::stride_view // this is a view. that is class name
 	
 std::vector<int> v {0,1,2,3,4,5,6,7,8};
 // 1) using functor notation:
-fmt::print("{}\n", std::views::stride(v,3)); // [0,3,6]
+print("{}\n", std::views::stride(v,3)); // [0,3,6]
 
 // 2) using pipeline notation:
-fmt::print("{}\n", v | std::views::stride(2)); // [0,2,4,6,8]
+print("{}\n", v | std::views::stride(2)); // [0,2,4,6,8]
 
 // 3) using an explicit view object:
 std::ranges::stride_view sv2 {v,2};
-fmt::print("{}\n", sv2); // [0,2,4,6,8]
+print("{}\n", sv2); // [0,2,4,6,8]
 \end{lstlisting}
 	
 	\item An interesting examples, we can use | to combine a serials of view adapter together.  \texttt{view::take} is adapter, it input a number, then return a anonymous view. You can also use combine range::view and range::algorithm together.  
@@ -17882,7 +17858,7 @@ for(int n : v | std::views::take(6) | std::views::drop(2)
 
 %\item C++20 doesn't support action yet. 
 
-	\item Function application call are \texttt{transform, adjacent\_transform and pairwise\_transform}.
+	\item Function application call are \texttt{transform, adjacent\_transform} and \texttt{pairwise\_transform}.
 	
 	\item Tokenization view are \texttt{split, lazy\_split, chunk, and chunk\_by}.
 \begin{lstlisting}
@@ -18082,18 +18058,28 @@ std::ranges::copy(firstFive.begin(), MySentinel{}, output); //3) sentinel.
 \subsubsection{View limitation}
 \begin{itemize}
 	
-	\item You need to be aware of certain limitations when working with views, such as size range, common range, random range, and ranges::dangling. These limitations can arise from the embedded container, as seen in the example below with \texttt{std::forward\_list}, or they can stem from the views themselves. For instance, \texttt{std::views::filter} is not considered a random\_access\_range at all.
+	\item When you inputs views to algorithm, there are two points need to be considered:
+	\begin{enumerate}
+		\item What concept do views model? The basic concepts are size\_range, common\_range and random\_access\_range etc. Concept can arise from the embedded container, as seen in the example below with \texttt{std::forward\_list}, or they can stem from the views themselves. For instance, \texttt{std::views::filter} is not considered a random\_access\_range at all.
+		
+		\item What concept do algorithms can received? For example, \texttt{std::sort} only accepts range which models random\_access\_range concept.
+	\end{enumerate}
 \begin{lstlisting}
 //below comes from cpp conference website.
 // filter_view models the concepts bidirectional_range, forward_range, input_range, and common_range when the underlying view V models respective concepts.
-	
+
 // take_view models the concepts contiguous_range, random_access_range, bidirectional_range, forward_range, input_range, and sized_range when the underlying view V models respective concepts. It models common_range when the underlying view V models both random_access_range and sized_range.
 
 sort(v|views::take(3)); //OK, because views::take can model random range
 sort(v|views::filter(...)) //Error, views::filter only model bidirection range
-\end{lstlisting}	
+\end{lstlisting}		
 	
-	\item Another important point is common range. The reason for the error with \texttt{std::views::take\_while} is that, unlike \texttt{std::views::filter}, \texttt{std::views::take\_while} isn't a common\_range. Common ranges require that \texttt{ranges::begin} and \texttt{ranges::end} return the same type.
+	\begin{center}
+		\includegraphics[width=0.6\linewidth]{pics/view_algorithm.drawio.png}
+	\end{center}
+	
+	
+	\item common\_range is also an important concept when we want to use algorithms. For example, different with \texttt{std::views::filter}, \texttt{std::views::take\_while} isn't a common\_range. Common ranges require that \texttt{ranges::begin} and \texttt{ranges::end} return the same type. If it's not common range, we can't input this view to traditional algorithms.
 \begin{lstlisting}
 auto v = std::vector{8,7,3};
 auto rng = v | std::views::filter([](int x){return x > 5 ;});
@@ -18102,9 +18088,42 @@ auto res = std::accumulate(rng.begin(),rng.end(),0); //OK here.
 //auto rng = v | views::take_while([](int x){return x > 5 ;}) ; //error
 auto rng = v | views::take_while([](int x){return x > 5 ;})|views::common;//ok
 auto res = std::accumulate(rng.begin(),rng.end(),0);  // not range version.		
-\end{lstlisting}	
+\end{lstlisting}
 
-	\item The transformed range is only a view; the elements are generated one at a time as the view is iterated. It cannot be sorted because there is no storage for the elements. A hypothetical implementation would also be inefficient, as it would need to transform each element every time it compares for sorting. A correct solution is to store the transformed elements in a vector and then sort them. \texttt{ranges::to} provides a way to implement this.
+		\item You can also use \texttt{views::common} on you own range. 
+\begin{lstlisting}
+#include <ranges>
+class Gadget_Range {
+	std::array<int,6> a_ {5,4,3,2,1,0};
+	public:
+	auto begin () const { // exclude last element
+		return std::counted_iterator{a_.begin(),5};
+	}
+	auto end () const { // counting_iterator already knows size	
+		return std::default_sentinel;
+	}
+};
+Gadget_Range g;
+
+fmt::print("{}\n", g);
+// accumulate requires same type for 'begin' and 'end'
+// ERROR: std::accumulate(g.begin(), g.end(), 0);
+auto cv = g | std::views::common;
+auto sum = std::accumulate(cv.begin(), cv.end(), 0);
+fmt::print("sum: {}\n", sum);				
+\end{lstlisting}			
+
+	\item \texttt{views::transform} doesn't store element, the elements are generated one at a time as the view is iterated, so each element all are r-value (return by a function). in the below loop, you have to use \texttt{auto} or \texttt{const auto \&} to catch rvalue from \texttt{view::transform}. 
+
+\begin{lstlisting}
+for(auto & e: dic|views::values<0>|views::transform(....)){//auto &e is not OK
+	
+for(auto & e: dic|views::values<0>|views::stride(2)){ //with -std=c++23
+	cout<<e;        //using auto &e is OK here, because stride return lvalue. 
+}		
+\end{lstlisting}
+
+	\item  If we want to sort a \texttt{views::transform}, a correct solution is to store the transformed elements in a vector and then sort them. \texttt{ranges::to} provides a way to implement this. 
 \begin{lstlisting}
 std::vector ints{ 6, 5, 2, 8 };
 auto even = [](int i) {return 0 == i % 2;};
@@ -18118,7 +18137,7 @@ ints = rr | ranges.to(std::vector); //use ranges::to
 std::ranges::sort(ints); // output 4, 36, 64.		
 \end{lstlisting}		
 	
-	\item Pay attention to temporary view. 
+	\item If algorithm return a iterator, you need to pay attention to the input temporary view. If input temporary view is borrow range, the return iterator is safe to use. Detail can be seen in the next section "Borrowed range". 
 \begin{lstlisting}
 //A temporary view 
 auto rr = ranges::min_element( dic | views::values | views::filter( [](auto p){
@@ -18151,7 +18170,7 @@ cout<<(*rr);
 	%\end{lstlisting}	
 	
 	
-	\item Special adaptor are \texttt{views::ref\_view, views::owning\_view, views::all and views::common}. \texttt{std::views::all} returns a suitable view(\texttt{std::views::ref\_view}, \texttt{std::views::owning\_view}, etc) depending on the input range type. If parameter of \texttt{views::all} is a non-view rvalue such as a temporary object, or is the result of passing the range to \texttt{std::move}, it will return an \texttt{owning\_view}. Use \texttt{std::views::all\_t<decltype((rg))>} to get the type of the returned view. Usually, we don't use it directly in our code. 
+	\item Special adaptor are \texttt{views::ref\_view}, \texttt{views::owning\_view}, \texttt{views::all} and \texttt{views::common}. \texttt{std::views::all} returns a suitable view(\texttt{std::views::ref\_view}, \texttt{std::views::owning\_view}, etc) depending on the input range type. If parameter of \texttt{views::all} is a non-view rvalue such as a temporary object, or is the result of passing the range to \texttt{std::move}, it will return an \texttt{owning\_view}. Use \texttt{std::views::all\_t<decltype((rg))>} to get the type of the returned view. Usually, we don't use it directly in our code. 
 \begin{lstlisting}
 #include <ranges>
 std::vector<int> v {9,1,3,7,4};
@@ -18168,28 +18187,7 @@ fmt::print("{}\n", vw2); // [9,1,3,7]
 fmt::print("{}\n", v); // [8]			
 \end{lstlisting}		
 	
-	\item You can also use \texttt{views::common} on you own range. 
-\begin{lstlisting}
-#include <ranges>
-class Gadget_Range {
-	std::array<int,6> a_ {5,4,3,2,1,0};
-	public:
-	auto begin () const { // exclude last element
-		return std::counted_iterator{a_.begin(),5};
-	}
-	auto end () const { // counting_iterator already knows size	
-		return std::default_sentinel;
-	}
-};
-Gadget_Range g;
 
-fmt::print("{}\n", g);
-// accumulate requires same type for 'begin' and 'end'
-// ERROR: std::accumulate(g.begin(), g.end(), 0);
-auto cv = g | std::views::common;
-auto sum = std::accumulate(cv.begin(), cv.end(), 0);
-fmt::print("sum: {}\n", sum);			
-\end{lstlisting}		
 		
 	
 \end{itemize}
@@ -18277,10 +18275,32 @@ constexpr auto operator | (R&& r, custom_take_range_adaptor_closure const & a){
 
 \subsubsection{Borrowed range}
 \begin{itemize}
-	\item Types like std::string\_view are called borrowed ranges in the new C++20 terminology. A borrowed range is one whose iterators can safely outlive their parent object. \\
-	\begin{tabular}{|p{0.35\textwidth}|p{0.55\textwidth}|}
+		\item In C++20, a borrowed range is a range whose iterators remain valid even after the lifetime of the range object itself ends. This is in contrast to most standard library containers, where destroying the container invalidates its iterators.
+		
+		\item  An rvalue \texttt{std::vector} is not a borrowed range, but an rvalue \texttt{std::span} is.
+	
+\begin{lstlisting}
+auto iter = std::ranges::min_element(get_vector());
+cout<<*iter;  // Error,iter is std::ranges::dangling	
+
+auto iter = std::ranges::min_element(get_span());
+cout<<*iter; // iter is an solid iterator, *not* ranges::dangling	
+\end{lstlisting}	
+	
+	\item \texttt{views::filter} and \texttt{views::transform} are two important non borrowed ranges, because it involves some functions. 
+\begin{lstlisting}
+auto odd = [](int i) { return bool(i % 2); };
+auto iter = std::ranges::min_element(v|views::filter(odd));
+cout<<*iter;  // Error,iter is std::ranges::dangling			
+\end{lstlisting}	
+	
+	\item Types like \texttt{std::string\_view} and \texttt{std::span} are called borrowed ranges in the new C++20 terminology. A borrowed range is one whose iterators can safely outlive their parent object. \\
+\begin{center}
+	
+
+	\begin{tabular}{|p{0.25\textwidth}|p{0.3\textwidth}|p{0.25\textwidth}|}
 		\hline
-		 \textbf{borrowed range} & \textbf{borrowed range only if underlying view is borrowed range}  \\
+		 \textbf{borrowed range} & \textbf{borrowed range only if underlying view is borrowed range} & \textbf{non-borrowed range no matter what underlying view} \\
 		\hline
 		\specialcell[t]{ std::basic\_string\_view \\
 		std::span \\
@@ -18294,38 +18314,20 @@ constexpr auto operator | (R&& r, custom_take_range_adaptor_closure const & a){
 		std::ranges::common\_view \\
 		std::ranges::reverse\_view \\
 		std::ranges::elements\_view \\
-		std::ranges::adjacent\_view \\
-
-		} \\
+		std::ranges::adjacent\_view }  & \specialcell[t]{ std::ranges::filter \\
+			std::ranges::take\_while 
+		}  \\
 		\hline
 	\end{tabular}
+\end{center}	
 	
-	\item  An rvalue \texttt{std::vector} is not a borrowed range, but an rvalue \texttt{std::span} is.
-	
-\begin{lstlisting}
-auto iter = std::ranges::min_element(get_vector());
-cout<<*iter;  // Error,iter is std::ranges::dangling	
-	
-auto iter = std::ranges::min_element(get_span());
-cout<<*iter; // iter is an solid iterator, *not* ranges::dangling
-\end{lstlisting}
-
-	\item views::filter and views::transform are two important non borrowed range, because it's involve some functions. 
-\begin{lstlisting}
-auto odd = [](int i) { return bool(i % 2); };
-auto iter = std::ranges::min_element(v|views::filter(odd));
-cout<<*iter;  // Error,iter is std::ranges::dangling	
-	
-\end{lstlisting}
-
-
 \end{itemize}
 
 \subsubsection{Sequence View}
 \begin{itemize}
 	\item Two main sequence views are \texttt{std::string\_view} and \texttt{std::span} in C++20. \texttt{std::string\_view} is a non-owning, read-only view of a sequence of characters. It is useful for working with substrings and passing strings around without the overhead of copying. \texttt{std::span} is a non-owning view over a contiguous sequence of objects, providing a safe way to work with arrays and other contiguous data structures.
 	
-	\item How to build \texttt{std::string\_view}? You can use either a string literal, a std::string, or a pointer to a character array along with its length. 
+	\item How to build \texttt{std::string\_view}? You can use either a string literal, a \texttt{std::string}, or a pointer to a character array along with its length. 
 \begin{lstlisting}
 using namespace std::string_view_literals; //method 1, use literals. 
 auto literal_view = "C-String Literal"sv;
@@ -18339,16 +18341,6 @@ const char* cstr = "Hello, World!"; //method3 character pointer
 std::string_view sv(cstr, 5); 
 \end{lstlisting}
 
-	\item \texttt{std::string\_view} is a borrowed range, it means that if \texttt{std::string\_view} is temporary, the iterator from it is OK, but if the embedded container is temporary, it still has dangling problem. So you should use \texttt{std::string\_view} mainly as function parameter!
-\begin{lstlisting}
-using namespace std::string_literals; //embedded container is temporary
-std::string_view sv2 {"Hello"s}; //""s return a string., ""sv return view.
-cout<<sv2 //string object has been destroyed. 
-
-std::string str = "Hello world";  //string_view itself is temporary.
-auto iter = std::string_view{str}.begin(); //iter's parent object is string_view.
-*iter = 'h'; // Weird, but okay:
-\end{lstlisting}
 
 	\item For read-only string parameter, difference between const reference and \texttt{std::string\_view} is: If we pass an object as function argument that is not a string itself, but something that can be used to construct a string, e.g., a string literal or an iterator range, a new temporary string object will be allocated and bound to the const reference.
 
@@ -18371,45 +18363,70 @@ f_view("Literal");  //  no copy
 f_view({begin(v),end(v)});  //  no copy
 \end{lstlisting}
 
-	\item An example, convert string to int if possible. Using string view as parameters. When you use string view, 1) Do not assign temporary strings to string views 2) Do not return string views to strings. 
+	\item \texttt{std::string\_view} is a borrowed range, it means that if a \texttt{std::string\_view} is temporary, the iterator from it is OK, but if the embedded container is temporary, it still has dangling problem. So you should use \texttt{std::string\_view} mainly as function parameter!
 \begin{lstlisting}
-std::optional<int> asInt(std::string_view sv){
-	int val;
-	auto [ptr, ec] = std::from_chars(sv.data(), sv.data()+sv.size(), val);
-	if (ec != std::errc{}) { 	// if we have an error code, return no value:
-		return std::nullopt;
-	}
-	return val;
-}		
-\end{lstlisting}	
-	
-	\item Usage of \texttt{std::span}. You can think that \texttt{std::span} is also a view type.
-\begin{lstlisting}
-void printMe(std::span<int> container) {	
-	std::cout << "container.size(): " << container.size() << '\n';  // (4)
-	for(auto e : container) std::cout << e << ' ';
-	std::cout << "\n\n";
-}
+std::string_view sv2 {std::string{"abc"}}; // an temporary string object.
+cout<<sv2 //dangling string_view, temporary string object has been destroyed. 
 
-int arr[]{1, 2, 3, 4};              // (1)
-printMe(arr);  //output container.size(): 4 it can deduct size information.
+std::string str = "Hello world";  //string_view itself is temporary.
+auto iter = std::string_view{str}.begin(); //iter's parent object is string_view.
+*iter = 'h'; // Weird, but okay:	
+\end{lstlisting}
 
-std::vector vec{1, 2, 3, 4, 5};     // (2)
-printMe(vec);  //same as arr example.
 
-std::array arr2{1, 2, 3, 4, 5, 6}; // (3)
-printMe(arr2);	
-
-printME({begin(vec)+2, end(v)})  //(4) input range.
-\end{lstlisting}	
-
+	\item Why do we mainly use \texttt{std::string\_view} and \texttt{std::span} as function parameters:
+\begin{enumerate}
 	\item Dangling reference problem for \texttt{std::span}. That is explain why we should use these two sequences view in function parameter most of time. 
 \begin{lstlisting}
 std::vector<int> w {1,2,3,4,5};
 std::span s {w};
 w.push_back({6,7,8,9});
-cout << s[0]; //  w might hold new memory, bad		
+cout << s[0]; //  w might hold new memory, bad			
+\end{lstlisting}	
+	
+	\item \texttt{some\_function(std::string{"hello, world"});} in line 5 is completely safe. The temporary \texttt{std::string} is destroyed at the end of this full-expression (roughly speaking, at this ;), so it's destroyed after the function returns.
+\begin{lstlisting}
+void some_function(std::string_view view) {
+	std::cout << view << '\n'; //temporary string is still alive here.
+}
+
+some_function(std::string{"hello, world"}); 
 \end{lstlisting}
+
+	\item An example of using \texttt{std::string\_view} as parameter. The code will converts string to \texttt{int} if possible. 
+\begin{lstlisting}
+	std::optional<int> asInt(std::string_view sv){
+		int val;
+		auto [ptr, ec] = std::from_chars(sv.data(), sv.data()+sv.size(), val);
+		if (ec != std::errc{}) { 	// if we have an error code, return no value:
+			return std::nullopt;
+		}
+		return val;
+	}		
+\end{lstlisting}	
+
+\item Use \texttt{std::span} as function parameter. You can think that \texttt{std::span} is also a view type.
+\begin{lstlisting}
+void printMe(std::span<int> container) {	
+	std::cout << "container.size(): " << container.size() << '\n';  
+	for(auto e : container) std::cout << e << ' ';
+}
+
+int arr[]{1, 2, 3, 4};              // (1) input C array 
+printMe(arr);  //output container.size(): 4 it can deduct size information.
+
+std::vector vec{1, 2, 3, 4, 5};     // (2) input C++ std::vector
+printMe(vec);  //same as arr example.
+
+std::array arr2{1, 2, 3, 4, 5, 6}; //  (3) input C++ std::array
+printMe(arr2);	
+
+printME({begin(vec)+2, end(v)})  //    (4) input range.	
+\end{lstlisting}	
+
+\end{enumerate}
+
+
 
 
 	\item Here are the advantages of using \texttt{std::string\_view} and \texttt{std::span} as function parameters:
