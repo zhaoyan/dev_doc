@@ -4909,14 +4909,14 @@ b = d;  // slice happens, but  new and pointer hide the detail behind the scene.
 	
 \end{itemize}
 
-\subsection{new operator logic}
+\subsection{new operator and delete operator}
 \begin{itemize}
 
    
     \item When you call the \texttt{new} operator, it invokes \texttt{operator new}, which in turn invoke \texttt{new\_handler}. This provides two opportunities to customize the behavior of the operator: you can customize \texttt{operator new} and you can customize \texttt{new\_handler}.
     
     
-	\item Basic logic of new operator and delete operator. Below is C++ pseudo code.
+	\item Basic logic of new operator. Below is C++ pseudo code.
 \begin{lstlisting}[]
 Point3d *origin = new Point3d;
 //will be converted to below code:	
@@ -4931,14 +4931,7 @@ if(origin = operator new(sizeof(Point3d))){ //operator new to allocate memory
 }
 \end{lstlisting}
 	
-\begin{lstlisting}[]
-delete origin;
-	
-if (origin != NULL) {
-	origin->~Foo(); //destructor can't be private or protected
-	operator delete(origin);
-}
-\end{lstlisting}
+
 	
 \item Basic logic of operator new. This is throw version operator new, non-throw and placement operator new are quite alike. Most of time, we use \texttt{malloc} and \texttt{free} to allocate and free physical memory.
 \begin{lstlisting}[frame=single, language=c++]
@@ -4967,13 +4960,6 @@ using namespace std;
     \item[Line 13] At program startup, the value of \texttt{new\_handler} is a nullptr pointer. If an allocation fails inside of operator new, and\texttt{ std::get\_new\_handler} returns a null pointer value, then operator new will throw \texttt{std::bad\_alloc} in line 16.
 \end{description}
 
-\item Basic logic of operator delete.
-\begin{lstlisting}[numbers=none]
-operator delete (void *ptr){
-	if (ptr)
-		free(ptr)
-	}
-\end{lstlisting}
 
 	\item More knowledge about \texttt{new\_handler}:
 \begin{enumerate}
@@ -4995,12 +4981,12 @@ FunPtr (*set_new_handler) (FunPtr);
 set_new_handler(failNew);
 \end{lstlisting}
 		
-	\item When you simply want to allocate memory, operator new is generally better than using \texttt{malloc} because it offers more options. For example, you can use \texttt{set\_new\_handler} or choose whether to throw an exception.
+	\item When you simply want to allocate memory, \texttt{operator new} is generally better than using \texttt{malloc} because it offers more options. For example, you can use \texttt{set\_new\_handler} or choose whether to throw an exception.
 \begin{lstlisting}[frame=single, language=c++]
-	Foo* p;
-	char* raw = operator new(sizeof(Foo)*100, std::nothrow);
-	//char* raw = new char[sizeof(Foo)*100]; //Also work!
-	if (raw == nullptr) abort();
+Foo* p;
+char* raw = operator new(sizeof(Foo)*100, std::nothrow);
+//char* raw = new char[sizeof(Foo)*100]; //Also work!
+if (raw == nullptr) abort();
 \end{lstlisting}
 	
 	\item As demonstrated in the previous code, the function \texttt{new\_handler} is called by allocation functions when a memory allocation attempt fails. Its intended purpose is one of three things:
@@ -5019,19 +5005,42 @@ void noMemory(){
 	set_new_handler(nullptr);  //method2, default throw bad_alloc exception.
 	abort();  //method3, end application.
 }
-
 set_new_handler(noMemory) //in the beginning of main() function.
 \end{lstlisting}
 
 \end{enumerate}
 
-	\item The whole idea can be illustrated by below figure. 
+	\item The implementation of \texttt{new operator} can be illustrated by below figure. 
 \begin{center}
-\includegraphics[width=0.90\linewidth]{pics/new1.png}
+\includegraphics[width=0.90\linewidth]{pics/new1_1.png}
+\end{center}
+
+	\item If you want to have customized \texttt{new\_handler} for specific class, please refer to "effective C++ item 49". It uses Mixin idiom, which can be found in generic programming section in this book.
+
+\item Basic logic of \texttt{delete operator} and \texttt{operator delete}.
+\begin{lstlisting}[numbers=none]
+delete *ptr;
+
+if (ptr != nullptr) {
+	ptr->~Foo(); //destructor can't be private or protected
+	operator delete(ptr);
+}	
+\end{lstlisting}
+
+\begin{lstlisting}[numbers=none]
+operator delete (void *ptr){
+	if (ptr)
+		free(ptr)
+}	
+\end{lstlisting}
+
+	\item The implementation of \texttt{delete operator} can be illustrated by below figure. 
+\begin{center}
+	\includegraphics[width=0.90\linewidth]{pics/new1_2.png}
 \end{center}
 
 	
-	\item If you want to have customized \texttt{new\_handler} for specific class, please refer to "effective C++ item 49". It uses Mixin idiom, which can be found in generic programming section in this book.
+	
 \end{itemize}
 
 \subsection{Placement new}
@@ -19263,7 +19272,7 @@ T parallel_accumulate(Iterator first, Iterator last, T init) {
 	\item For clear separation, the functionality of receiving stop notifications and requesting a stop is divided into two types — \texttt{std::stop\_token} and \texttt{std::stop\_source}. A \texttt{std::stop\_token} instance can be queried for stop notifications. And, \texttt{std::stop\_source} provides functions to get a \texttt{std::stop\_token} instance and send a stop notification to its associated tokens. \texttt{std::stop\_source}, \texttt{std::stop\_token}, and \texttt{std::stop\_callback} are lightweight objects that refer to a shared stop-state. A new stop-state is created when a \texttt{std::stop\_source} is default constructed. Any further copies of a \texttt{std::stop\_source}, associated \texttt{std::stop\_token(s)}, and \texttt{std::stop\_callback(s)} refer to the same stop-state. A stop-state records a stop event and maintains the callback registrations. It stays alive as long as there is at least one object referring to it. The following schematic shows the typical relationship among these objects:
 	
 	\begin{center}
-		\includegraphics[width=0.7\linewidth]{pics/stop_token.drawio.png}
+		\includegraphics[width=0.6\linewidth]{pics/stop_token.drawio.png}
 	\end{center}	
 	
 	
@@ -20617,70 +20626,337 @@ bool criticalSection_tryEnter(lock){
 \end{itemize}
 
 \subsection{Memory model}
+\subsubsection{Memory model basic knowledge}
 \begin{itemize}
 	
-		\item Another important topic related to atomic types is memory order. Only atomic variables have a defined memory model because they are specifically designed to ensure safe concurrent access and modification in multi-threaded environments. Here, I will provide three different examples of memory order:
 	
+%	\item First of all, why do we need a memory model? You must remember that cache and store buffers sit between the CPU and memory. When software writes a value, it typically lands in the cache, but it may never reach main memory if the value is overwritten before the cache copies it to RAM (think loop variables and locals). This discussion revolves around the different models for when data is actually placed in or read from RAM. Within a core, it doesn't really matter, as they will use the last value written, whether it comes from cache or RAM.
+%	
+%	Let's consider an example: One possibility is when a value of 1 is written to \texttt{a}. It first writes to the store buffer, then writes \texttt{b} to the cache line. At the same time, thread 2 reads \texttt{b} = 1, but at this point, a has not yet been reflected in the cache line, so thread 2 reads \texttt{a} = 0 from its own cache. This would cause the assertion to fail. This is a kind of "reordering" — at first glance, it appears as if \#1 and \#2 have been reversed in order.
+%	
+%
+%		
+%		
+%		\item Above, we explained one of the reasons for reordering. There are two kinds of reordering: CPU reordering and compiler reordering. Reordering can also occur in the compiler. For example, consider the following code:
+%		\begin{lstlisting}
+%			payload = 2; //in thread 1 #1
+%			ready = true;              #2
+%			
+%			while(ready){ // in thread 2
+%				load(payload)
+%			}	
+%		\end{lstlisting}	
+		
+		
+		\item Why does C++ 11 need memory model? Before C++ 11, we only focus single thread program, it is not possible to write multi-threaded C++ code that is "fully portable" without memory model. For example, the result from below code is undefined behavior. Because it can print out "26 0", when \texttt{y} is 26, we can't  grantee \texttt{x}(16) has been visible by thread 2. 
+\begin{lstlisting}
+int x, y; // global varaible, default is 0.
+
+// #thread 1
+x = 16;   //step 1
+y = 26;	  //stpe 2
+
+// #thread 2
+cout<< y <<" "<< x <<endl;  //can print out "26 0" here.
+\end{lstlisting}
+	Why do we have such undefined behavior?
 	\begin{enumerate}
+		\item In modern CPU, cache and store buffers sits between the CPU and memory.
+\begin{center}
+	\includegraphics[width=0.85\linewidth]{pics/cache.png}
+\end{center}		
+		 When software writes a value, it typically lands in the cache, but it may never reach main memory if the value is overwritten before the cache copies it to RAM. In above example,  value of 16 is written to \texttt{x}. It first writes to the store buffer, then writes \texttt{y} to the cache line. At the same time, thread 2 reads \texttt{y} = 26, but at this point, \texttt{x} has not yet been reflected in the cache line, so thread 2 reads \texttt{x} = 0 from its own cache, then print out "26 0". This is a kind of "reordering" — at first glance, it appears as if step 1 and step 2 have been reversed in order in thread 1. 
 		
-		\item In this case, we don't use atomic operations, leading to potential data races and undefined behavior in a multithreaded environment. If \texttt{i} is accessed by more than one thread, including at least one write, the behavior is undefined in the absence of synchronization. The compiler can assume that no other thread can modify \texttt{i}, allowing it to reorder or optimize access to the variable. For instance, it might load \texttt{i} into a register once and never read it from memory again, or it might move writes out of a loop and perform a single write at the end.
-\begin{lstlisting}[]
-int i = 0; 
-if(i == 10)  {...}  // may actually be optimized away since `i` is clearly 0 now
-\end{lstlisting}	
+		\item The compiler can also reorder the execution \texttt{x= 16;} and \texttt{y=26;}, because for thread 1, they have the same meaning. 
 		
-		\item In this case, we use atomic operations with the default memory order (memory\_order\_seq\_cst), which ensures the strongest synchronization and ordering guarantees. By default, reads and writes to an atomic variable are done using \texttt{std::memory\_order\_seq\_cst} (sequentially-consistent) memory order. This means that not only are reads and writes to \texttt{ai} atomic, but they are also visible to other threads in a timely manner, including any reads or writes to other variables before or after it. In essence, reading or writing an atomic variable acts as a memory fence. However, this approach is slower because (1) an SMP (symmetric multiprocessing) system must synchronize caches between processors, and (2) the compiler has significantly less freedom in optimizing code around the atomic access.
+		\item "reordering" is important concept in memory model. It sometimes happen across thread boundary, For example, there are four threads: threadA, threadB, threadC and threadD. For threadC, maybe it see an order(threadA->ThreadB),  but for threadD, it will see a reverse ordering(threadB->threadA). I will give this complex example later. 
 		
-\begin{lstlisting}[]
-std::atomic<int> ai{0}; 
-if(ai == 10) {...}  // [2]    
-\end{lstlisting}		
-		
-		\item In this case, we use atomic operations with a relaxed memory order (memory\_order\_relaxed), which provides no synchronization or ordering guarantees beyond atomicity. The code below guarantees atomicity of \texttt{ai} reads and writes only. This means the compiler is free to reorder access to it and guarantees that writes are visible to other threads in a reasonable amount of time. However, its applicability is very limited because it makes it difficult to reason about the order of events in a program. For example, this mode is often slower than case 1 because the compiler must ensure each read and write actually goes out to cache or RAM. However, it is faster than case 2, as it still allows for optimization of other variables around it.
-\begin{lstlisting}[]
-std::atomic<int> ai{0}, aj{0}; 
-
-aj.store(1, std::memory_order_relaxed);  // thread 1 
-ai.store(10, std::memory_order_relaxed); 
-
-if(ai.load(std::memory_order_relaxed) == 10) {  // thread 2 
-	aj.fetch_add(1, std::memory_order_relaxed); 
-	// is aj 1 or 2 now??? no way to tell. 
-} 	
-\end{lstlisting}		
 	\end{enumerate}
+
+
+	\item A memory model is a specification of the allowed behavior of multithreaded programs executing with shared memory. The C++ memory model defines a contract between the programmer and the system, which includes the compiler that compiles the program into assembly instructions, the processor that executes these instructions, and the various caches that store the program's state. This contract requires the programmer to adhere to certain rules, and in return, it grants the system the ability to optimize the program as long as these rules are not violated. The main features of the C++ memory model are as follows:
+		\begin{enumerate}
+			\item Atomic operations.
+			\item Sequential consistency.
+			\item Memory order. 
+		\end{enumerate}
 	
-	\item First of all, why do we need a memory model? You must remember that cache and store buffers sit between the CPU and memory. When software writes a value, it typically lands in the cache, but it may never reach main memory if the value is overwritten before the cache copies it to RAM (think loop variables and locals). This discussion revolves around the different models for when data is actually placed in or read from RAM. Within a core, it doesn't really matter, as they will use the last value written, whether it comes from cache or RAM.
+	\item In C++, only atomic type allows the concurrent read/write/access operation in multithreading application without causing any data races or undefined error, we have introduced in the previous section. 
+		
+		\item With help of memory model, the previous code can be rewritten as below. Now the behavior here is defined. Thread 2 could now print "0 0" (if it runs before Thread 1), "26 16" (if it runs after Thread 1), or "0 16" (if it runs after Thread 1 assigns to \texttt{x} but before it assigns to \texttt{y}), but it cannot print "26 0", because the default mode for atomic loads/stores in C++11 is to enforce sequential consistency. This just means all loads and stores must be "as if" they happened in the order you wrote them within each thread, while operations among threads can be interleaved whatever the system likes. So the default behavior of atomics provides both atomicity and ordering for loads and stores.
+\begin{lstlisting}
+atomic<int> x, y;
+
+// #thread 1
+x.store(16);
+y.store(26)
+
+// #thread 2
+cout<< y.load() <<" "<< x.load() <<endl;
+\end{lstlisting}
+
 	
-	Let's consider an example: One possibility is when a value of 1 is written to \texttt{a}. It first writes to the store buffer, then writes \texttt{b} to the cache line. At the same time, thread 2 reads \texttt{b} = 1, but at this point, a has not yet been reflected in the cache line, so thread 2 reads \texttt{a} = 0 from its own cache. This would cause the assertion to fail. This is a kind of "reordering" — at first glance, it appears as if \#1 and \#2 have been reversed in order.
+		\item Now, on a modern CPU, ensuring sequential consistency can be expensive. In particular, the compiler is likely to emit full-blown memory barriers between every access here. This approach is slower because (1) an SMP (symmetric multiprocessing) system must synchronize caches between processors, and (2) the compiler has significantly less freedom in optimizing code around the atomic access. In order to improve the efficiency, we can just keep particular loads and stores in order, you can improve your code like this. For this small toy code, "26 0" is no longer a possible output – but it does so with minimal overhead. (In this trivial example, the result is the same as full-blown sequential consistency; in a larger program, it would not be.)
+\begin{lstlisting}
+atomic<int>y;
+int x;
+
+// #thread 1
+x = 16;
+y.store(26, memeory_order_release)
+
+// #thread 2
+cout<< y.load(memory_order_acquire) <<" "<< x <<endl;
+\end{lstlisting}
+	\item The same ideal is also applied in very popular "payload-guard" idiom in concurrent. 
+\begin{lstlisting}
+payload = 2; //in thread 1 
+guard.store(true; memeory_order_release)           
+
+while(guard.load(memory_order_acquire)){ // in thread 2
+	//use payload here.
+	...
+}	
+\end{lstlisting}
+	
+		\item For some application, we don't care about order, only atomic. So we can use \texttt{memory\_order\_relaxed}, which provides no synchronization or ordering guarantees beyond atomicity.
+\begin{lstlisting}
+atomic<int> counter(0); 
+
+void incrementCounter() { 
+	for (int i = 0; i < 10000; ++i) { 
+		counter.fetch_add(1, memory_order_relaxed); 
+		// memory_order_relaxed is used for minimal synchronization overhead
+	} 
+} 
+
+thread t1(incrementCounter); 
+thread t2(incrementCounter); 
+t1.join(); // Wait for the first thread to finish 
+t2.join(); // Wait for the second thread to finish 
+cout << counter.load(memory_order_relaxed) << endl; 
+\end{lstlisting}
+		
+	
+%		\item Another important topic related to atomic types is memory order. Only atomic variables have a defined memory model because they are specifically designed to ensure safe concurrent access and modification in multi-threaded environments. Here, I will provide three different examples of memory order:
+%	
+%	\begin{enumerate}
+%		
+%		\item In this case, we don't use atomic operations, leading to potential data races and undefined behavior in a multithreaded environment. If \texttt{i} is accessed by more than one thread, including at least one write, the behavior is undefined in the absence of synchronization. The compiler can assume that no other thread can modify \texttt{i}, allowing it to reorder or optimize access to the variable. For instance, it might load \texttt{i} into a register once and never read it from memory again, or it might move writes out of a loop and perform a single write at the end.
+%\begin{lstlisting}[]
+%int i = 0; 
+%if(i == 10)  {...}  // may actually be optimized away since `i` is clearly 0 now
+%\end{lstlisting}	
+%		
+%		\item In this case, we use atomic operations with the default memory order (memory\_order\_seq\_cst), which ensures the strongest synchronization and ordering guarantees. By default, reads and writes to an atomic variable are done using \texttt{std::memory\_order\_seq\_cst} (sequentially-consistent) memory order. This means that not only are reads and writes to \texttt{ai} atomic, but they are also visible to other threads in a timely manner, including any reads or writes to other variables before or after it. In essence, reading or writing an atomic variable acts as a memory fence. However, 
+%		
+%\begin{lstlisting}[]
+%std::atomic<int> ai{0}; 
+%if(ai == 10) {...}  // [2]    
+%\end{lstlisting}		
+%		
+%		\item In this case, we use atomic operations with a relaxed memory order (memory\_order\_relaxed), which provides no synchronization or ordering guarantees beyond atomicity. The code below guarantees atomicity of \texttt{ai} reads and writes only. This means the compiler is free to reorder access to it and guarantees that writes are visible to other threads in a reasonable amount of time. However, its applicability is very limited because it makes it difficult to reason about the order of events in a program. For example, this mode is often slower than case 1 because the compiler must ensure each read and write actually goes out to cache or RAM. However, it is faster than case 2, as it still allows for optimization of other variables around it.
+%\begin{lstlisting}[]
+%std::atomic<int> ai{0}, aj{0}; 
+%
+%aj.store(1, std::memory_order_relaxed);  // thread 1 
+%ai.store(10, std::memory_order_relaxed); 
+%
+%if(ai.load(std::memory_order_relaxed) == 10) {  // thread 2 
+%	aj.fetch_add(1, std::memory_order_relaxed); 
+%	// is aj 1 or 2 now??? no way to tell. 
+%} 	
+%\end{lstlisting}		
+%	\end{enumerate}
+
+
+\end{itemize}	
+
+\subsubsection{memory ordering}
+
+\begin{itemize}
+	
+	\item Memory ordering refers to the order in which the read and write operations are preformed. We have five types of memory ordering in C++:
+\begin{enumerate}
+	\item memory\_order\_relaxed
+	\item memory\_order\_consume
+	\item memory\_order\_acquire
+	\item memory\_order\_release
+	\item memory\_order\_acq\_rel
+	\item memory\_order\_seq\_cst
+\end{enumerate}
+
+	\item next, I will tell the difference between these memory ordering by a few examples.
+\begin{enumerate}
+	
+
+
+	\item For this example, we may get \texttt{r1=r2=42}. 
+	%It's has \textbf{sequence before order}, then it will lead to happen before order. But please remember, happy before is logic order, not runtime execution order. 
+	In thread 2, \texttt{x} and \texttt{y} will not affect each other. for C and D, due to store buffer, maybe it has "reordering" effect. it doesn't mean D is executed before C, maybe we first issue \texttt{r2 = x}, but it need go to three level cache, at the same time, maybe \texttt{x.store} invalid cache line. 
 
 \begin{lstlisting}
-int a=b=0; //thread 1
-void foo(void){
-	a = 1; #1
-	b = 1; #2
+atomic<int> x, y;
+
+// Thread 1:
+r1 = y.load(memory_order_relaxed); // A
+x.store(r1, memory_order_relaxed); // B
+
+// Thread 2:
+r2 = x.load(memory_order_relaxed); // C
+y.store(42, memory_order_relaxed); // D
+\end{lstlisting}
+
+
+	\item Default order for atomic type is \texttt{memory\_order\_seq\_cst} order. it means that there is global certain order. In another word, For any thread, they see other threads has the same order.  
+
+
+\begin{lstlisting}
+void write_x(){
+	x.store(true, std::memory_order_seq_cst);	// A
+}
+void write_y(){
+	y.store(true, std::memory_order_seq_cst);	// B
+}
+void read_x_then_y(){
+	while (!x.load(std::memory_order_seq_cst));
+	if (y.load(std::memory_order_seq_cst)) {
+		++z;
+	}
+}
+void read_y_then_x(){
+	while (!y.load(std::memory_order_seq_cst));
+	if (x.load(std::memory_order_seq_cst)) {
+		++z;
+	}
 }
 
-void bar(void){ //thread 2
-	while(b == 0) continue;
-	assert(a==1); //will fire here	
-\end{lstlisting}	
-	
-	
-	\item Above, we explained one of the reasons for reordering. There are two kinds of reordering: CPU reordering and compiler reordering. Reordering can also occur in the compiler. For example, consider the following code:
-\begin{lstlisting}
-payload = 2; //in thread 1 #1
-ready = true;              #2
+std::thread a(write_x);
+std::thread b(write_y);
+std::thread c(read_x_then_y);
+std::thread d(read_y_then_x);
+a.join(); b.join(); c.join(); d.join();
+assert(z.load() != 0);			// never trigger here.
+\end{lstlisting}
 
-while(ready){ // in thread 2
-	load(payload)
+	\item If we change it to release and aquire, it can give you same variable synchronize-with relationship, but it will not give you global order guaranty. 
+	%There exists no such total order between acquire/release operations in different threads, so there is not visibility guarantee. The operations are only ordered once an acquire-operations observes the value from a release-operation, but there is no guarantee when the value of the release-operation becomes visible to the thread performing the acquire-operation. 
+	Since we have no guarantee about visibility, it could happen that thread C observes \texttt{x == true} and \texttt{y == false}, while at the same time thread D could observe \texttt{y == true} and \texttt{x == false}. So neither thread would increment z and the assertion would fire. In another word, reordering happens across thread boundary: For thread C, it see order(thread A-->thread B), but for thread D, it sees "reordering" (thread B-->thread A).
+
+\begin{lstlisting}
+void write_x(){
+	x.store(true, std::memory_order_release);	// thread A
+}
+void write_y(){
+	y.store(true, std::memory_order_release);	// thread B
+} 
+void read_x_then_y(){                           // thread C
+	while (!x.load(std::memory_order_aquire));
+	if (y.load(std::memory_order_aquire)) {
+		++z;
+	}
+}
+void read_y_then_x(){                           // thread D
+	while (!y.load(std::memory_order_aquire));
+	if (x.load(std::memory_order_aquire)) {
+		++z;
+	}
+}
+
+std::thread a(write_x);
+std::thread b(write_y);
+std::thread c(read_x_then_y);
+std::thread d(read_y_then_x);
+a.join(); b.join(); c.join(); d.join();
+assert(z.load() != 0);			// Maybe trigger here!
+\end{lstlisting}
+
+\item release and acquire can't give you global order consistence, but it used widely in guard and payload pattern.
+
+\begin{lstlisting}
+	void producer(){
+		std::string* p = new std::string("Hello");			// A
+		data = 42;							// B
+		ptr.store(p, std::memory_order_release);			// C
+	}
+	
+	void consumer(){
+		std::string* p2;
+		while (!(p2 = ptr.load(std::memory_order_acquire))); // D
+		assert(*p2 == "Hello");					// E
+		assert(data == 42);						// F
+	}
+	
+	std::thread t1(producer);
+	std::thread t2(consumer);
+	t1.join(); t2.join();
+\end{lstlisting}
+
+\end{enumerate}
+
+\item memory barrier usage: 1) stop reorder, 2) provide synchronize.
+\begin{lstlisting}
+std::atomic<bool> flag(false);
+int a;
+
+void func1(){
+	a = 100;
+	atomic_thread_fence(std::memory_order_release);
+	flag.store(true, std::memory_order_relaxed);
+}
+
+void func2() {
+	while(!flag.load(std::memory_order_relaxed)) ;
+	
+	atomic_thread_fence(std::memory_order_acquire);
+	std::cout << a << '\n'; // guaranteed to print 100
+}
+
+int main() {
+	std::thread t1 (func1);
+	std::thread t2 (func2);
+	
+	t1.join(); t2.join();
 }	
-\end{lstlisting}	
+\end{lstlisting}
+
+	\item Considering efficiency, release-acquire order > memory fence > memory\_order\_seq\_cst. There are two key differences:
+
+\begin{enumerate}
+	\item A memory barrier with acquire semantics imposes stricter ordering constraints. While both an acquire operation on an atomic and a memory barrier require that no read or write operation can be moved before the acquire operation, an acquire memory barrier provides an additional guarantee: no read operation can be moved after the acquire memory barrier.
 	
-	The compiler can reorder the execution of \#2 and \#1 because, for Thread 1, they have the same meaning. This is why we need a memory model and memory order to guarantee the correct semantic order.
 	
-    \item The C++ memory model defines a contract between the programmer and the system, which includes the compiler that compiles the program into assembly instructions, the processor that executes these instructions, and the various caches that store the program's state. This contract requires the programmer to adhere to certain rules, and in return, it grants the system the ability to optimize the program as long as these rules are not violated.
-    
+	\item The similar statement holds for the release memory barrier. no read or write operation can be moved after the release operation, Furthermore, store operations can’t be moved before the memory barrier.
+	
+	\begin{center}
+		\includegraphics[width=0.63\linewidth]{pics/release1.png}
+	\end{center}
+	
+	\begin{center}
+		\includegraphics[width=0.74\linewidth]{pics/release2.png}
+	\end{center}
+	
+	\item detail can be found in "Acquire and Release Fences Don't Work the Way You'd Expect" and 
+	\verb|https://www.modernescpp.com/index.php/acquire-release-fences|
+	
+%	\item The store operation with \texttt{std::memory\_order\_release} places fewer memory ordering constraints on neighboring operations compared to a memory fence with \texttt{std::memory\_order\_release}. The store operation with \texttt{std::memory\_order\_release} only needs to prevent preceding memory operations from being reordered past itself, whereas a memory fence with \texttt{std::memory\_order\_release} must prevent preceding memory operations from being reordered past all subsequent writes. 
+%	
+%	
+%	
+%	Due to this distinction, a release operation cannot replace a release fence. In other words, the relaxed semantics suffice for reading the atomic variable var. The std::atomic\_thread\_fence(std::memory\_order\_acquire) ensures that this operation cannot be moved after the acquire fence.	
+	
+	
+	
+	
+	
+\end{enumerate}
+
+\end{itemize}
+
+
+\subsubsection{Synchronizes-with}
+\begin{itemize}
+	
 	\item One of the important concepts in memory order is the "synchronize-with" relationship. This relationship determines whether a variable is visible to another thread, considering caching and cache coherence. In some cases, a write to memory may not be immediately visible to another thread due to caching, and statements may appear to have been reordered in the source code, especially in "payload and flag" situations. For example, consider the double-checked locking pattern in a singleton implementation.
 	
 	\item Let A and B represent operations performed by a multithreaded process. If \textbf{A happens-before B}, then the memory effects of A effectively become visible to the thread performing B before B is performed.
@@ -20716,7 +20992,6 @@ void consumeMessage(){
 \end{lstlisting}
 
 		\item An atomic operation A that performs a release operation on an atomic object M synchronizes with an atomic operation B that performs an acquire operation on M and takes its value from any side effect in the release sequence headed by A.
-
 		
 		\item In every synchronizes-with relationship, you should be able to identify two key ingredients, which I like to call the guard variable and the payload. The payload is the set of data being propagated between threads, while the guard variable protects access to the payload. Don’t fall into the trap of thinking that synchronizes-with is a relationship between statements in your source code. It isn’t! It’s a relationship between operations which occur at runtime, based on those statements.
 
@@ -20734,128 +21009,7 @@ void consumeMessage(){
 	\item The synchronizes-with relationship is something that you can get only between operations on atomic types. One thing they have in common is that whenever there’s a synchronizes-with relationship between two operations, typically on different threads, there’s a happens-before relationship between those operations as well.
 	
 
-	\item For this example, we may get \texttt{r1=r2=42}. It's has \textbf{sequence before order}, then it will lead to happen before order. But please remember, happy before is logic order, not runtime execution order. So x and y will not affect each other, for C and D, due to store buffer, maybe it has reorder effect. it doesn't mean D is executed before C, maybe we first issue r2 = x, but it need go to three level cache, at the same time, maybe x.store invalid cache line. 
 
-\begin{lstlisting}
-x = y = 0;
-// Thread 1:
-r1 = y.load(memory_order_relaxed); // A
-x.store(r1, memory_order_relaxed); // B
-
-// Thread 2:
-r2 = x.load(memory_order_relaxed); // C
-y.store(42, memory_order_relaxed); // D
-\end{lstlisting}
-
-
-	\item Default is memory\_order\_seq\_cst order. it means that there is global certain order. in another word, For any thread, they see other threads has the same order.  
-
-
-\begin{lstlisting}
-void write_x(){
-    x.store(true, std::memory_order_seq_cst);	// A
-}
-void write_y(){
-    y.store(true, std::memory_order_seq_cst);	// B
-}
-void read_x_then_y(){
-    while (!x.load(std::memory_order_seq_cst));
-    if (y.load(std::memory_order_seq_cst)) {
-        ++z;
-    }
-}
-void read_y_then_x(){
-    while (!y.load(std::memory_order_seq_cst));
-    if (x.load(std::memory_order_seq_cst)) {
-        ++z;
-    }
-}
- 
-std::thread a(write_x);
-std::thread b(write_y);
-std::thread c(read_x_then_y);
-std::thread d(read_y_then_x);
-a.join(); b.join(); c.join(); d.join();
-assert(z.load() != 0);			// never trigger here.
-\end{lstlisting}
-
-	\item If we change it to release and aquire, it can give you same variable synchronize-with relationship, but it will not give you global order guaranty. There exists no such total order between acquire/release operations in different threads, so there is not visibility guarantee. The operations are only ordered once an acquire-operations observes the value from a release-operation, but there is no guarantee when the value of the release-operation becomes visible to the thread performing the acquire-operation. Since we have no guarantee about visibility, it could happen that thread c observes x == true and y == false, while at the same time thread d could observe y == true and x == false. So neither thread would increment z and the assertion would fire.
-
-\begin{lstlisting}
-void write_x(){
-    x.store(true, std::memory_order_release);	// A
-}
-void write_y(){
-    y.store(true, std::memory_order_release);	// B
-} 
-void read_x_then_y(){
-    while (!x.load(std::memory_order_aquire));
-    if (y.load(std::memory_order_aquire)) {
-        ++z;
-    }
-}
-void read_y_then_x(){
-    while (!y.load(std::memory_order_aquire));
-    if (x.load(std::memory_order_aquire)) {
-        ++z;
-    }
-}
- 
-std::thread a(write_x);
-std::thread b(write_y);
-std::thread c(read_x_then_y);
-std::thread d(read_y_then_x);
-a.join(); b.join(); c.join(); d.join();
-assert(z.load() != 0);			// Maybe trigger here!
-\end{lstlisting}
-
-	\item release and acquire can't give you global order consistence, but it used widely in guard and payload pattern.
-
-\begin{lstlisting}
-void producer(){
-    std::string* p = new std::string("Hello");			// A
-    data = 42;							// B
-    ptr.store(p, std::memory_order_release);			// C
-}
- 
-void consumer(){
-    std::string* p2;
-    while (!(p2 = ptr.load(std::memory_order_acquire))); // D
-    assert(*p2 == "Hello");					// E
-    assert(data == 42);						// F
-}
- 
-std::thread t1(producer);
-std::thread t2(consumer);
-t1.join(); t2.join();
-\end{lstlisting}
-
-	\item memory barrier usage: 1) stop reorder, 2) provide synchronize.
-\begin{lstlisting}
-std::atomic<bool> flag(false);
-int a;
-
-void func1(){
-    a = 100;
-    atomic_thread_fence(std::memory_order_release);
-    flag.store(true, std::memory_order_relaxed);
-}
-
-void func2() {
-    while(!flag.load(std::memory_order_relaxed)) ;
-
-    atomic_thread_fence(std::memory_order_acquire);
-    std::cout << a << '\n'; // guaranteed to print 100
-}
-
-int main() {
-    std::thread t1 (func1);
-    std::thread t2 (func2);
-
-    t1.join(); t2.join();
-}
-\end{lstlisting}
-	
 		\item A good article is "The Happens-Before Relation".
 \end{itemize}
 
@@ -21018,7 +21172,7 @@ Singleton* Singleton::getInstance() {
 		\item [Source code] When the one thread just new singleton in line 11, we need to make sure that m\_instance has been constructed. and be visible by other thread. That is why we need line 12 synchronized-with line 6. How to understand memory fence? An acquire fence prevents the memory reordering of any read which precedes it in program order with any read or write which follows it in program order. A release fence prevents the memory reordering of any read or write which precedes it in program order with any write which follows it in program order.
 	\end{description}
 	
-	\item another implementation is using release and acquire semantic.
+	\item Another implementation is using release and acquire semantic.
 \begin{lstlisting}[]
 std::atomic<Singleton*> Singleton::m_instance;
 std::mutex Singleton::m_mutex;
@@ -21055,27 +21209,7 @@ Singleton* Singleton::getInstance() {
 	return tmp;
 }	
 \end{lstlisting}
-	\item Considering efficiency, the sequence "release > fence > load with memory\_order\_seq\_cst" directly impacts performance. There are two key differences:
 
-\begin{enumerate}
-	\item A memory barrier with acquire semantics imposes stricter ordering constraints. While both an acquire operation on an atomic and a memory barrier require that no read or write operation can be moved before the acquire operation, an acquire memory barrier provides an additional guarantee: no read operation can be moved after the acquire memory barrier.
-
-	\item The release operation (std::memory\_order\_release) places fewer memory ordering constraints on neighboring operations compared to a release fence. A release operation only needs to prevent preceding memory operations from being reordered past itself, whereas a release fence must prevent preceding memory operations from being reordered past all subsequent writes. Due to this distinction, a release operation cannot replace a release fence. In other words, the relaxed semantics suffice for reading the atomic variable var. The std::atomic\_thread\_fence(std::memory\_order\_acquire) ensures that this operation cannot be moved after the acquire fence.	
-	
-		
-		
-		\begin{center}
-			\includegraphics[width=0.63\linewidth]{pics/release1.png}
-		\end{center}
-		
-		\begin{center}
-			\includegraphics[width=0.74\linewidth]{pics/release2.png}
-		\end{center}
-		
-		\item detail can be found in "Acquire and Release Fences Don't Work the Way You'd Expect" and 
-		\verb|https://www.modernescpp.com/index.php/acquire-release-fences|
-		
-	\end{enumerate}
 	\item A good paper can be found "Double-Checked Locking is Fixed In C++11"
 	
 \end{itemize}
@@ -21096,12 +21230,13 @@ public:
 
     \item Compared with construction, destruction is challenging because we can \texttt{NOT} place a mutex in the destructor. When an object is being accessed concurrently by multiple threads—where one thread uses a member function while another attempts to destroy it—this situation leads to a data race.
 \begin{lstlisting}[]
-A* a = new A();
-thread b(fun, a); thread A
-delete a //thread B, How can you make sure a isn't used in thread A? 
+Foo* foo = new A();
+thread b(fun, foo);  //thread A
+
+delete foo;     //thread B, How can you make sure foo isn't used in thread A? 
 \end{lstlisting}
 
-	\item To address the data race issue in destructors, we can use shared\_ptr and weak\_ptr to resolve it. The safety guarantee lies in \texttt{weak\_ptr::lock()}, which executes atomically. This allows us to obtain a \texttt{shared\_ptr} from other threads without needing additional synchronization. (This is possible because access to the reference count is atomic.)
+	\item To address the data race issue in destructors, we can use \texttt{shared\_ptr} and \texttt{weak\_ptr} to resolve it. The safety guarantee lies in \texttt{weak\_ptr::lock()}, which executes atomically. This allows us to obtain a \texttt{shared\_ptr} from other threads without needing additional synchronization. (This is possible because access to the reference count is atomic.)
 	
 \begin{lstlisting}
 weak_ptr::lock(){
@@ -21111,31 +21246,31 @@ weak_ptr::lock(){
 \end{lstlisting}
         
 \begin{lstlisting}[]
-fun(weak_ptr wptr){ //thread 1
+fun(weak_ptr<Foo> wptr){ //thread 1
   ...
   if(wptr.lock())
     ..if true, at this time, shared_ptr will increased.
     ..if false, at this time,  shared_ptr has been nullptr in thread 2. 
 }
 
-shared_ptr<A> a = new A(); //thread 2
-thread b(fun, a); //suppose the a has go outside of scope here.
+shared_ptr<Foo> foo = new Foo(); //thread 2
+thread b(fun, foo); //suppose the foo has go outside of scope here.
 \end{lstlisting}
 
-    \item shared\_ptr is a valuable tool when writing concurrent programs. In the "read and write mutex" section, we discussed "copy on write," where we typically use \texttt{shared\_ptr.unique()} to determine if other threads are reading. This pattern also helps us avoid deadlocks.
+    \item \texttt{shared\_ptr} is a valuable tool when writing concurrent programs. In the "read and write mutex" section, we discussed "copy on write," where we typically use \texttt{shared\_ptr.unique()} to determine if other threads are reading. This pattern also helps us avoid deadlocks.
 
 %		\item Why share pointer is important, because it can help you to make sure destructor and other operation thread safe. We can't use mutex in object destructor, in order to make sure destructor and other operations can be synchronized properly. The detail can be found in chenshuo 's book. A famous example is observer. 
 
         \item share pointer has two advantages: 1) share pointer+weak pointer can resolve data race happened in destructor, 2) share pointer can help you to manage the memory. Below is a very good example.  I will explain in detail:
         
 \begin{enumerate}
-    \item line 7 uses \texttt{weak\_ptr}, in this way, we return stock from Factory to different thread, If other thread is destructing a stock,  weak\_ptr will return false, then we will know this object has been deleted, we can reset it again.  Otherwise, lock will increase reference number in the shared\_ptr and and stop other thread from destructing stock object. 
+    \item line 7 uses \texttt{weak\_ptr}, in this way, we return \texttt{Stock} object from \texttt{StockFactory} to different thread, If other thread is destructing a stock object,  \texttt{std::weak\_ptr} will return false, then we will know this object has been deleted, we can reset it again.  Otherwise, lock will increase reference number in the \texttt{std::shared\_ptr} and and stop other thread from destructing stock object. 
     
-    \item \texttt{enable\_shared\_from\_this} is CRTP, it add \texttt{shared\_from\_this} function to StockFactory class. We need to pass \texttt{shared\_ptr} of StockFactory to stock object. 
+    \item \texttt{enable\_shared\_from\_this} is CRTP, it add \texttt{shared\_from\_this} function to \texttt{StockFactory} class. We need to pass \texttt{std::shared\_ptr} of \texttt{StockFactory} to stock object. 
 
-    \item Both stock and factory keep a \texttt{weak\_ptr} to each other, so it will not affect other life time. 
+    \item Both \texttt{Stock} and \texttt{StockFactory} keep a \texttt{std::weak\_ptr} to each other, so it will not affect other life time. 
 
-    \item \texttt{shared\_ptr} support customized deleter, this deleter will come back to factory delete the \texttt{weak\_ptr} there, in this way, we don't have any memory leak. 
+    \item \texttt{std::shared\_ptr} support customized deleter, this deleter will come back to factory delete the \texttt{std::weak\_ptr} there, in this way, we don't have any memory leak. 
 \end{enumerate}
 
 \begin{lstlisting}
@@ -21207,12 +21342,12 @@ void testShortLifeFactory() {
 	
 \end{itemize}
 
-\section{Practical suggestions}
+\section{Summary of chapter}
 \begin{itemize}
 	\item This chapter presents four valuable examples: 1) singleton, 2) spin lock, 3) stock factory, and 4) using shared\_ptr instead of read and write mutex. Understanding these examples fully, including their design concepts and implementation details, is crucial. Moreover, these examples can prove highly useful in practical applications.
 	
 	
-	\item The whole chapter can be illustrated by the figure below.
+	\item The main components in concurrent programming in C++ can be illustrated by the figure below.
 	\begin{center}
 		\includegraphics[width=0.75\linewidth]{pics/concurrent.drawio.png}
 	\end{center}
@@ -21264,15 +21399,16 @@ mu.unlock();
 
 std::atomic<int> counter; //better solution.
 counter++;
+counter.fetch_add(1, std::memory_order_relaxed); //better performance
 \end{lstlisting}
     
-    \item If there's no strong reason against it, it's generally recommended to use higher-level concurrent functions such as std::async instead of directly managing threads.
+    \item If there's no strong reason against it, it's generally recommended to use higher-level concurrent functions such as \texttt{std::async} instead of directly managing threads.
     
    
-    \item Don't attempt to acquire a std::mutex twice. The fix is to structure your code so that it doesn't attempt to acquire a mutex that has already been locked. Using a \texttt{std::recursive\_mutex} might seem like a quick fix, but it often indicates a poor design.
+    \item Don't attempt to acquire a \texttt{std::mutex} twice. The fix is to structure your code so that it doesn't attempt to acquire a mutex that has already been locked. Using a \texttt{std::recursive\_mutex} might seem like a quick fix, but it often indicates a poor design.
 
     
-    \item Use \texttt{join()} to wait for background threads before terminating an application. Prefer lock-free architectures unless absolutely necessary. Acquire multiple locks in the same order to avoid deadlocks.
+    \item Use \texttt{join()} to wait for background threads before terminating an application. Don't try to implement lock-free architectures by yourself because it's very complex and tricky. Acquire multiple locks in the same order to avoid deadlocks.
      
     
 \end{itemize}
@@ -21450,7 +21586,7 @@ root@test:~# ip addr
 		
 		\item \textbf{Virtual machine}. NAT, bridge and host three models, basic implementation behind it.
 	\begin{center}
-		\includegraphics[width=0.8\linewidth]{pics/bridge}
+		\includegraphics[width=0.69\linewidth]{pics/bridge}
 	\end{center}
 				
 		\item \textbf{VPN}, Know the tunnel conception tunnel means use one protocal to wrap another protocal. You can use tun/tap to implement it. 
@@ -23064,7 +23200,7 @@ A microcontroller UART can not generate such voltages levels by itself. This is 
 	
 \end{itemize}
 
-\chapter{Commonly used libs}
+\chapter{Commonly Used Libraries}
 
 A complete list of awesome cpp librarys lsit is:  \\
 \verb|https://github.com/fffaraz/awesome-cpp#logging|
@@ -24254,10 +24390,14 @@ for(v.begin()....){   //bad style
 		break;
 	}
 }
-if(flag){...}
+if(flag){
+...do something
+}
 
 
-if(isHasSth()){...} //line 1~6 build a funciton isHasSth, this is good style		
+if(isHasSth()){ //change line 1~6 to a funciton isHasSth, this is good style.		
+...do something
+} 
 \end{lstlisting}		
 	
 	\item You don't need to use type indicators for all variables. Hungarian notation does not provide any benefits for object-oriented languages, particularly since it cannot be used in generic programming. However, for certain generic concepts like references, pointers, and STL containers, you can use it, such as \texttt{ptr\_map\_dic}. Modern IDEs, such as Visual Studio and Understand, offer pop-up messages when you hover over a variable, making descriptive variable names more important than type indicators.
@@ -24287,33 +24427,161 @@ if(isHasSth()){...} //line 1~6 build a funciton isHasSth, this is good style
 		
 		\item Use \texttt{other} or \texttt{rhs} as names for copy constructors and assignment operators.
 		
-		\item The prefix is should be used for boolean variables and methods that return a boolean value. You can refer to the code example below that applies the previously mentioned naming conventions:
+		\item The prefix \texttt{is} should be used for boolean variables and methods that return a boolean value. You can refer to the code example below that applies the previously mentioned naming conventions:
 \begin{lstlisting}[numbers=none]
 #define ARRAY_NUM 10 
-bool isVisible;
+bool isVisible; //prefix of variable "is", it's a bool variable.
 
-struct Student{
-	name;
-};
-enum BackgroundColor{
+enum BackgroundColor{ //UpperCamelCase for type
 	Red,  //constant
 	Green
 };
-class Teacher{
-	name_;  // not m_strName;  
+class Teacher{   //UpperCamelCase for type
+	name_;  // with trailing underscore, better than name "m_strName".  
 };
 
 typedef struct Student StuStruct ;
-StuStruct g_global_variable;
-const int k_DaysInWeek = 7;
+StuStruct g_global_variable;  //prefix g_
+const int k_DaysInWeek = 7;   //prefix k_
 main(){
 	string teacher_name;  //descriptive variable name
 }
 
-printTeacherName(const string& name){...}	
+printTeacherName(const string& name){...} //lowerCamelCase function name
 \end{lstlisting}		
 		
 	\end{enumerate}
+	
+
+	
+\end{itemize}
+
+\subsection{Code Convention}
+\begin{itemize}
+	
+	\item \texttt{nullptr} is always a pointer type; therefore, avoid using \texttt{NULL} in C++. In the C language, \texttt{NULL} is simply 0, which can lead to ambiguity in strongly-typed C++ code, such as in scenarios like \texttt{f(int)}; and \texttt{f(foo*)};.
+	
+	\item When you want to comment a large block of code out, use \texttt{\#if 0} ...  \texttt{\#endif}, It's better than using /* ... */. 
+	
+	\item Symbols for pointers and references should be placed near the data type, rather than near the variable name. It's advisable to declare variables locally whenever possible and minimize the use of global variables.
+	
+	\item Format lambdas like blocks of code.
+\begin{lstlisting}[frame=single, language=c++]
+int cutoff = 7;
+std::find(foo.begin(),foo.end(),
+         [&](const Foo &a ) ->bool{
+	         return a.blah<cutoff  //use reference to get local var
+         });		
+\end{lstlisting}		
+	
+	
+	
+	\item Use \texttt{const} to replace \texttt{\#define} when defining global constants. For defining constant class members, use static const. The const keyword indicates that the value will not change, so there's no need for multiple copies across objects, hence static is used. Avoid macros and prefer inline functions. To avoid magic numbers, use const and scoped enums instead.
+	
+	\item Use more \texttt{typedef} or \texttt{alias} to simplify complicated type expressions, it's helpful especially in generic programming. Alias(C++11) is better than typedef. There are no sharp symbol before \texttt{using}.
+\begin{lstlisting}[frame=single, language=c++]
+typedef std::map< int, int > IntMap;
+typedef IntMap::const_iterator IntMapConstIter;
+for( IntMapConstIter it = layout.begin(); it != layout.end(); ++it ) ...
+
+typedef int(*CB)(int, const char*);  //define a function pointer type 
+CB callBack;  //decare a functions pointer. //use this type to define a variable.
+int sort(int, const char*){..}
+callBack = sort; // &operator is optional here!
+
+//C++ alias style.
+using UPtrMapSS = std::unique_ptr<std::unordered_map<std::string, int>>;
+using CB = int(*)(int, const char*); //CB is a type here.	 	
+\end{lstlisting}		
+	
+	\item Create a zero-valued enumerator to indicate an invalid or default state and make it the first item.
+	
+	\item Declare all member variables private, then use getter and setter functions to access them.
+	\begin{enumerate}
+		
+		\item If external code needs to access an object's member variables, create a public interface function. This approach offers two advantages:
+		\begin{enumerate}
+			\item In the setter function, you can validate the input.
+			
+			\item In the getter function, even if the name of the member variable changes, you only need to modify the getter function, and all customer code will remain unchanged.
+		\end{enumerate}	
+		This decouples the implementation details of the class from the code that uses it.
+		
+		\item If child want to access its parent member, declare it as protected.
+		
+	\end{enumerate}
+	
+	\item Uses early exits to simplify code.
+	
+\begin{lstlisting}[numbers=none]
+if(IsValid){   //bad style
+	do something;
+} else{
+	return;
+}
+
+if(!IsValid) // A better style is
+return;
+..do something here.		
+\end{lstlisting}		
+	
+	
+	\item Use \texttt{static\_assert} to test compile-time boolean conditions. It supports a message parameter and operates during the compilation process without needing to build or execute the application. If a condition fails, compilation stops immediately.
+\begin{lstlisting}[numbers=none]
+static_assert(sizeof(int) > 4, "int is too small");
+\end{lstlisting}
+	
+	\item It's beneficial to use assert more frequently in your project. You do not need to include the file name and line number in the string passed to assert. The assert function automatically generates helpful messages that include this information in the following format: "Assertion failed: expression, file name, line number." This helps in identifying and debugging issues efficiently during development.
+\begin{lstlisting}[numbers=none]
+#include<cassert>
+assert(index>=0 && " index is negative");		
+\end{lstlisting}
+	
+	\item When you want to debug your program, use \texttt{\_FILE\_} and \texttt{\_LINE\_} to capture the current file name and line number. \texttt{assert} just uses this kind of macro inside.
+	
+	
+	%	\item If you don't modify container inside loop, don't need to evaluate \texttt{end()} every time through for loop. Please remember below code block. \textbf{Just remember auto i,e ++i}
+	%
+	%\begin{lstlisting}[numbers=none]
+	%vector<int> con={1,2,3}; //list initializer
+	%for(auto i = con.begin, e = con.end();i!=e; ++i){
+		%	...........
+		%}
+	%\end{lstlisting}
+	
+	%	\item The C++11 standard (23.2.1) mandates that end has O(1) complexity, so previous item has no efficiency meaning in C++11.
+	
+	
+	\item It's a good practice to always enable all warning options in your compiler using \texttt{-Wall}. When you receive a warning, address it promptly before continuing further with your development. This approach helps in identifying potential issues or problematic code early in the development process, ensuring cleaner and more reliable software.
+	
+	\item Sometimes it's not possible to eliminate a warning, or you may have a specific reason to keep a warning in place. If a warning originates from a header file that you cannot modify, you can use the \texttt{\#pragma} warning directive in your code to temporarily disable it and then restore it later. This approach helps manage warnings effectively in situations where modifying the header file is not an option.
+\begin{lstlisting}[numbers=none]
+#pragma warning(push)  //save origianl warning configuration.
+#pragma warning(disable:4512); //disable warning.
+#include<not_change.h>
+#pragma warning(pop)  //restore original warning configuration.	
+\end{lstlisting}	
+	
+\end{itemize}
+
+%\section{Efficiency}
+\begin{itemize}
+	\item  Lazy evaluation encompasses several techniques aimed at optimizing performance and resource usage in programming:
+	1) reference counting (to avoid extra copy).
+	2) distinguish read from write.
+	3) lazy fetching.
+	4) lazy expression evaluation.
+	Implementing lazy evaluation typically adds complexity to the codebase, as it involves managing state, dependencies, and ensuring correct synchronization where applicable. However, when used judiciously, lazy evaluation techniques can significantly enhance the efficiency and responsiveness of software systems.
+	
+\end{itemize}
+
+
+	
+\subsection{Comment}	
+
+\begin{itemize}
+	
+	\item Comment is a little "obsolete" in modern C++ programming. This section mainly introduce the Doxygen tool, you can skip this section if you don't use this tool. 
 	
 	\item Below is suggestions about comment and document: There are five levels of comment: \\
 	\begin{center}
@@ -24346,7 +24614,7 @@ printTeacherName(const string& name){...}
 bool fooFun(bool flag, int& result);	
 \end{lstlisting}	
 	
-	\item When you want to comment a large block of code out, use \texttt{\#if 0} ...  \texttt{\#endif}, It's better than using /* ... */. 
+
 	
 	\item Avoid duplicating the function or class name in comments. If you change the name later, this inconsistency can confuse readers who rely on comments for understanding.
 	
@@ -24389,122 +24657,7 @@ const Function *getFunction() const;
 \end{itemize}
 
 
-\subsection{Code Convention}
-\begin{itemize}
-	
-	\item \texttt{nullptr} is always a pointer type; therefore, avoid using \texttt{NULL} in C++. In the C language, \texttt{NULL} is simply 0, which can lead to ambiguity in strongly-typed C++ code, such as in scenarios like \texttt{f(int)}; and \texttt{f(foo*)};.
-	
-	\item Symbols for pointers and references should be placed near the data type, rather than near the variable name. It's advisable to declare variables locally whenever possible and minimize the use of global variables.
-	
-	\item Format lambdas like blocks of code.
-\begin{lstlisting}[frame=single, language=c++]
-int cutoff = 7;
-std::find(foo.begin(),foo.end(),
-	[&](const Foo &a ) ->bool{
-		return a.blah<cutoff  //use reference to get local var
-	}
-);	
-\end{lstlisting}	
-	
-	
-	
-	\item Use \texttt{const} to replace \texttt{\#define} when defining global constants. For defining constant class members, use static const. The const keyword indicates that the value will not change, so there's no need for multiple copies across objects, hence static is used. Avoid macros and prefer inline functions. To avoid magic numbers, use const and scoped enums instead.
-	
-	\item Use more \texttt{typedef} or \texttt{alias} to simplify complicated type expressions, it's helpful especially in generic programming. Alias(C++11) is better than typedef. There are no sharp symbol before \texttt{using}.
-\begin{lstlisting}[frame=single, language=c++]
-typedef std::map< int, int > IntMap;
-typedef IntMap::const_iterator IntMapConstIter;
-for( IntMapConstIter it = layout.begin(); it != layout.end(); ++it ) ...
 
-typedef int(*CB)(int, const char*);  //define a function pointer type 
-CB callBack;  //decare a functions pointer. //use this type to define a variable.
-int sort(int, const char*){..}
-callBack = sort; // &operator is optional here!
-
-//C++ alias style.
-using UPtrMapSS = std::unique_ptr<std::unordered_map<std::string, int>>;
-using CB = int(*)(int, const char*); //CB is a type here. 	
-\end{lstlisting}	
-	
-	\item Create a zero-valued enumerator to indicate an invalid or default state and make it the first item.
-	
-	\item Declare all member variables private, then use getter and setter functions to access them.
-	\begin{enumerate}
-		
-		\item If external code needs to access an object's member variables, create a public interface function. This approach offers two advantages:
-\begin{enumerate}
-	\item In the setter function, you can validate the input.
-	\item In the getter function, even if the type of the member variable changes, you only need to modify the getter function, and all customer code will remain unchanged.
-\end{enumerate}	
-		This decouples the implementation details of the class from the code that uses it.
-		
-		\item If child want to access its parent member, declare it as protected.
-		
-	\end{enumerate}
-	
-	\item Uses early exits to simplify code.
-	
-\begin{lstlisting}[numbers=none]
-if(IsValid){   //bad style
-	do something;
-} else{
-	return;
-}
-
-if(!IsValid) // A better style is
-return;
-..do something here.	
-\end{lstlisting}	
-	
-	
-	\item Use \texttt{static\_assert} to test compile-time boolean conditions. It supports a message parameter and operates during the compilation process without needing to build or execute the application. If a condition fails, compilation stops immediately.
-\begin{lstlisting}[numbers=none]
-static_assert(sizeof(int) > 4, "int is too small");
-\end{lstlisting}
-	
-	\item It's beneficial to use assert more frequently in your project. You do not need to include the file name and line number in the string passed to assert. The assert function automatically generates helpful messages that include this information in the following format: "Assertion failed: expression, file name, line number." This helps in identifying and debugging issues efficiently during development.
-\begin{lstlisting}[numbers=none]
-#include<cassert>
-assert(index>=0 && " index is negative");		
-\end{lstlisting}
-	
-	\item When you want to debug your program, use \texttt{\_FILE\_} and \texttt{\_LINE\_} to capture the current file name and line number. \texttt{assert} just uses this kind of macro inside.
-	
-	
-	%	\item If you don't modify container inside loop, don't need to evaluate \texttt{end()} every time through for loop. Please remember below code block. \textbf{Just remember auto i,e ++i}
-	%
-	%\begin{lstlisting}[numbers=none]
-	%vector<int> con={1,2,3}; //list initializer
-	%for(auto i = con.begin, e = con.end();i!=e; ++i){
-		%	...........
-		%}
-	%\end{lstlisting}
-	
-	%	\item The C++11 standard (23.2.1) mandates that end has O(1) complexity, so previous item has no efficiency meaning in C++11.
-	
-	
-	\item It's a good practice to always enable all warning options in your compiler using \texttt{-Wall}. When you receive a warning, address it promptly before continuing further with your development. This approach helps in identifying potential issues or problematic code early in the development process, ensuring cleaner and more reliable software.
-	
-	\item Sometimes it's not possible to eliminate a warning, or you may have a specific reason to keep a warning in place. If a warning originates from a header file that you cannot modify, you can use the \texttt{\#pragma} warning directive in your code to temporarily disable it and then restore it later. This approach helps manage warnings effectively in situations where modifying the header file is not an option.
-\begin{lstlisting}[numbers=none]
-#pragma warning(push)
-#pragma warning(disable:4512); //disable warning
-#include<not_change.h>
-#pragma warning(pop)  //restore original warning level.	
-\end{lstlisting}	
-	
-\end{itemize}
-
-%\section{Efficiency}
-\begin{itemize}
-	\item  Lazy evaluation encompasses several techniques aimed at optimizing performance and resource usage in programming:
-	1) reference counting (to avoid extra copy).
-	2) distinguish read from write.
-	3) lazy fetching.
-	4) lazy expression evaluation.
-	Implementing lazy evaluation typically adds complexity to the codebase, as it involves managing state, dependencies, and ensuring correct synchronization where applicable. However, when used judiciously, lazy evaluation techniques can significantly enhance the efficiency and responsiveness of software systems.
-	
-\end{itemize}
 
 
 \section{C++11/C++14}
@@ -24556,7 +24709,7 @@ std::cout << 0b1000'0001'1000'0000;
 std::cout<<300'000.00;
 \end{lstlisting}
 
-    \item Note that the syntax of C++ attribute-tokens may seem a bit unfamiliar. The list of attributes, including [[deprecated]], comes after keywords like class or enum and before the entity name. A good article on this topic can be found by searching for 'Marking as deprecated in C++14.' This feature is especially useful for large and long-term projects. For instance, you can't simply delete class \texttt{flaky} because other people may still be using it in their code. However, when you mark it as \texttt{deprecated}, it will generate a compiler warning for future users.
+    \item Note that the syntax of C++ attribute-tokens may seem a bit unfamiliar. The list of attributes, including \texttt{[[deprecated]]}, comes after keywords like class or enum and before the entity name. A good article on this topic can be found by searching for 'Marking as deprecated in C++14.' This feature is especially useful for large and long-term projects. For instance, you can't simply delete class \texttt{flaky} because other people may still be using it in their code. However, when you mark it as \texttt{deprecated}, it will generate a compiler warning for future users.
 
 \begin{lstlisting}[frame=single, language=c++]
 class [[deprecated]] flaky {
@@ -24576,7 +24729,7 @@ bool flag = true; //true is literals.
 int* p = nullptr //nullptr is literals.
 \end{lstlisting}	
 	
-	\item Starting with C++11, you can define your own literals based on these categories to provide syntactic shortcuts for common idioms and enhance type safety. For instance, consider a Distance class. You could define literals for kilometers and miles, encouraging users to specify units explicitly, such as \texttt{auto d = 42.0\_km} or \texttt{auto d = 42.0\_mi}. User-defined literals offer no performance advantage or disadvantage; their primary purpose is convenience and compile-time type deduction.
+	\item Starting with C++11, you can define your own literals based on these categories to provide syntactic shortcuts for common idioms and enhance type safety. For instance, consider a \texttt{Distance} class. You could define literals for kilometers and miles, encouraging users to specify units explicitly, such as \texttt{auto d = 42.0\_km} or \texttt{auto d = 42.0\_mi}. User-defined literals offer no performance advantage or disadvantage; their primary purpose is convenience and compile-time type deduction.
 \begin{lstlisting}
 struct Distance{
 private:
@@ -24797,7 +24950,7 @@ int *p = (std::remove_const_t<const int>*)0;
 
     \item \texttt{noexcept} is part of a function's interface, and that means that callers may depend on it. \texttt{noexcept} functions are more optimizable than non-\texttt{noexcept} functions. \texttt{noexcept} is particularly valuable for the move operations, swap, memory deallocation functions, and destructors.
 
-    \item Why \texttt{vector::operator[]} is not noexcept? The standard's policy on noexcept is to only mark functions that cannot or must not fail, Functions that get marked are things like swap (must not fail, because exception safety often relies on that) and \texttt{numeric\_limits::min} (cannot fail, returns a constant of a primitive type). But not those that simply are specified not to throw exceptions. In other words, all functions that have a limited domain (pass the wrong arguments and you get undefined behavior) are not noexcept, even when they are not specified to throw. In another word, operator[] will fail if it out-of-bound. At this time, maybe you want to throw an exception, in this way, make it noexcept is not suitable.
+    \item Why \texttt{vector::operator[]} is not noexcept? The standard's policy on noexcept is to only mark functions that cannot or must not fail, Functions that get marked are things like swap (must not fail, because exception safety often relies on that) and \texttt{numeric\_limits::min} (cannot fail, returns a constant of a primitive type). But not those that simply are specified not to throw exceptions. In other words, all functions that have a limited domain (pass the wrong arguments and you get undefined behavior) are not noexcept, even when they are not specified to throw. In another word, \texttt{operator[]} will fail if it out-of-bound. At this time, maybe you want to throw an exception, in this way, make it noexcept is not suitable.
 
 
     \item The \texttt{noexcept} operator can be used inside functions. It takes an expression as an argument and returns \texttt{true} or \texttt{false} based on whether the compiler believes the expression will throw an exception. The \texttt{noexcept} operator is evaluated statically at compile-time and does not actually execute the input expression.
@@ -24823,7 +24976,7 @@ constexpr size_type size() const noexcept;
 
 \subsection{regex}
 \begin{itemize}
-	\item Usage of \textbf{std::regex\_math}, return a bool value.
+	\item Usage of \textbf{std::regex\_match}, return a bool value.
 \begin{lstlisting}
 string s1 = "ab123cdef"; //
 string s2 = "123456789"; //
@@ -24880,7 +25033,7 @@ cout << r << endl; //
 \item Range, such as [a-z], $\backslash$d, all number $\backslash$s, any space
 \end{enumerate}
 
-\item Based on the previous introduction, a regex expression example  \verb|^(?:\d{3}-){2}\d{4}$| can be understood as follows:
+\item Based on the previous introduction, a regex expression example  \verb|^(?:\d{3}-){2}\d{4}$| (matching US telephone number, such as: 832-433-4125) can be understood as follows:
 \begin{enumerate}
 	
 \item \verb|^|: Asserts the start of the string.
@@ -24897,7 +25050,7 @@ cout << r << endl; //
 	\item When writing regular expressions, you should use raw string literals to avoid excessive escaping. 
 \begin{verbatim}
 R"delimiter( raw_characters )delimiter"
-string raw_str = R"~(^(?:\d{3}-){2}\d{4}$)~"; //~( is delimiter
+string raw_str = R"~(^(?:\d{3}-){2}\d{4}$)~"; //~( and )~ are delimiters
 \end{verbatim}
 
 \end{itemize}
@@ -24940,7 +25093,7 @@ unique_ptr<T> make_unique(Args&&... args){
 }
 \end{lstlisting}
 
-    \item In previous code, you need to pay attention the syntactic usage. An ellipsis is used in two ways by variadic templates. To the left of the parameter name, it signifies a parameter pack, and to the right of the parameter name, it expands the parameter packs into separate names.
+    \item In previous code, you need to pay attention to the syntactic usage. An ellipsis is used in two ways by variadic templates. To the left of the parameter name, it signifies a parameter pack, and to the right of the parameter name, it expands the parameter packs into separate names.
 \begin{lstlisting}
 function(params...) expands function(param1, param2, ..., paramN).
 
@@ -25132,7 +25285,6 @@ MyStruct getStruct(){
 	return MyStruct{42, "hello"};
 }	
 auto[id, val] = getStruct();
-
 for(const auto& [key,value] : map){ //That is very useful pattern. 
 	cout<<key<<value<<endl;
 }
@@ -25144,7 +25296,6 @@ for(const auto& [key,value] : map){ //That is very useful pattern.
 My Struct ms = {42, "jim"};
 auto &&[v,n] = std::move(ms)
 string s = std::move(n) //although n is &&, it is lvalue. because it has name.
-
 auto[v,n] = std::move(ms) //ms is empty now.
 \end{lstlisting}	
 
@@ -25186,7 +25337,6 @@ bool all(Args... args){
 (args op ...) expands to arg1 op(arg2 op ..(argn-1 op argN))
 (value op ... op args) expands to(((value op arg1) op arg2) op arg3) op....
 (args op ... op value) expands to(arg1 op(arg2 op ...(argN op value)))
-
 template<typename ... T>
 auto foldSum(T... s){
   return (0 + ... +s); 
@@ -25200,8 +25350,7 @@ void print (const T&... args){
   (std::cout<<...<<args)<<endl;
  //(    0    + ...+ aregs ) // The same idea, both + and << are operator, 
                             // std::cout is just like 0, it's operand. 
-} 
-//print("hello", 42, "world") output hello42world.
+}   //print("hello", 42, "world") output hello42world.
 \end{lstlisting}
 
     \item If you want to output space, you can use this way.
@@ -25217,7 +25366,6 @@ const T& spaceBefore(const T& arg){
   std::cout<< ' ';
   return arg;
 }
-
 template <typename First, typename... Args>
 void print(const First& firstarg, const Args&... args){
   std::cout<< firstarg;
@@ -25323,7 +25471,7 @@ char ca[] = {'a', 'b'};
 my_pair mp2{ca}; // my_pair<char, char>, T and U ar char
 \end{lstlisting}
 
-    \item This code below has some things to explain. \#1 is the deduction guide because it's a template that can be specialized. \#2 is simply specialized. You can see that the specification is simple: just to say that when we input a pointer array, it should be changed to a \texttt{string}. The third point is that we also use '\texttt{explicit}'. Then, the specification deduction rule is only used in the constructor, not the copy constructor. This is a good example that demonstrates some common technologies that are used in template deduction guides.
+    \item This code below has some things to explain. \#1 is the deduction guide because it's a template that can be specialized. \#2 is simply specialized of deduction guide. You can see that the specification is simple: just to say that when we input a pointer array, it should be changed to a \texttt{string}. The third point is that we also use '\texttt{explicit}'. Then, the specification deduction rule is only used in the constructor, not the copy constructor. This is a good example that demonstrates some common technologies that are used in template deduction guides.
 
 \begin{lstlisting}
 template<typename A> // Deduction Guide
@@ -25361,7 +25509,7 @@ std::string asString(T x){
 
 	\item The compile-time if statement impacts the return type of the function below. The return type can be either \texttt{int} or \texttt{void}. If a runtime if statement is used in this code, it will never compile because both return statements will be taken into account, resulting in a conflict. However, when we use a compile-time if statement, the code can compile successfully.
 \begin{lstlisting}
-auto foo(){
+auto foo(){ //You have to use auto here!
 	if constexpr(sizeof(int)>4){
 		return 42;
 	}
@@ -25400,7 +25548,7 @@ else if constexpr(is_convertible_v<cat, bidirectional_access_iterator_tag){
 }
 \end{lstlisting}
 
-	\item Typically, you only use a \texttt{constexpr if} in template contexts. Although it's not mandatory, if you don't use it in a template context, you must ensure that the body will compile at compile time, even if it would be discarded, just like with a plain old \texttt{if} statement.
+	\item Typically, you only use a \texttt{if constexpr} in template contexts. Although it's not mandatory, if you don't use it in a template context, you must ensure that the body will compile at compile time, even if it would be discarded, just like with a plain old \texttt{if} statement.
 
 \begin{lstlisting}
 vector<int> vec; // that is not function template
@@ -26641,7 +26789,7 @@ void print_map(const auto& map, const std::string_view key_desc = "key",
 \end{itemize}
 
 \section{To be continue...}
-In 2020, as I wrote this book, the latest C++ standard C++20 has just been released. Therefore, the upcoming eighth edition of this book will cover additional features in C++20, such as Concepts, Ranges, Modules, and Concurrency. Additionally, I will add one chapters on "Embedded Systems". Furthermore, I will enhance the Modern C++ chapter with more detailed explanations and additional content. Moving forward, I plan to publish a new edition each year to incorporate the latest advancements in the C++ language.
+In 2023, as I wrote this book, the latest C++ standard C++ 23 has just been released. Therefore, the upcoming eighth edition of this book will cover additional features in C++ 23. Additionally, I plan to add two chapters: one is "Embedded Systems" and the other is "Commonly Used Libraries". Furthermore, I will enhance the Modern C++ chapter with more detailed explanations and additional content. Moving forward, I plan to publish a new edition each year to incorporate the latest advancements in the C++ language.
 \newline
 \textbf{"I'll be back"}
 
