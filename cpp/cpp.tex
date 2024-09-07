@@ -686,18 +686,13 @@ inline void Foo::method(){
 	
 	\item No matter how you designate a function as inline, it is a request that the compiler is allowed to ignore: the compiler might inline-expand some, all, or none of the places where you call a function designated as inline. (Don’t get discouraged if that seems hopelessly vague. The flexibility of the above is actually a huge advantage: it lets the compiler treat large functions differently from small ones, plus it lets the compiler generate code that is easy to debug if you select the right compiler options.)
 	
-	\item When the compiler wants to inline a function, it needs to see the definition so it can expand and insert it directly into the source code. Placing the definition in one header file ensures consistent inline expansion across the codebase.
+	\item When the compiler wants to inline a function, it needs to see the definition so it can expand and insert it directly into the source code. Placing the definition in one header file ensures consistent inline expansion across the whole codebase.
 	
 	
 	\item If the compiler chooses not to inline a function marked with inline, the inline keyword serves to suppress multiple definition errors. In modern C++, inline informs the linker that if it encounters multiple definitions (not just declarations) of the same inline function in different translation units, they are identical. Therefore, the linker can retain one definition and discard the others without issues. It is crucial for the programmer to ensure that all inline function definitions with the same name are identical across translation units. Placing inline function definitions in a single location, typically a header file, ensures this consistency.
 \end{enumerate}
 
-	
-	
-
-	
-
-	
+		
 	
 %	\item Does an inline function have internal linkage? No! The explanation is a little complex, so if you don't want to go deeper, you can skip the contents below. If you are confident and like facing a challenge, read on. In fact, an inline function has \textbf{external} linkage, but inlining suppresses the multi-definition error. The linker will simply pick one and discard the others, which can be dangerous. That's why we should ensure that we have only one definition and put the inline function in a header file. Then, when we want to use it, we can simply include it. We can demonstrate that an inline function has external linkage using the code below, which involves two files: a.cpp and b.cpp.
 %\begin{lstlisting}
@@ -731,9 +726,9 @@ inline void Foo::method(){
 \subsection{Combine C and C++}
 \begin{itemize}
 	
-	\item The C++ compiler must be used to compile \texttt{main()}, and must be used to direct the linking process. \textbf{Most of time, you want your C++ application to call some existing C functions, but not reverse.} 
+	\item C++ inherits basic data types, variable names, statements, expressions, operators, control flow structures, functions, files, header files, libraries, arrays, pointers, and structures from the C language. As a superset of C, C++ compiler can compile C program too. \textbf{Most of time, you want your C++ application to call some existing C functions, but not reverse}. The C++ compiler must be used to compile \texttt{main()}, and must be used to direct the linking process. 
 	
-	\item C++ inherits basic data types, variable names, statements, expressions, operators, control flow structures, functions, files, header files, libraries, arrays, pointers, and structures from the C language. As a superset of C, C++ compiler can compile C program. When compiling C and C++ files together, there are three key considerations to understand:
+	\item When compiling C and C++ files together, there are three key considerations to understand:
 	\begin{enumerate}
 		\item What is \texttt{\_\_cplusplus}? 
 		\item How to understand \texttt{extern "C"}? 
@@ -742,7 +737,7 @@ inline void Foo::method(){
 	
 	 
 		
-	\item When you use g++,  \texttt{\_\_cplusplus} will be defined automatically and implicitly. (you can't undef it in fact.) When you use C compiler, such as gcc, \texttt{\_\_cplusplus} is not defined. At the same time, When you use C++ compiler, such as g++ to compile a C file, although file extension is .c, but g++ still use name mangling to change function name. Whether \texttt{\_\_cplusplus} is defined or not depends on the compiler you are using (like g++ or gcc on a Linux system), not on the file name extension of your source file.
+	\item When you use g++,  \texttt{\_\_cplusplus} will be defined automatically and implicitly, you can't undef it in fact. When you use C compiler, such as gcc, \texttt{\_\_cplusplus} is not defined. At the same time, When you use C++ compiler, such as g++ to compile a C file, although file extension is .c, but g++ still compile the C file with \texttt{\_\_cplusplus} defined and use name mangling to change function name. Whether \texttt{\_\_cplusplus} is defined or not depends on the compiler you are using (like g++ or gcc on a Linux system), not on the file name extension of your source file.
 	
 	
 	\item The key idea of this section is: \textbf{\texttt{extern "C"} will disable name mangling in C++ compiler.} 
@@ -752,7 +747,7 @@ inline void Foo::method(){
 	
 	\item If you have all .c and .cpp source files and you can control them, you can just use g++ compile them all. You don't need any \texttt{extern "C"} syntax.  g++ compiles all files using name mangling. 
 	
-	\item If your C++ file want to use a c function. You don't have C function source code(It is in a lib or obj file) or you don't want to recompile it( it's a very big C library). At this time, you have two methods:
+	\item If your C++ file want to use a c function. You don't have C function source code (It is in a lib or obj file) or you don't want to recompile it( it's a very big C library). At this time, you have two methods:
 	
 \begin{lstlisting}
 extern "C"{  // method 1, Only be used by a C++ compiler.
@@ -770,7 +765,7 @@ extern "C" {
 \end{lstlisting}
 	
 	\begin{description}
-		\item[Line 6 to line 12:] If you can control the header file, you can use \texttt{\_\_cplusplus + extern "C"}. it will used both in C and C++ compiler. In fact, all c lib header file, such as \texttt{math.h} follow this pattern.
+		\item[Line 6 to line 12:] If you can control the header file, you can use \texttt{\_\_cplusplus + extern "C"}. This header file can be used both in C and C++ compiler. In fact, all c lib header file, such as \texttt{math.h} follow this pattern.
 	\end{description}
 \begin{center}
 \includegraphics[width=0.85\linewidth]{pics/extern.drawio.png}
@@ -794,7 +789,7 @@ extern "C" {
 	
 %	\item \textbf{In one word, if you have obj code produced by C or C++, When you want to linked it to different language, you should consider using \_\_cplusplus + extern "C" }
 	
-	\item Can a C function directly access data in an object(lib or so) of a C++ class? Yes, but with some restriction. C++ class has no virtual base and virtual function and no access control. If you just want to pass a object from or to C function, you can refer a article in "C++ FAQ, 36.05". It demonstrate how to pass object from main to cppCallingC (C++ to C), then call cCallingC++(C to C++). You need to pass the class pointer and use the same header file, but use \texttt{\#ifdef \_\_cplusplus} to defines one class(used by C++) and one struct(used by C), and they have the same name. Sometimes, you also need to write a C++ wrapper function, which include C++ member function syntax, then C call this C++ wrapper function. 
+	\item Can a C function directly access data in an object(lib or so) of a C++ class? Yes, but with some restriction. C++ class has no virtual base and virtual function and no access control. If you just want to pass a object from or to C function, you can refer a article in "C++ FAQ, 36.05". It demonstrate how to pass object from main to cppCallingC (C++ to C), then call cCallingC++ (C to C++). You need to pass the class pointer and use the same header file, but use \texttt{\#ifdef \_\_cplusplus} to defines one class (used by C++) and one struct (used by C), and they have the same name. Sometimes, you also need to write a C++ wrapper function, which include C++ member function syntax, then C call this C++ wrapper function. 
 
 \end{itemize}
 
@@ -803,40 +798,41 @@ extern "C" {
 \subsection{Type cast in c++}
 \subsubsection{Implicit conversions}
 \begin{itemize}
-	\item There are two kinds of conversion, one is \textbf{implicit}, and the other is \textbf{explicit}. Implicit conversions are performed whenever an expression of a type \texttt{T1} is used in context that does not accept that type, but accepts another type \texttt{T2}; in particular:
+	\item There are two kinds of conversion, one is \textbf{implicit}, and the other is \textbf{explicit}. Implicit conversions are performed whenever an expression of a type \texttt{T1} is used in context that does not accept \texttt{T1}, but accepts another type \texttt{T2}; in particular:
 	\begin{enumerate}
-		\item when the expression is used as the argument when calling a function that is declared with \texttt{T2} as parameter;
+		\item When the expression is used as the argument when calling a function that is declared with \texttt{T2} as parameter;
 		
-		\item when the expression is used as an operand with an operator that expects \texttt{T2};
+		\item When the expression is used as an operand with an operator that expects \texttt{T2};
 		
-		\item when initializing a new object of type \texttt{T2}, including a function returning \texttt{T2};
+		\item When initializing a new object of type \texttt{T2}, including a function returning \texttt{T2};
 		
-		\item when the expression is used in a switch statement (\texttt{T2} is integral type) or when the expression is used in an if statement or a loop (\texttt{T2} is bool).
+		\item When the expression is used in a switch statement (\texttt{T2} is integral type) or when the expression is used in an if statement or a loop (\texttt{T2} is bool).
 	\end{enumerate}
 	
 	\item Implicit conversion sequence consists of the following, in this order:
 	\begin{enumerate}
-		\item zero or one standard conversion sequence;
-		\item zero or one user-defined conversion;
+		\item zero or one standard conversion sequence.
+		\item zero or one user-defined conversion.
 		\item zero or one standard conversion sequence.
 	\end{enumerate}
 
-	\item A user-defined conversion is a conversion defined by the user, consisting of zero or one non-explicit single-argument converting constructor or non-explicit conversion operator call. You can think of the conversion operator as the opposite of a one-argument conversion constructor. For type \texttt{A}, single-argument converting constructor is \textbf{from}, and conversion operator is \textbf{to}.
+	\item A user-defined conversion is a conversion defined by the user, consisting of zero or one non-explicit single-argument converting constructor or non-explicit conversion operator call. You can think of the conversion operator as the opposite of a one-argument conversion constructor. For type \texttt{Foo}, single-argument converting constructor is \textbf{from}, and conversion operator is \textbf{to}.
 
 \begin{enumerate}
-	\item Single-argument constructor, it means that a class can be produced \textbf{from something.}
+	\item Single-argument constructor, it means that a class \texttt{Foo} can be produced \textbf{from something.}
 	
-	\item Conversion operator, it means that a class can be converted \textbf{to something}. No argument, and must be a member function.
+	\item Conversion operator, it means that a class \texttt{Foo} can be converted \textbf{to something}. No argument, and must be a member function.
 
 \begin{lstlisting}
-class A {
-	A(int i); // A can be built FROM int
-	operator const char*(); //A can be converted TO char*
+class Foo {
+	Foo(int i); // Foo can be built FROM int
+	operator const char*(); //Foo can be converted TO char*
 };
 
-A a1, a2;
-a2 = a1*2;   // implicitly convert 2 to temp A obj.
-a2 = 2;   //implicitly convert 2 to temp A obj, then call operator =;	
+Foo f1, f2;
+f2 = f1*2;   // implicitly convert 2 to temp A obj.
+f2 = 2;   //implicitly convert 2 to temp A obj, then call operator =;
+const char* p = f2; //use conversion operator here. 
 \end{lstlisting}	
 	
 \end{enumerate}
@@ -858,18 +854,18 @@ a2 = 2;   //implicitly convert 2 to temp A obj, then call operator =;
 
 	\item Implicit conversions performed by the compiler can occur automatically, often leading to potential ambiguity and unexpected results. It's crucial to \textbf{avoid} implicit conversions whenever possible, following two key rules:
 \begin{enumerate}
-	\item Use explicit before single parameter constructor. In the code below, with explicit keyword before constructor,  you have to use \texttt{A(2)} or \texttt{(A)2} to explicitly build a a temporary obj in \texttt{a1*A(2)} expression. It's a good habit and you should follow. 
+	\item Use explicit before single parameter constructor. In the code below, with explicit keyword before constructor,  you have to use \texttt{Foo(2)} or \texttt{(Foo)2} to explicitly build a a temporary obj in \texttt{f1*Foo(2)} expression. It's a good habit and you should follow. 
 	
 	\item Use name convert function instead of conversion operator. In STL, \texttt{std::string} class has a function \texttt{c\_str()} instead \texttt{operator const char*()}. 
 \end{enumerate}
 \begin{lstlisting}[numbers=none]
-class A {
-	explicit A(int i);     // good style, explicit
+class Foo {
+	explicit Foo(int i);     // good style, explicit
 	const char* getInternalPoint(); //good,a name function.
 };	
 
-A a1;
-a2 = a1*A(2) // a2 = a1*2 will fail. 	
+Foo f1;
+f2 = f1*Foo(2) // f2 = f1*2 will fail. 	
 \end{lstlisting}	
 
 
@@ -903,11 +899,19 @@ int* p = static_cast<int*>(x); //work, explicit call operator, good style.
 %};
 %\end{lstlisting}	
 	
-	\item An practical usage conversion operator can be seen in the below code. In line 8, \texttt{ref(a)} return a \texttt{reference\_wrapper} type object. so in line 3, when we use \texttt{++a}, it becomes \texttt{++reference\_wrapper}. As a result \texttt{a} (type is \texttt{reference\_wrapper}) is used in context "used as an operand with an operator that expects \texttt{T2}", so compiler can perform implicit conversion. Then it looks for "zero or one non-explicit single-argument converting constructor or non-explicit conversion function call", In the \texttt{reference\_wrapper}, we have defined \texttt{operator T\& () const}, which converts the \texttt{reference\_wrapper} to an \texttt{int\&} type, which supports the increment operator (\texttt{++}). This is the entire process. 
+	\item A practical usage of conversion operator can be seen in the below code. 
+	\begin{enumerate}
+		\item In line 8, \texttt{ref(a)} return a \texttt{reference\_wrapper} type object, so in line 3, when we use \texttt{++a}, it becomes \texttt{++reference\_wrapper}.
+		
+		\item Because \texttt{reference\_wrapper} doesn't support \texttt{++ operator}, as a result \texttt{a} (\texttt{reference\_wrapper} type) is "used as an operand with an operator that expects \texttt{T2}", compiler try to perform implicit conversion here to convert \texttt{a} to another type which supports \texttt{++ operator}.
+		
+		\item Then it looks for "zero or one non-explicit single-argument converting constructor or non-explicit conversion function call" in the \texttt{reference\_wrapper} class, STL has defined \texttt{operator T\& () const} conversion operator inside \texttt{reference\_wrapper} class, which can converts the \\ \texttt{reference\_wrapper} type to an \texttt{int\&} type. \texttt{int\&} supports the (\texttt{++ operator}), so compiler convert \texttt{reference\_wrapper} to \texttt{int\&} implicitly in line 3.
+	\end{enumerate}
+	  
 \begin{lstlisting}[]
 template<typename T>
 void functest(T a){
-	++a;
+	++a; //convert reference_wrapper to int& implicitly here. 
 }
 
 int g_i = 1;
@@ -15656,7 +15660,7 @@ For a contiguous sequence of n values each equal to \&, return iterator to the f
 
 \subsubsection{Mutating algorithms}
 
-	In this group, remember RRRRSSSSPPCFMT(RRRRSSSSPP copy friends many time). They are \textbf{replace, remove(unique), reverse, rotate, shift, swap, sample, shuffle,  partition, permuting, copy, fill(generate), math(accumulate, inner\_product, partial\_sum, adjacent\_difference), transform}. 
+	In this group, remember \textbf{RRRRSSSSPPCFMT} (RRRRSSSSPP copy friends many time). They are replace, remove(unique), reverse, rotate, shift, swap, sample, shuffle,  partition, permuting, copy, fill(generate), math(accumulate, inner\_product, partial\_sum, adjacent\_difference), transform. 
 
 \textbf{for\_each} \\
 \begin{tabular}{| p{0.3\textwidth} |p{0.43\textwidth}|p{0.18\textwidth}|}
@@ -17877,7 +17881,7 @@ std::cout << sv.substr(5, 15) << '\n';
 \end{lstlisting}
 
 
-	\item Instead of using two iterators to specify a subrange, we can use achieve similar functionality using \texttt{std::views}. Let's compare the iterator-based version with the view-based version.
+	\item Instead of using two iterators to specify a subrange, we can achieve similar functionality by using different views. Let's compare the iterator-based version with the view-based version.
 \begin{lstlisting}
 std::sort(v.begin() + 5, v.end())
 std::sort(v.rbegin(), v.rend());
@@ -17888,7 +17892,7 @@ std::ranges::sort(std::views::reverse(v));
 std::ranges::sort(std::views::drop(std::views::reverse(v), 5));		
 \end{lstlisting}		
 	
-	\item Elements of a view are usually the actual elements of the range used to create the view. The view usually doesn't own the elements; it just refers to them, with the exception of \texttt{owning\_view}. Changing an element changes that element in the range that the view was created from. The following example shows this behavior:
+	\item Elements of a view are usually the actual elements of the range used to create the view. The view usually doesn't own the elements; it just refers to them, with the exception of \texttt{owning\_view}. Changing an element in views will changes that element in the range that the view was created from. The following example shows this behavior:
 	
 \begin{lstlisting}
 int input[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -17899,31 +17903,42 @@ std::ranges::fill(x, 42); // changes the even in input[] to 42
 					//  input is 42 1 42 3 42 5 42 7 42 9 42 now.
 \end{lstlisting}
 
+	\item views in C++20 Ranges are non-owning, which means they don't store their own data. Instead, they provide a different way of accessing the elements of an underlying range (e.g., a vector, array, or another view). Therefore, if the underlying range changes, the view will reflect those changes.
+	
+\begin{lstlisting}
+ std::vector Nums{3, 1, 5, 2, 4};
+std::ranges::subrange View{Nums};
+
+std::ranges::for_each(View, Log); //3, 1, 5, 2, 4
+
+std::ranges::sort(Nums);
+std::ranges::for_each(View, Log); //1, 2, 3, 4, 5
+\end{lstlisting}
+
 	\item Pay attention to view and adapter, usually we use adapter more. Three different ways to use views. We recommend to use the first and the second method.
 \begin{lstlisting}
-std::ranges::views::stride //this is adaptor. it's a object of ranges::stride_view
-std::ranges::stride_view // this is a view. that is class name
+std::ranges::views::stride //this is an adaptor, change input range to stride_view
+std::ranges::stride_view   // this is a view class. that is class name
 	
 std::vector<int> v {0,1,2,3,4,5,6,7,8};
-// 1) using functor notation:
-print("{}\n", std::views::stride(v,3)); // [0,3,6]
 
-// 2) using pipeline notation:
-print("{}\n", v | std::views::stride(2)); // [0,2,4,6,8]
+print("{}\n", std::views::stride(v,3));   //1) using functor notation, [0, 3, 6]
 
-// 3) using an explicit view object:
-std::ranges::stride_view sv2 {v,2}; //need a varaible name sv2, stride_view is in
-                     //ranges:: namespace.  but, stride is in views:: namespace.
-print("{}\n", sv2);  //output is [0,2,4,6,8]  
+print("{}\n", v | std::views::stride(3)); //2) using pipeline notation.
+
+std::ranges::stride_view sv2 {v,3};       //3) using an explicit view object.
+//need a varaible name sv2, stride_view is in ranges:: namespace.  
+//but, stride is in views:: namespace.
+print("{}\n", sv2);  
 \end{lstlisting}
 	
-	\item An interesting examples, we can use | to combine a serials of view adapter together.  \texttt{view::take} is adapter, it input a number, then return a anonymous view. You can also use combine range::view and range::algorithm together.  
+	\item We can use | to combine a serials of view adapter together.  \texttt{view::take} is adapter, it input a number, then return a anonymous view. You can also use combine range::view and range::algorithm together.  
 \begin{lstlisting}
 std::vector<int> v{0,1,2,3,4,5,6,7,8};
 for(int n : v | std::views::take(6) | std::views::drop(2)
   | std::views::filter( [](auto& e){return e%2 == 0;} )
   | std::views::transform( [](auto& e){return e*e; } ) ) {
-	std::cout << n << ' '; //output 4 and 16
+	std::cout << n << ' ';  //output 4 and 16
 }	
 \end{lstlisting}	
 
@@ -17931,10 +17946,16 @@ for(int n : v | std::views::take(6) | std::views::drop(2)
 %\item C++20 doesn't support action yet. 
 
 	\item Function application call are \texttt{transform, adjacent\_transform} and \texttt{pairwise\_transform}.
+\begin{lstlisting}
+std::string s = "abcde";
+auto const f3 = [] (char x, char y, char z) { return std::string{'<',x,y,z,'>'}; };
+for (auto p : std::views::adjacent_transform<3>(s,f3)) {
+	print("{} ",p);  //output is: <abc> <bcd> <cde>
+}
+\end{lstlisting}
 	
 	\item Tokenization view are \texttt{split, lazy\_split, chunk, and chunk\_by}.
 \begin{lstlisting}
-using std::operator""sv;
 constexpr auto words{"Hello^_^C++^_^20^_^!"sv};
 constexpr auto delim{"^_^"sv};
 
@@ -17943,34 +17964,15 @@ for (const auto word : std::views::split(words, delim))
 std::cout << std::quoted(std::string_view(word)) << ' ';
 \end{lstlisting}
 
-	\item std::views::adjacent is a view similar to std::views::slide, producing a sliding window over the input range. However, where std::views::slide produces subranges, std::views::adjacent produces tuples of references to elements.
-\begin{lstlisting}
-// deconstructed using structured binding
-for (auto [first, second, third] : data | std::views::adjacent<3>) {
-	// iterate over {1,2,3}, {2,3,4}, {3,4,5}
-}
-// std::views::adjacent<2> has an alias
-for (auto [left, right] : data | std::views::pairwise) {
-	// iterate over {1,2}, {2,3}, {3,4}, {4,5}
-}
-\end{lstlisting}
 
-	\item Note that \texttt{std::views::counted} is not pipelinable and that there's also no \texttt{std::ranges::counted\_view} type.
-\begin{lstlisting}
-for(auto e: std::views::counted(v.begin()+2,4) ){
-	
-}
-\end{lstlisting}
-
-
-	\item element in \texttt{views::slide} is\texttt{ ranges::span}. element in \texttt{views::chunk} is \texttt{ranges::subrange}. 
+	\item Element in \texttt{views::slide} is\texttt{ ranges::span}. Element in \texttt{views::chunk} is \texttt{ranges::subrange}. 
 \begin{lstlisting}
 vector v{1, 2, 3, 4, 5, 6};
 auto wt1 = v|views::slide(3); //[ [1 2 3], [2 3 4], [3 4 5] ]
 //wt1[0] is ranges::span
 
-auto wt2 = v|views::chunk(2); //[ [1 2 ], [3 4], [5 6] ]
-//wt1[0] is ranges::subrange, not std::pair, because std::pair is not range. 
+auto wt2 = v|views::chunk(2); //[ [1 2], [3 4], [5 6] ]
+//wt2[0] is ranges::subrange, not std::pair, because std::pair is not range. 
 \end{lstlisting}
 	
 	\item Multiple ranges to single range: \texttt{zip, join, join\_with, zip\_transform, cartesian\_product}.
@@ -17985,7 +17987,7 @@ fmt::print("{}\n", std::views::zip(a,s2,s3)); // (0,A,-) (1,B,+)
 \end{lstlisting}
 
 
-	\item Projections views: \texttt{views::keys, views::values, views::elements}. \texttt{views::keys} applies a projection to extract keys from elements. It is typically used with associative containers or ranges of pairs or tuples where the first element represents a key. \texttt{views::elements} allows you to access elements directly without any projection. It's useful when you want to iterate over all elements of a range without specific transformation.
+	\item Projections views: \texttt{views::keys, views::values, views::elements}. \texttt{views::keys} applies a projection to extract keys from elements. It is typically used with associative containers or ranges of pairs or tuples where the first element represents a key. \texttt{views::elements} allows you to extract a specific element from a range of tuples or pairs, making it a concise way to access individual elements. \texttt{std::views::elements<0>} extracts the first element (e.g., first from a \texttt{std::pair} or the 0th element from a \texttt{std::tuple}).
 \begin{lstlisting}
 std::vector<std::pair<char,int>> v {{'b',3},{'a',4},{'z',2},{'k',9}};
 fmt::print("{}\n", v | std::views::keys); // [b,a,z,k]
@@ -18138,7 +18140,7 @@ for (auto const& [index, value] : std::views::enumerate(s)) {
 %	\bottomhline
 %\end{tabular}
 
-	\item The views can be remembered by (\textbf{GPTSSSZS}): generate, projection, transform, stride(filter), slide(adjacent), subrange(drop, take, count), zip(join), split(chunk). 
+	\item The views can be remembered by (\textbf{GPTSSSRZS}): generate, projection, transform, stride(filter), slide(adjacent), subrange(drop, take, count), reverse, zip(join), split(chunk). 
 \begin{center}
 	\includegraphics[width=0.8\linewidth]{pics/view.drawio.png}
 \end{center}
