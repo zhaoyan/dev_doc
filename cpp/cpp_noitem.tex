@@ -891,7 +891,7 @@ int* p = static_cast<int*>(x); //work, explicit call operator, good style.
 		
 		\item Because \texttt{reference\_wrapper} doesn't support \texttt{++ operator}, as a result \texttt{a} (\texttt{reference\_wrapper} type) is "used as an operand with an operator that expects \texttt{T2}", compiler try to perform implicit conversion here to convert \texttt{a} to another type which supports \texttt{++ operator}.
 		
-		\item Then it looks for "zero or one non-explicit single-argument converting constructor or non-explicit conversion function call" in the \texttt{reference\_wrapper} class, STL has defined \texttt{operator T\& () const} conversion operator inside \texttt{reference\_wrapper} class, which can converts the \\ \texttt{reference\_wrapper} type to an \texttt{int\&} type. \texttt{int\&} supports the (\texttt{++ operator}), so compiler convert \texttt{reference\_wrapper} to \texttt{int\&} implicitly in line 3.
+		\item Then it try a "zero or one non-explicit single-argument converting constructor or non-explicit conversion function call" in the \texttt{reference\_wrapper} class, STL has defined \texttt{operator T\& () const} conversion operator inside \texttt{reference\_wrapper} class, which can converts the \texttt{reference\_wrapper} type to an \texttt{int\&} type. \texttt{int\&} supports the (\texttt{++ operator}), so compiler convert \texttt{reference\_wrapper} to \texttt{int\&} implicitly in line 3.
 	\end{enumerate}
 	  
 \begin{lstlisting}[]
@@ -906,7 +906,7 @@ functest(ref(g_i)); // g_i is 2 now.
 \end{lstlisting}		
 
 \subsubsection{Type cast operator}
-	  In C language, there exist two main syntax for explicit type-casting: functional and C-style cast.  \textbf{Prefer C-style cast in C language}.
+	  In C language, there exists two casts for explicit type-casting: functional and C-style cast.  \textbf{Prefer C-style cast in C language}.
 	
 \begin{lstlisting}[]
 double x = 10.3;
@@ -918,7 +918,8 @@ unsigned int n1 = (unsigned int)f; // C-style cast: (type)variable
 	\item[Line 4:] functional cast only be used in one word type. \texttt{unsigned int (f)} is not right, \texttt{int *(p)} is not right either. That is why we prefer C-style cast in C language.
 \end{description}	
 	
-	\par Unrestricted explicit type-casting allows to convert any pointer type into any other pointer type, regardless of the types they point to. While the syntax and compiling may be correct, this can lead to run-time error. In order to overcome this problem in C++, we introduce c++ cast operator, There are five cast operators, \texttt{dynamic\_cast}, \texttt{const\_cast} and \texttt{static\_cast}, \texttt{reinterpret\_cast} and \texttt{bit\_cast}. The latter two are not used very often, it mainly used in some specific contexts, such as compiler development.
+	\par Unrestricted explicit type-casting allows to convert any pointer type into any other pointer type, regardless of the types they point to. While the syntax and compiling may be correct, this can lead to run-time error. In order to overcome this problem, C++ introduces cast operator, There are five cast operators, \texttt{dynamic\_cast}, \texttt{const\_cast}, \texttt{static\_cast}, \texttt{reinterpret\_cast} and \texttt{bit\_cast}. The latter two are not used very often, it mainly used in some specific contexts, such as compiler development.
+	
 \begin{lstlisting}[frame=single, language=c++]
 char c = 10;    
 int *p = (int *)&c;  //compile succeed here
@@ -930,13 +931,11 @@ int *p = static_cast<int*>(&c); //compile fail here, more safe.
 	\par \texttt{void*} type can be converted to any other type implicitly. You don't need any cast operator when you change any type pointer to \texttt{void*}, but when you want to use dereference \texttt{void} pointer , you'd better use \texttt{static\_cast }to change it back to a certain type pointer.
 \begin{lstlisting}[frame=single, language=c++]
 int* p = malloc(sizeof(int)); //malloc return void*, can assign to int* in C
-int* p = static_cast<int*>(malloc(sizeof(int))); //In C++, have to use cast
+int* p = static_cast<int*>(malloc(sizeof(int)));//In C++, must use cast or new operator
 \end{lstlisting}		
-		\begin{description}
-			\item[Line 2:] In C++, you have to use cast operator. A better way is to use \texttt{new} instead.
-		\end{description}
+	
 
-	\par Changing the value of an const object through \texttt{const\_cast} pointers leads to  "undefined behavior". For const static data -- the compiler may put such variables in a read-only region, the program will crash if you try to modify it.
+	\par Changing the value of an const object through \texttt{const\_cast} pointers leads to  "undefined behavior". For const static data -- the compiler may put such variables in a read-only region, the program will crash if you try to modify it. 
 
 \begin{lstlisting}[numbers = none]
 const int a = 12;
@@ -945,7 +944,7 @@ int* p = const_cast<int*>(&a); //Bad style
 \end{lstlisting}
 
 
-	\par Using \texttt{const\_cast} is not good design. Sometimes for a const member function, you have to use \texttt{const\_cast} to change the "\texttt{this}" pointer to modify a class member. If compiler support, always use \texttt{mutable}  keyword.  Only use \texttt{const\_cast} if your compiler doesn't support \texttt{mutable}. Additionally, there may be cases where you need to pass a const object to a function that takes a non-const parameter, but you know that the parameter will not be modified inside the function. The second condition is important, because it is always safe to cast away the constness of an object that will only be read and not modified. In these cases, you can use \texttt{const\_cast}.
+	\par Using \texttt{const\_cast} is not good design. Sometimes for a const member function, you have to use \texttt{const\_cast} to change the "\texttt{this}" pointer to modify a class member. If compiler support, always use \texttt{mutable} keyword. Only use \texttt{const\_cast} if your compiler doesn't support \texttt{mutable}. Additionally, there may be cases where you need to pass a const object to a function that takes a non-const parameter, but you know that the parameter will not be modified inside the function. The second condition is important, because it is always safe to cast away the constness of an object that will only be read and not modified. In these cases, you can use \texttt{const\_cast}. In one word, don't use \texttt{const\_cast} unless you know it's safe. 
 
 \begin{lstlisting}[numbers = none]
 strlen( char* p);
@@ -953,16 +952,16 @@ const char* cp = "hello";
 strlen(const_cast<char*>(cp));	
 \end{lstlisting}
 
-	\par \texttt{static\_cast<type-name>} is a valid expressio only if type-name can be converted implicitly to the same type that expression has. It will stop you from changing a bird class to an unrelated apple class. Even when converting from \texttt{int} to \texttt{double}, it is recommended to use \texttt{static\_cast<double>(i)}.  This type of cast can make it easier to find casting operations in your source code by searching for instances of \texttt{static\_cast}.
+	\par \texttt{static\_cast<type-name>} is a valid expression only if two types are convertible. It will stop you from changing a bird class to an unrelated apple class. Even when converting from \texttt{int} to \texttt{double}, it is recommended to use \texttt{static\_cast<double>(i)}.  This type of cast can make it easier to find casting operations in your source code by searching for instances of \texttt{static\_cast}.
 \begin{lstlisting}[numbers = none]
 int i = 11111600;
-char c = i; //give warning
+char c = i; //give warning, conversion from big type to small type. 
 char c = (char)i; //no warning, because you have told compiler explicitly.
 char c = static_cast<char>(i); //no warning, just like previous statement.
 
 int *p = (int* p)i //no warning, but crash when running
-int *p = static_cast<int *>i //compile error, 
-//That is why static_cast is better then C style const.
+int *p = static_cast<int *>i //compile error,  int and int* are not convertible
+                         //That is why static_cast is better then C style const.
 \end{lstlisting}
 
 %	\item  \texttt{static\_cast} can't deal with inheritance well in C++. 
@@ -981,18 +980,18 @@ int *p = static_cast<int *>i //compile error,
 %	\item[Source code] From \texttt{V} to \texttt{B}, it's possible to downcast, so \texttt{static\_cast} succeed. But if \texttt{A} is behind reference \texttt{V}, then you will have undefined behaviour. That is why we need \texttt{dynamic\_cast}.
 %\end{description}	
 	
-	\par A child pointer can always be directly assigned to a base pointer, which is known as an \textbf{up-cast} conversion and is a key aspect of polymorphic implementation. The \texttt{dynamic\_cast} operator is used to perform a \textbf{down-cast} of a base pointer to a child pointer. \texttt{dynamic\_cast} ensures that the down-cast is valid. \texttt{dynamic\_cast} can also be used with reference types. If the cast fails, \texttt{dynamic\_cast} will not return \texttt{nullptr} (because it's a reference), but will instead throw a \texttt{bad\_cast} exception.
+	\par A \texttt{Derived} class pointer can always be directly assigned to a \texttt{Base} class pointer, which is known as an \textbf{up-cast} conversion and is a key aspect of polymorphic implementation. The \texttt{dynamic\_cast} operator is used to perform a \textbf{down-cast} of a base pointer to a \texttt{Derived} pointer. \texttt{dynamic\_cast} ensures that the down-cast is valid. \texttt{dynamic\_cast} can also be used with reference types. If the cast fails, \texttt{dynamic\_cast} will not return \texttt{nullptr} (because it's a reference), but throw a \texttt{bad\_cast} exception instead.
 	
 \begin{lstlisting}
-struct A {};
-struct D : public A {};
+struct Base {};
+struct Derived : public Base {};
 
-D d; // the most derived object
-A& a = d; // That is up-cast, dynamic_cast may be used, but unnecessary
-D& new_d = dynamic_cast<D&>(a); // downcast, have to use dynamic_cast 
+Derived d; // a derived object
+Base& b = d; // That is up-cast, dynamic_cast may be used, but unnecessary
+Derived& new_d = dynamic_cast<Derived&>(b); // downcast, have to use dynamic_cast 
 \end{lstlisting}	
 	
-	\par \texttt{dynamic\_cast} should only be used down-cast public inherited relationship. You can't use \texttt{dynamic\_cast} when it is private or protected inherited relationship. If a class doesn't have virtual function, you can't use \texttt{dynamic\_cast} on this object either. If you frequently use \texttt{dynamic\_cast}, It can be a sign that your base class offer too little functionality, you'd better to re-design you base class API (adding more member function to base class.)
+	\par \texttt{dynamic\_cast} should only be used down-cast public inherited relationship. You can't use \texttt{dynamic\_cast} when it is private or protected inherited relationship. If a class doesn't have virtual function, you can't use \texttt{dynamic\_cast} on this object either. If you frequently use \texttt{dynamic\_cast}, it can be a sign that your base class offer too little functionality, you'd better to re-design you base class API (moving member functions from \texttt{Derived} class to \texttt{Base} class).
 	
 	\par \texttt{dynamic\_cast} can also be used in \textbf{side-cast in multi inheritance. }
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
@@ -1000,19 +999,19 @@ struct V {
 	virtual void f() {}; // must have virtual function
 };                            V
 struct A : virtual V {};     / \
-struct B : virtual V {};    A   B
+struct B : virtual V {};    A-->B (From A to B is side cast)
 struct D : A, B {};          \ /
                               D                    
 D d; // the most derived object
 A& a = d; // upcast 
-B& b = dynamic_cast<B&>(a); //side cast
+B& b = dynamic_cast<B&>(a); //side cast from A to B, it's valid here. 
 \end{lstlisting}
 
 \begin{description}	
-	\item[Line10:] That is side cast. Change \texttt{d} to \texttt{a} first(from child D to parent A), then \texttt{a} to \texttt{b}, (from child D to parent B, always succeed because \texttt{d} is behind \texttt{a}, and \texttt{d} can be changed to \texttt{b})
+	\item[Line10:] That is side cast. Change \texttt{d} to \texttt{a} first(from child D to parent A), then \texttt{a} to \texttt{b}, (from child D to parent B, always succeed because \texttt{d} is behind \texttt{a}, and \texttt{d} can be converted to \texttt{b}.)
 \end{description}
 	
-	\par \texttt{dynamic\_cast} different with \texttt{static\_cast}: 1) \texttt{static\_cast} check on compile time. 2) \texttt{static\_cast} doesn't use run time information, so sometimes it makes mistake.
+	\par \texttt{dynamic\_cast} is different with \texttt{static\_cast}: 1) \texttt{static\_cast} check on compile time. 2) \texttt{static\_cast} doesn't use run time information, so sometimes it makes mistake.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 class Base {
 public:
@@ -1030,13 +1029,13 @@ Derived* pb = static_cast<Derived*>(pa);  //OK,
 
 Base* pa = new Base();
 Derived* pb = dynamic_cast<Derived*>(pa); //return nullptr, Base is behind pa, 
-Derived* pb = static_cast<Derived*>(pa);  //UB, On VS, it print "base"
+Derived* pb = static_cast<Derived*>(pa);  //compile OK, but UB in runtime.
 \end{lstlisting}
 \begin{description}
-	\item[Line 15 to 17]  when \texttt{Base} is behind \texttt{pa} pointer and you downcast to \texttt{Derived*}, \texttt{dynamic\_cast} give you \texttt{nullptr}(warning), but \texttt{static\_cast} run into UB.	
+	\item[Line 15 to 17]  when \texttt{Base} is behind \texttt{pa} pointer and you downcast to \texttt{Derived*}, \texttt{dynamic\_cast} give you \texttt{nullptr}(warning), but \texttt{static\_cast} has UB problem.	
 \end{description}
 
-	\par \texttt{static\_cast} can not be use in virtual base 
+	\par \texttt{static\_cast} can not be use in virtual base. virtual base is mainly used to avoid "diamond" problem in the multiple inheritance. 
 \begin{lstlisting}[numbers = none]
 struct Parent {
 	virtual void f() {};
@@ -1051,9 +1050,9 @@ Child& other = static_cast<Child&>(parent); //compile fail,
 	\par About \texttt{dynamic\_cast}, "exceptional C++" item 44 give a good question and answer.
 	
 
-	\par RTTI makes \texttt{dynamic\_cast} work correctly in run time.  RTTI is a relatively new conception in C++, you should avoid using it on old C++ compiler. It has two methods: \texttt{typeid} and \texttt{dynamic\_cast}. There are two kinds of types (for the purposes of RTTI): polymorphic types and non-polymorphic types. A polymorphic type is a type that has a virtual function, in itself or inherited from a base class. A non-polymorphic type is everything else; this includes POD types and many other types too.
+	\par RTTI makes \texttt{dynamic\_cast} work correctly in run time. RTTI is a relatively new conception in C++, you should avoid using it on old C++ compiler. It has two methods: \texttt{typeid} and \texttt{dynamic\_cast}. There are two kinds of types (for the purposes of RTTI): polymorphic types and non-polymorphic types. A polymorphic type is a type that has a virtual function, in itself or inherited from a base class. A non-polymorphic type is everything else; this includes POD types and many other types too.
 		
-	\par \texttt{typeid} operator will return a \texttt{type\_info} class.  You need to include typeinfo.h header file. \texttt{typeid} operator also receive pointer or class name. \texttt{name} is member function of \texttt{type\_info}.
+	\par \texttt{typeid} operator will return a \texttt{type\_info} class. You need to include typeinfo.h header file. \texttt{typeid} operator also receive pointer or class name. \texttt{name()} is member function of \texttt{type\_info} class, you can call this member function to get type name information. 
 		
 \begin{lstlisting}
 int myint = 50;
@@ -1066,15 +1065,18 @@ const type_info& ti = typeid(mydoubleptr);
 \end{lstlisting}		
 			
 		
-	\par RTTI (Run-Time Type Information) has legitimate uses but is also prone to abuse, so it's important to use it carefully. Like exceptions, it can cause some loss in performance, but you can turn it off by using the "-fno-rtti" flag. You may use RTTI freely in unit tests, but try to avoid it in other code whenever possible. Consider using one of the following alternatives to querying the type:
-		\begin{enumerate}
+	\par RTTI (Run-Time Type Information) has legitimate uses but is also prone to abuse, so it's important to use it carefully. Like exceptions, it can cause some loss in performance, so you can turn it off by using the "-fno-rtti" compiler flag. You may use RTTI freely in unit tests, but try to avoid it in other production code whenever possible. Consider using one of the following alternatives to querying the type:
+		\begin{itemize}
 			\item Virtual methods are the preferred way of executing different code paths depending on a specific subclass type. This puts the work within the object itself.
 			
 			\item If the work belongs outside the object and instead in some processing code, consider a double-dispatch solution, such as the Visitor design pattern. This allows a facility outside the object itself to determine the type of class using the built-in type system. Visitor design pattern can be seen in the later section.
-		\end{enumerate}
-		
+			
+			\item Use static polymorphism (compile-time polymorphism), it can be achieved through function overloading and template metaprogramming.
+		\end{itemize}		
 	
-	\par \texttt{reinterpret\_cast} can convert any pointer type to any other pointer type, even if they are unrelated classes. The operation results in a simple binary copy of the value from one pointer to the other. All pointer conversions are allowed: neither the content pointed to nor the pointer type itself is checked. It can also cast pointers to or from integer types. However, \textbf{DON'T USE IT UNLESS YOU HAVE NO OTHER CHOICE}. When you use \texttt{reinterpret\_cast} to change one pointer type to another, it violates the "strict alias rule" and can lead to undefined behavior.
+	
+	\par \texttt{reinterpret\_cast} can convert any pointer type to any other pointer type, even if they are unrelated classes. The operation results in a simple binary copy of the value from one pointer to the other. All pointer conversions are allowed: neither the content pointed to nor the pointer type itself is checked. It can even cast pointers to or from integer types. There is no any type safe here, so \textbf{DON'T USE IT UNLESS YOU HAVE NO OTHER CHOICE}. When you use \texttt{reinterpret\_cast} to change one pointer type to another, it violates the "strict alias rule" and can lead to undefined behavior.
+	
 	
 	\par "strict alias rule" explanation. Under strict aliasing, the compiler writer is free to optimize the function \texttt{foo} below because incompatible types, \texttt{double} and \texttt{int}, can't alias. That means that if you do call \texttt{foo} as \texttt{foo((double *)\&anint)} something will go quickly wrong, but you get what you deserve.
 \begin{lstlisting}
@@ -1089,9 +1091,14 @@ void foo(double *dblptr){
 foo((double *) &anint) // violate "strict alias rule"
 \end{lstlisting}
 	
-	\par Below code has undefined behavior because there is no \texttt{SomePod} object within the buffer. Objects do not spontaneously come into existence just because you want them too; The compiler determines that the store to the \texttt{x} subobject cannot possibly alias the object buffer, because buffer does not contain an x subobject, and no other object for which buffer might provide storage has been created since buffer was created. Therefore the compiler reasons that it can reorder the store to before its internal marker for the start of the lifetime of buffer. The store can now be deleted, because it is immediately followed by the start of the lifetime of an object in the same region of storage.
+	\par Below code also has undefined behavior because there is no \texttt{SomePod} object within the buffer. Objects do not spontaneously come into existence just because you want them; The compiler determines that the store to the \texttt{x} subobject cannot possibly alias the object buffer, because buffer does not contain an x subobject, and no other object for which buffer might provide storage has been created since buffer was created. Therefore the compiler reasons that it can reorder the store to before its internal marker for the start of the lifetime of buffer. The store can now be deleted, because it is immediately followed by the start of the lifetime of an object in the same region of storage.
+	
+	% YanReview here
+	
 \begin{lstlisting}
-struct SomePod { int x; };
+struct SomePod { 
+	int x; 
+};
 alignas(SomePod) char buffer[sizeof(SomePod)];
 reinterpret_cast<SomePod*>(buffer)->x = 42;
 \end{lstlisting}
@@ -1107,23 +1114,15 @@ temp.x = 42
 memcpy(buffer, &temp, sizeof(SomePod));	
 \end{lstlisting}
 	
-	\par If you understand previous \texttt{reinterpret\_cast} and memcpy, you can understand \texttt{std::bit\_cast} intent. \texttt{std::bit\_cast} also use memcpy inside, it also can be used in constexpr context and is a new feature of C++ 20.
+	\par If you understand previous \texttt{reinterpret\_cast} and memcpy, you can understand \texttt{std::bit\_cast} intent. \texttt{std::bit\_cast} also use \texttt{memcpy} inside, it also can be used in constexpr context and is a new feature of C++ 20.
 	
-	\par There are two kinds of casts: implicit cast and explicit cast.  
-\begin{enumerate}
-	\item Implicit cast, you should try to avoid them by using "explicit" keyword in C++ class;
-	
-	\item Always use explicit cast to state your intention clearly. There are two kinds of cast operator to use for explicit cast operation:
-\begin{enumerate}
-
+	\par There are two kinds of casts: implicit cast and explicit cast. You should try to use \texttt{explicit} keyword more in C++ class to avoid implicit cast. There are two kinds of explicit cast methods:
+	\begin{itemize}
+		
 	\item C type cast, you should avoid using them in your new code. 
 	
-	\item C++ type cast operators should be used more because they are more restricted and safer. \texttt{const\_cast} should be used when calling legacy or old functions that do not have \texttt{const} parameters. \texttt{static\_cast} will suppress warnings and prevent conversions like \texttt{int} to \texttt{int *}. This is why we should always use \texttt{static\_cast}. \texttt{static\_cast} always allows downcasting (because it's theoretically valid), which is why we need to use \texttt{dynamic\_cast} to avoid illegal downcasting. \texttt{dynamic\_cast} can only be used with inheritance classes that include virtual functions.
-	
-	\item \texttt{reinterpret\_cast} only be used in specific context, \texttt{std::bit\_cast} is an improvement of \texttt{reinterpret\_cast} to satisfy "strict alias rule".
-\end{enumerate}
-
-\end{enumerate}
+	\item C++ type cast operators should be used more because they are more restricted and safer. \texttt{const\_cast} should be used when calling legacy or old functions that do not have \texttt{const} parameters. \texttt{static\_cast} will suppress warnings and prevent conversions like \texttt{int} to \texttt{int *}. This is why we should always use \texttt{static\_cast}. \texttt{static\_cast} always allows down casting (because it's theoretically valid, but not correct in practice), which is why we need to use \texttt{dynamic\_cast} to avoid illegal down-casting. \texttt{dynamic\_cast} can only be used with public inheritance classes that include virtual functions. \texttt{reinterpret\_cast} only be used in specific context, \texttt{std::bit\_cast} is an improvement of \texttt{reinterpret\_cast} to satisfy "strict alias rule".
+\end{itemize}
 	
 
 \subsection{Arithmetic types}
@@ -1133,18 +1132,18 @@ memcpy(buffer, &temp, sizeof(SomePod));
 	\begin{enumerate}
 		\item Assign a value of one \textbf{arithmetic type} to a variable of another arithmetic type.
 		
-		\item Combine mixed types in expressions.(Most of time, implicit conversion)
+		\item Combine mixed types in expressions.(Most of time, implicit promotion conversion happens)
 		
 		\item Pass arguments to or return from a function with different types.
 	\end{enumerate}
 	
 	\par Converting short type to long type is \textbf{promotion}, it happens when we need hardware bit alignment optimization. Most of time, we don't need to worry about it. In an expression, C++ makes three kinds of automatic promotion conversion.
 	\begin{enumerate}
-		\item Some types are automatically converted whenever they occur. For example, when you add \texttt{char} to \texttt{char}. C++ converts \texttt{bool}, \texttt{char}, \texttt{unsigned char}, \texttt{signed char} and \texttt{short} to \texttt{int}. Because \texttt{int} type is generally chosen to be the computer's most natural type. \textbf{It does calculations faster for that type.} It's called \textbf{integer promotions.}
+		\item Some types are automatically converted whenever they occur. For example, when you add \texttt{char} to \texttt{char}. C++ converts \texttt{bool}, \texttt{char}, \texttt{unsigned char}, \texttt{signed char} and \texttt{short} to \texttt{int}. Because \texttt{int} type is generally chosen to be the computer's most natural type. It does calculations faster for that type. It's called \textbf{integer promotions}.
 		
-		\item Some type are converted when they are combined with other types in an expression. When an operation involves two types, the smaller is converted to the larger. For example, when you add an \texttt{int} to a \texttt{float}, \texttt{int} is converted to \texttt{float} type. (You have to do it, because two types have the different inside binary representations.)
+		\item Some type are converted when they are combined with other types in an expression. When an operation involves two types, the smaller is converted to the larger. For example, when you add an \texttt{int} to a \texttt{float}, \texttt{int} is converted to \texttt{float} type. (You have to do it, because two types have the different inside binary representations).
 		
-		\item \texttt{unsigned short} convert to \texttt{int} if \texttt{short} is shorter than \texttt{int}, if they have the same size. \texttt{unsigned short} convert to \texttt{unsigned int}.  So no data loss in promoting.
+		\item \texttt{unsigned short} convert to \texttt{int} if \texttt{short} is shorter than \texttt{int}, if they have the same size. \texttt{unsigned short} convert to \texttt{unsigned int}.  So no data loss in type promotion.
 	\end{enumerate}
 	
 \begin{lstlisting}
@@ -1160,41 +1159,40 @@ store i8 2, i8* %c2, align 1
 %add = add nsw i32 %conv, %conv1 //add two integers
 %conv2 = trunc i32 %add to i8  //convert result back to char.
 
-i+f // i will promoted to f
-float f1, f2, f
-f = f1+f2  	
+i+f // integer will promoted to float
+float f1, f2, f; //Whether float promote to double depends on compiler, 
+f = f1+f2; // Clang++ has fadd in LLVM IR, so don't change float to double here.
 \end{lstlisting}	
 	
-	\begin{description}
-		\item[Last line:] Whether \texttt{f1} changes to double depends on compiler. clang++ has fadd in LLVM IR, so it doesn't change \texttt{f} to double.
-	\end{description}
 	
-	\par A implicit conversion will happen when you assign value to a bool, zero converts to false, and nonzero converts to true.
 	
-	\par When a implicit conversion happen, assigning a value to a type with a greater range usually poses no problem. If shorter range or different type, maybe there are some problems. For example, when conversion \texttt{double -> float, long long ->float} happens, it maybe lose precision. When \texttt{float -> i} happens, it loses fragment. It even bring undefined behavior when you have below code: \texttt{int i = 666; char c = i;}.
+	\par A implicit conversion will happen when you assign non bool value to a bool, zero converts to false, and nonzero converts to true.
+	
+	\par When a implicit conversion happen, assigning a value to a type with a greater range (promotion conversion) usually poses no problem. If shorter range or different type, maybe there are some problems. For example, when conversion \texttt{double -> float, long long ->float} happens, it maybe lose precision. When \texttt{float -> i} happens, it loses fragment. Be careful with implicit narrowing standard conversion. 
 	
 \begin{lstlisting}
 int i, float f = 3.99;
 i=f;  //i will be 3(not rounding), UB if f is too big
 
 f = i; //will lost precision if i is big.	
+int i = 666;
+char c = i; //this will lead to undefined behavior. 
 \end{lstlisting}	
 	
-	\par A implicit conversion also happen when you call a function.(Just like you use assignment operator=). Below they all compile successfully. Compile with -Wconversion flag, note that it is not included in -Wall in g++; It only gives warning when standard conversion occurs, not for promotion conversion.
+	\par A implicit conversion also happen when you call a function.(Just like you use assignment operator=). Below code compile successfully. Compile with "-Wconversion" flag, note that it is not included in "-Wall" in g++; It only gives warning when standard conversion occurs, not for promotion conversion.
 	
 \begin{lstlisting}[numbers=none]
 bool isLucky(int number);
 
 isLucky('a') // promotion ,NO warning
 isLucky(false) // promotion, NO warning
-isLucky(1.2f) //standard conversion.  Warning	
+isLucky(1.2f) // narrowing standard conversion.  Warning	
 \end{lstlisting}	
 	
-	\par In C++, introduce braces initialization \{\}, It will not allow narrowing happen. But in g++, it just show a -Wnarrowing message, Anyway, I think that it's helpful.
+	\par C++ 11 introduces braces initialization \{\}, It will not allow narrowing happen (In g++, it just show a -Wnarrowing message). we should use more braces initialization \{\} in our new code. 
 \begin{lstlisting}[numbers=none]
 int x = 66;  char c1 = {x}; //ok	
 int x = 666; char c2 = {x};// not allowed;
-
 int fun(){
 	return 1.2f; //OK, no warning
 	return {1.2f}; //ERROR, -Wnarrowing
@@ -1205,7 +1203,7 @@ int fun(){
 
 \subsubsection{Numerical Overflow}
 
-	 How to understand integer overflow problems? \texttt{x} is a position in the below figure, \texttt{x+3} means walk 3 step clockwise from \texttt{x}. \texttt{x-3} means walk 3 step anti-clockwise from \texttt{x}. The overflow only happen in the -8 position. Anytime you walk pass the -8 position, the overflow happens, no matter clockwise and anti-clockwise direction. For example, 5+4 = -7(not 9); -6-3 = 7(not -9).
+	 How to understand integer overflow? \texttt{int x;} is a position in the below figure, \texttt{x+3} means walk 3 step clockwise from \texttt{x}. \texttt{x-3} means walk 3 step anti-clockwise from \texttt{x} position. The overflow (or underflow) only happens in the -8 position. Anytime you walk pass the -8 position, the overflow happens, no matter clockwise and anti-clockwise direction. For example, 5+4 = -7 (not 9); -6-3 = 7 (not -9).
 
 	
 \begin{figure}[!htb]
@@ -1224,29 +1222,29 @@ int fun(){
 %		\includegraphics[width=0.5\linewidth]{pics/integer1.png}
 
 	
-	\par Integer type has \textbf{overflow} problem, and float has \textbf{precision} problem. So prefer to use \texttt{long long} and \texttt{double} as your numerical type. In modern hardware, memory usage is not big concern, and using types with enough width can save you a lot of trouble in the future. 
+	
 	
 	\par In C and C++, you can use limits.h or <limit> to get all the type limit information.
 	
 \begin{lstlisting}[numbers=none]
-INT_MAX //use in C
-INT_MIN
+INT_MAX INT_MIN  //use in C
 std::numeric_limits<int>::lowest() //use in C++
 std::numeric_limits<int>::max()
 \end{lstlisting}
 	
-	\par There are three ways to deal with overflow and underflow:
+	\par There are three ways to deal with overflow and underflow problem:
+	
 	\begin{enumerate}
 		\item Build your own template function.
 \begin{lstlisting}[numbers=none]
 template <class T>
 void increment_without_wraparound(T& value) {
-	if (value < numeric_limits<T>::max())
-	value++;
+	if ( value < numeric_limits<T>::max() )
+		value++;
 }
 \end{lstlisting}
 		
-		\item  Judge if overflow happens before calculation.
+		\item  Judge if overflow happens before calculation. \texttt{INT\_MAX} is like "-8" position in the previous figure, it's help you to understand below code. 
 		
 \begin{lstlisting}
 if ((x > 0) && (a > INT_MAX - x)) // a + x would overflow 
@@ -1256,20 +1254,17 @@ if ((x > 0) && (a < INT_MIN + x)) //a - x would underflow (1-10)
 if (a > INT_MAX / x)  // a * x would overflow 
 if ((a < INT_MIN / x)) // a * x would underflow 
 \end{lstlisting}
-		\begin{description}
-			\item[Line 1:] a is point, \texttt{x>0} means that \texttt{a+x} is clockwise turning, then it will overflow
-			\item[Line 2:] a is point, \texttt{x<0} means that \texttt{a+x} is anti-clockwise turning,  so it will underflow It's easy to understand according to previous figure.
-		\end{description}
 		
-		\item Judge it after calculation.
+		
+		\item Judge it after calculation, we can use this method for unsigned integer.
 \begin{lstlisting}[numbers = none]
-uint32 a,b;
+uint32 a,b;  //must be unsigned integer
 uint32 result = a + b;
 if (result < a) //overflow
 \end{lstlisting}
 	\end{enumerate}
 	
-	\par There is no simple, general, portable way to avoid integer overflow. You cannot safely check whether a signed integer addition or subtraction has overflowed after the fact. An overflow in signed arithmetic causes undefined behavior. Typically, the result wraps around, but in principle, your program could crash before you have a chance to examine the result. Clang 3.4+ and GCC 5+ offer checked arithmetic built-ins that provide a very fast solution to this problem, especially when compared to bit-testing safety checks.
+	\par There is no simple, general, portable way to avoid integer overflow. You can't check whether a signed integer addition or subtraction has overflowed after the fact. Typically, the result wraps around, but in principle, your program could cause undefined behavior or crash before you have a chance to examine the result. Clang 3.4+ and GCC 5+ offer checked arithmetic built-ins that provide a very fast solution to this problem, especially when compared to bit-testing safety checks.
 \begin{lstlisting}[frame=single, language=c++]
 unsigned long b, c, c_test;
 if (__builtin_umull_overflow(b, c, &c_test)){
@@ -1277,7 +1272,7 @@ if (__builtin_umull_overflow(b, c, &c_test)){
 }
 \end{lstlisting}
 	
-	\par When you do some calculation, you can have some tricks to avoid overflow. If you  want to know the last three digits of \texttt{n!}. You need use \texttt{mod} to keep last two digits in each calculation.
+	\par Integer type has \textbf{overflow} problem, and float has \textbf{precision} problem. So prefer to use \texttt{long long} and \texttt{double} as your numerical type. In modern hardware, memory usage is not big concern, and using types with enough width can save you a lot of trouble in the future. There are also some tricks to avoid overflow. If you  want to know the last three digits of \texttt{n!}. You need use \texttt{mod} to keep last two digits in each calculation.
 \begin{lstlisting}[numbers = none]
 (a+b)/2  //a+b maybe overflow
 a/2+b/2 +(a&b&1); //will not overflow
@@ -1293,9 +1288,8 @@ a/2+b/2 +(a&b&1); //will not overflow
 \begin{lstlisting}[numbers=none]
 unsigned int ui = 1;
 int i = -2;
-//ui+i will be expressed 0xffffffff in memory. 
-printf("%d", ui+i); //print -1.
-printf("%u", ui+i); //print UINT_MAX.	
+printf("%d", ui+i);//print -1, ui+i is 0xffffffff in memory, interpret as signed int.
+printf("%u", ui+i);//print UINT_MAX, interpret as unsigned int.
 cout<<ui+i<<endl; //output 4294967260.
 (ui+i)<6  //false here, interpret (ui+i) as unsigned int.
 \end{lstlisting}
@@ -1310,18 +1304,27 @@ int* p;
 p+(ui+i);  //OK on 32 bits platform, but crash on 64 platform.
 \end{lstlisting}
 
-\begin{description}
-	\item[Line 5:] On 64 bits, \texttt{ui+i} will be promote to 64 bits first. At this time, it will be promoted according to \texttt{unsigned int}. For \texttt{p+(ui+i)} portable problem, we can use \texttt{size\_t} and \texttt{ptrdiff\_t} type. 
-\end{description}
+	\par In above code, why does it crash on 64 bits? \texttt{ui+i} will be promote to 64 bits first and it will be promoted according to \texttt{unsigned int}. In order to avoid \texttt{p+(ui+i)} portable problem, we should use \texttt{size\_t} and \texttt{ptrdiff\_t} type. 
+\begin{lstlisting}
+0xffffffff //ui+i in memory, it's 32 bit representation.
+//when we want to promote(expand) it to 64 bit, we have two possibilities:
+0xffffffff -> 0x00000000ffffffff //1) promote as a unsigned int, a big positive number
+0xffffffff -> 0xffffffffffffffff //2) pormote as a signed int, still -1 semantic
+//p+(ui+i) will crash if ui+i is promoted as unsigned int. 
+//(ui+i) is interpreted as a big positive number and p+big_number will be out of range. 
+\end{lstlisting}
 	
-    \par In summary, \texttt{ui+i} result type is \texttt{unsigned int},  when you use \texttt{ui+i} in 1) compare with other, 2) promote 3) divid, it will interpret according to its unsigned semantic(non negative). Maybe it's not what you expect.  In one word, Don't use unsigned type just for big range, if \texttt{int} is not big, just use \texttt{long}, don't use \texttt{unsigned int}. Don't combine unsigned and signed type together.
+
+%YanReview
+	
+    \par In summary, \texttt{ui+i} result type is \texttt{unsigned int},  when you use \texttt{ui+i} in 1) compare with other, 2) promote 3) divid, it will interpret according to its unsigned semantic(non negative). Maybe it's not what you expect.  In one word, Don't use unsigned type just for big range, if \texttt{int} is not big, just use \texttt{long} instead \texttt{unsigned int}. Don't combine unsigned and signed integer together in your expression.
 
 \subsubsection{size\_t and ptrdiff\_t}
 	 \texttt{size\_t} is commonly used for array indexing and loop counting. Programs that use other types, such as \texttt{unsigned int}, for array indexing may fail on, e.g. 64-bit systems. \texttt{ptrdiff\_t} is used for pointer arithmetic and array indexing, if negative values are possible. Programs that use other types, such as \texttt{int}, may fail on, e.g. 64-bit systems. The main reason for using \texttt{size\_t} is that the size of something depends on a pointer, but on different systems, the size of a pointer is not the same as the size of an \texttt{int}. The size of \texttt{size\_t} and \texttt{ptrdiff\_t} always coincide with the pointer's size. Because of this, these types should be used as indexes for large arrays, for storing pointers, for pointer arithmetic, loop counters, array indexing, and address arithmetic. 
 	
 	\par Type \texttt{size\_t} is a typedef that's an alias for some unsigned integer type, typically \texttt{unsigned int} or \texttt{unsigned long}, but possibly even \texttt{unsigned long long}. Each Standard C implementation is supposed to choose the unsigned integer that's big enough--but no bigger than needed--to represent the size of the largest possible object on the target platform.
 	
-	\par \texttt{size\_t} can resolve portable problem. The first function work well in 16 bit OS, but in 32 bit OS, it can't copy big object(bigger than 16 bit.) The second function works well in 32 bit OS, but in 16 bit OS, it's not high efficient. The \texttt{size\_t} version can work well in both 16 and 32 bit system.
+	\par \texttt{size\_t} can resolve portable problem. Supposed \texttt{unsigned int} is 16 bit, the first function work well in 16 bit OS, but in 32 bit OS, it can't copy big object(bigger than 16 bit.) The second function works well in 32 bit OS, but in 16 bit OS, it's not high efficient. The \texttt{size\_t} version can work well in both 16 and 32 bit system, because it's adjustable to 16 bit or 32 bit according to the platform. 
 	
 \begin{lstlisting}
 //suppose that int is 16 bit and long is 32 bit
@@ -1346,16 +1349,29 @@ printf("%i\n", *ptr);
 
 \subsection{Complex compound Type}
 
-	 In C++, compound types refer to types that are derived from other types and are more complex. These include reference types, pointer types, array types, function types, pointer to member types, and class types. These types can be combined in various ways, such as using function pointers that receive arrays and return classes, which can make declarations more complex but also more flexible in usage.
+	 In C++, compound types refer to types that are derived from other types and are more complex. These include reference types, pointer types, array types, function types, pointer to member types, and class types. These types can be combined in various ways, such as a function pointers that receive arrays and return classes, which can make declarations more complex but also more flexible in usage.
+\begin{lstlisting}
+struct S{
+  int mi;
+  int f(int n) { return mi + n; }
+};
+
+int S::* pmi = &S::mi;
+int (S::* pf)(int) = &S::f;
+S s(7);
+S* ps = &s;
+cout<<(s.*pf)(7)<<(ps->*pf)(8); //both .* and ->* are operator. 
+}
+\end{lstlisting}
 	
 	\par In C, arrays are implemented as pointers to their first element. When you declare an array, you get a pointer to the first element of the array. Therefore, certain array operations can be expressed as corresponding pointer operations. 
 	
 \begin{lstlisting}
 int arr[5] = {1, 2, 3, 4, 5}; //int * ptr = arr;
-arr[1] = 3  //*ptr = 3;
+arr[1] = 3  //*(ptr+1) = 3;
 \end{lstlisting}
 
-	\par If you understand this equivalence, you can understand the following statements: An array of integers is a pointer to integers, an array of floats is a pointer to floats, an array of pointers is a pointer to pointers, and an array of arrays is a pointer to arrays. Regarding a pointer to a pointer, you can think of it as a ragged two-dimensional array. Concerning a pointer to an array, you need to know how to declare it correctly in syntax. I will discuss these two topics in more detail next. 
+	\par If you understand this equivalence, you can understand the following statements: An array of integers is a pointer to integers, an array of floats is a pointer to floats, an array of pointers is \textbf{a pointer to pointers}, and an array of arrays is \textbf{a pointer to arrays}. Regarding a pointer to a pointer, you can think of it as a ragged two-dimensional array. Concerning a pointer to an array, you need to know how to declare it correctly in syntax. 
 	
 	\par A pointer to a pointer is mostly used in ragged arrays and arrays of lists. For a ragged character array, you can use a null character as an end marker, while for a ragged integer array, you need to include extra size information. If you want to modify a pointer parameter, you can use \texttt{int* \&p}; this is more clear and direct than using a pointer to a pointer.
 \begin{lstlisting}
@@ -1371,55 +1387,55 @@ delete [] p[1]; //so, there are three delete here.
 delete [] p;			
 \end{lstlisting}	
 	
-	\par Any complex declaration is either a pointer to an array or a pointer to a function. Let me introduce pointer to an array first. 
+	\par A pointer to array is a complex declaration in C++. It is like a pointer to a function. Let me introduce pointer to an array first. 
 \begin{lstlisting}
 int a [2] = {1, 3};
 int b [3] = {1, 2, 3};
 
-int (*p)[] ; //can omit the dimension, but you can not increment it.
+int (*p)[] ; //pointer to array, can omit the dimension, but you can not increment it.
 p = &b; //p = &a is OK, (*p)[1] is ok, but ++p error
 
-int (*p)[3]; //C/C++ both support int(*p)[] and int(*p)[3]
+int (*p)[3]; // C/C++ both support int(*p)[] and int(*p)[3]
 p = &b;  //p = &a is error, (*p)[1] is ok, ++p is also OK.	
 \end{lstlisting}	
 	
-	\par When using \texttt{typedef}, the basic syntax remains the same, but the identifier becomes a type instead of a variable. It is common practice to use a capital letter to denote that the identifier is a type.
-\begin{lstlisting}[]
-struct Block{
-	int i;
-	int j;
-} bb;  //define variable, bb is variable.
-
-typedef struct Block{
-	int i;
-	int j;
-} BB;  //define type, BB is type 	
-\end{lstlisting}	
+%	\par When using \texttt{typedef}, the basic syntax remains the same, but the identifier becomes a type instead of a variable. It is common practice to use a capital letter to denote that the identifier is a type.
+%\begin{lstlisting}[]
+%struct Block{
+%	int i;
+%	int j;
+%} bb;  //define variable, bb is variable.
+%
+%typedef struct Block{
+%	int i;
+%	int j;
+%} BB;  //define type, BB is type 	
+%\end{lstlisting}	
 	
-	\par Pointers to functions can be defined using \texttt{typedef}. This allows for easier use and readability of complex function pointer types.
+	\par Pointer to functions is like pointer to array. They both need parentheses around \texttt{(*variable\_name)}, pointer to array need \texttt{[dimension]} after the \texttt{(*variable\_name)}, pointer to function need \texttt{( parameter )} after \texttt{(*variable\_name)}. 
 	
 \begin{lstlisting}
-int (*foo_ptr)( int )
-
-typedef int (*FOO_PTR_T)( int );
-FOO_PTR_T foo_ptr;	
+int (*pointer_to_fun)( int ) ;  //( parameter ) after variable name
+int (*pointer_to_array) [3];    //[dimension] after variable name
 \end{lstlisting}	
-	
-	\par An array of pointers to functions can also be declared using \texttt{typedef}. This has the advantage of making complex function pointer types more readable and easier to use.
+
+	\par The basic method for interpreting complex declarations is to start by finding the identifier name and using it as a center point to expand both to the right and to the left, following the "right-then-left" rule. A good reference is here: How to interpret complex C/C++ declarations. You can google and read it. Next, I will use this method to analyze a complex declaration. 
 \begin{lstlisting}
-int (*foo_ptr_array[2])( int )
-
-typedef int (*Foo_ptr_t)( int ); //A better way is to use typedef
-Foo_ptr_t foo_ptr_array[2];	
-\end{lstlisting}	
-	\begin{description}
-		\item[1] The first step, get the variable name, look right, found that it's array. what types are in the array?
-		\item[2] Then look left, found that pointer, then that is an array pointer.
-		\item[3] Then look right, found that this is parentheses, that is function. so pointer to function, what is return type of this function?
-		\item[4] then look left, parameter is \texttt{int}, and return type is \texttt{int}.
-	\end{description}
+int (* array_fun_pointer[2])( float ) 
+\end{lstlisting}
+\begin{description}
+	\item[1] The first step, get the variable name, look right, found that it's array. what types are in the array?
 	
-	\par Below code is a pointer to function which returns complex type. This is a function pointer, The function input a \texttt{int} and return a pointer. The return pointer points to an array, and array's element type is \texttt{int *}.
+	\item[2] Then look left, found that pointer, then that is an array of  pointer.
+	
+	\item[3] Then look right, found that this is parentheses, that is function. so pointer to function, what is return type of this function?
+	
+	\item[4] then look left, parameter is \texttt{int}, and return type is \texttt{int}.
+	
+	\item[5] In summary, it's a array, each element in this array is pointer to function, the function receive a \texttt{float} as parameter and return \texttt{int}. 
+\end{description}	
+
+	\par Let's resolve another challenging declaration. Below code is a pointer to function which returns complex type. This is a function pointer, The function input a \texttt{int} and return a pointer. The return pointer points to an array, and array's element type is \texttt{int *}.
 \begin{lstlisting}
 int * (* (*fp1) (int) ) [10];
 //Start from the variable name -> fp1
@@ -1428,22 +1444,32 @@ int * (* (*fp1) (int) ) [10];
 //Go left, find * -> this function return a pointer
 //Jump put of parentheses, go right and hit [10] -> to an array of 10
 //Go left find * -> pointers to
-//Go left again, find int * -> that is int* [10]	
+//Go left again, find int * -> that is int* [10]		
 \end{lstlisting}	
 
-	\par The basic method for interpreting complex declarations is to start by finding the identifier name and using it as a center point to expand both to the right and to the left, following the "right-then-left" rule. A good reference is here: How to interpret complex C/C++ declarations. You can google and read it. 	
-	
-	\par You can also use "using alias" to simplify complex compound types in the above example. By defining an alias for a complex type, you can make your code more readable and easier to understand. 
+	\par From the introduction above, we can see that writing complex declarations involving function pointers and arrays can be challenging. The good news is that we can use \texttt{typedef} to simplify this process. This allows for easier use and readability of complex function pointer types.
+
 \begin{lstlisting}
-using MyArray = int* [10];
-using MyFuncPtr = MyArray* (*)(int);
+int (*pointer_to_fun)( float ) ;  //complex 
+typedef int (*FOO_PTR_T)( float ); //use typedef here,
+FOO_PTR_T pointer_to_fun;	 //easy to define pointer_to_fun now. 
+
+int (*array_fun_pointer[2])( float ) //complex declarations, array of pointer.
+FOO_PTR_T array_fun_pointer[2];	     //same declaration, much clear now.
+\end{lstlisting}	
+
+	\par Just like \texttt{typedef}, you can also use "using alias" to simplify complex compound types in the above example in modern C++. 
+\begin{lstlisting}
+int * (* (*fp1) (int) ) [10]; //can be rewitten to next three lines by "using alias".
+using MyArray = int* [10];           //1) Define pointer array
+using MyFuncPtr = MyArray* (*)(int); //2) Define pointer to fun
+MyFuncPtr fp1;                       //3) Use new type define variable
 
 MyArray* MyFunc(int x) {
 	...
 }
-
-MyFuncPtr myFuncPtr = MyFunc;
-MyArray* arr = myFuncPtr(5); //invoke this function
+fp1 = MyFunc;
+MyArray* arr = fp1(5); //invoke MyFunc function.
 \end{lstlisting}
 
 \subsection{Some type categories}
@@ -14674,15 +14700,21 @@ assert(p != nullptr); //no plundering in case insertion failed
 	\item \texttt{CharT* s} pointer, for \texttt{CharT*} pointer, usually it support another overload version, which you can input \texttt{size\_type count} to specify the length of \texttt{s}.
 	
 	\item A single character. 
-	
-	\item One or two iterators, because \texttt{std::string} is also sequential container, such as \texttt{std::vector}. 
-\end{enumerate}
 \begin{lstlisting}
 size_type find( const basic_string& str, size_type pos = 0 ) const;
 size_type find( const CharT* s, size_type pos, size_type count ) const;
 size_type find( const CharT* s, size_type pos = 0 ) const;
 size_type find( CharT ch, size_type pos = 0 ) const;
+//From pos, finds the first substring equal to the given character sequence.	
 \end{lstlisting}
+
+	
+	\item One or two iterators, because \texttt{std::string} is also sequential container, such as \texttt{std::vector}. 
+\begin{lstlisting}
+string& replace( const_iterator first, const_iterator last, const string& str);
+string& replace( size_type pos, size_type count, const string& str);
+\end{lstlisting}
+\end{enumerate}
 		
 	\par There are a lot of ways that can be used construct a string object, you can see these methods in the cpp reference website, such as:
 \begin{lstlisting}[numbers=none]
@@ -14714,7 +14746,7 @@ if(it!=myints.end())
 	cout<< "find 30"<<endl;
 \end{lstlisting}
 
-	\par The position returned by the find method can be used in a loop. This is a useful string pattern to remember.
+	\par The position returned by the \texttt{find()} can be used in a loop. This is a useful string pattern to remember.
 \begin{lstlisting}[numbers=none]
 std::string str ("Please, replace the vowels with asterisks.");
 size_t pos = 0;
@@ -14725,19 +14757,19 @@ while ((pos=str.find_first_of("aeiou", pos)) !=std::string::npos){
 \end{lstlisting}
 
 	\par \texttt{replace()} has very complex interface. There are two big categories, The first is based on position, the second is based on iterator. It also accepts \texttt{std::string} or \texttt{char*} as input.
-\begin{lstlisting}[numbers=none]
+\begin{lstlisting}[numbers=none, basicstyle=\scriptsize]
 1)replace( size_type pos, size_type count, const basic_string& str ); 
 2)replace( size_type pos, size_type count, const CharT* cstr );
 
-//for 3) and 4), you also can control str or cstr length. 
-3) replace( size_type pos, size_type count, const basic_string& str, size_type pos2, size_type count2 );
+//for 3) and 4), you can also control str or cstr length. 
+3)replace(size_type pos, size_type count, const string& str, size_type pos2,size_type count2);
 4)replace( size_type pos, size_type count, const CharT* cstr, size_type count2 );
 
 //5) can control how many single character you want to input.
-5) basic_string& replace(size_type pos,size_type count, size_type count2, CharT ch );
+5)basic_string& replace(size_type pos,size_type count, size_type count2, CharT ch );
 
-//For above position verison, it also supports iterator version. 
-replace( const_iterator first, const_iterator last, const basic_string& str ); 
+//6) For above position verison, it also supports iterator version. 
+6) replace( const_iterator first, const_iterator last, const basic_string& str ); 
 \end{lstlisting}
 
 \begin{lstlisting}
@@ -14829,7 +14861,7 @@ std::cout << "isalnum(\'\\xdf\', ISO-8859-1 locale) returned "
 
 	\par Below illustrates two methods to trim a string:
 \begin{enumerate}
-	\item \texttt{ltrim}: Uses \texttt{find\_first\_not\_of} to determine the position to trim from and returns that position. The substr function is then used with the determined position and length parameters.
+	\item \texttt{ltrim}: Uses \texttt{find\_first\_not\_of()} to determine the position to trim from and returns that position. The substr function is then used with the determined position and length parameters.
 	
 	\item \texttt{rtrim}: Uses the generic STL algorithm \texttt{find\_if} and returns an iterator. When assigning an iterator, use the auto type. It's important to learn how to write lambda functions for this purpose. The erase function is then used to modify the string in place.
 \end{enumerate}
@@ -14864,10 +14896,10 @@ str.pop_back() //delete the last letter
 
 string str = "123456"; //std::erase(std::string, char);
 std::erase(str, '3');  //C++20 support, dont' need erase and remove idiom
-                      
+                //0123456789    
 std::string base="this is a test string.";
 std::string str2="n example";
-str.replace(9,5,str2);  // "this is an example string." (1)	
+str.replace(9,5,str2);  // "this is an example string." 
 \end{lstlisting}
 
 	\par How to token? In C++, we usually use \texttt{stringstream} and \texttt{getline} to make token much easier. In C++20, you can use \texttt{std::views::split}. If your compiler doesn't supports C++ 20, you can use boost library.
@@ -14967,8 +14999,9 @@ OutputIterator copy (InputIterator first, InputIterator last, OutputIterator res
 std::list<int>::iterator first = mylist.begin();
 std::list<int>::iterator last = mylist.end();
 
-std::advance(first, 3) //
-std::cout  << std::distance(first,last)
+std::advance(first, 3) //Increments given iterator first by 3.
+std::cout  << std::distance(first,last) //distance
+auto iter = std::next(first, 2); //return the 2th successor iterator after first.
 \end{lstlisting}
 
 	\par That is an example of \texttt{istream} and \texttt{ostream} iterators. In this way, you can think of iostream as a container.
@@ -15401,7 +15434,7 @@ void swap_adjacent_pairs (std::vector<int>& v) {
 \tophline b2 copy\_backward(b1,b1last, b2)  & Copy a range of items backwards to a destination and return an iterator pointing to the end of the copied range.    \bottomhline
 \end{tabular} \\
 
-Different with \texttt{std::copy}, for \texttt{\texttt{std::copy\_backward}}, copies the elements from the range [first, last) to another range ending at \texttt{d\_last}.
+Different with \texttt{std::copy}, for \texttt{\texttt{std::copy\_backward}}, copies the elements from the range [first, last) to another range ending at \texttt{d\_last}. Any range is left close, right open range, so \texttt{d\_last} will not be modified, that is different with \texttt{std::copy}. 
 
 \begin{lstlisting}[frame=single, language=c++]
 template< class BidirIt1, class BidirIt2 >
@@ -15426,7 +15459,7 @@ std::copy_backward(source.begin()+1, source.begin()+4, source.begin()+5);
 \end{lstlisting}
 \begin{description}
 	\item[Line 1:] Error, when source and targe is overlap, you have to use backward copy
-	\item[Line 4:] You can input \texttt{vector.end()} as target for copy\_backward, but for copy, you can't input \texttt{vector.end()}. 
+	\item[Line 4:] You can input \texttt{vector.end()} as target for \texttt{std::copy\_backward}, but for copy, you can't input \texttt{vector.end()}. 
 \end{description} 
 
 \textbf{Filling} \\
@@ -15874,7 +15907,7 @@ v.erase(remove(v.begin(),v.end(), static_cast<Foo *>(0) ), v.end());
 	
 	\par When you use algorithms in STL, you need to pay attention to some pre-requirements: 
 	\begin{enumerate}
-		\item Default algorithms writes its result by making \textbf{assignment}, not \textbf{insert}. So you need to 1) use resize or 2) use reserve + inserter in the algorithms when you want to write elements to target range.
+		\item Default algorithms writes its result by making \textbf{assignment}, not \textbf{insert}. So you need to 1) use \texttt{resize()} or 2) use \texttt{reserve()} in \texttt{std::vector} or \texttt{std::string} + \texttt{inserter()} in the algorithms when you want to write elements to target range.
 \begin{lstlisting}[numbers=none]
 vector<int> values, result;
 int doSth(int x); // function
@@ -15898,7 +15931,7 @@ set_intersection, set_difference, merge, inplace_merge, includes, unique
 	
 	%	\item RRRRSSSSPPCFMT(RRRRSSSSPP copy frinds many time). rotate, remove(unique), replace, reverse, sample, shuffle, swap, shift, partition, permutation, copy, fill(generate), math(accumulate/reduce, inner\_product, partial\_sum, adjacent\_difference), transform. 
 	
-	\par texttt{std::accumulate} has \textbf{"fold"} semantics. I will introduce this concept in the "Functional Programming" chapter, where more examples on how to use \texttt{std::accumulate} will be provided.
+	\par \texttt{std::accumulate} has \textbf{"fold"} semantics. I will introduce this concept in the "Functional Programming" chapter, where more examples on how to use \texttt{std::accumulate} will be provided.
 \begin{lstlisting}
 std::vector nums {1, 2, 3, 4};
 std::cout << std::accumulate(nums.begin(), nums.end(), std::string{},  
@@ -15907,34 +15940,30 @@ std::cout << std::accumulate(nums.begin(), nums.end(), std::string{},
    });// Init result, the first parameter and return of lambda have the same type.
 \end{lstlisting} 	
 	
-		\par Three differences between \texttt{std::reduce} and \texttt{std::accumulate}:
+		\par Three differences between \texttt{std::reduce()} and \texttt{std::accumulate()}:
 	\begin{enumerate}	
-		\item Use \texttt{std::reduce} when you want your accumulation to run execution policies. Execution policies are a C++17 feature which allows programmers to ask for algorithms to be parallelised. There are three execution policies in C++17: \texttt{std::execution::seq}, \\
-		\texttt{std::execution::par} and 
+		\item Use \texttt{std::reduce()} when you want your accumulation to run execution policies. Execution policies are a C++17 feature which allows programmers to ask for algorithms to be parallelised. There are three execution policies in C++17: \texttt{std::execution::seq}, \texttt{std::execution::par} and 
 		\texttt{std::execution::par\_unseq}, which is parallelise and vectorise (requires that the operation can be interleaved, so no acquiring mutexes and such).
+\begin{lstlisting}
+auto sum3 = std::reduce(std::execution::par, begin(vec), end(vec)); //parallel
+\end{lstlisting}
 		
 		\item Ensure that the operation you want to use is both associative and commutative.
 		
 		\item Remember that the default initial value is produced by default construction, and that this may not be correct for your operation.
 	\end{enumerate}	
-	
-	
-\begin{lstlisting}
-auto sum3 = std::reduce(std::execution::par, begin(vec), end(vec)); //parallel
-\end{lstlisting}
-	
-	
-	\par \texttt{std::transform} has \textbf{"map"} semantic. Another important semantic in functional programming is \textbf{"filter"}, you can use \texttt{copy\_if} or \texttt{remove\_if} to implement it.
+		
+	\par \texttt{std::transform()} has \textbf{"map"} semantic. Another important semantic in functional programming is \textbf{"filter"}, you can use \texttt{std::copy\_if()} or \texttt{std::remove\_if()} to implement it.
 	
 
-	\par \texttt{std::remove} just keep good one, \texttt{std::partition} put good one in front, bad one in back. \texttt{std::nth\_element} is strong version of partition.
+	\par \texttt{std::remove()} just keep good one, \texttt{std::partition()} put good one in front, bad one in back. \\ \texttt{std::nth\_element} is a strong version of partition.
 	
-	\par \texttt{std::unique} can be thought of as a kind of \texttt{std::remove}. All algorithms do not change the container's size but only change its contents. \texttt{Rotate} is also an important algorithm. For example, you can use it to easily implement insertion sort.
+	\par \texttt{std::unique()} can be thought of as a kind of \texttt{std::remove()}. All algorithms do not change the container's size but only change its contents. \texttt{std::rotate()} is also an important algorithm. For example, you can use it to easily implement insertion sort.
 	
 	
 	\par Some algorithms has \_if suffix, Why we need these \_if version? beside normal version with value, we also need \_if version to input UnaryPredicate functor. 
 \begin{lstlisting}
-find_if and find , count_if and count
+find_if and find, count_if and count
 copy_if and copy, replace_if and replace,  remove_if and remove		
 \end{lstlisting}	
 	
@@ -15945,7 +15974,7 @@ remove and remove_copy , unique and unique_copy
 replace and replace_copy, reverse and reverse_copy, rotate and rotate_copy		
 \end{lstlisting}	
 	
-	\par Regarding \texttt{std::shift\_left} and \texttt{std::shift\_right}, it is important to keep in mind that if you shift left by one, you essentially lose the first element (at position 0) in your input. Therefore, shifting by one to the left and then by one to the right will not maintain your range identical to the original one.
+	\par Regarding \texttt{std::shift\_left()} and \texttt{std::shift\_right()}, it is important to keep in mind that if you shift left by one, you essentially lose the first element (at position 0) in your input. Therefore, shifting by one to the left and then by one to the right will not maintain your range identical to the original one.
 \begin{lstlisting}
 vector<int> numbers {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 shift_left(numbers.begin(), numbers.end(), 1); // {1, 2, 3, 4, 5, 6, 7, 8, 9, 9}
@@ -15970,7 +15999,7 @@ constexpr unary_transform_result<I, O>
 transform( I first1, S last1, O result, F op, Proj proj = {} ); //C++20
 \end{lstlisting}	
 		
-	\par You need to input default template argument if you want to use proj in constrained algorithms.
+	\par You need to input default template argument if you want to use projection in constrained algorithms.
 \begin{lstlisting}
 vector v = {-1, -3, 2, 4};
 ranges::sort(v, {}/* here */, [](int){return abs(i);} )  // output -1, 2, -3, 4.
@@ -16510,17 +16539,27 @@ for (std::size_t i = 1; i < b.size(); i += 2)
 	
 b2 & b; b2 | b; b2 ^ b  // AND, OR and XOR
 \end{lstlisting}
+
+	\par Determining endianness of your machine. Here is one quick way:
+\begin{lstlisting}
+unsigned int i = 1;
+char *c = (char*)&i;
+if (*c)   
+	printf("Little endian");
+else
+	printf("Big endian");
+\end{lstlisting} 
 	
 
 \subsection{Container}
 	 Below code snippet illustrates \texttt{std::iota} and constrained algorithms. Use \texttt{ostream\_iterator} and \texttt{ranges::copy} to output a container.
 \begin{lstlisting}
 vector<int> vi2;
-vi2.resize(10);  
-iota(vi2.begin(), vi2.end(), 0); //iota just assign. need resize container. 
+vi2.resize(10);  //initilize vi2 to 10 element with default value 0.
+iota(vi2.begin(), vi2.end(), 0); //iota just assign, need resize container. 
 copy_if(vi2.begin(), vi2.end(), ostream_iterator<int>(cout, " "),  //copy_if 
  		[](const auto &e){return e%2 ==0;
- 	});
+ 	   });
 
 \end{lstlisting}
 	\par From \texttt{std::vector} to construct \texttt{std::map}, you can use \texttt{std::copy} or range construction. 
@@ -16661,9 +16700,8 @@ ranges::sample(vi, std::back_inserter(out), 4, mt); //sample also need to use mt
 \begin{lstlisting}
 map<int, int> map1;
 for(auto e: v1){  //count 
-	++map1[e];  //you can use [] directly here, will insert
-	            //default value if it doesn't exist.
-}
+	++map1[e];  //you can use [] directly here, 
+}	           //will insert default value if it doesn't exist
 
 vector< pair<int, int> > v2{map1.begin(), map1.end()};  //range construct
            //don't use template deduct, otherwise it will be pair<const int, int>
@@ -16707,7 +16745,6 @@ std::invoke(&S::do_something, std::ref(s), 42); //use std::ref here.
 std::invoke(&S::v, s) = 42; // same as s.v = 42
 auto x = std::invoke(&S::v, s); // same as "auto x = s.v;"
 
-
 S* p = &s;
 std::invoke(&S::v, p) = 42; // same as p->v = 42, support pointer
 \end{lstlisting}
@@ -16731,7 +16768,7 @@ void quicksort(ForwardIt first, ForwardIt last){
 	quicksort(middle2, last);
 }
 \end{lstlisting}
-	\par Implement selection sort by using \texttt{std::min\_element} and \texttt{iter\_swap}.
+	\par Implement selection sort by using \texttt{std::min\_element()} and \texttt{std::iter\_swap()}.
 \begin{lstlisting}
 template<class ForwardIt>
 void selection_sort(ForwardIt begin, ForwardIt end){
@@ -16825,9 +16862,9 @@ int findKthLargest(int[] nums, int k) {
 }	
 \end{lstlisting}		
 	
-	\par Pay attention to difference between \texttt{nth\_element}, \texttt{partition} and \texttt{remove}. We can build \texttt{quick\_sort} from \texttt{std::nth\_element} and build quick\_select(kth element) from partition.
+	\par Pay attention to difference between \texttt{std::nth\_element()}, \texttt{std::partition()} and \texttt{std::remove()}. We can build \texttt{quick\_sort} from \texttt{std::nth\_element} and build quick\_select(kth element) from partition.
 	
-	\par Use nth\_element to implement quick sort.
+	\par Use \texttt{std::nth\_element()} to implement quick sort.
 \begin{lstlisting}[frame=single, language=c++]	
 template<class FwdIt, class Compare = std::less<>>
 void quickSort(FwdIt first, FwdIt last, Compare cmp = Compare{}){
@@ -17904,6 +17941,20 @@ cout<<(*rr);
 			%	} 
 		%}		
 	%\end{lstlisting}	
+	
+	\par Another example of common view. We can use \texttt{views::take\_while} and \texttt{views::drop\_while} to trim left and right space from string.  It returns non common view. Below code demonstrate how to build a string from views. 
+\begin{lstlisting}
+string word = "  abc  ";  //trim left and right space
+auto vv = word|views::drop_while([](char c){return isspace(c);})|
+               views::take_while([](char c){return !isspace(c);});
+
+auto vc = views::common(vv);
+string result1(vc.begin(), vc.end());     //OK, vc is common views;
+string result1 = vv|ranges::to<string>(); // ok
+//string result1{vv.begin(), vv.end()};     //error, vv is not common views;
+//string result1{vc};    //error, can't build string object from view directly. 
+             //vc doesn't have data() and size(), which string constructor need.
+\end{lstlisting}
 	
 	
 	\par Special adaptor are \texttt{views::ref\_view}, \texttt{views::owning\_view}, \texttt{views::all} and \texttt{views::common}. \texttt{std::views::all} returns a suitable view(\texttt{std::views::ref\_view}, \texttt{std::views::owning\_view}, etc) depending on the input range type. If parameter of \texttt{views::all} is a non-view rvalue such as a temporary object, or is the result of passing the range to \texttt{std::move}, it will return an \texttt{owning\_view}. Use \texttt{std::views::all\_t<decltype((rg))>} to get the type of the returned view. Usually, we don't use it directly in our code. 
