@@ -291,7 +291,7 @@ int main(void){
     \begin{itemize}
     	\item Containers: \texttt{std::vector, std::list, std::map}, and others for data storage.
     	
-    	\item Algorithms: \texttt{std::sort, std::accumulate, std::copy} for performing operations on data structures.
+    	\item Algorithms: \texttt{std::sort}, \texttt{std::accumulate} etc. for performing operations on containers.
     	
     	\item Iterators: Generalized pointers used to traverse containers, mainly used by the previous algorithms in STL.
     \end{itemize}
@@ -1488,20 +1488,20 @@ private:
 };
 \end{lstlisting}
 
-	\par In C++11, Previously, an aggregate could have no user-declared constructors, but now it can't have user-provided constructors. Is there a difference? Yes, there is, because now you can declare constructors and default them:
+	\par In C++11, Previously, an aggregate could have no user-declared constructors, but now it can't have user-provided constructors. Is there a difference? Yes, there is, because now you can declare default constructors by using " = default;" 
 \begin{lstlisting}[numbers=none]
-struct Aggregate {
+struct Aggregate {  //it's still aggregate type in C++ 11
 	Aggregate() = default; 
 };
 \end{lstlisting}
 
-	\par In C++11, an aggregate cannot have any brace-or-equal-initializers for non-static data members. What does this mean? Well, this is just because with this new standard, we can initialize members directly in the class like this:
-\begin{lstlisting}[numbers=none]
-struct NotAggregate {
-	int x = 5; // valid in C++11
-	std::vector<int> s{1,2,3}; // also valid
-};
-\end{lstlisting}
+%	\par In C++11, an aggregate cannot have any brace-or-equal-initializers for non-static data members. What does this mean? Well, this is just because with this new standard, we can initialize members directly in the class like this:
+%\begin{lstlisting}[numbers=none]
+%struct NotAggregate {
+%	int x = 5; 
+%	std::vector<int> s{1,2,3}; // valid in C++ 11
+%};
+%\end{lstlisting}
 
 	\par  An aggregate class can have a non-aggregate data member. Because it will not stop us from using aggregate initialization for the aggregate class. You can see the example code below, value in brace list can be used to call non-aggregate user define constructor. So for class \texttt{Test}, it is still aggregate type.
 \begin{lstlisting}[]
@@ -1518,7 +1518,7 @@ struct Test{
 
 cout<<is_aggregate_v<Foo><<endl; //No, because we have user define constructor
 cout<<is_aggregate_v<Test><<endl; //Yes, it can include non-aggregate.
-Test t = {1,2}; //can use aggregate init here.
+Test t = {1,2}; //can use aggregate init here. 1 is used by Foo(int i ) constructor.
 \end{lstlisting}
 
 	\par Now let's see how aggregates are special. They, unlike non-aggregate classes, can be initialized with curly braces \{\}. 
@@ -1528,28 +1528,26 @@ struct X{
 	int i2;
 };
 	
-struct Y{
+struct Y{  //Y is aggregate type. 
 	char c;
 	X x;
 	int i[2];
 	float f; 
-protected:
-	static double d;
-private:
+protected:  //althought has protected:, it's static 
+	static double d; 
+private:    //alghought has privatre:, it's function, not member variable
 	void g(){}      
 }; 
-	
-Y y = {'a', {10, 20}, {20, 30}}; //initialized by list initialization, f is 0
+//      c       x      inti[2]
+Y y = {'a', {10, 20}, {20, 30}}; //initialized by list initialization, f  in Y is 0
 \end{lstlisting}
 	
-	\par Now that we know the definition of aggregates, let's try to understand the restrictions on classes; that is, why they are there. We should understand that memberwise initialization with braces implies that the class is nothing more than the sum of its members. If a user-defined constructor is present, it means that the user needs to do some extra work to initialize the members therefore list initialization would be incorrect. If virtual functions are present, it means that the objects of this class have (on most implementations) a pointer to the so-called vtable of the class, which is set in the constructor, so brace-initialization would be insufficient. 
-	
-	\par An aggregate is basically a simple collection of data that does not have any invariants the class would have to guarantee. Since there is no invariant and thus all combinations of possible values of the member make sense, there is no point in making them private since there is nothing to protect.
+	\par From previous examples we may know the definition of aggregates, let's try to understand the restrictions on aggregate types; that is, why they are there. We should understand that memberwise initialization with braces implies that the class is nothing more than the sum of its members. If a user-defined constructor is present, it means that the user needs to do some extra work to initialize the members therefore list initialization would be incorrect. If virtual functions are present, it means that the objects of this class have (on most implementations) a pointer to the so-called vtable of the class, which is set in the constructor, so brace-initialization would be insufficient. Further more, an aggregate is basically a simple collection of data that does not have any invariants the class would have to guarantee. Since there is no invariant and thus all combinations of possible values of the member make sense, there is no point in making them private since there is nothing to protect.
 	
 
 \subsubsection{POD, trivial and literal type}
 	
-	 For objects of POD types it is guaranteed by the standard that when you \texttt{memcpy} the contents of your object into an array of char or unsigned char, and then \texttt{memcpy} the contents back into your object, the object will hold its original value. Do note that there is no such guarantee for objects of non-POD types. Also, you can safely copy POD objects with \texttt{memcpy}.
+	 For objects of POD types, it is guaranteed by the standard that when you \texttt{memcpy()} the contents of your object into an array of char or unsigned char, and then \texttt{memcpy} the contents back into your object, the object will hold its original value. Do note that there is no such guarantee for objects of non-POD types. Also, you can safely copy POD objects with \texttt{memcpy}.
 	
 	\par An aggregate class is called a POD if it has no user-defined copy-assignment operator and destructor and none of its non-static members is a non-POD class, array of non-POD, or a reference.
 	
@@ -1574,42 +1572,40 @@ struct AggregateButNotPOD2{
 %	\item POD-classes, POD-unions, scalar types, and arrays of such types are collectively called POD-types. POD-classes are the closest to C structs. Unlike them, PODs can have member functions and arbitrary static members, but neither of these two change the memory layout of the object. So if you want to write a more or less portable dynamic library that can be used from C and even .NET, you should try to make all your exported functions take and return only parameters of POD-types.
 		
 	
-	\par In C++ 11, The idea of a POD is to capture basically two distinct properties: 1)It supports static initialization. 2) Compiling a POD in C++ gives you the same memory layout as a struct compiled in C. So, the definition has been split into two distinct concepts: \textbf{trivial classes} and \textbf{standard-layout classes}, because these are more useful than POD. The standard now rarely uses the term POD, preferring the more specific \textbf{trivial} and \textbf{standard-layout} concepts.
+	\par In C++ 11, The idea of a POD is to capture basically two distinct properties: 1)It supports static initialization. 2) Compiling a POD in C++ gives you the same memory layout as a struct compiled in C. So the definition has been split into two distinct concepts: \textbf{trivial classes} and \textbf{standard-layout classes}, because they are more useful than POD. The standard now rarely uses the term POD, preferring the more specific \textbf{trivial} and \textbf{standard-layout} concepts.
 
-	\par If this is a trivial class, then it has trivial constructor/dtor/copy/assignment. When we build, copy or destruct these type, we don't need to call these trivial ctor/copy... \textbf{but just call malloc() or memcpy()to improve efficiency.} 
+	\par If this is a trivial class, then it has trivial constructor/destructor/copy/assignment. When we build, copy or destruct these types, we don't need to call these trivial constructor/destructor..., \textbf{but just call malloc() or memcpy()to improve efficiency.} 
 	
-	\par trivial class is not aggregate class, for example, it can include private non-static data member. 
-\begin{lstlisting}[numbers=none]
-struct Trivial4 {
-public:
-	int a;
-private: // no restrictions on access modifiers
-	int b;
-};
+
 		
-struct NonTrivial1 : Trivial4 {
-	virtual void f();  // virtual members make non-trivial ctors
-};
-\end{lstlisting}
-		
-	\par One property of trivial class is that it supports static initialization. Static initialization is initialization of some variable with a compile-time value such that the value ends up being "baked into" the executable image (no code needs to be actually run). Another point of triviality is that the type can be treated exactly like a fundamental type, in that objects of the type can be copied and moved with memcpy and constructed destructed without doing anything. Hence, triviality requires a type be essentially made only of fundamental types. T
+	\par One property of trivial class is that it supports static initialization. Static initialization is initialization of some variable with a compile-time value such that the value ends up being "baked into" the executable image (no code needs to be actually run). Another point of triviality is that the type can be treated exactly like a fundamental type, in that objects of the type can be copied and moved with \texttt{memcpy()} and constructed destructed without doing anything. Hence, triviality requires a type be essentially made only of fundamental types. T
 \begin{lstlisting}[numbers=none]
 struct Foo {
 	int x;
 	int y;
 };
-Foo foo = {0,1}; // This init happens in compiling time.
+Foo foo = {0,1}; //if you define it global, this init happens in compiling time.
 \end{lstlisting}
 
-	\par STL has some type traits to judge if a type is POD, trivial or standard layout.
+	\par trivial class is not aggregate class, for example, it can include private non-static data member. STL has some type traits to help you to judge if a type is POD, trivial or standard layout.
 \begin{lstlisting}[numbers=none]
-cout<<  typeid ( T ).name();
+struct Trivial {
+public:
+	int a;
+private: // no restrictions on access modifiers
+	int b;
+};
+
+struct NonTrivial : Trivial {
+	virtual void f();  // virtual members make non-trivial ctors
+};	
+
 cout<<std::is_pod<T>::value;
-cout<<std::is_trivial<T>::value;
+cout<<std::is_trivial<Trivial>::value;  //return true here. 
 cout <<std::is_standard_layout<T>::value;
 \end{lstlisting}
 	
-	\par If a class is trivially copyable (a superset of trivial classes), it is ok to copy its representation over the place with things like \texttt{memcpy} For example, \texttt{std::copy} use \texttt{std::is\_trivially\_copyable} as a dispatching flag to decide whether to call memcpy or call object copy constructor. and expect the result to be the same. The detail can be seen in the reference article in the end of section. 
+	\par If a class is trivially copyable (a superset of trivial classes), it is ok to copy its representation over the place with things like \texttt{memcpy}. In STL, \texttt{std::copy} use \texttt{std::is\_trivially\_copyable} as a dispatching flag to decide whether to call \texttt{memcpy} or call object copy constructor.
 	
 \begin{lstlisting}[numbers=none]
 template <class T> 
@@ -1621,7 +1617,10 @@ void copy(T* source, T* destination, int n, trivial_false_type){
 	
 template <class T> 
 void copy(T* source, T* destination, int n, trivial_true_type){
-	memmove(source, destination, n); //much faster here!
+	if(non overlap)
+		memmove(source, destination, n); //much faster here!
+	else
+		memcpy(source, destination, n);
 }
 \end{lstlisting}
 
@@ -1632,7 +1631,7 @@ struct N { // neither trivial nor standard-layout
 	virtual ~N();
 };
 
-struct T { // trivial but not standard-layout
+class T { // trivial but not standard-layout
 	int i;
 private: //access control, then the compiler is free to choose a layout.
 	int j;
@@ -1640,13 +1639,11 @@ private: //access control, then the compiler is free to choose a layout.
 
 struct SL { // standard-layout but not trivial
 	int i;
-	int j;
 	~SL();
 };
 
 struct POD { // both trivial and standard-layout
 	int i;
-	int j;
 };
 \end{lstlisting}
 
@@ -1655,25 +1652,23 @@ struct POD { // both trivial and standard-layout
 struct A { };
 struct B { ~B(){} };
 
-cout << is_literal_type<int>::value ; //int& and int* and A true
-cout << "B: " << is_literal_type<B>::value;  //false
+cout << is_literal_type<int>::value ; //int&, int* and struct A all return true.
+cout << "B: " << is_literal_type<B>::value;  //return false here.
 
 struct point {
-	point(): x(0), y(0){  std::cout << "point() called" << std::endl; }
 	constexpr point(int x_, int y_): x(x_),y(y_){}
-	constexpr int hypot() { return x*x + y*y; }
 private:
 	int x,y;
 };
 
 static_assert( point(3,4).hypot() == 25 );
-std::cout << std::is_literal_type<point>::value;	
+std::cout << std::is_literal_type<point>::value; //return ture, has constexpr constructor	
 \end{lstlisting}
 
 \par The reason why a literal type cannot have a non-trivial destructor is that it would prevent the type from being used in constant expressions. A constant expression is an expression that can be evaluated at compile time, and it is used in various contexts, such as initializing global or static variables or defining template arguments. If a literal type had a non-trivial destructor, it would require dynamic memory allocation and deallocation, which cannot be done at compile time. As a result, the type would no longer be suitable for use in constant expressions, and it would no longer be a literal type.	
 
 \par Summary of different type categories:
-\begin{enumerate}
+\begin{itemize}
 	
 
 
@@ -1682,27 +1677,22 @@ std::cout << std::is_literal_type<point>::value;
 	\item POD is obsolete after C++11 and it has been expanded to two distinct concepts: \textbf{trivial classes} and \textbf{standard-layout classes}.  \textbf{Trivial class is not sub-concept of POD, it's totally new definition.}  Standard-layout classes has the same layout as structs in C, so it has better portability.
 	
 
-	\item A trivial class can be created, moved, and destructed by only memory operation and without causing any side effects. This allows for improved efficiency in certain contexts, such as using static initialization, \texttt{memcpy} instead of the copy constructor, or overwriting memory to destruct it. 
+	\item A trivial class can be created, moved, and destructed by only memory operation without any side effects. This allows for improved efficiency in certain contexts, such as using static initialization, using \texttt{memcpy()} instead of the copy constructor, or overwriting memory to destruct it. 
 
 	
-	\item If want to compatibility with C (not only layout compatible), you must ensure that the type is trivial AND standard-layout. For data exchange via network or file, you can use a type that satisfies only trivial or standard-layout. I would recommend either aiming for both or at least standard-layout. Because with only trivial, you risk that future compiler's or a different compiler on the other side, do rearrange data members, and then a receiver may have a different layout understanding than the sender.
+	\item If want to compatibility with C, you must ensure that the type is trivial AND standard-layout (not only layout compatible). For data exchange via network or file, you may use a type that satisfies only trivial or standard-layout. I would recommend either aiming for both or at least standard-layout. Because with only trivial, you risk that future compiler's or a different compiler on the other side, do rearrange data members, and then a receiver may have a different layout understanding than the sender.
 	
-	\item Understand aggregate, trivial, standard layout and literal type from semantic, not syntactic perspective. A good article about this topic is "What are Aggregates and PODs and how/why are they special?" in StackOverflow.
+	\item Understand aggregate, trivial, standard-layout and literal type from semantic, not syntactic perspective. A good article about this topic is "What are Aggregates and PODs and how/why are they special?" in StackOverflow.
 
-\end{enumerate}	
+\end{itemize}	
 	 
 	
 
-
-	
-
-
-
-\section{Type qualifiers}
+\section{Type specifier}
 \subsection{cv-qualifier}
-\subsubsection{const in function}
+\subsubsection{const variable and const function}
 	
-	 \texttt{const} must be initialized when you declare it. \texttt{static} will be initialized to default value(usually zero value) if you don't assign a value manually. 
+	 \texttt{const} must be initialized when you declare it. \texttt{static} will be initialized to default value(usually zero value) if you don't assign a value to it manually. 
 	
 	\par A top-level \texttt{const} indicates that the pointer itself is constant. When a pointer can point to a constant object, we refer to that \texttt{const} as a low-level const. For reference types, you cannot change the reference itself, so top-level const is always present by default, and you can only set low-level const.
 \begin{lstlisting}[frame=single, language=c++]
