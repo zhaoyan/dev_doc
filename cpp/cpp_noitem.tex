@@ -4315,19 +4315,18 @@ std::vector<int> v2{10, 20};  //create 2-element vector, element are 10 and 20
 
 \subsection{Auto initialization(Almost Always Auto)}
 
-\subsubsection{Basic usage}
-	 Three main usage of \texttt{auto}:
+	 Three main usages of \texttt{auto}:
 	 \begin{enumerate}
-	 	\item Used in initialization expression. For example, you can assign lambda to an \texttt{auto} type variable.
-	 	\item \texttt{auto} parameter in lambda.
-	 	\item \texttt{auto} return type.  
+	 	\item Use in initialization expression. For example, you can assign lambda to an \texttt{auto} type variable.
+	 	\item \texttt{auto} parameter in a lambda.
+	 	\item \texttt{auto} return type in a function.  
 	 \end{enumerate}
 	    
 %		with help of \texttt{auto} parameter and \texttt{auto} type, you can build \textbf{generic lambda}. 
 
 	\par Auto initialization sets the type of a declared variable from its initializing expression at compile-time. It is recommended to use \texttt{auto} when initializing a variable with an expression.
 \begin{lstlisting}[numbers=none]
-auto a = expr
+auto a = expr 
 auto a = T{expr} //when you want to commit to a certain type
 
 auto s = "Hello";  //s is const char* just like const char* s = "Hello";
@@ -4338,8 +4337,6 @@ auto v = {1, 2, 3}    // v is std::initializer_list type.
 auto* p = new vector<pair<int, string> >; //save typing on the left side.
 std::vector<std::pair<int, std::string>> array;
 auto it = array.begin();    //don't need container iterator type
-
-//unique_ptr<widget> w = make_unique<widget>();
 auto w = make_unique<widget>(); //template class or function
 auto l = [](){..};              //for lambda, you have to use auto
 \end{lstlisting}
@@ -4350,7 +4347,7 @@ auto l = [](){..};              //for lambda, you have to use auto
 const auto iter = modmap.find(123); //specify const
 auto& mod = vec[17];  //specify &, without &, mod will not be reference type
                       //although vec[17] return reference type
-for (const auto& element : myarray) {
+for (const auto& element : myarray) {  //a read only reference.
 	//do stuff that reads from element
 }
 \end{lstlisting}
@@ -4363,7 +4360,7 @@ auto apply(F&& f, T value){ return f(value); }
 
 	\par Advantages of using \texttt{auto}:
 	\begin{itemize}
-		\item Avoidance of uninitialized variables.
+		\item Avoidance of uninitialized variables. 
 \begin{lstlisting}[numbers=none]
 auto x2; // error! initializer required
 auto x3 = 0; // fine, x's value is well-defined
@@ -4374,14 +4371,14 @@ auto x3 = 0; // fine, x's value is well-defined
 template<typename It>
 void fun(It b, It e) {
 	//typename std::iterator_traits<It>::value_type currValue = *b;
-	auto currValue = *b; //using auto is much simpler.
+	auto currValue = *b; //using auto is much simpler here.
 }
 
 auto ii = find_if(people.begin(), people.end(), match_name );               
 if (ii != people.end()){...}
 \end{lstlisting}
 
-		\item Avoid what I call problems related to "type shortcuts." It's very importance here because \texttt{auto} guarantees correct and performance.
+		\item Avoidance of problems related to "type shortcuts". It's very importance here because \texttt{auto} guarantees correct and performance.
 \begin{lstlisting}[frame=single, language=c++]
 std::vector<int> v;
 int sz = v.size(); 
@@ -4389,11 +4386,10 @@ auto sz = v.size(); //v.size() return size_t, not int
 
 std::unordered_map<std::string, int> m;
 for (const std::pair<std::string, int>& p : m){//bad style, manual defined type
-	
 for (const auto& p : m){  //better style with auto 
 \end{lstlisting}
 
-	\item Good maintenance for future change. 
+	\item Good maintenance for future modification. 
 	
 %	First, change id type in line 3 to line 4, if we use \texttt{auto} in line 8, we don't need to change at all. But if we use \texttt{int}, then we need to change from \texttt{int} to \texttt{GUID} too.
 %\begin{lstlisting}[frame=single, language=c++, mathescape=true]
@@ -4408,22 +4404,23 @@ for (const auto& p : m){  //better style with auto
 %\end{lstlisting}
 	\end{itemize}
 	
-\subsubsection{Pitfall of auto}
-	There are two points need to be noticed. The first one is using \texttt{auto} with \texttt{vector<bool>}, The second is combining \texttt{auto} with list initialization.
+
+	\par There are two points need to be noticed. The first one is using \texttt{auto} with \texttt{vector<bool>}, The second is combining \texttt{auto} with list initialization.
 	
-	\par \texttt{vector<bool>::operator[]} neither yields a bool nor a reference to a bool. It just returns a little proxy object that acts like a reference. This is because there are no references to single bits and \texttt{vector<bool>} actually stores the bools in a compressed way. So by using auto you just created a copy of that reference-like object. The problem is that C++ does not know that this object acts as a reference. You have to force the "decay to a value" here by replacing auto with T.  If you don't understand why, no worry. I will introduce \texttt{std::ref} in the Concurrent chapter, you can go there to look the introduction of \texttt{std::ref}. Both "proxy" class and \texttt{std::ref} share the same idea.
+	\par \texttt{vector<bool>::operator[]} neither yields a bool nor a reference to a bool. It just returns a little proxy object that acts like a reference. This is because there are no references to single bits and \texttt{vector<bool>} actually stores the bools in a compressed way. So by using \texttt{auto} you just created a copy of that reference-like proxy object. The problem is that C++ does not know that this object acts as a reference. You have to force the "decay to a value" here by replacing \texttt{auto} with T.  If you don't understand why, no worry. I will introduce \texttt{std::ref} in the "concurrent" chapter, you can go there to look the introduction of \texttt{std::ref}. Both "proxy" class and \texttt{std::ref} share the same idea.
 \begin{center}
-	\includegraphics[width=0.45\linewidth]{pics/auto2.png}
+	\includegraphics[width=0.43\linewidth]{pics/auto2.png}
 \end{center}
 
 \begin{lstlisting}
-vector<bool> v;
-v.push_back(false);
-auto x = v[0]
-x = true; //error, v[0] has been changed, That is not right.
+vector<bool> v(6, false);
+auto x = v[0];
+bool y = v[1];
+x = true; //Not correct, v[0] has been changed to true.
+y = true; //correct, v[1] has NOT been changed. 
 \end{lstlisting}
 
-	\par In below code, Prior to C++17 the type for all the following variable (\texttt{a, b, c} and \texttt{d}) is deduced to \texttt{std::initializer\_list<int>}. There is no difference between the direct-list-initialization and the copy-list-initialization on the result of the type deduction. In another word, When you use = and \{\} together, it will deducted as \texttt{std::initializer\_list}, no matter how many parameters are there inside the \{\}. After C++ 17, For copy list initialization auto deduction will deduce a \texttt{std::initializer\_list<T>} if all elements in the list have the same type, or be ill-formed. For direct list initialization auto deduction will deduce a T if the list has a single element. \textbf{In one word, when \texttt{auto} used with = and \{\}, it will deduct \texttt{std::initializer\_list<T>}}.
+	\par In below code, prior to C++17 the type for all the following variable (\texttt{a, b, c} and \texttt{d}) is deduced to \texttt{std::initializer\_list<int>}. There is no difference between the direct-list-initialization and the copy-list-initialization on the result of the type deduction. In another word, When you use = and \{\} together, it will deducted as \texttt{std::initializer\_list}, no matter how many parameters are there inside the \{\}. After C++ 17, For copy list initialization auto deduction will deduce a \texttt{std::initializer\_list<T>} if all elements in the list have the same type, or be ill-formed. For direct list initialization auto deduction will deduce a T if the list has a single element. \textbf{In one word, when \texttt{auto} used with = and \{\}, it will deduct \texttt{std::initializer\_list<T>}}.
 		
 \begin{lstlisting}[numbers=none]
 auto a = {42};   // std::initializer_list<int> //Before C++ 17, it's not nature
@@ -4506,16 +4503,16 @@ auto e = { 1, 2.0 }; // error: cannot deduce element type
 %		
 %\end{itemize}
 
-common used forms in initialization and comparison.
+\textbf{Common used forms in initialization and comparison.}
 
 
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
 widget w;          // (a) default initialization with default constructor.
 widget w();        // (b) function declaration, vexing parsing problem.
-widget w{};        // (c) correct value initialization with vexing parsing problem
+widget w{};        // (c) default initialization or value initialization
 
-widget w(x);       // (d)
-widget w{x};       // (e)
+widget w(x);       // (d) (d) and (e) are both direct initialization.
+widget w{x};       // (e) both call constructor widget::widget(x) 
 
 widget w = x;      // (f)
 widget w = {x};    // (g)
@@ -4524,19 +4521,13 @@ auto w = x;        // (h)
 auto w = widget{x};// (i)
 \end{lstlisting}	
 	
-	\begin{enumerate}
+	\begin{itemize}
 	
-		\item For (d) and (e), These are both direct initialization. The variable w is initialized "directly" from the value of x by calling \texttt{widget::widget(x)}. If x is also of type widget, this invokes the copy constructor. Otherwise, it invokes a converting constructor. (e) is better than (d) to avoid narrowing, for example: \texttt{int a(1.2)} pass, but \texttt{int a{1.2}} fail.
+		\item For (d) and (e), The variable \texttt{w} is initialized "directly" from the value of \texttt{x} by calling \texttt{widget::widget(x)}. If x is also of type \texttt{widget}, this invokes the copy constructor. Otherwise, it invokes a converting constructor. (e) is better than (d) to avoid narrowing, for example: \texttt{int a(1.2)} pass, but \texttt{int a{1.2}} fail. For (e), it prefer to use constructor that takes an \texttt{initializer\_list}. Please also note this point here.
 		
-		\item For (e), it prefer to use constructor that takes an \texttt{initializer\_list}. We will introduce more in \texttt{initializer\_list.} section.
+		\item For (f), when \texttt{x} is type of \texttt{widget}, just like (d). When \texttt{x} is not type of widget, \textbf{conceptually} the compiler first implicitly converts \texttt{x} to a temporary \texttt{widget} object if an implicit conversion is available, then move-constructs \texttt{w} from that temporary rvalue, using copy construction as "the slow way to move" as a backup if no better move constructor is available. Note that I said "conceptually" a few times above. That's because practically compilers are allowed to, and routinely do, optimize away the temporary and, if an implicit conversion is available, convert (f) to (d), thus optimizing away the extra move operation. However, even when the compiler does this, the \texttt{widget} copy constructor must still be accessible, even if is not called, the copy constructor's side effects may or may not happen. \textbf{For (g), This is called “copy list initialization.” It means the same as \texttt{widget w\{x\}};} except that explicit constructors cannot be used. It’s guaranteed that only a single constructor is called. (only converting constructor is called, no copy constructor).
 		
-		\item For (f), when \texttt{x} is type of \texttt{widget}, just like (d). When \texttt{x} is not type of widget, it will convert \texttt{x} to a temporary If \texttt{x} is of some other type, \textbf{conceptually} the compiler first implicitly converts x to a temporary widget object, then move-constructs w from that temporary rvalue, using copy construction as "the slow way to move" as a backup if no better move constructor is available. Assuming that an implicit conversion is available, (f) means the same as widget w( widget(x) );. Note that I said "conceptually" a few times above. That's because practically compilers are allowed to, and routinely do, optimize away the temporary and, if an implicit conversion is available, convert (f) to (d), thus optimizing away the extra move operation. However, even when the compiler does this, the widget copy constructor must still be accessible, even if is not called, the copy constructor's side effects may or may not happen.
-		
-		\item \textbf{For (g), This is called “copy list initialization.” It means the same as \texttt{widget w\{x\}};} except that explicit constructors cannot be used. It’s guaranteed that only a single constructor is called. (only converting constructor is called, no copy constructor).
-		
-		\item (h) just like type-of-x w(x), is same with (d), only single copy constructor is called
-		
-		\item (i) is the most consistent spelling when you do want to commit to a specific type and explicitly request a conversion if needed, and once again the \{ \} syntax happily avoids lossy narrowing conversions. In practice on most compilers, only a single constructor is called-similarly to what we saw with (f) and (g).
+		\item (h) \texttt{w} has the same type as \texttt{x}, only single copy constructor of \texttt{x} is called. (i) is the most consistent spelling when you do want to commit to a specific type and explicitly request a conversion if needed, and once again the \{ \} syntax happily avoids lossy narrowing conversions. In practice on most compilers, only a single constructor is called-similarly to what we saw with (f) and (g).
 		
 %		\item Some initialization examples based on previous introductions.
 %		
@@ -4562,7 +4553,7 @@ auto w = widget{x};// (i)
 %			\item[Line 13:] you can use \texttt{auto w = Test(2)}, it just call converting constructor, even converting constructor is explicit, it can work too. No copy constructor is called at all. \texttt{w} is not const reference. List initialization \{\} is better, it more generic and avoid narrow \texttt{auto w = Test\{1.2\}} fail. 
 %		\end{description}
 		
-	\end{enumerate}
+	\end{itemize}
 
 %	\item A similar example, given below code snippet, the syntax analysis and comparison: 
 %	
@@ -4643,25 +4634,26 @@ auto w = widget{x};// (i)
 
 
 
-\subsection{Key points of this chapter}
-	 Understanding some basic conceptions. such as aggregate type, copy-list-initilization, converting constructor. All the high level usages are based on these basic conceptions. 
+\textbf{Key points of this chapter}
+
+	 \par Understanding some basic conceptions, such as aggregate type, copy-list-initilization, converting constructor. All the high level usages are based on these basic conceptions. 
 	
-	\par It's important to be familiar with the six basic initialization methods and know how to distinguish them. For instance, initializing with the equal sign is known as copy initialization.
+	\par It's important to be familiar with the six basic initialization methods and know how to distinguish them. For instance, initialization with the equal sign is known as copy initialization.
 	
 	\par Six initialization methods and list initialization are irrelevant and orthogonal. List initialization syntax can be interpreted as aggregated init, value init, direct initialization or copy initialization and it brings its own advantage.
 	
-	\par Know the difference between value initialization and default initialization. Know the difference between direct init, copy initialization and list copy initialization.  
+	\par Know the difference between value initialization and default initialization. Know the differences between direct init, copy initialization and list copy initialization.  
 %\begin{lstlisting}
 %A a(1) or A a{1} //direct initialization
 %A a = 1;  //copy initialization
 %A a = {1}; //list copy initialization, same as direct initialization	
 %\end{lstlisting}	
 		 
-	\par Know when to use list initialization and it's advantage. Know the basic usage of \texttt{initializer\_list} and the difference between list initialization. Just pay attention when the class has \texttt{list\_initiaizer} constructor, and know the auto usage and its pitfall.
+	\par Know when to use list initialization and it's advantage. Know the basic usage of \texttt{initializer\_list} and the difference between list initialization. Just pay attention when the class has \texttt{list\_initiaizer} constructor, and know the auto \texttt{usage} and its pitfall.
 	
 	\par There are three levels of initialization knowledge in C++. The first level is the syntax level, which determines whether we use braces or parentheses, an assignment operator, or a function return, among other things. From this level, we can go deeper to another level to determine what kind of initialization methods are available. There are six different methods. Finally, we can reach the semantic level, which depends on the specific data type for the detailed initialization action.
 	
-	For example, if T is an aggregate type, we use aggregate initialization. If the braced-init-list is empty and T is a class type with a default constructor, we use value-initialization. In other words, '\texttt{A a\{x, y\}}' may be a direct initialization or an aggregate initialization, depending on the data type and syntax. This is an essential point for you to understand better about initialization in C++.
+	For example, if T is an aggregate type, we use aggregate initialization. If the braced-init-list is empty and T is a class type with a default constructor, we use value-initialization. In other words, '\texttt{A a\{x, y\}}' may be a direct initialization or an aggregate initialization, depending on the data type of \texttt{A}. This is an essential point for you to understand better about initialization in C++.
 	
 	
 \begin{center}
@@ -4670,24 +4662,24 @@ auto w = widget{x};// (i)
 			
 
 
-\subsection{Initialize suggestions}
+\textbf{Initialize suggestions}
 
 		 I don't intend to make this chapter overly complex or confusing, but the intricacies arise from the C++ standard's attempt to introduce uniform list initialization while maintaining compatibility with older standards and existing code. It's akin to making an elephant dance with a heavy chain – no easy task. For developers who aren't compiler developers or language experts, following below simple rules can suffice: \textbf{Use \texttt{auto} when there is an expression, and use \{\} when there isn't.}
 		
 		
 	\begin{enumerate}
-		\item If right side is expression, \texttt{new} operator or function, use \textbf{\texttt{auto var = expr;}}.  Pay attention two pitfalls when use \texttt{auto}.
+		\item If right side is expression, \texttt{new} operator or function, use \textbf{\texttt{auto var = expr;}}.  Pay attention one pitfalls when use \texttt{auto}.
 \begin{lstlisting}
 auto with vector<bool>      // 1) the first pitfalls of auto
 auto with initializer_list  // 2) the second pitfalls of auto
 \end{lstlisting}		
 		
-		\item Otherwise, Use \textbf{list initialization if possible.}  Use \{\} even in Default initialization, maybe it's redundant for some types, but it's good habit and keep your style consistency. For example, use \texttt{String str\{\}} instead of \texttt{String str}. When using list initialization, pay attention two traps for \texttt{std::initilizaer\_list} when class has overload constructor with \texttt{initializer\_list} argument.
+		\item Otherwise, Use \textbf{list initialization if possible.}  Use \{\} even in default initialization, maybe it's redundant for some types, but it's good habit and keep your style consistency. For example, use \texttt{String str\{\};} instead of \texttt{String str;}. When using list initialization, pay attention two traps for \texttt{std::initilizaer\_list} when class has overload constructor with \texttt{initializer\_list} argument.
 \begin{lstlisting}
-foo{1, 2} //1) Always call constructor with initializer_list(conversion match)
+foo{1, 2} //Always call constructor with initializer_list(conversion match)
 	      //even there is non initializer_list constructor(exact match).
 	
-vector v(10, 2) and vector v{10, 2}; // 2) difference between () and {}.
+vector v(10, 2) and vector v{10, 2}; //Semantic between () and {}.
 \end{lstlisting}
 %		\begin{enumerate}
 %			\item If type has list initialization constructor, list initialization will use it first, and very strongly. 
@@ -4707,7 +4699,7 @@ Foo f1(f2);  //bad style, if f2 is int, it will call Foo(int) here.
 Foo f1 = {f2};  //good style too, just like line 1 and use { } consistently.
 \end{lstlisting}		
 		\begin{description}
-			\item[Line 2:] If \texttt{f2} is not \texttt{Foo} type, line 6 will fail with explicit single parameter constructor. You think that \texttt{f1} and \texttt{f2} are the same type, but this failure indicates that they have different type. However, line 7 will call explicit single parameter constructor directly and doesn't give you this kind of helpful hint. 
+			\item[Line 2:] You need explicit here. If \texttt{f2} is not \texttt{Foo} type, line 6 will fail with explicit single parameter constructor. You think that \texttt{f1} and \texttt{f2} are the same type, but this failure indicates that they have different type. However, line 7 will call explicit single parameter constructor directly and doesn't give you this kind of helpful hint. 
 		\end{description}
 		
 	\end{enumerate}
@@ -4767,8 +4759,8 @@ Foo f1 = {f2};  //good style too, just like line 1 and use { } consistently.
 	
 \begin{lstlisting}[frame=single, language=c++]
 // include "stdlib.h"
-int *sieve = (int *)malloc(sizeof(int)*length);	// suppress warning 
-int *sieve = malloc(sizeof(int)*length); // produce a warning
+int *sieve = (int *)malloc(sizeof(int)*length);	// Bad, suppress warning here.
+int *sieve = malloc(sizeof(int)*length);        // Good, produce a warning.
 \end{lstlisting}
 
 	\par \texttt{malloc} actually returns \texttt{void*} type. We don't recommend using the \texttt{(int*)} cast at all, so the next question is whether \texttt{void*} can be implicitly cast to \texttt{int*} or other pointer types in assignment. The answer is \textbf{YES}.
@@ -4781,7 +4773,7 @@ int *p = NULL;  //legal
 FILE * f = NULL;  //legal
 \end{lstlisting}
 	
-	\par In C++, the statement \texttt{int *p = (void *) 0} is no longer legal since C++ is a type-safe language. Therefore, in C++, the literal \texttt{NULL} is defined as 0. However, this creates another ambiguity problem. To resolve this issue, C++11 introduced the keyword \texttt{nullptr}.
+	\par In C++, the literal \texttt{NULL} is just defined as 0. The statement \texttt{int *p = (void *) 0} is no longer legal since C++ is a type-safe language. To resolve this issue, C++11 introduced the keyword \texttt{nullptr}.
 	
 \begin{lstlisting}[numbers=none]
 int *p = NULL; //illegal in C++
@@ -4795,9 +4787,9 @@ f(nullptr) //will call f(int *p)
 \end{lstlisting}
 	
 
-	\par \texttt{calloc()} zero-initializes the buffer, while \texttt{malloc()} leaves the memory uninitialized. Zeroing out the memory may take a little more time, so you probably want to use \texttt{malloc()} if performance is an issue. If initializing the memory is more important, use \texttt{calloc()}. For example, \texttt{calloc()} might save you a call to \texttt{memset()}.
+	\par \texttt{calloc()} zero-initializes the buffer, while \texttt{malloc()} leaves the memory uninitialized. Zeroing out the memory may take a little more time, so you probably want to use \texttt{malloc()} if performance is an issue. If initializing the memory is more important, use \texttt{calloc()}, \texttt{calloc()} might save you a call to \texttt{memset(p, 0, size)} later.
 		
-	\par When you use \texttt{memcpy}, the destination cannot overlap the source at all, but \texttt{memmove} can. This means that \texttt{memmove} might be very slightly slower than \texttt{memcpy}, as it cannot make the same assumptions. For example, \texttt{memcpy} might always copy addresses from low to high. If the destination overlaps after the source, this means some addresses will be overwritten before being copied. \texttt{memmove} would detect this and copy in the other direction - from high to low - in this case. However, checking this and switching to another (possibly less efficient) algorithm takes time.
+	\par When you use \texttt{memcpy}, the destination cannot overlap the source at all, but \texttt{memmove} can. This means that \texttt{memmove} might be slightly slower than \texttt{memcpy}, as it cannot make the same assumptions. For example, \texttt{memcpy} might always copy addresses from low to high. If the destination overlaps after the source, this means some addresses will be overwritten before being copied. \texttt{memmove} would detect this and copy in the other direction - from high to low - in this case. However, checking this and switching to another (possibly less efficient) algorithm takes time.
 		
 	\par \texttt{realloc} reallocates the given area of memory. It must be previously allocated by \texttt{malloc()}, \texttt{calloc()}, or \texttt{realloc()} and not yet freed with a call to \texttt{free} or \texttt{realloc}. Otherwise, the results are undefined. \texttt{realloc} may or may not change the original address.
 
@@ -4813,7 +4805,7 @@ strcat(str, ".");
 printf("String = %s,  Address = %p\n", str, str);
 \end{lstlisting}
 	
-	\par When you use \texttt{realloc}, don't return the value assigned to the input pointer \texttt{ptr}. Instead, use another local pointer, such as \texttt{new\_ptr}, because if \texttt{realloc} fails, it will not overwrite the original \texttt{ptr}.
+	\par When you use \texttt{realloc}, don't assigned the return value to the input pointer \texttt{ptr}. Instead, use another local pointer, such as \texttt{new\_ptr}, because if \texttt{realloc} fails, it will not overwrite the original \texttt{ptr}.
 \begin{lstlisting}[numbers=none]	
 void *new_ptr = realloc(ptr, new_size);
 if (!new_ptr) {
@@ -4824,29 +4816,33 @@ ptr = new_ptr
 
 
 \section{new operator in C++}
-\subsection{Basic}
-	 There are four sub-topics related to the new operator: 1) new\_handler, 2) no throw, but return \texttt{nullptr} (since C++11), 3) placement new (which does not allocate, only constructs), and 4) operator \texttt{new} (which only allocates, without constructing). For the default new operator, you can use \texttt{set\_new\_handler} to adjust the behavior when enough memory can't be allocated. More details can be found in the next section.
-	
-	\par There are four sub-topics related to the \texttt{new} operator: 1) \texttt{new\_handler}, 2) \texttt{no\_throw}, but return \texttt{nullptr} (since C++11), 3) placement new (which does not allocate, only constructs), and 4) operator new (which only allocates, without constructing). For the default \texttt{new} operator, you can use \texttt{set\_new\_handler} to adjust the behavior when enough memory cannot be allocated. More details can be found in the next section.
-	
+\subsection{Four different sub-topics of new operator}
+	 There are four sub-topics related to the \texttt{new operator}: 
+	 \begin{enumerate}
+	 	\item new\_handler. For the default \texttt{new operator}, you can use \texttt{set\_new\_handler} to adjust the behavior when enough memory can't be allocated.
+	 	\item no throw. When allocation fails, don't throw an exception, but return \texttt{nullptr} (since C++11).
+	 	\item placement new. It does not allocate memory, only constructs object on a given memory.
+	 	\item \texttt{operator new}. It only allocates memory, without constructing.
+	 \end{enumerate}
+	 
 \begin{lstlisting}[frame=single, language=c++]
-std::set_new_handler(noMem);
+std::set_new_handler(noMem);  //1) new_handler 
 Foo* p1 = new Foo;//call noMem if fail, throw exception if no new handler
 
-Foo * p2 = new (std::nothrow) Foo; // no throw
-new (p2) Foo;   //placement new
+Foo * p2 = new (std::nothrow) Foo; // 2) no throw
+new (p2) Foo;   //placement new    // 3) placement new
 
-Foo* p3=(Foo*)::operator new(sizeof(Foo));//only allocate, no construct
+Foo* p3=(Foo*)::operator new(sizeof(Foo));  // 4) operator new
 \end{lstlisting}
 	
 
-	\par The \texttt{nothrow} \texttt{new} operator only ensures that the \texttt{operator new} inside it will not throw an exception, but will return \texttt{nullptr} if the allocation fails. However, it does not guarantee that the constructor of \texttt{MyClass} will not throw an exception. Therefore, it is not a fully mature design. In other words, we do not recommend using this type of \texttt{nothrow new} operator in the production code.
+	\par The \texttt{nothrow} \texttt{new operator} only ensures that the \texttt{operator new} inside it will not throw an exception, but will return \texttt{nullptr} if the allocation fails. However, it does not guarantee that the constructor of \texttt{Foo} will not throw an exception. Therefore, it is not a fully mature design. In other words, we do not recommend using this type of \texttt{nothrow new} operator in the production code.
 
 	
-	\par The \texttt{new} operator will call the constructor function of a class, but \texttt{malloc} will not call the constructor function. Therefore, in C++, you should use the \texttt{new} operator instead of \texttt{malloc}.
+	\par The \texttt{new operator} will call the constructor function of a class, but \texttt{malloc} will not call the constructor function. Therefore, in C++, you should use the \texttt{new operator} instead of \texttt{malloc}.
 		
 	
-	\par When you have to use array new to allocate an array, you must use the array delete. If you don't use array delete, you may end up deleting only the first object in the array. If you use array delete on a single \texttt{new}, it's undefined behavior. Any time you want to use \texttt{new} to allocate an array, ask yourself if you can replace it with \texttt{vector} or \texttt{string}. If the answer is 'yes', don't use array new. 
+	\par When you have to use array \texttt{new} (new int[100];) to allocate an array, you must use the array \texttt{delete} (delete [] p;). If you don't use array \texttt{delete}, you may end up deleting only the first object in the array. If you use array \texttt{delete} on a single \texttt{new}, it's undefined behavior. Any time you want to use \texttt{new} to allocate an array, ask yourself if you can replace it with \texttt{std::vector} or \texttt{std::string}. If the answer is 'yes', don't use array \texttt{new}. 
 	
 %	The system will remember the size corresponding to \texttt{pa}. With \texttt{[]}, it will iterate with the size. When you forget \texttt{[]}, it will only free the first object, causing a memory leak.
 	
@@ -4869,28 +4865,28 @@ vec_new(int elem_count, int size, funptr constructor){
 }	
 \end{lstlisting}
 	
-	\par When you use array new with inheritance, there is one important thing to notice: don't use a base pointer to point to an array with a derived class. Why is it dangerous? When you use \texttt{delete [] bp}, the system will think that it's a base array, and each element in it is just a base object. Therefore, virtual functions won't play a role here. For more details, please refer to the 'Inheritance' section in this book. Note that \texttt{bp[2]} is not a pointer; polymorphism only works when we use a pointer or reference.
+	\par When you use array \texttt{new} with inheritance, there is one important thing to notice: don't use a base pointer to point to an array with a derived class. Why is it dangerous? When you use \texttt{delete [] bp}, the system will think that it's a base array, and each element in it is just a base object. Therefore, virtual functions won't play a role here. For more details, please refer to the 'Inheritance' section in this book. Note that \texttt{bp[2]} is not a pointer; polymorphism only works when we use a pointer or reference.
 \begin{lstlisting}[frame=single, language=c++]
-base *bp = new derived[10]; //always use derived *dp = new derived[10]
-bp[2]  //dangerous, undefined. size is wrong: \texttt{bp+sizeof(base)*2}
+Base *bp = new Derived[10]; //always use Derived *dp = new Derived[10];
+bp[2]    //dangerous, undefined. size is wrong: bp+sizeof(base)*2
 delete [] bp; //dangerous, 1)size is wrong, 2)it will call base::~base()	
 
 Base b, Derived d; //The whole idea is just like assigning Devirved to Base
-b = d;  // slice happens, but  new and pointer hide the detail behind the scene.
+b = d;  // slice happens, but new and pointer hide the detail behind the scene.
 \end{lstlisting}	
 	
 
 \subsection{new operator and delete operator}
 
    
-     When you call the \texttt{new} operator, it invokes \texttt{operator new}, which in turn invoke \texttt{new\_handler}. This provides two opportunities to customize the behavior of the operator: you can customize \texttt{operator new} and you can customize \texttt{new\_handler}.
+     When you call the \texttt{new operator}, it invokes \texttt{operator new}, which in turn invoke \texttt{new\_handler}. This provides two opportunities to customize the behavior of the operator: you can customize \texttt{operator new} and you can customize \texttt{new\_handler}.
     
     
-	\par Basic logic of new operator. Below is C++ pseudo code.
+	\par Basic logic of \texttt{new operator}. Below is C++ pseudo code.
 \begin{lstlisting}[]
 Point3d *origin = new Point3d;
 //will be converted to below code:	
-if(origin = operator new(sizeof(Point3d))){ //operator new to allocate memory
+if(origin = operator new(sizeof(Point3d))){ //call operator new to allocate memory
 	try{
 		origin = Point3d::Point3d(origin); //call constructor on the address
 	}
@@ -4903,7 +4899,7 @@ if(origin = operator new(sizeof(Point3d))){ //operator new to allocate memory
 	
 
 	
-\par Basic logic of operator new. This is throw version operator new, non-throw and placement operator new are quite alike. Most of time, we use \texttt{malloc} and \texttt{free} to allocate and free physical memory.
+\par Basic logic of \texttt{operator new}. This is throw version \texttt{operator new}, non-throw and placement \texttt{operator new} are quite alike. Most of time, we use \texttt{malloc} and \texttt{free} to allocate and free physical memory.
 \begin{lstlisting}[frame=single, language=c++]
 void * operator new(std::size_t size) throw(std::bad_alloc){
 using namespace std; 
@@ -4925,31 +4921,31 @@ using namespace std;
 }
 	\end{lstlisting}
 \begin{description}	
-    \item[Line 11-12] Why we need to call \texttt{set\_new\_handler} twice, The first one get the current handler, and the second one changes it back. That is only way we can get the current handler. This idiom is also used in \texttt{set\_terminate} and \texttt{set\_unexpect}. In C++11, introduce \texttt{get\_new\_handler()} function. We don't need to call \texttt{set\_new\_handler} twice. 
+    \item[Line 11-12] Why we need to call \texttt{set\_new\_handler} twice, The first one get the current handler, and the second one changes it back. That is only way we can get the current handler. This idiom is also used in \texttt{set\_terminate} and \texttt{set\_unexpect}. C++11 introduces \texttt{get\_new\_handler()} function. We don't need to call \texttt{set\_new\_handler} twice. 
     
-    \item[Line 13] At program startup, the value of \texttt{new\_handler} is a nullptr pointer. If an allocation fails inside of operator new, and\texttt{ std::get\_new\_handler} returns a null pointer value, then operator new will throw \texttt{std::bad\_alloc} in line 16.
+    \item[Line 13] At program startup, the value of \texttt{new\_handler} is a nullptr pointer. If an allocation fails inside of \texttt{operator new}, \texttt{globalHandler} is a nullptr, then \texttt{operator new} will throw \texttt{std::bad\_alloc} in line 16.
 \end{description}
 
 
 	\par More knowledge about \texttt{new\_handler}:
-\begin{enumerate}
+\begin{itemize}
 	
 
 	
-	\item \texttt{set\_new\_handler} accepts a function pointer and returns the same type function pointer, which can make declaring this type of function a little difficult.
-\begin{lstlisting}[frame=single, language=c++]
-void failNew(){
-	cerr<<"operator new fail!!!"<<endl
-	abort();
-}
------------------------------------------
-extern void ( *set_new_handler ( void (*)() ) ) (); //complex declaration.	
-set_new_handler(failNew);
-
-typedef void(* FunPtr)();  //A better method is to use typedef
-FunPtr (*set_new_handler) (FunPtr);
-set_new_handler(failNew);
-\end{lstlisting}
+%	\item \texttt{set\_new\_handler} function accepts a function pointer and returns the same type function pointer, which can make declaring this type of function a little difficult.
+%\begin{lstlisting}[frame=single, language=c++]
+%void failNew(){
+%	cerr<<"operator new fail!!!"<<endl
+%	abort();
+%}
+%set_new_handler(failNew);
+%
+%extern void ( * (*set_new_handler) ( void (*)() ) ) (); //complex declaration.	
+% void (*(*cp) (void (*)())) ();
+%
+%typedef void(* FunPtr)();  //A better method is to use typedef
+%FunPtr (*set_new_handler) (FunPtr);
+%\end{lstlisting}
 		
 	\item When you simply want to allocate memory, \texttt{operator new} is generally better than using \texttt{malloc} because it offers more options. For example, you can use \texttt{set\_new\_handler} or choose whether to throw an exception.
 \begin{lstlisting}[frame=single, language=c++]
@@ -4959,7 +4955,7 @@ char* raw = operator new(sizeof(Foo)*100, std::nothrow);
 if (raw == nullptr) abort();
 \end{lstlisting}
 	
-	\item As demonstrated in the previous code, the function \texttt{new\_handler} is called by allocation functions when a memory allocation attempt fails. Its intended purpose is one of three things:
+	\item The function \texttt{new\_handler} is called by \texttt{operator new} when a memory allocation attempt fails. Its intended purpose is one of three things:
 	
 	\begin{enumerate}
 		\item Make more memory available. \textbf{resolve the problem by myself.}
@@ -4975,17 +4971,23 @@ void noMemory(){
 	set_new_handler(nullptr);  //method2, default throw bad_alloc exception.
 	abort();  //method3, end application.
 }
-set_new_handler(noMemory) //in the beginning of main() function.
+
+int main(void){
+	set_new_handler(noMemory) //in the beginning of main() function.
+	...
 \end{lstlisting}
 
-\end{enumerate}
+	\item If you want to have customized \texttt{new\_handler} for specific class, please refer to "effective C++ item 49". It uses Mixin idiom, which can be found in generic programming section in this book.
+\end{itemize}
+
+
 
 	\par The implementation of \texttt{new operator} can be illustrated by below figure. 
 \begin{center}
 \includegraphics[width=0.90\linewidth]{pics/new1_1.png}
 \end{center}
 
-	\par If you want to have customized \texttt{new\_handler} for specific class, please refer to "effective C++ item 49". It uses Mixin idiom, which can be found in generic programming section in this book.
+	
 
 \par Basic logic of \texttt{delete operator} and \texttt{operator delete}.
 \begin{lstlisting}[numbers=none]
@@ -5045,14 +5047,14 @@ struct ComplexType {
 int main() {
 	char* dynArray = new char[256];
 	//Calls ComplexType's constructor to initialize memory as a ComplexType
-	new((void*)dynArray) ComplexType();
+	new( (void*) dynArray) ComplexType();
 	....
 	reinterpret_cast<ComplexType*>(dynArray)->~ComplexType();
 	delete[] dynArray; //Clean up memory once we're done
 	
 	//Stack memory can also be used with placement new
 	alignas(ComplexType) char localArray[256]; //alignas() available since C++11
-	new((void*)localArray) ComplexType();
+	new( (void*) localArray) ComplexType();
 	...
 	//Only need to call the destructor for stack memory
 	reinterpret_cast<ComplexType*>(localArray)->~ComplexType();
@@ -5062,15 +5064,15 @@ int main() {
 
 
 \section{Operator new overload}
-	 new operator (new expression) and operator new are two different things. \textbf{new operator call operator new inside.} there are three kind of operator new.
+	 \texttt{new operator} (new expression) and \texttt{operator new} are two different things. \texttt{new operator} call \texttt{operator new} inside. There are three kind of \texttt{operator new}.
 \begin{lstlisting}[frame=single, language=c++]
-void* operator new (std::size_t size);
+void* operator new (std::size_t size); 
 void* operator new (std::size_t size, const std::nothrow_t& nothrow_value) noexcept;
 void* operator new (std::size_t size, void* ptr) noexcept;	
 \end{lstlisting}	
 		
 	
-	\par You can't change the behavior of the new operator itself, but you can override the global operator new and overload it within a class. Pay attention to its arguments and return type, which is \texttt{void*}. The following code provides a simple demo without using texttt{new\_handler}. The operator new function typically invokes the \texttt{malloc} function, which in turn typically calls brk for small chunks and mmap for larger chunks. Therefore, at its core, C language handles low-level memory allocation and release.
+	\par You can't change the behavior of the \texttt{new operator} itself, but you can override the global \texttt{operator new} and overload it within a class. Pay attention to its arguments and return type, which is \texttt{void*}. The following code provides a simple demo without using \texttt{new\_handler}. The \texttt{operator new} function typically invokes the \texttt{malloc} function, which in turn typically calls \texttt{brk} for small chunks and \texttt{mmap} for larger chunks. Therefore, at its core, OS handles low-level memory allocation and release.
 	
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 void* operator new(size_t size){ //global operator new
@@ -5096,15 +5098,15 @@ int *p = new int[100]; //output "Yan's own operator new" here
 Foo* fp = new Foo();  //output "Foo's own operator new" here
 \end{lstlisting}
 
-	\par In C++, after you define a name in a scope (e.g., in a class scope), it will hide the same name in all enclosing scopes (e.g., in base classes or enclosing namespaces), and overloading never happens across scopes. I have introduced this knowledge in the second chapter's "Name Lookup" section. When the name is operator new, if you provide any class-specific placement new, you should provide all of the standard forms (plain, placement, and nothrow). In the below code, your own placement operator new will hide plain new and nothrow new in the global scope.
+	\par In C++, after you define a name in a scope (e.g., in a class scope), it will hide the same name in all enclosing scopes (e.g., in base classes or enclosing namespaces), and overloading never happens across scopes. I have introduced this knowledge in the second chapter's "Name Lookup" section. When the name is \texttt{operator new}, if you provide any class-specific placement new, you should provide all of the standard forms (plain, placement, and nothrow). In the below code, your own placement new will hide plain new and nothrow new in the global scope.
 
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 class C {
 	static void* operator new(size_t, MemoryPool&); //placement operator new
-	// hides normal forms operator new 
+	// hides all ohter forms operator new 
 };
 
-C* pc = new C() //compile failed.	
+C* pc = new C() //compile failed here. 	
 \end{lstlisting}
 
 	In order to resolve the name hiding problem, you can define a Base class that includes the regular \texttt{operator new} and then have your own class inherit from it. More details can be found in "Effective C++ Item 52".
@@ -5137,24 +5139,23 @@ public:
 \end{lstlisting}
 
 	
-	\par When should you provide your own operator new?  You want to add log function; You want to add some cookie before and after allocated memory (Visual Studio use this way to detect overflow in debug mode). You want to have quicker speed(memory pool). You want to have better alignment and so on. In summary, in below three contexts:
+	\par When should you provide your own operator new?  You want to add log function; You want to add some cookie before and after allocated memory (Visual Studio use this way to detect overflow in debug mode). You want to have quicker speed (memory pool). You want to have better alignment and so on. In summary, in below three contexts:
 	\begin{enumerate}
 		\item Performance: the default memory allocator is designed to be general purpose. Sometimes you have very specific objects you want to allocate, chapter 4 in "Modern C++ Design" presents a very well designed and implemented custom allocator for small objects.
 		
 		\item Debugging \& statistics: having full control of the way memory is allocated and released provides great flexibility for debugging, statistics and performance analysis.
 		
-		\item Customization to cluster related object together, and reduce size. put guard block to avoid overrun and underrun. More detail can be seen in effective C++( third edition) Item 50
+		\item Customization to cluster related object together, and reduce size. Put guard block to avoid overrun and underrun. More detail can be seen in effective C++( third edition) Item 50
 	\end{enumerate}
 		
 
-
-	\par Why do we need operator array new? You can google the article "Why is ::operator new[] necessary when ::operator new is enough?" in the stack overflow. The basic idea is the same, I think that it just make you can have fine grain control. If you customize operator array new, it will only affect array new expression.  
-\begin{lstlisting}[numbers=none]
-void* operator new(size_t);   //operator new
-void* operator new[](size_t); //operator array new
-
-int* p = new int[5]; // call operator array new.
-\end{lstlisting}
+%	\par Why do we need operator array new? You can google the article "Why is ::operator new[] necessary when ::operator new is enough?" in the stack overflow. The basic idea is the same, I think that it just make you can have fine grain control. If you customize operator array new, it will only affect array new expression.  
+%\begin{lstlisting}[numbers=none]
+%void* operator new(size_t);   //operator new
+%void* operator new[](size_t); //operator array new
+%
+%int* p = new int[5]; // call operator array new.
+%\end{lstlisting}
 	
 
 \subsection{Placement operator new overload}
@@ -5174,7 +5175,7 @@ operator new (sizeof(int), x);
 %}		
 %\end{lstlisting}		
 	
-	\par Any another parameter beside the \texttt{size\_t} can also be called as "placement operator new". One of the versions of placement new is overloaded to accept a parameter \texttt{std::nothrow} (its type is \texttt{nothrow\_t}). The value itself is not used, but that version of operator new shall return a null pointer in case of failure instead of throwing an exception.
+	\par Any another parameter beside the \texttt{size\_t} can also be called as "placement operator new". One of the versions of placement new is overloaded to accept a parameter \texttt{std::nothrow} (its type is \texttt{std::nothrow\_t}). The value itself is not used, but that version of \texttt{operator new} will return a null pointer in case of failure instead of throwing an exception.
 \begin{lstlisting}[numbers=none]
 void* operator new (std::size_t size, void* pMemory) throw(); //special 
 
@@ -5187,13 +5188,13 @@ if(!p){
 	
 	\par Some suggestions for placement operator new overload. You can see the context is very complicated, so don't overload placement new operator unless you have to. 
 	
-\begin{enumerate}
-	\item Don't overload placement operator new with extra void pointer.
+\begin{itemize}
+	\item Don't overload placement operator new with extra \texttt{void} pointer.
 \begin{lstlisting}[numbers=none]
-void* operator new (std::size_t size, void* ptr) //1) not allow overload
+void* operator new (std::size_t size, void* ptr) //1) not allow overload 
 \end{lstlisting}	
 	
-	\item If you define your own placement operator new. You must provide your own corresponding placement \texttt{operator delete}. Because when the constructor throw exception, it calls the corresponding customized placement operator delete. If no such function, placement new does nothing and cause memory leak. Detail can be found in "effective C++ item 52"
+	\item If you define your own placement \texttt{operator new}. You must provide your own corresponding placement \texttt{operator delete}. Because when the constructor throw exception, it calls the corresponding customized placement \texttt{operator delete}. If no such function, placement new does nothing and cause memory leak. Detail can be found in "effective C++ item 52"
 \begin{lstlisting}[numbers=none]
 void* operator new (std::size_t size, ostream& logStream) {
 	logStream<<"use logStream output log here"<<endl;
@@ -5226,17 +5227,17 @@ void operator delete(void* p){
 }	
 \end{lstlisting}
 		
-\end{enumerate}	
+\end{itemize}	
 
-	\par If you have to rewrite operator new, You need to read effective C++( third edition) Item 51 in detail. For example, All operator new should contain a loop calling a new-handling function. You also need to deal with request of zero size, you need to consider alignment, you can see the pseudo-code in Item 51. In one word, \textbf{Don't rewrite operator new unless you have to.} There are not as easy as you think. If you overload global operator new, both library and user application have to use your overload version, it is very aggressive and will cause problem. If you have to do it for some very specific reason: there are two options:
+	\par If you have to rewrite \texttt{operator new}, You need to read effective C++ Item 51 in detail. For example, all \texttt{operator new} should contain a loop calling a new-handling function. You also need to deal with request of zero size, you need to consider alignment, you can see the pseudo-code in Item 51. In one word, \textbf{Don't rewrite operator new unless you have strong reason}, because it's not an easy task. If you overload global operator new, both library and user application have to use your overload version, it is very aggressive and will cause problem. If you have to do it for some very specific reason: there are two options:
 
 \begin{enumerate}
-	\item Consider some library, such as \textbf{Boost Pool library} for large number small object allocations. 
+	\item Consider some library, such as Boost Pool library for large number small object allocations. 
 	
-	\item Rewrite malloc and use LD\_PRELOAD trick to load your own malloc first.
+	\item Rewrite \texttt{malloc} and use LD\_PRELOAD trick to load your own \texttt{malloc} first.
 \end{enumerate}		
 	
-	\par A good article is "The many faces of operator new in C++", It give  detail information about operator new and how to rewrite it. You can google it.
+	\par A good article is "The many faces of operator new in C++", It gives detail information about \texttt{operator new} and how to rewrite it. You can google it.
 
 %\section{Summary}
 %Below figure illustrates what happen inside new operator and delete operator.
@@ -5253,7 +5254,7 @@ void operator delete(void* p){
 \section{Raw pointer}
 
 
-     When do you use a smart pointer? Here, I am reframing this question: When do you use a pointer? If you need a large array or memory resource, allocating it on the stack can cause a stack overflow. However, in practice, this requirement is deprecated because anytime you use \texttt{new[]}, you should consider using \texttt{std::vector} or \texttt{std::string} instead. Therefore, this usage is obsolete. Another common use is for polymorphism, but you can use a reference as well if it’s just for polymorphism. Therefore, this usage is also obsolete.
+     When do you use a smart pointer? Here, I am reframing this question: When do you use a pointer? If you need a large array or memory resource, allocating it on the stack can cause a stack overflow. However, in practice, this requirement is deprecated because anytime you use \texttt{new[]}, you should consider using \texttt{std::vector} or \texttt{std::string} instead. Therefore, this usage is obsolete. Another common usage is for polymorphism, but you can use a reference as well if it’s just for polymorphism, therefore, this usage is also obsolete.
 
 
 	\par The only common usage of a pointer is to control the lifetime of the object that the pointer points to. For example, you may create the object in function 1 and delete it in function 4, so the object is neither stack duration nor static duration. You may or may not transfer ownership between functions, or you may want to create an object at runtime based on runtime conditions or user input (or decide not to create it). In other words, you need object (reference) semantics, not value semantics. The code below demonstrates the usage of a pointer, where the \texttt{ToothBrush} object needs to be controlled in terms of its lifetime and created dynamically.
@@ -5284,7 +5285,7 @@ Yan.buyNewBrush("Philip");
 \end{lstlisting}
 
 	
-	\par The problems with raw pointers include buffer overruns, wild pointers, double deletes, memory leaks, mismatched \texttt{new} and \texttt{delete}, and memory fragmentation. To resolve buffer overruns and mismatched new and delete issues, we can use \texttt{std::vector} and \texttt{std::string}. To resolve wild pointer, double delete, and memory leak issues, we can use smart pointers. With the help of smart pointers, memory can be freed immediately, which is crucial for performance. For example, if the memory looks like this: XXXOXXX, once we free O, we will have seven contiguous memory slots. This not only frees up one byte of memory but also creates a larger chunk of memory for future allocations, which is critical in memory management.
+	\par The problems with raw pointers include buffer overruns, wild pointers, double deletes, memory leaks, mismatched \texttt{new} and \texttt{delete}, and memory fragmentation. To resolve buffer overruns and mismatched \texttt{new} and \texttt{delete} issues, we can use \texttt{std::vector} and \texttt{std::string}. To resolve wild pointer, double delete, and memory leak issues, we can use smart pointers. With the help of smart pointers, memory can be freed immediately, which is crucial for performance. For example, if the memory layout looks like this: XXXOXXX (X stands for free, and O stands for used), once we free O, we will have seven contiguous free memory slots. This not only frees up one byte of memory but also creates a larger chunk of memory for future allocations, which is critical in memory management.
 	
 	\par A raw pointer can be used as an alias for a variable. In C++, this kind of "alias" semantics can also be achieved using a reference. A reference has two characteristics: it is non-null and can't  be changed. In other words, the top level of a const reference is immutable. A reference always refers to the object with which it was initially initialized. This is why you must initialize it. Unlike a pointer, a reference does not have a wild pointer problem. Therefore, there is no need to test if a reference is a null reference. However, if you have a reference to a local variable inside a function, when the function finishes, it can still cause a dangling reference problem.
 \begin{lstlisting}[numbers = none]
@@ -5292,11 +5293,11 @@ string &rs = s1;
 rs = s2; //modified s1's value,rs still refer to s1
 \end{lstlisting}	
 	
-	\par You can have a reference to a pointer, but a pointer to a reference is illegal. A reference is simply an alias to another object. You can't 'point' to a reference because it is not an object in itself, but merely another name for a real object. In terms of syntax, a reference to a reference has a different meaning and is called an rvalue reference, I will introduce it in the next chapter. 
+	\par You can have a reference to a pointer, but a pointer to a reference is illegal. A reference is simply an alias to another object. You can't "point" to a reference because it is not an object in itself, but merely another name for a real object. In terms of syntax, a reference to a reference has a different meaning and is called an rvalue reference, I will introduce it in the next chapter. 
 \begin{lstlisting}[numbers=none]
 int *p;
-int *& rp = p; // reference to pointer is OK
-int &* pr  //pointer to reference is ERROR
+int *& rp = p; // reference to pointer is OK, int *& is a reference.
+int &* pr  //pointer to reference is ERROR, int &* is a pointer.
 
 const int i = 12;
 int& j = i; //ERROR, non-const reference can't refer to const object.
@@ -5304,18 +5305,17 @@ int& j = i; //ERROR, non-const reference can't refer to const object.
 
 	\par A raw pointer has a somewhat complicated relationship with arrays. Here are three points to help you understand this relationship:
 \begin{enumerate}
-	\item Array name represents address: The name of an array is essentially a pointer to the first element of the array.
+	\item Array name represents address: The name of an array is essentially a address of the first element of the array.
 	
 	\item Address has type: The address of an array element has a specific type that corresponds to the type of the elements in the array.
 	
-	\item Pointer initialization: A pointer of a specific type can be used to initialize another pointer of the same type.   
+	\item Pointer initialization: An address of a specific type can be used to initialize pointer of the same type.   
 \end{enumerate}
 	
 	
 \begin{lstlisting}
 //char** ca = { "abc", "de" }; //Error
 //char* ca[] = { {'a','b', 'c'} , {'d', 'e'} }; //Error
-//char* ca[] = { "abc" , "de" }; //Error
 //int** da = { {1,2,3}, {4,5} }; //Error
 //int* da[] = { {1,2,3}, {4,5} }; //Error
 
@@ -5348,7 +5348,7 @@ const char* cca[] = { "abc", "de" }; //here, char* cca[] doesn't work.
 
 \subsection{Implementation smart pointer?}
 
-		 A simple \texttt{unique\_ptr} implementation: You should know how to overload \texttt{operator*()} and \texttt{operator->()}. The default value for smart pointers is \texttt{nullptr} if you do not initialize them. This helps you avoid the problem of wild pointers.
+		 A simple \texttt{unique\_ptr} implementation. The default value for smart pointers is \texttt{nullptr} if you do not initialize them. This helps you avoid the problem of wild pointers.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 template <class T> 
 class unique_ptr{
@@ -5365,13 +5365,14 @@ public:
 
 	\begin{enumerate}
 		\item \texttt{operator *} and \texttt{operator ->} overload method.
-		\item Declare copy and support move constructor "delete" for \texttt{unique\_ptr}.
+		
+		\item Declare copy constructor and assignment operator "delete" for \texttt{unique\_ptr}.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 unique_ptr(const unique_ptr&)    = delete;  
 unique_ptr& operator=(const unique_ptr&)    = delete;
 \end{lstlisting}
 
-		\item For \texttt{shared\_ptr}, we need to pay attention to its reference number implementation. 
+		\item For \texttt{shared\_ptr}, we need to pay attention to its reference count implementation. 
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 class shared_count {
 public:
@@ -5414,7 +5415,7 @@ unique_ptr<parent> pp{std::move(pc)};
 	\end{enumerate}
 
 
-\subsection{Why need smart pointer?}
+\subsection{Why doe we need smart pointer?}
 	
 	 "Just remember" is seldom the best solution! Therefore, smart pointers are essential for automatically managing the delete operation, especially when exceptions are thrown or when returning in the middle of code execution. Failure to invoke delete can lead to memory leaks. With smart pointers, however, exceptions thrown during function execution do not result in memory leaks. One of the most significant advantages of smart pointers is their ability to automatically manage exclusive or shared ownership of resources.
 
@@ -5435,7 +5436,7 @@ auto_ptr<string> parray[5]; //compiling error.
 	\par When you construct a smart pointer, you must use: 1) a pointer, and 2) this pointer must be produced by \texttt{new}. You should not build a smart pointer by using the address operator, such as \texttt{unique\_ptr<double> ptr(\&int);}. Why? Because the smart pointer will call \texttt{delete} when it goes out of scope. The \texttt{delete} operator has to be used on a pointer produced by the \texttt{new} operator.
 	
 	
-	\par A smart pointer supports flexible operations, such as obtaining the raw pointer \texttt{get}, relinquishing control of the pointed object \texttt{release}, and replacing the object it manages \texttt{reset}. A smart pointer also has a \texttt{bool} operator, which you can use to test if it's \texttt{nullptr} directly.
+	\par A smart pointer supports flexible operations, such as obtaining the raw pointer by \texttt{get()} member function, relinquishing control of the pointed object by \texttt{release()}, and replacing the object it manages by \texttt{reset()}. A smart pointer also has a \texttt{bool} operator, which you can use to test if it's \texttt{nullptr} directly.
 
 \begin{lstlisting}[numbers=none]
 string * cp = new string("hello world");
@@ -5464,14 +5465,14 @@ shared_ptr<int> pint2 = pcint; // error!
 
 \subsection{unique\_ptr basic usage}
 
- Create \texttt{unique\_ptr} from \texttt{new} operator. \texttt{make\_unique} is better than inside new, inside new is better than outside new. let me explain it in below code.
+ Create \texttt{unique\_ptr} from \texttt{new} operator. \texttt{make\_unique} is better than inside \texttt{new}, inside \texttt{new} is better than outside \texttt{new}. let me explain it in below code.
 \begin{lstlisting}[frame=single, language=c++]
 string * cp = new string("hello world");
 
 unique_ptr<string> ps = cp; // NOT allow to assign unique_ptr directly.
-unique_ptr<string> ps (cp); //Ok, not good, new is outside of constructor.
+unique_ptr<string> ps (cp); //Ok, not good, new is outside of constructor (line 1).
 unique_ptr<string> ps (new string("hello"));//good , new is inside of constructor
-auto ps( std::make_unique<string>("hello") );//best, make_unique 
+auto ps( std::make_unique<string>("hello") );//best, call make_unique directly.
 \end{lstlisting}
 
 \par Create \texttt{unique\_ptr} from another \texttt{unique\_ptr}, you have to use \texttt{std::move}.
@@ -5479,8 +5480,8 @@ auto ps( std::make_unique<string>("hello") );//best, make_unique
 unique_ptr<string> ps1 (new string("hello world"));
 
 unique_ptr<string> ps2 ( ps1 ); //compile error
-unique_ptr<string> ps2 ( std::move(ps1) ); //ok, ownership transfer from p1 to p2
-unique_ptr<string> ps2 = std::move(ps1) ; //ok, nothing delete, p1 points to nullptr
+unique_ptr<string> ps2 ( std::move(ps1) ); //ok, ownership transfer from ps1 to ps2
+unique_ptr<string> ps2 = std::move(ps1) ; //ok, nothing delete, ps1 points to nullptr
 \end{lstlisting}
 
 \par When pass \texttt{unique\_ptr} value into a function.1) \textbf{For some existing \texttt{unique\_ptr}, use \texttt{std::move} to transfer ownership.} 2) \textbf{For new \texttt{unique\_ptr}, use \texttt{make\_unique} to assure exception safe.}	
@@ -5505,39 +5506,37 @@ ps1.reset(new string("ps3")); //pointer inside previous ps1 delete.
 string* pstr = ps1.release(); //reset and release 
 \end{lstlisting}
 \begin{description}
-	\item[Line 4:]  Pointer inside previous \texttt{ps1} will be deleted. Pointer inside \texttt{ps1} point to \texttt{ps2} string now. pointer inside \texttt{ps2} will set to nullptr.
+	\item[Line 4:]  Pointer inside previous \texttt{ps1} will be deleted. Pointer inside \texttt{ps1} point to \texttt{ps2} string now. pointer inside \texttt{ps2} will be set to nullptr.
 	
 	\item[Line 7:] Use \texttt{pstr} get pointer managed by \texttt{ps1}. Pointer in \texttt{ps1} will be set to \texttt{nullptr}. It's you duty to manage the memory which pointed by pointer \texttt{pstr} now.
 \end{description} 
 
 	\par If a program attempts to assign one \texttt{unique\_ptr} to another. The compiler allows it if the source object is a temporary rvalue (It will call move constructor or assignment of \texttt{unique\_ptr} inside.) and disallows it if the source object has some duration. In another word, \texttt{unique\_ptr} supports \textbf{source and sink idiom}.
 \begin{lstlisting}[numbers=none]
-unique_ptr<string> ps2 = uqique_ptr<string>(new string("yo") ); 
-
 uqique_ptr<string> fun(){
 	return unique_ptr<string> temp(new string("yan");
 }
 pu2 = fun(); //OK, support source
 
-fun(unique_ptr up);  //use move to support sink
-fun(move(other_up));
+void fun1(unique_ptr up);  //use move to support sink
+fun1(std::move(other_up));
 \end{lstlisting}
 
-	\par Just observer, not transfer ownership , you can get pointer, or use \texttt{unique\_ptr} reference.
+	\par If you just want to be a observer, not transfer ownership, you can get pointer, or use \texttt{unique\_ptr} reference.
 \begin{lstlisting}[numbers=none]
 unique_ptr<string> ps1 (new string("ps1"));
 
-fun(string* pstr);  //ps1.get()
+fun(string* pstr);  //use ps1.get() to the raw pointer inside unique_ptr
 fun(unique_ptr<string> & ref_ptr); // use unique_ptr reference.
 \end{lstlisting}
 
 
     \par \texttt{std::unique\_ptr} can be used inside of class. Below class \texttt{B} disable value-copying (or to define a suitable copy-constructor and operator= to handle it safely).
 \begin{lstlisting}[numbers=none]
-class B {  // this class can't be copy
+class Foo {  // this class doesn't support copy.
 public:
    unique_ptr<int> uni_ptr;
-   B():uni_ptr(new int{0}) { }
+   Foo() :uni_ptr(new int{0}) { }
 };
 \end{lstlisting}
 
@@ -5550,9 +5549,9 @@ public:
 template<typename... Ts>
 auto makeInvestment(Ts&&... params) {
 	
-	auto delInvmt = [](Investment* pInvestment) {
-		makeLogEntry(pInvestment); // makedelete
-		delete pInvestment; // Investment
+	auto delInvmt = [](Investment* pInvestment) { //custom deleter
+		makeLogEntry(pInvestment);  //save log information here. 
+		delete pInvestment; 
 	};
 
 	std::unique_ptr<Investment, decltype(delInvmt)> pInv(nullptr, delInvmt);
@@ -5942,7 +5941,7 @@ FooWrapper foo{createObject(32, 3.14), FooDeleter{}};
 		
 
 
-	\par The \texttt{std::shared\_ptr} template has only one parameter though: the type of the pointee. But you can use a custom deleter too, even though the deleter type is not in the class template, \textbf{std::shared\_ptr and std::functions use the same type erase technology to hold the various type callable object.} you can see the type erase technology in generic programming chapter later. Why do we have different design for \texttt{std::shared\_ptr} and \texttt{std::unique\_ptr} when considering customized deleter? Part of the reason is that \texttt{std::shared\_ptr} needs an explicit control block anyway for the ref count and sticking a deleter in isn't that big a deal on top. \texttt{unique\_ptr} however doesn't require any additional overhead, and adding it would be unpopular- it's supposed to be a zero-overhead class. 
+	\par The \texttt{std::shared\_ptr} template has only one template parameter though: the type of the pointee. But you can use a custom deleter too, even though the deleter type is not in the class template, \textbf{std::shared\_ptr and std::functions use the same type erase technology to hold the various type callable object.} you can see the type erase technology in generic programming chapter later. Why do we have different design for \texttt{std::shared\_ptr} and \texttt{std::unique\_ptr} when considering customized deleter? Part of the reason is that \texttt{std::shared\_ptr} needs an explicit control block anyway for the ref count and sticking a deleter in isn't that big a deal on top. \texttt{unique\_ptr} however doesn't require any additional overhead, and adding it would be unpopular- it's supposed to be a zero-overhead class. 
 	%\texttt{unique\_ptr} is supposed to be static. 
 \begin{lstlisting}[frame=single, language=c++]
 Foo* createObject(int i_val, double d_val) {
@@ -7144,6 +7143,7 @@ is_lvalue(a); // return true
 	
 
 %	\item When to use \texttt{auto\&\&}? I will accept any initializer regardless of whether it is an lvalue or rvalue expression and I will preserve its constness. A good example of \\ "some\_expression\_that\_may\_be\_rvalue\_or\_lvalue;" is illustrated below:
+%	
 %\begin{lstlisting}[frame=single, language=c++]
 %std::vector<int> global_vec{1, 2, 3, 4};	
 %template <typename T>
