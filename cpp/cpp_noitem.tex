@@ -980,7 +980,42 @@ int *p = static_cast<int *>i //compile error,  int and int* are not convertible
 %	\item[Source code] From \texttt{V} to \texttt{B}, it's possible to downcast, so \texttt{static\_cast} succeed. But if \texttt{A} is behind reference \texttt{V}, then you will have undefined behaviour. That is why we need \texttt{dynamic\_cast}.
 %\end{description}	
 	
-	\par A \texttt{Derived} class pointer can always be directly assigned to a \texttt{Base} class pointer, which is known as an \textbf{up-cast} conversion and is a key aspect of polymorphic implementation. The \texttt{dynamic\_cast} operator is used to perform a \textbf{down-cast} of a base pointer to a \texttt{Derived} pointer. \texttt{dynamic\_cast} ensures that the down-cast is valid. \texttt{dynamic\_cast} can also be used with reference types. If the cast fails, \texttt{dynamic\_cast} will not return \texttt{nullptr} (because it's a reference), but throw a \texttt{bad\_cast} exception instead.
+	\par A \texttt{Derived} class pointer can always be directly assigned to a \texttt{Base} class pointer, which is known as an \textbf{up-cast} conversion and is a key aspect of polymorphic implementation. However,  \textbf{down-cast} is not allowed without an explicit type cast. The reason for this restriction is that the is-a relationship is not, in most of the cases, symmetric. A derived class could add new data members, and the class member functions that used these data members wouldn't apply to the base class.
+\begin{lstlisting}
+Base* pb = new Derived{}; //Ok, it's up-cast 
+
+Derived* pd = pb;  //down-cast, can't compile, even it's Derived class behind pb.
+Derived* pd = static_cast<Derived*>(pb);//OK, with explicit type cast.
+\end{lstlisting}
+	
+	
+	\par Both \texttt{static\_cast} and \texttt{dynamic\_cast} operator can be used to perform a \textbf{down-cast} of a base pointer to a \texttt{Derived} pointer. \texttt{static\_cast} just check on compile time and doesn't use run time information, so sometimes it makes mistake. On the contrary, \texttt{dynamic\_cast} ensures that the down-cast is valid in the run time.
+	
+\begin{lstlisting}[frame=single, language=c++, mathescape=true]
+class Base {
+public:
+	virtual void fun(){cout<<"base"<<endl;}
+};
+
+class Derived : public Base {
+public:
+	virtual void fun(){cout<<"child"<<endl;}
+};
+
+Base* pa = new Derived();
+Derived* pb = dynamic_cast<Derived*>(pa); //OK, Derived is behind pa,
+Derived* pb = static_cast<Derived*>(pa);  //OK, 	
+
+Base* pa = new Base();
+Derived* pb = dynamic_cast<Derived*>(pa); //return nullptr, Base is behind pa, 
+Derived* pb = static_cast<Derived*>(pa);  //compile OK, but UB in runtime.	
+\end{lstlisting}
+\begin{description}
+	\item[Line 15 to 17]  when \texttt{Base} is behind \texttt{pa} pointer and you downcast to \texttt{Derived*}, \texttt{dynamic\_cast} give you \texttt{nullptr}(warning), but \texttt{static\_cast} has UB problem.	
+\end{description}
+
+	 \par \texttt{dynamic\_cast} can also be used with reference types. If the cast fails, \texttt{dynamic\_cast} will not return \texttt{nullptr} (because it's a reference), but throw a \texttt{bad\_cast} exception instead.
+
 	
 \begin{lstlisting}
 struct Base {};
@@ -1011,29 +1046,7 @@ B& b = dynamic_cast<B&>(a); //side cast from A to B, it's valid here.
 	\item[Line10:] That is side cast. Change \texttt{d} to \texttt{a} first(from child D to parent A), then \texttt{a} to \texttt{b}, (from child D to parent B, always succeed because \texttt{d} is behind \texttt{a}, and \texttt{d} can be converted to \texttt{b}.)
 \end{description}
 	
-	\par \texttt{dynamic\_cast} is different with \texttt{static\_cast}: 1) \texttt{static\_cast} check on compile time. 2) \texttt{static\_cast} doesn't use run time information, so sometimes it makes mistake.
-\begin{lstlisting}[frame=single, language=c++, mathescape=true]
-class Base {
-public:
-	virtual void fun(){cout<<"base"<<endl;}
-};
 
-class Derived : public Base {
-public:
-	virtual void fun(){cout<<"child"<<endl;}
-};
-
-Base* pa = new Derived();
-Derived* pb = dynamic_cast<Derived*>(pa); //OK, Derived is behind pa,
-Derived* pb = static_cast<Derived*>(pa);  //OK, 	
-
-Base* pa = new Base();
-Derived* pb = dynamic_cast<Derived*>(pa); //return nullptr, Base is behind pa, 
-Derived* pb = static_cast<Derived*>(pa);  //compile OK, but UB in runtime.
-\end{lstlisting}
-\begin{description}
-	\item[Line 15 to 17]  when \texttt{Base} is behind \texttt{pa} pointer and you downcast to \texttt{Derived*}, \texttt{dynamic\_cast} give you \texttt{nullptr}(warning), but \texttt{static\_cast} has UB problem.	
-\end{description}
 
 	\par \texttt{static\_cast} can not be use in virtual base. virtual base is mainly used to avoid "diamond" problem in the multiple inheritance. 
 \begin{lstlisting}[numbers = none]
@@ -2416,12 +2429,8 @@ class B{   // <-- B is a class, not namespace
 	
 	
 \begin{lstlisting}[numbers=none]
-a=b, a+=b  /*assignment */  
-++a, a++  /*increment*/
-a+b, a&b  /*arithmetic */   
-a&&b, !a  /*logical*/
-a<b, a!=b  /*comparision */  
-a[b], a->b, a.b  /*member access*/
+a=b, a+=b /*assignment*/ ++a, a++  /*increment*/    a+b, a&b    /*arithmetic */      
+a&&b, !a  /*logical*/    a<b, a!=b /*comparision*/  a[b], a->b  /*member access*/
 \end{lstlisting}	
 	
 	\par Statements are fragments of the C++ program that are executed in sequence. Statements which ends with semicolon are executed. C++ mainly includes the following types of statements: expression statements, compound statements, selection statements(\texttt{if, switch}), iteration statements(\texttt{while, for}) and jump statements(\texttt{break,continue, return, goto}). Most statements are expression statements.
@@ -2429,7 +2438,6 @@ a[b], a->b, a.b  /*member access*/
 \begin{lstlisting}[numbers=none]
 int n = 1;               // declaration statement
 n = n + 1;               // expression statement
-std::cout << n << '\n'; // expression statement
 return 0;               // jump statement	
 \end{lstlisting}	
 	
@@ -2454,13 +2462,8 @@ a=b=c  //b=c is an expression.
 \subsection{operator}
 
 	
-	 In order to calculate a expression properly, there are three important concepts:
-	
-\begin{enumerate}
-	\item precedence of operator.
-	\item associativity of operator.
-	\item order of evaluation. 
-\end{enumerate}
+	 In order to calculate a expression properly, there are three important concepts: 1)precedence of operator; 2) associativity of operator; and 3) order of evaluation. 
+
 
 	\par The first four precedence group of C++ operators. \\ 
 \begin{tabular}{| c | p{0.1\textwidth} | p{0.7\textwidth} |}
@@ -2469,9 +2472,9 @@ a=b=c  //b=c is an expression.
 	\hline
 	\textbf{group 1} & \texttt{::} & scope resolution  \\
 	\hline
-	\textbf{group 2} &  \specialcell[t]{ \texttt{a++} \\ \texttt{a--} \\ \texttt{a()} \\ \texttt{a[]} \\ \texttt{.} \\ \texttt{->} }  & postfix increment, function call, subscript, member access  \\
+	\textbf{group 2} &  \specialcell[t]{ \texttt{a++}, \texttt{a--} \\ \texttt{a()} \\ \texttt{a[]} \\ \texttt{.} \\ \texttt{->} }  & postfix increment, function call, subscript, member access  \\
 	\hline
-	\textbf{group 3} & \specialcell[t]{ \texttt{++a} \\ \texttt{!} \\ \texttt{*} \\ \texttt{\&} \\ \texttt{new} }  & perfix increment, logic, dereference, address-of. Most group operator has left-to-right associativity, but his group operator has right-to-left associativity. Please note this point. \\
+	\textbf{group 3} & \specialcell[t]{ \texttt{++a}, \texttt{--a} \\ \texttt{!} \\ \texttt{*} \\ \texttt{\&} \\ \texttt{new} }  & perfix increment, logic, dereference, address-of. Most group operator has left-to-right associativity, but his group operator has right-to-left associativity. Please note this point. \\
 	\hline
 	\textbf{group 4} & \specialcell[t]{ \texttt{.*} \\ \texttt{->*} } & pointer-to-member  \\
 	\hline
@@ -5562,13 +5565,13 @@ auto makeInvestment(Ts&&... params) {
 	else if (... ) {
 		pInv.reset(new Bond(std::forward<Ts>(params)...));
 	}
-	return pInv; // as before
+	return pInv; // return unique_ptr pointer here.
 }
 \end{lstlisting}
 
-    \par \texttt{std::unique\_ptr} is the C++11 way to express exclusive ownership, but one of its most attractive features is that it easily and efficiently converts to a \texttt{std::shared\_ptr}: This is a key part of why \texttt{std::unique\_ptr} is so well suited as a factory function return type. Factory functions can't know whether callers will want to use exclusive ownership semantics for the object they return or whether shared ownership
+    \par \texttt{std::unique\_ptr} is the C++11 way to express exclusive ownership, but one of its most attractive features is that it easily and efficiently converts to a \texttt{std::shared\_ptr}: This is a key part of why \texttt{std::unique\_ptr} is so well suited as a factory function return type. Factory functions can't know whether callers will want to use exclusive or shared ownership semantics.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
-shared_ptr<Investment> sp=makeInvestment(arguments); 
+shared_ptr<Investment> sp=makeInvestment(arguments); //unique_ptr convert to shared_ptr
 \end{lstlisting}
 	
 	\par If a vector contains \texttt{std::unique\_ptr<Fruit>} instead of raw pointers (to prevent memory leaks), the vector needs to copy elements in and out. However, \texttt{std::unique\_ptr} does not support copying. There are several methods to resolve this issue. One approach is to use \texttt{emplace\_back} with a new pointer, but this can lead to memory leaks if extending the vector size fails. A better method is to use an unnamed \texttt{std::unique\_ptr}. The best practice, however, is to use \texttt{std::make\_unique}.
@@ -5585,7 +5588,7 @@ m_fruits.push_back(std::unique_ptr<Fruit>(new Pear)); //method2, good method
 m_fruits.push_back(std::make_unique<Pear>());//method3, best method 
 \end{lstlisting}
 
-	\par You can sort \texttt{unique\_ptr} objects in an STL container as long as you do not use methods or algorithms that copy or assign one \texttt{unique\_ptr} to another, such as \texttt{copy()}. Refer to Item 8 in "Effective STL" for more information.
+	\par You can sort \texttt{unique\_ptr} objects in an STL container as long as you do not use methods or algorithms that copy or assign one \texttt{unique\_ptr} to another, such as \texttt{std::copy()}. Refer to Item 8 in "Effective STL" for more information. Why can you use \texttt{std::sort()} in the below code? \texttt{std::sort()} uses \texttt{std::swap()} function inside it, it doesn't copy \texttt{unique\_ptr} objects.
 
 \begin{lstlisting}[numbers=none]
 bool compare_by_uniqptr(const unique_ptr<SomeLargeData>& a,
@@ -5593,7 +5596,7 @@ bool compare_by_uniqptr(const unique_ptr<SomeLargeData>& a,
     return a->id < b->id;
 }
 
-sort(vec_uni.begin(), vec_uni.end(), compare_by_uniqptr); //ok
+std::sort(vec_uni.begin(), vec_uni.end(), compare_by_uniqptr); //ok
 \end{lstlisting}
 
 \begin{lstlisting}[frame=single, language=c++]
@@ -5606,7 +5609,6 @@ std::copy(vec1.begin(), vec1.end(), std::back_inserter(vec2)); // Error (copy)
 
 vector_t vec3(make_move_iterator(vec1.begin()), make_move_iterator(vec1.end())); 
 //make_move_iterator return std::move_iterator.
-std::sort(vec1.begin(), vec1.end()); //why sort is OK? 
 \end{lstlisting}
 
 	\par \texttt{unique\_ptr} has a \texttt{new []} version. The existence of \texttt{std::unique\_ptr} for arrays should be of only intellectual interest to you, because \texttt{std::array}, \texttt{std::vector} and \texttt{std::string} are virtually always better data structure choices than raw arrays. About the only situation I can conceive of when a \texttt{std::unique\_ptr<T[]>} would make sense would be when you're using a C-like API that returns a raw pointer to a heap array that you assume ownership of.
@@ -5614,11 +5616,7 @@ std::sort(vec1.begin(), vec1.end()); //why sort is OK?
 unique_ptr<double []>  pda(new double[5] );// it will call delete [] inside.
 \end{lstlisting}
 
-	\par A common use for \texttt{std::unique\_ptr} is as a factory function return type for objects in a hierarchy. Details can be seen in "Effective Modern C++ Item 18". 
-
-
-
-
+ 
 \subsection{shared\_ptr basic usage}
 	
 	 Every \texttt{shared\_ptr} has a control block inside of it. \textbf{When are control blocks created?} It's a very important question because it helps you better understand what happens when you create or assign a \texttt{shared\_ptr} variable.
@@ -5627,8 +5625,8 @@ unique_ptr<double []>  pda(new double[5] );// it will call delete [] inside.
 \end{center}
 
 
-\begin{enumerate}
-	\item \texttt{std::make\_shared}  always creates a control block. It produces a new object, so there is certainly no control block for that object at the time \texttt{std::make\_shared} is called.
+\begin{itemize}
+	\item \texttt{std::make\_shared()}  always creates a control block. It produces a new object, so there is certainly no control block for that object at the time \texttt{std::make\_shared()} is called.
 	
 	\item A control block is created when a \texttt{std::shared\_ptr} is constructed from a unique-ownership pointer (i.e., a \texttt{std::unique\_ptr} ). As part of this construction, the \texttt{std::shared\_ptr} assumes ownership of the pointed-to object, and the unique-ownership pointer is set to \texttt{nullptr}.
 	
@@ -5646,7 +5644,7 @@ shared_ptr<string> ps( std::make_shared<string>("hello") ); //make, best style
 \end{lstlisting}
 	
 	
-\end{enumerate}    
+\end{itemize}    
 
 	\par Some examples of creating \texttt{shared\_ptr} from another \texttt{shared\_ptr}.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
@@ -5668,12 +5666,12 @@ ps1.reset(cp);
 \begin{description}
 	\item[Line 3:] Use assignment  1) In \texttt{ps1}, previous reference count decrements 1. (If equal 0, it will delete) 2) \texttt{ps1} points to current reference count 3) and current reference count increments 1
 	
-	\item[Line 4:] Use move 1) In \texttt{ps1}, previous reference count decrements 1. (If equal 0, it will delete) 2) \texttt{ps1} points to current reference count 3) \texttt{ps2} is null now. 
+	\item[Line 4:] Use move 1) In \texttt{ps1}, previous reference count decrements 1. (If equal 0, it will delete) 2) \texttt{ps1} points to current reference count 3) \texttt{ps2} will be set to nullptr. 
 	
-	\item[Line 5:] Use \texttt{reset}. pointer inside previous \texttt{ps1} will decrement 1. By now, current \texttt{ps1} reference count will be 1.
+	\item[Line 5:] Use \texttt{reset}. pointer inside previous \texttt{ps1} will decrement 1. By now, current \texttt{ps1} points to \texttt{cp} and reference count will be 1.
 \end{description}
 
-\par Difference between constructor and assignment. When assignment, decrement previous reference count by 1 and increment current reference count by 1; When copy constructor, increment current reference count by 1; When constructor from raw pointer, current reference count is 1;
+	\par In summary, when assignment, decrement previous reference count by 1 and increment current reference count by 1; When copy constructor, increment current reference count by 1; When constructor from raw pointer, current reference count is 1;
 
 
 \begin{center}
@@ -5681,7 +5679,7 @@ ps1.reset(cp);
 \end{center}
 
 
-\par Just observer, not transfer or share ownership , you can get pointer, or use \texttt{shared\_ptr} reference. 
+	\par Just observer, not transfer or share ownership , you can get pointer, or use \texttt{shared\_ptr} reference. 
 \begin{lstlisting}[numbers = none]
 shared_ptr<string> ps1 (new string("ps1"));
 
@@ -5725,9 +5723,9 @@ public:
 \subsection{weak\_ptr basic usage}
 
     
-     The relationship between \texttt{std::weak\_ptr} and \texttt{std::shared\_ptr} begins at birth. \texttt{std::weak\_ptrs} are typically created from \texttt{std::shared\_ptrs}. You can only create a \texttt{std::weak\_ptr} out of a \texttt{std::shared\_ptr} or another \texttt{std::weak\_ptr}. A truly smart pointer deals with the problem of dangling pointers, where it can track when the object it is supposed to point to doesn't exist, this capability is precisely what \texttt{std::weak\_ptr} provides. \textbf{You can't test if a raw pointer is dangling or not, but you can judge if a \texttt{weak\_ptr} is dangling or not.}
+     The relationship between \texttt{std::weak\_ptr} and \texttt{std::shared\_ptr} begins at birth. \texttt{std::weak\_ptr} are typically created from \texttt{std::shared\_ptr}. You can only create a \texttt{std::weak\_ptr} out of a \texttt{std::shared\_ptr} or another \texttt{std::weak\_ptr}. A truly smart pointer deals with the problem of dangling pointers, where it can track when the object it is supposed to point to doesn't exist, this capability is precisely what \texttt{std::weak\_ptr} provides. You can't test if a raw pointer is dangling or not, but you can judge if a \texttt{weak\_ptr} is dangling or not.
     
-    \par \texttt{std::weak\_ptrs} can't be dereferenced, nor can they be tested for nullness. That's because \texttt{std::weak\_ptr} isn't a standalone smart pointer. It's an augmentation of \texttt{std::shared\_ptr}. Almost the only things you can do are to interrogate it to see if the managed object is still there, or construct a \texttt{std::shared\_ptr} from it.
+    \par \texttt{std::weak\_ptr} can't be dereferenced, nor can they be tested for nullness. That's because \texttt{std::weak\_ptr} isn't a standalone smart pointer. It's an augmentation of \texttt{std::shared\_ptr}. Almost the only things you can do are to interrogate it to see if the managed object is still there, or construct a \texttt{std::shared\_ptr} from it.
     
 
 \begin{lstlisting}[frame=single, language=c++,mathescape=true]
@@ -5740,12 +5738,12 @@ if (wpw.expired())
     \par The \texttt{lock()} method creates a new \texttt{std::shared\_ptr} that shares ownership of the managed object. If there is no managed object, the \texttt{shared\_ptr} returned by the method is empty.
 
 \begin{lstlisting}
-std::shared_ptr<Widget> spw1 = wpw.lock(); //if wpw's expired, spw1 is null
+std::shared_ptr<Widget> spw1 = wpw.lock(); //if wpw's expired, spw1 is nullptr
 auto spw2 = wpw.lock(); //same as above, but uses auto
 std::shared_ptr<Widget> spw3(wpw); //if wpw expired, throw std::bad_weak_ptr.
 \end{lstlisting}
 
-    \par Potential use cases for \texttt{std::weak\_ptr} includes: caching, observer lists, and the prevention of \texttt{std::shared\_ptr} cycles.  All the detail can be seen in "Effective Modern ++" Item 20.
+    \par Common uses for \texttt{std::weak\_ptr} includes: caching, observer lists, and the prevention of \texttt{std::shared\_ptr} cyclic dependency.  All the detail can be seen in "Effective Modern ++" Item 20.
 \begin{lstlisting}[frame=single, language=c++]
 std::shared_ptr<const Widget> fastLoadWidget(WidgetID id){
 	static std::unordered_map<WidgetID, std::weak_ptr<const Widget>> cache;
@@ -5759,10 +5757,10 @@ std::shared_ptr<const Widget> fastLoadWidget(WidgetID id){
 }
 \end{lstlisting}
 \begin{description}
-	\item[Line 5:] objPtr is \texttt{std::shared\_ptr} to cached object,  or null if object's not in cache. For above requirement, you also can use raw pointer, But for raw pointer, you can't detect if original one has been delete. 
+	\item[Line 5:] \texttt{objPtr} is \texttt{std::shared\_ptr} to cached object,  or \texttt{nullptr} if object's not in cache. For above requirement, you also can use raw pointer, But for raw pointer, you can't detect if original one has been delete. 
 \end{description}
 
-    \par An example of \texttt{shared\_ptr} cyclic dependency problem. Below code has memory leak. \texttt{A} and \texttt{B} doesn't have chance to call destructor.
+    \par An example of \texttt{shared\_ptr} cyclic dependency problem. Below code has memory leak. \texttt{A} and \texttt{B} doesn't have chance to call destructor. This cyclic dependency happens not only in \texttt{shared\_ptr}, but also in the header file and \texttt{std::mutex} scenario.
 \begin{lstlisting}[]
 class B;
 class A {
@@ -5776,6 +5774,7 @@ public:
 };
 class B {
     shared_ptr<A> sP1;
+    weak_ptr<
 public:
     B() {  cout << "B()" << endl; }
     ~B() { cout << "~B()" << endl; }
@@ -5801,10 +5800,10 @@ int main() {
 	
 	\par \texttt{std::make\_unique} and \texttt{std::make\_shared} are two of the three make functions: functions that take an arbitrary set of arguments, perfect-forward them to the constructor for a dynamically allocated object, and return a smart pointer to that object. The third make function is \texttt{std::allocate\_shared}
 	
-	\par make function has tree advantage: simply, exception safety and allocate once for efficiency.
+	\par make function has tree advantages: simply, exception safety and allocate once for efficiency.
 	
-	\begin{enumerate}
-		\item The new operator requires repeating the type being created, whereas the make functions do not. That's why using the make functions is generally better than using new. For a comparison, see the source code below.
+	\begin{itemize}
+		\item The \texttt{new} operator requires repeating the type being created, whereas the make functions do not. That's why using the make functions is generally better than using \texttt{new} operator. For a comparison, see the source code below.
 		
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 auto upw1(std::make_unique<Widget>()); // use auto, it's better
@@ -5818,13 +5817,13 @@ std::shared_ptr<Widget> spw2(new Widget);
 		
 		\item The third reason is allocation efficiency. Every \texttt{std::shared\_ptr} points to a control block that contains the reference count for the pointed-to object. When using \texttt{std::make\_shared}, a single chunk of memory is allocated to hold both the Widget object and the control block. If we don't use \texttt{make\_shared}, we would have to perform two separate allocation actions.
 		
-	\end{enumerate}
+	\end{itemize}
 	
 	\par make function has its limitation:
-	\begin{enumerate}
-		\item For example, none of the make functions permit the specification of custom deleter.
+	\begin{itemize}
+		\item None of the make functions permit the specification of custom deleter.
 		
-		\item The perfect forwarding code uses parentheses, not braces. The bad news is that if you want to construct your pointed-to object using a braced initializer, you must use new directly. Using a make function would require the ability to perfect-forward a braced initializer, but, as "Effeictive Modern C++"Item 30 explains, braced initializers can't be perfect-forwarded.
+		\item The perfect forwarding code uses parentheses, not braces. The bad news is that if you want to construct your pointed-to object using a braced initializer, you need to build \texttt{std::initializer\_list} outside and pass it into the make function.
 \begin{lstlisting}
 template<typename T>
 void f(T para);
@@ -5837,20 +5836,20 @@ f({1,2,3}) //OK.
 \end{lstlisting}
 
 \begin{lstlisting}
-auto upv = std::make_unique<std::vector<int>>(10, 20); //10 elements. 
-auto initList = { 10, 20 }; //create std::initializer_list
-auto spv = std::make_shared<std::vector<int>>(initList);
+auto upv = std::make_unique<std::vector<int>>(10, 20); //10 elements: 20, 20, ...
+auto initList = { 10, 20 }; //create std::initializer_list outside
+auto spv = std::make_shared<std::vector<int>>(initList); // 2 elements: 10 and 20
 \end{lstlisting}
 \begin{description}
 	\item[Line 3:] create \texttt{std::vector} using \texttt{std::initializer\_list} constructor. You need to build \texttt{initializer\_list} variable outside of \texttt{make\_shared}. 
 \end{description}
 		
-		\item As long as \texttt{std::weak\_ptrs} refer to a control block (i.e., the weak count is greater than zero), that control block must continue to exist. And as long as a control block exists, the memory containing it must remain allocated. The memory allocated by a \texttt{std::shared\_ptr} make function, then, can't be deallocated until the last \texttt{std::shared\_ptr} and the last \texttt{std::weak\_ptr} referring to it have been destroyed
-	\end{enumerate}
+		\item As long as \texttt{std::weak\_ptr} refer to a control block (i.e., the weak count is greater than zero), that control block must continue to exist. And as long as a control block exists, the memory containing it must remain allocated. The memory allocated by a \texttt{std::shared\_ptr} make function, then, can't be deallocated until the last \texttt{std::shared\_ptr} and the last \texttt{std::weak\_ptr} referring to it have been destroyed
+	\end{itemize}
 	
-	\par If you can't use make function, you have to create \texttt{shared\_ptr} first, then pass it to function, but a better way is to move it.
+	\par If you can't use make function for one of parameter of a function, you can create \texttt{shared\_ptr} first outside of the function, then \texttt{std::move()} it to the function parameter, it's better for this special scenario. 
 \begin{lstlisting}[frame=single, language=c++]
-std::shared_ptr<Widget> spw(new Widget, cusDel);
+std::shared_ptr<Widget> spw(new Widget, cusDel); //can't use std::make_shared
 processWidget(spw, computePriority()); // correct, but not optimal; 
 
 processWidget(std::move(spw),computePriority());//both efficient and exception safe
@@ -5898,11 +5897,11 @@ std::shared_ptr<Widget> spw(new Widget, loggingDel);
 
 	\par \texttt{unique\_ptr} can input another deleter type. Below is a few kind of deleter and their size comparison.
 	\begin{enumerate}
-		\item \texttt{std::function} - heavy stuff, on 64 bit, gcc shows that it occupies 40 bytes.
+		\item \texttt{std::function} - heavy stuff, on a 64 bit machine, gcc shows that it occupies 40 bytes.
 		
-		\item Function pointer - it’s just a pointer, so now \texttt{unique\_ptr} contains two pointers: for the object and for that function… so 2*sizeof(ptr) = 8 or 16 bytes.
+		\item Function pointer - it’s just a pointer, so now \texttt{unique\_ptr} contains two pointers: for the object and for that function, so \texttt{2*sizeof(ptr)} (16 bytes on the 64 bits machine).
 		
-		\item \textbf{Stateless functor (and also stateless lambda)} - it’s actually very tricky thing. You would probably say: two pointers… but it’s not. Thanks to empty base optimization - EBO the final size is just a size of one pointer, so the smallest possible thing.
+		\item \textbf{Stateless functor (and also stateless lambda)} - it’s actually very tricky thing. You would probably say: two pointers, but it’s not. Thanks to empty base optimization - EBO the final size is just a size of one pointer, so the smallest possible thing.
 \begin{lstlisting}
 template<typename T, typename D, bool Empty = std::is_empty_v<D>>
 class unique_ptr{
@@ -5934,7 +5933,7 @@ FooWrapper foo{createObject(32, 3.14), FooDeleter{}};
 \end{lstlisting}
 
 		
-		\item State-full functor or Lambda - if there is some state inside the functor then we cannot do any optimizations, so it will be the size of ptr + sizeof(functor)
+		\item State-full functor or Lambda - if there is some states inside the functor then we cannot do any optimizations, so it will be the size of ptr + sizeof(functor)
 	\end{enumerate}
 
 %	\item For stateless functors or lambdas, the size is just one pointer, which means we don't need to pay a space fee. That's why \texttt{unique\_ptr} has two template parameters, and one of them allows you to specify the deleter type. If the deleter type is an empty stateless functor, the size will be just one pointer. If you don't care about space, but value flexibility (e.g., you want to pass any caller-callable object), you can always add your own type erasure on top by using \texttt{std::function}. For example, you can have \texttt{unique\_ptr<T, std::function<void(T*)> >}.
@@ -6055,14 +6054,14 @@ std::shared_ptr<Foo> foo(createObject(32, 3.14), destroy);
 %                            CreateFile(strIn, GENERIC_READ, ...));
 %\end{lstlisting}
 	
-	\par Use \texttt{shared\_ptr} to wrap a handle, A good introduction is "Making a HANDLE RAII-compliant using \texttt{shared\_ptr} with a custom deleter" in stackoverflow
+%	\par Use \texttt{shared\_ptr} to wrap a handle, A good introduction is "Making a HANDLE RAII-compliant using \texttt{shared\_ptr} with a custom deleter" in stackoverflow
 
 	
 \section{Smart pointer usage}
 \subsection{Smart pointer and polymorphism}
 
 \subsubsection{Pointer\_cast function}
-	 The basic idea is that smart pointer Base and smart pointer Derived are not covariant at all. This is similar to how \texttt{vector<Base>} and \texttt{vector<Derived>} work. Even \texttt{Derived} inherit \texttt{Base,}  You can't cast \texttt{shared\_ptr<Derived>} to \texttt{shared\_ptr<Base>} because there is no inheritance relationship between two shared pointer types. 
+	 The basic idea is that \texttt{shared\_ptr<Base>} and \texttt{shared\_ptr<Derived>} are not covariant at all. This is similar to how \texttt{vector<Base>} and \texttt{vector<Derived>} works. Even \texttt{Derived} inherit \texttt{Base},  You can't cast \texttt{shared\_ptr<Derived>} to \texttt{shared\_ptr<Base>} because there is no inheritance relationship between two shared pointer types. 
 	
 	\par The \texttt{shared\_ptr<T>(const shared\_ptr<Y>\&)} constructor doesn't help because it is only usable if \texttt{Y*} is implicitly convertible to \texttt{T*}, i.e. it is there to support the same pointer conversions as would happen implicitly, like \texttt{Derived*} to \texttt{Base*,} not \texttt{Base*} to \texttt{Derived*}. That is why we need \texttt{static\_pointer\_cast}.
 \begin{lstlisting}
@@ -6078,19 +6077,19 @@ std::shared_ptr<T> static_pointer_cast( const std::shared_ptr<U>& r ) noexcept {
 
 	\par An example of \texttt{static\_pointer\_cast} is below:
 \begin{lstlisting}
-struct BaseClass {};
+struct Base {};
 
-struct DerivedClass : BaseClass {
+struct Derived : Base {
 	void f() const {
 		std::cout << "Sample word!\n";
 	}
 };
 
 int main() {
-	std::shared_ptr<BaseClass> ptr_to_base(make_shared<DerivedClass>());
-	std::static_pointer_cast<DerivedClass>(ptr_to_base)->f();
-	std::dynamic_pointer_cast<DerivedClass>(ptr_to_base)->f();
-	static_cast<DerivedClass*>(ptr_to_base.get())->f(); 
+	std::shared_ptr<Base> ptr_to_base(make_shared<Derived>());
+	std::static_pointer_cast<Derived>(ptr_to_base)->f();
+	std::dynamic_pointer_cast<Derived>(ptr_to_base)->f();
+	static_cast<Derived*>(ptr_to_base.get())->f(); 
 }
 \end{lstlisting}
 
@@ -6104,10 +6103,9 @@ int main() {
 \item \texttt{unique\_ptr} of Base to \texttt{share\_ptr} of Derived (down cast);
 \end{enumerate}
 
-		\par For \texttt{shared\_ptr}, it support Derived to Base copy or assignment. Behind the hood, you need to know the template member function. Detail can be found in effective C++ item 45 "Use member function templates to accept all compatible types". Why you can? because it get raw pointer and wrapped it again and compiler allow it.
+		\par For \texttt{shared\_ptr}, it support Derived to Base copy or assignment. Behind the hood, you need to know the template member function. Detail can be found in effective C++ item 45 "Use member function templates to accept all compatible types". Why can you do that? because it get raw pointer and wrapped it again and compiler allow it.
 
-		\par  For \texttt{shared\_ptr} of Base, you can't assign it to the \texttt{shared\_ptr} of Derived, so you must use \\ \texttt{static\_pointer\_cast} and \texttt{dynamic\_pointer\_cast}. They only support \texttt{shared\_ptr}. They use \texttt{shared\_ptr} aliasing constructor, get raw pointer, use static or dynamic cast, then build Derived \texttt{shared\_ptr} too. Detail can be found: \\
-			"std::static\_pointer\_cast vs static\_cast<std::shared\_ptr<A > >"
+		\par  For \texttt{shared\_ptr} of Base, you can't assign it to the \texttt{shared\_ptr} of Derived, so you must use \\ \texttt{static\_pointer\_cast} and \texttt{dynamic\_pointer\_cast}. They only support \texttt{shared\_ptr} and use \texttt{shared\_ptr} aliasing constructor, get raw pointer, use static or dynamic cast, then build Derived \texttt{shared\_ptr} too. Detail can be found: "std::static\_pointer\_cast vs static\_cast<std::shared\_ptr<A > >"
 
 		\par If you don't want to shared ownership, but just want to be a observer, you can use reference, but for \texttt{shared\_ptr} Base reference, You have to use const. Why do we need const?
 	
@@ -6118,11 +6116,10 @@ void doSomething(const std::shared_ptr<Base>& ptr) {
 
 std::shared_ptr<Derived1> pd1 = std::make_shared<Derived1>();
 //doSomething(pd1);  Will not compile here.
-doSomething(shared_ptr<Base> temp(pd1));
+doSomething(shared_ptr<Base> temp(pd1)); //from pd1 build temporary shared_ptr<Base>
 doSomething(static_pointer_cast<Base>(pd1));
 \end{lstlisting}
 	\begin{description}
-	\item[Line 7:] from pd1 build temporary base \texttt{shared\_ptr} pointer.
 	\item[Line 8:] \texttt{static\_pointer\_cast} also return a temporary base \texttt{shared\_ptr}. That is why you need \texttt{const} in line 1
 \end{description}
 
@@ -6149,11 +6146,10 @@ unique_ptr<TO> static_unique_pointer_cast (unique_ptr<FROM>&& old){
 }
 
 unique_ptr<Base> foo = fooFactory();
-unique_ptr<Derived> foo2 = 
-              static_unique_pointer_cast<Derived>(std::move(foo));
+unique_ptr<Derived> foo2 = static_unique_pointer_cast<Derived>(std::move(foo));
 \end{lstlisting}
 
-	\par For const reference, there are three methods: 1) Use move 2) Change function interface 3) Change parameter.
+	\par For const reference, there are three methods: 1) Use \texttt{std::move} 2) Change function interface 3) Change parameter.
 \begin{lstlisting}[frame=single, language=c++, mathescape=true]
 void f(const unique_ptr<Base>& base)
 unique_ptr<Derived> derived = unique_ptr<Derived>(new Derived{});
@@ -6173,8 +6169,6 @@ f(derived); //this work
 
 	\par You can use smart pointer in both a braced scope (like a function) and a class scope. In these scope, smart pointers can manage exclusive ownership, shared ownership, or act as observers. In the following sections, I will delve into the relationship between smart pointers and classes, as well as their role in functions.
 
-
-
 \subsection{Smart pointer and Semantic of RAII}
 
 	
@@ -6182,18 +6176,18 @@ f(derived); //this work
 	
 	\par In OS, memory is resource and can be accessed by a pointer, for this kind of resource, two famous RAII classes are \texttt{std::unique\_ptr} and \texttt{std::shared\_ptr}. 
 	
-	\par Other resources like file handle, \texttt{std::thread} and \texttt{std::mutex}, they all requires paired acquire/release function calls, such as \texttt{fopen}/\texttt{fclose} for file handle, \texttt{lock}/\texttt{unlock} for \texttt{std::mutex}. In this way, fstream, \texttt{jthread} and \texttt{lock\_guard} are all RAII classes. For example, you can think of \texttt{lock\_guard} as a smart mutex that encapsulates a mutex, much like \texttt{unique\_ptr} encapsulates a raw pointer. 
+	\par Other resources like file handle, \texttt{std::thread} and \texttt{std::mutex}, they all requires paired acquire/release function calls, such as \texttt{fopen}/\texttt{fclose} for file handle, \texttt{lock}/\texttt{unlock} for \texttt{std::mutex}. In this way, \texttt{fstream} class, \texttt{jthread} class and \texttt{lock\_guard} class are all RAII classes. For example, you can think of \texttt{lock\_guard} as a smart mutex that encapsulates a mutex, much like \texttt{unique\_ptr} encapsulates a raw pointer. 
 	
 	\par When working with OS, resources extend beyond simple memory or file handles. They can be other handles in WinAPI, we can also deal with this kind of resources by RAII idea
 
 
 \begin{lstlisting}[numbers=none]
-class module {
+class RAII_Handle {
 public:
-	explicit module(std::wstring const& name)
+	explicit RAII_Handle(std::wstring const& name)
 	: handle { ::LoadLibrary(name.c_str()) } {}
 	
-	~module{
+	~RAII_Handle{
 		::FreeLibrary();
 	}
 private:
