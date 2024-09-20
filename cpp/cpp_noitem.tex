@@ -6176,7 +6176,7 @@ f(derived); //this work
 	
 	\par In OS, memory is resource and can be accessed by a pointer, for this kind of resource, two famous RAII classes are \texttt{std::unique\_ptr} and \texttt{std::shared\_ptr}. 
 	
-	\par Other resources like file handle, \texttt{std::thread} and \texttt{std::mutex}, they all requires paired acquire/release function calls, such as \texttt{fopen}/\texttt{fclose} for file handle, \texttt{lock}/\texttt{unlock} for \texttt{std::mutex}. In this way, \texttt{fstream} class, \texttt{jthread} class and \texttt{lock\_guard} class are all RAII classes. For example, you can think of \texttt{lock\_guard} as a smart mutex that encapsulates a mutex, much like \texttt{unique\_ptr} encapsulates a raw pointer. 
+	\par Other resources like file handle, \texttt{std::thread} and \texttt{std::mutex}, they all requires paired acquire/release function calls, such as \texttt{fopen}/\texttt{fclose} for file handle, \texttt{lock}/\texttt{unlock} for \texttt{std::mutex}. In this way, \texttt{fstream} class, \texttt{jthread} class and \texttt{lock\_guard} class are all RAII classes. For example, you can think of \texttt{lock\_guard} as a smart mutex that encapsulates a \texttt{std::mutex}, much like \texttt{unique\_ptr} encapsulates a raw pointer. 
 	
 	\par When working with OS, resources extend beyond simple memory or file handles. They can be other handles in WinAPI, we can also deal with this kind of resources by RAII idea
 
@@ -6224,7 +6224,7 @@ private:
 %\end{lstlisting}
 
 	\par When implementing RAII, be conscious of copy construction and assignment. The compiler-generated version probably won't be correct because it will cause two pointers or handles to refer to the same resource, which is absolutely a bad smell in code. Therefore:
-\begin{enumerate}
+\begin{itemize}
 	\item If it's not copyable, use \texttt{=delete} on copy constructor. \texttt{std::unique\_ptr} is a good example of this idea.
 	
 	\item If it is copyable value semantic, duplicate the resource and follow the 'Rule of Four and Half'. Both \texttt{std::vector} and \texttt{std::string} are good examples of this idea.
@@ -6243,14 +6243,14 @@ private:
 }		
 \end{lstlisting}
 	
-	\item If it's copyable reference value, recommend to use \texttt{shared\_ptr} to manage it's lifetime to avoid 1) memory leak and 2) dangling pointer. 
-\end{enumerate}
+	\item If it's copyable reference value, recommend to use \texttt{std::shared\_ptr} to manage it's lifetime to avoid 1) memory leak and 2) dangling pointer. 
+\end{itemize}
 			
-	\par Smart pointers in C++ are good examples of RAII, but they go further. \texttt{std::unique\_ptr} denotes exclusive ownership by deleting its copy constructor at the syntax level, while \\  \texttt{std::shared\_ptr} represents shared ownership by maintaining a reference count. In other words, smart pointers are not only RAII classes, but they also represent two different types of ownership.
+	\par Smart pointers in C++ are good examples of RAII, but they go further. \texttt{std::unique\_ptr} denotes exclusive ownership by deleting its copy constructor at the syntax level, while \texttt{std::shared\_ptr} represents shared ownership by maintaining a reference count. In other words, smart pointers are not only RAII classes, but they also represent two different types of ownership.
 
 	\par Next, I would like to talk about some common patterns of using RAII classes when defining your own class. You can use an RAII member or use a smart pointer to wrap resources in your own classes. When using a smart pointer, you want to express different ownership semantics. First and foremost, it's not recommended to use raw pointers directly unless you have strong reason.
 
-	\begin{enumerate}
+	\begin{itemize}
 		\item Use RAII member, In this way, you don't need to build destructor manually.
 \begin{lstlisting}[]
 struct Foo{
@@ -6267,7 +6267,7 @@ struct Foo{
 					\item If all members are RAII classes (have it's own copy and move special function), You don't need to write any special function in your class (\texttt{Foo}). Just follow the "Rule of Zero".
 				\end{enumerate}
 					
-	\item Use smart point to wrap resource(pointers or handles) inside a class;
+	\item Use smart point to wrap resource (pointers or handles) inside a class;
 \begin{lstlisting}[numbers=none]
 class RAII_Container {
 	unique_ptr<string>  m_uniptr;
@@ -6287,7 +6287,7 @@ private:
 	module_handle handle;
 };
 \end{lstlisting}
-	\item For \texttt{unique\_ptr}, it has the following characteristics: 1) the same lifetime as the owning object, 2) exclusive ownership and not copyable by default, and 3) supports move operations. You can still follow the "rule of zero," meaning that you don't provide any customized special member functions, and the class will not be copyable. However, if you build a copy constructor yourself, obtain a raw pointer from the original object, and construct a new \texttt{unique\_ptr} member from the original object's raw pointer, you can make the class copyable.
+	\item For \texttt{unique\_ptr}, it has the following characteristics: 1) the same lifetime as the owning object, 2) exclusive ownership and not copyable by default, and 3) supports move operations. You can still follow the "rule of zero," meaning that you don't provide any customized special member functions, and the class will not be copyable. 
 
 	\item For \texttt{shared\_ptr}; 1) same lifetime 2) shared ownership, 3) copyable and moveable. When you move a \texttt{shared\_ptr}, origin one is set to nullptr and ref count doesn't increase. You can still follow "rule of zero".
 	
@@ -6299,7 +6299,7 @@ class Student{
 			
 \end{enumerate}
 
-	\end{enumerate}
+	\end{itemize}
 
 		
 	\par A design example, suppose I want to design a \texttt{Car} class where people can change its engine, and it should support copying. In this context, your \texttt{Car} class should use raw pointers because: 1) value semantic members don't support customization (dynamic changes), and 2) \texttt{unique\_ptr} doesn't support copying. Therefore, you have to use \texttt{Engine *pEn} and follow the "Rule of Four and Half."
@@ -6323,16 +6323,14 @@ class Person{
 
 
 \subsection{Smart pointer and function}
-\subsubsection{Function interface design}
-
 
      \textbf{Inside a function}
 
-\begin{enumerate}
+\begin{itemize}
     \item When you want to create dynamically or large array, don't use new, consider STL container first.
 
     \item When you have to use new, and this function has \textbf{Ownership of pointer, means that they have the same life duration},  use \texttt{unique\_ptr}. In this way, you don't need delete and it's exception safe.
-\end{enumerate}
+\end{itemize}
 \begin{lstlisting}
 fun(){
   Foo fo(1,2); //It makes obj directly, when you don't need dynamic.
@@ -6344,20 +6342,20 @@ fun(){
 
     \par \textbf{Parameters of a function.}
 
-\begin{enumerate}
+\begin{itemize}
 
     \item Passing \texttt{unique\_ptr} by reference is for in/out \texttt{unique\_ptr} parameters. When the function is supposed to actually accept an existing \texttt{unique\_ptr} and potentially modify it to refer to a different object. 
 
-    \item \texttt{const unique\_ptr} \& MUST be a observer. Another way is to use raw pointer as a observer directly, or use \texttt{std::weak\_ptr}. 
+    \item \texttt{const unique\_ptr} \& MUST be a observer. Another way is to use raw pointer as a observer directly, or use \texttt{std::weak\_ptr} parameter to accept \texttt{std::shared\_ptr} argument. 
 
-    \item If you want to transfer ownership to callee from caller, use \texttt{uniqu\_ptr} and use \texttt{std::move}. Passing \texttt{unique\_ptr} by value means "sink".
+    \item If you want to transfer ownership to callee from caller, use \texttt{std::uniqu\_ptr} and use \texttt{std::move}. Passing \texttt{std::unique\_ptr} by value means "sink".
 
-    \item If you want to shared ownership to callee from caller, use \texttt{shared\_ptr}.
+    \item If you want to shared ownership to callee from caller, use \texttt{std::shared\_ptr}.
 
-    \item Use a non-const \texttt{shared\_ptr\&} parameter only to modify the \texttt{shared\_ptr}. Use a \texttt{const shared\_ptr\&} as a parameter only if you're not sure whether or not you'll take a copy and share ownership; otherwise use \texttt{widget*} instead (or if not nullable, a \texttt{widget\&)}.
+    \item Use a non-const \texttt{std::shared\_ptr\&} parameter only to modify the \texttt{std::shared\_ptr}. Use a \texttt{const shared\_ptr\&} as a parameter only if you're not sure whether or not you'll take a copy and share ownership; otherwise use \texttt{widget*} instead (or if not nullable, a \texttt{widget\&)}.
 
-    \item When you assign \texttt{unique\_ptr} to \texttt{shared\_ptr}, use \texttt{std::move}.
-\end{enumerate}
+    \item When you assign \texttt{std::unique\_ptr} to \texttt{std::shared\_ptr}, use \texttt{std::move}.
+\end{itemize}
 
 \begin{lstlisting}[frame=single, language=c++]
 Foo *fo = new Foo();  //bad style here.
@@ -6378,7 +6376,7 @@ std::shared_ptr<std::string> shared = std::move(unique);
 
 
 \par \textbf{Return from function.}
-\begin{enumerate}
+\begin{itemize}
 
     \item In below example, caller of \texttt{getExclusiveResource()} is a single owner, so return \texttt{unique\_ptr}.
 
@@ -6400,7 +6398,7 @@ shared_ptr<Server> serverForClass2  = serverForClass1;
 \end{lstlisting}
 
 	\item If you are not sure about the ownership, return \texttt{unique\_ptr}, because you can convert \texttt{unique\_ptr} to \texttt{shared\_ptr} if necessary.
-\end{enumerate}
+\end{itemize}
 
     \par About smart pointer and function interface. There is a good article. "GotW \#91 Solution: Smart Pointer Parameters"
 
@@ -6418,7 +6416,7 @@ shared_ptr<Server> serverForClass2  = serverForClass1;
 	
 
 	
-	\par Should I normally use pointers to freestore allocated objects for my data members, or should I use “composition”? The answer is composition because it avoid extra layer of indirection. At the same time, the performance of the typical implementation of malloc() degrades when there are many allocations; OO software can easily become “freestore bound” unless you’re careful.
+	\par Should I normally use pointers to freestore allocated objects for my data members, or should I use “composition”? The answer is composition because it avoid extra layer of indirection. At the same time, the performance of the typical implementation of \texttt{malloc()} degrades when there are many allocations; OO software can easily become “freestore bound” unless you’re careful.
 	
 	There are two cases you have to use pointer, 1) A flexible content container, such as \texttt{std::vector}; 2) you need dynamic binding, because only pointer/reference support dynamic binding, such as strategy design pattern code below. 
 \begin{lstlisting}
@@ -6438,7 +6436,7 @@ class Context{ //strategy in design pattern.
 %	\item In C++, pointers have value semantics in terms of which object they point to, but they exhibit reference semantics in terms of the state of the object they point to. Typically, for classes designed with reference semantics, the copy constructor should be deleted to prevent unintentional copies. While objects with reference semantics cannot be directly copied, they can be accessed using pointers or references.
 
 	\par Is smart pointer value semantic or reference semantic? Smart pointers in C++ generally exhibit reference semantics rather than value semantics. 
-\begin{enumerate}
+\begin{itemize}
 	
 	\item  Smart pointer is a kind of "wrapper" class. That is to say, it "wraps" a pointer, not "points" to a pointer. It is generally advised not to define a smart pointer in the following manner:
 	
@@ -6475,21 +6473,21 @@ p->addChild(); //Child is created by parent.
 	
 	\item Then, you can't use two \texttt{shared\_ptrs} here. otherwise, it will cause cyclic reference.
 	
-	\item Then, you have to use one \texttt{shared\_ptr} and one \texttt{weak\_ptr}. Usually, owner(parent) has \texttt{shared\_ptr}, the counter part(child) has \texttt{weak\_ptr}. 
+	\item Then, you have to use one \texttt{shared\_ptr} and one \texttt{weak\_ptr}. Usually, owner (\texttt{Parent}) has \texttt{shared\_ptr}, the counter part (\texttt{Child}) has \texttt{weak\_ptr}. 
 	
-	\item \texttt{weak\_ptr} must use \texttt{shared\_ptr} to initialize. 
+	\item \texttt{std::weak\_ptr} must use \texttt{std::shared\_ptr} to initialize. 
 	
-	\item In line 13, you can't use \texttt{this} here, because it is a raw pointer. Building \texttt{shared\_ptr} with raw pointer will build a new control block within it. A solution here is use \texttt{shared\_from\_this}.
+	\item In line 13, you can't use \texttt{this} here, because it is a raw pointer. Building \texttt{std::shared\_ptr} with raw pointer will build a new control block within it. A solution here is use \texttt{shared\_from\_this}.
 \end{enumerate}
 
-\end{enumerate}
+\end{itemize}
 	
 	\par In C++, you can pick and choose where you want reference semantics (pointers/references) and where you’d like value semantics (where objects physically contain other objects etc). In a large system, there should be a balance. C++ gives us an ideal situation: we choose reference semantics for objects that need unique identity or that are too large to copy, and we can choose value semantics for the others. Thus the highest frequency objects will end up with value semantics, since we install flexibility where it doesn’t hurt us (only), and we install performance where we need it most!
 
 \subsection{Smart pointer usage suggestions}
 
 	
-	 Instead of using C \texttt{FILE*} and \texttt{char*} as strings, it's better to use the \texttt{std::fstream} class and \texttt{std::string} class. As RAII classes, they are exception-safe and provide better type safety and memory management compared to \texttt{FILE*} and\texttt{ char*}. 
+	 Instead of using C \texttt{FILE*} and \texttt{char*} as strings, it's better to use the \texttt{std::fstream} class and \texttt{std::string} class. As a RAII classes, they are exception-safe and provide better type safety and memory management compared to \texttt{FILE*} and\texttt{ char*}. 
 
 	
 	\par In the implementation of smart pointers, several common C++ language characteristics are often utilized. For instance, \texttt{unique\_ptr} optimizes its base class to be empty, \texttt{shared\_ptr} employs type erasure techniques, and \texttt{enable\_from\_this} uses the Curiously Recurring Template Pattern (CRTP). These techniques are not only interesting but also highly valuable to learn and apply in future projects.
