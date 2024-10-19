@@ -18100,7 +18100,7 @@ sort(v|views::filter(...)) //Error, views::filter only model bidirection range
 	\end{center}
 	
 	
-	\par common\_range is also an important concept when we want to use algorithms. For example, different with \texttt{std::views::filter}, \texttt{std::views::take\_while} isn't a common\_range. Common ranges require that \texttt{ranges::begin} and \texttt{ranges::end} return the same type. If it's not common range, we can't input this view to traditional algorithms.
+	\par common\_range is also an important concept when we want to use algorithms. For example, different with \texttt{std::views::filter}, \texttt{std::views::take\_while} isn't a common\_range. Common ranges require that \texttt{ranges::begin()} and \texttt{ranges::end()} return the same type. If it's not common range, we can't input this view to traditional algorithms.
 \begin{lstlisting}
 auto v = std::vector{8,7,3};
 auto rng = v | std::views::filter([](int x){return x > 5 ;});
@@ -18205,7 +18205,7 @@ string result1 = vv|ranges::to<string>(); // ok
              //vc doesn't have data() and size(), which string constructor need.
 \end{lstlisting}
 	
-	\par If a view requires a functor, it will not satisfy the concepts of sized\_range, common\_range, or borrowed\_range. Some common views that require an additional functor include \texttt{views::take\_while}, \texttt{views::drop\_while}, \texttt{views::transform}, \texttt{views::filter} and \texttt{views::chuck\_by}.
+	\par If a view requires a functor, it will not satisfy the concepts of \textbf{sized\_range}, \textbf{common\_range}, or \textbf{borrowed\_range}. Some common views that require an additional functor include \texttt{views::take\_while}, \texttt{views::drop\_while}, \texttt{views::transform}, \texttt{views::filter} and \texttt{views::chuck\_by}.
 \begin{lstlisting}
 vector v2{2, 4, 2, 3, 4, 5};
 auto l = [](auto e){ return e%2 == 0;};
@@ -18329,7 +18329,7 @@ auto iter = std::ranges::min_element(get_span());
 cout<<*iter; // iter is an solid iterator, *not* ranges::dangling	
 \end{lstlisting}	
 	
-	\par \texttt{views::filter} and \texttt{views::transform} are two important non borrowed ranges, because it involves some functions. 
+	\par Any views need extra functor, such as \texttt{views::filter} and \texttt{views::transform} are not borrowed ranges, because it involves some functor. 
 \begin{lstlisting}
 auto odd = [](int i) { return bool(i % 2); };
 auto iter = std::ranges::min_element(v|views::filter(odd));
@@ -18340,7 +18340,7 @@ cout<<*iter;  // Error,iter is std::ranges::dangling
 \begin{center}
 	
 
-	\begin{tabular}{|p{0.25\textwidth}|p{0.3\textwidth}|p{0.25\textwidth}|}
+	\begin{tabular}{|p{0.25\textwidth}|p{0.3\textwidth}|p{0.3\textwidth}|}
 		\hline
 		 \textbf{borrowed range} & \textbf{borrowed range only if underlying view is borrowed range} & \textbf{non-borrowed range no matter what underlying view} \\
 		\hline
@@ -18352,12 +18352,12 @@ cout<<*iter;  // Error,iter is std::ranges::dangling
 		std::ranges::iota\_view } & \specialcell[t]{ std::ranges::owning\_view \\
 		std::ranges::take\_view \\
 		std::ranges::drop\_view \\
-		std::ranges::drop\_while\_view \\
 		std::ranges::common\_view \\
 		std::ranges::reverse\_view \\
 		std::ranges::elements\_view \\
 		std::ranges::adjacent\_view }  & \specialcell[t]{ std::ranges::filter \\
-			std::ranges::take\_while 
+		std::ranges::take\_while\_view \\	
+		std::ranges::drop\_while\_view \\
 		}  \\
 		\hline
 	\end{tabular}
@@ -18366,13 +18366,30 @@ cout<<*iter;  // Error,iter is std::ranges::dangling
 
 \subsubsection{Sequence View}
 	 Two main sequence views are \texttt{std::string\_view} and \texttt{std::span} in C++20. \texttt{std::string\_view} is a non-owning, \textbf{read-only} view of a sequence of characters. It is useful for working with substrings and passing strings around without the overhead of copying. \texttt{std::span} is a non-owning view over a contiguous sequence of objects, providing a safe way to work with arrays and other contiguous data structures.
+	 
+	 \par Although \texttt{std::string\_view} and \texttt{std::span} are called "sequence view", but they are not real view, because they are not in the <ranges> header file. \texttt{std::string\_view} is in <string> header file, and \texttt{std::span} is in <span> header file, they are not lazy evaluate either, see code below:
+\begin{lstlisting}
+vector v {1, 2, 3, 4};
+std::span sp{v};
+auto vw = v| views::reverse;
+v.clear();
+
+for (auto e: sp){
+	cout<<e<<endl; //output 1, 2, 3, 4, in fact, it's undefine behavior.
+}
+
+for (auto e: vw){
+	cout<<e<<endl; //output nothing 
+}
+\end{lstlisting}
+	 
 	
-	\par How to build \texttt{std::string\_view}? You can use either a string literal, a \texttt{std::string}, a pointer to a character array along with its length or a range(C++ 20)
+	\par How to build \texttt{std::string\_view}? You can use either a string literal, a \texttt{std::string}, a pointer to a character array along with its length or a range (C++ 20).
 \begin{lstlisting}
 using namespace std::string_view_literals; //method 1, use literals. 
 auto literal_view = "C-String Literal"sv;
 
-std::string s = "Some Text";  // method 2, use range 
+std::string s = "Some Text";  // method 2, use string 
 std::string_view sv1 { s };  
 
 const char* cstr = "Hello, World!"; //method3, character pointer
@@ -18388,24 +18405,24 @@ std::string_view sv3 {begin(s)+2, end(s)};
 void f_cref (std::string const& s) { ... }
 void f_view (std::string_view s) { ... }
 
-
 std::string stdStr = "Standard String";
 auto const cStr = "C-String";  //cStr is const char* 
 std::vector<char> v {'c','h','a','r','s','\0'};
 f_cref(stdStr);     // no copy
-f_cref(cStr);       //  temp copy, bad
-f_cref("Literal");  //  temp copy, bad
-f_cref({begin(v),end(v)});  //  temp copy, bad
+f_cref(cStr);       //  temporary string, bad
+f_cref("Literal");  //  temporary string, bad
+f_cref({begin(v),end(v)});  //  temporary string, bad
 
-f_view(stdStr);     // no copy
-f_view(cStr);       //  no copy
-f_view("Literal");  //  no copy
-f_view({begin(v),end(v)});  //  no copy
+f_view(stdStr);     //  no temporary string
+f_view(cStr);       //  no temporary string
+f_view("Literal");  //  no temporary string
+f_view({begin(v), end(v)});  //  no temporary string
 \end{lstlisting}
 
 	\par Based on previous introduction, functions that accept a \texttt{const char*} or \texttt{const string\&} (of any string type) parameter, consider replacing with \texttt{string\_view} unless:
+	
 \begin{itemize}
-    \item You’re passing the argument to a function requiring const string\& or other null-terminated string (e.g., fopen or printf)
+    \item You’re passing the argument to a function requiring \texttt{const string\&} or other null-terminated string (e.g., fopen or printf)
 	\item You’re copying the data to a new string object
 \end{itemize}
 \begin{lstlisting}
@@ -18416,7 +18433,7 @@ void fun(string_view sv){ //don't use const string_viw &
 void copy_fun(const string & s){
 	v.push_back(s)  //copy here, so we should use const string&
 }
-void copy_fun(const char* p){
+void fun(const char* p){
 	fopen(p)      //const char* p is convenient for calling fopen. 
 }
 \end{lstlisting}
@@ -18433,6 +18450,14 @@ auto iter = std::string_view{str}.begin(); //iter's parent object is string_view
 *iter = 'h'; // Weird, but okay:	
 \end{lstlisting}
 
+	\par The typical issues of \texttt{std::span} are twofold. First, a \texttt{std::span} should not act on a temporary and second, the size of the underlying contiguous range of a \texttt{std::span} should not be modified.
+\begin{lstlisting}
+std::vector<int> getVector() {                         
+	return {1, 2, 3, 4, 5};
+}
+
+std::span<int, 5> mySpan2{getVector().begin(), 5};  
+\end{lstlisting}
 
 	\par Why do we mainly use \texttt{std::string\_view} and \texttt{std::span} as function parameters:
 	
@@ -18490,7 +18515,7 @@ printMe({begin(vec)+2, end(v)})  //    (4) input range.
 	\par Here are the advantages of using \texttt{std::string\_view} and \texttt{std::span} as function parameters:
 	
 \begin{itemize}
-	\item Decouple Function Implementations from Data Representation/Container Type. By using \\ \texttt{std::string\_view} or \texttt{std::span}, functions are not tied to a specific container type like \texttt{std::string} or \texttt{std::vector}. This flexibility allows the same function to operate on different types of string-like or span-like data structures without modification.
+	\item Decouple function implementations from Data Representation/Container Type. By using \\ \texttt{std::string\_view} or \texttt{std::span}, functions are not tied to a specific container type like \texttt{std::string} or \texttt{std::vector}. This flexibility allows the same function to operate on different types of string-like or span-like data structures without modification.
 	
 	\item Clearly communicate the intent of only reading/altering elements in a sequence, but not modifying the underlying memory/data structure.
 	
@@ -18510,19 +18535,26 @@ printMe({begin(vec)+2, end(v)})  //    (4) input range.
 	
 	 A "vocabulary" type is very loose defined conception. It is a type that purports to provide a common language, for dealing with its domain. Notice that even before C++ existed, the C programming language had already made a decent shot at the vocabulary of some areas, providing standard types or type aliases for integer math (\texttt{int}), floating-point math (\texttt{double}), timepoints expressed in the Unix epoch (\texttt{time\_t}), and byte counts (\texttt{size\_t}). A good book about vocabulary type is "Mastering C++ 17 STL" chapter 5. 
 	
-	\par  A product of two types A and B is a new type that contains an instance of A \textbf{AND} an instance of B. (it will be Cartesian product of the set all values of type A and the set of all values of B.) The sum type aren't as prominent in C++ as product type. The sum type of types A and B is a type that can hold an instance of A \textbf{OR} an instance of B. but not both at the same time. In C++, enum are special kind of sum type. unions and \texttt{std::variant} are common sum type. \texttt{std::option} is special type of \texttt{std::variant}.  
+	\par  A product of two types A and B is a new type that contains an instance of A \textbf{AND} an instance of B (it will be Cartesian product of the set all values of type A and the set of all values of B). The sum type aren't as prominent in C++ as product type. The sum type of types A and B is a type that can hold an instance of A \textbf{OR} an instance of B. but not both at the same time. In C++, enum are special kind of sum type. unions and \texttt{std::variant} are common sum type. \texttt{std::option} is special type of \texttt{std::variant}.  
 	
 	\par Beside the "vocabulary type" generic definition in C, In C++, the Standard Template Library (STL) provides a vocabulary of container classes, algorithms, and iterators that are used to manipulate collections of data. The STL also provides a vocabulary of numeric types and mathematical functions, as well as facilities for working with strings, streams, and other common tasks. At the same time, vocabulary type also includes: 
-	\begin{enumerate}
-		\item algebraic data type:
+	\begin{itemize}
+		\item Algebraic data type:
 		 \begin{enumerate}
+		 	
 		 	\item (sum type/tagged union/variant) - \texttt{std::variant}, \texttt{std::optional} \texttt{std::any} (the ultimate in sum types--it can store almost anything).
+		 	
 		 	\item (product type/record/tuple) - \texttt{std::tuple}, \texttt{std::pair}.
+		 	
 		 \end{enumerate}
-		\item generic type erase type (container). \texttt{std::function}, \texttt{std::any}.
-		\item generic adapter, such as smart pointer.
-		\item generic view type, such as \texttt{std::string\_view} and \texttt{std::span}
-	\end{enumerate}
+		 
+		\item Generic type erase type (container). \texttt{std::function}, \texttt{std::any}.
+		
+		\item Generic adapter, such as smart pointer.
+		
+		\item Generic view type, such as \texttt{std::string\_view} and \texttt{std::span}
+		
+	\end{itemize}
 	
 	\par The most common product type is \texttt{std::tuple}. The implementation detail of \texttt{std::tuple} can be found in "Variadic Templates" in Modern C++ chapter. The \texttt{std::tuple} is a lot more flexible in how it can be used in conjunction with the standard <algorithm> library.
 	
@@ -18555,25 +18587,52 @@ std::tie(gpa1, grade1, name1) = get_student(1); //method 2, use std::tie
 auto [gpa2,grade2,name2]=get_student(2); //method 3, C++17 structured binding
 \end{lstlisting}
 
+\begin{lstlisting}
+struct S{
+	int n;
+	std::string s;
+	float d;
+	
+	friend bool operator<(const S& lhs, const S& rhs) noexcept{
+	//compares lhs.n to rhs.n, then lhs.s to rhs.s, then lhs.d to rhs.d in that order, 
+	//first non-equal result is returned or false if all elements are equal
+		return std::tie(lhs.n, lhs.s, lhs.d) < std::tie(rhs.n, rhs.s, rhs.d);
+	}
+};
+\end{lstlisting}
+
+\begin{lstlisting}
+std::map<std::string, std::string> m;
+
+m.emplace(std::piecewise_construct, std::forward_as_tuple("c"),
+          std::forward_as_tuple(10, 'c'));
+// an alternative is: m.try_emplace("c", 10, 'c');
+
+// The following is an error: it produces a
+// std::tuple<int&&, char&&> holding two dangling references.
+
+// auto t = std::forward_as_tuple(10, 'c');
+// m.emplace(std::piecewise_construct, std::forward_as_tuple("c"), t);
+\end{lstlisting}
 	
 	\par All below content of vocabulary type includes five contents: 1) create, 2) change, 3) check, 4) access, 5) when to use?
 
 
 
-\subsection{sum type}
-\subsubsection{optional}
+\subsection{Sum type}
+\subsubsection{std::optional}
 
 	 It is recommended to use \texttt{std::optional<T>} in situations where there is exactly one clear reason for having no value of type T, and where the absence of a value is as natural as having any regular value of T. 
 	
-	\begin{enumerate}
+	\begin{itemize}
 		\item  If you want to represent a nullable type nicely. Rather than using unique values (like -1, nullptr, NO\_VALUE or something), For example, user’s middle name is optional. You could assume that an empty string would work here, but knowing if a user entered something or not might be important. With \texttt{std::optional<std::string>} you get more information.
 		
 		\item Return a result of some computation (processing) that fails to produce a value and is not an error. For example finding an element in a dictionary: if there’s no element under a key it’s not an error, but we need to handle the situation.
 		
-		\item To perform lazy-loading of resources. For example, a resource type has no default constructor, and the construction is substantial. So you can define it as \texttt{std::optional<Resource>} (and you can pass it around the system), and then load only if needed later.
+		\item To perform lazy-loading of resources. For example, a resource type has no default constructor, and the construction is substantial. So you can define it as \texttt{std::optional<Resource>} and you can pass it around the system, then load only if needed later.
 		
 		\item To pass optional parameters into functions.
-	\end{enumerate}
+	\end{itemize}
 	
 	\par \texttt{std::optiona}l can be used as a member, an argument, or a return value. Below are two code examples demonstrating these three kinds of usages: return value and data member usage.
 	
@@ -18610,6 +18669,7 @@ Name n{"Jim", std::nullopt, "Knopf"}; //learn how to use std::nullopt.
 \end{lstlisting}	
 	
 	\par Pay attention to the usage of \texttt{std::in\_place}. The intent of \texttt{std::in\_place} is to disambiguate situations where one wants to call the default constructor of \texttt{optional<T>} versus the default constructor of T.
+	
 \begin{lstlisting}
 class UserName {
 public:
@@ -18628,8 +18688,8 @@ std::optional<UserName> opt{std::in_place}; //that is good style, no temp object
 
 	\par Another usage of \texttt{std::in\_place} is in constructors with many arguments, similar to the emplace member functions in STL containers.  
 \begin{lstlisting}
-std::optional<std::vector<int>> opt{std::vector<int>{4, 1}};
-std::optional<std::complex<double>> opt2{std::complex<double>{0, 1}};
+std::optional<std::vector<int>> opt{std::vector<int>{4, 1}};  //copy vector here
+std::optional<std::complex<double>> opt2{complex<double>{0, 1}}; //copy complex here
 
 std::optional<std::vector<int>> opt{std::in_place, 4, 1}; //good style, no copy
 std::optional<std::complex<double>> opt2{std::in_place, 0, 1};
@@ -18640,19 +18700,21 @@ auto opt = std::make_optional<std::vector<int>>(4, 1);
 	\par As summary, You can construct optional in four ways. 1) use temporary obj 2) use \texttt{std::in\_place} 3) use emplace 4) \texttt{make\_optional} function.
 	
 	\par There are several options to access the stored value.
-	\begin{enumerate}
+	\begin{itemize}
 		\item \texttt{operator*} and \texttt{operator->} - similar to iterators. If there’s no value the behaviour is undefined!
-		\item \texttt{value()} - returns the value, or throws std::bad\_optional\_access
+		
+		\item \texttt{value()} - returns the value, or throws \texttt{std::bad\_optional\_access}.
+		
 		\item \texttt{value\_or(defaultVal)} - returns the value if available, or defaultVal otherwise.
-	\end{enumerate}
+	\end{itemize}
 	
 	\par To check if the value is present you can use \texttt{has\_value()} method or just check if (optional) as optional is automatically converted to bool.
 	
 \begin{lstlisting}
-std::optional<int> oint = 10; // by operator*
+std::optional<int> oint = 10;              // method 1: by operator*
 std::cout<< "oint " << *opt1 << '\n';
 
-std::optional<std::string> ostr("hello");  // by value()
+std::optional<std::string> ostr("hello");  // method 2: by value()
 try {
 	std::cout << "ostr " << ostr.value() << '\n';  
 }
@@ -18661,26 +18723,17 @@ catch (const std::bad_optional_access& e) {
 }
 
 std::optional<double> odouble; // empty
-std::cout<< "odouble " << odouble.value_or(10.0) << '\n';	// by value_or()
+std::cout<< "odouble " << odouble.value_or(10.0) << '\n';  // method 3: by value_or()
 \end{lstlisting}
 	
 
 \subsubsection{variant}
 
-	 A typical usage is State machines, and we can also use variant in below applications:
-	\begin{enumerate}
-		\item All the places where you might get a few types for a single field: so things like parsing command lines, ini files, language parsers, ... etc.
-		
-		\item Expressing efficiently several possible outcomes of a computation: like finding roots of equations
-		
-		\item Error handling - for example you can return variant<Object, ErrorCode>. If the value is available, then you return Object otherwise you assign some error code.
-		
-		\item Polymorphism without vtables and inheritance (thanks to visiting pattern).
-	\end{enumerate}
+	 
 
 	
 	
-	\par How do you create and initialize a variant? There are three key points to understand: \texttt{std::monostate}, \texttt{std::in\_place\_index}, and \texttt{std::in\_place\_type}. By default, a variant object is initialized with its first type. If the first type does not have a default constructor defined, attempting to call the default constructor for the variant will result in an error. This is where \texttt{std::monostate} becomes necessary
+	How do you create and initialize a variant? There are three key points to understand: \texttt{std::monostate}, \texttt{std::in\_place\_index}, and \texttt{std::in\_place\_type}. By default, a variant object is initialized with its first type. If the first type does not have a default constructor defined, attempting to call the default constructor for the variant will result in an error. This is where \texttt{std::monostate} becomes necessary
 	
 \begin{lstlisting}
 class NotSimple {
@@ -18739,7 +18792,19 @@ for (const GeoObj& geoobj : figure) {
 	}
 \end{lstlisting}	
 	
-	\par A few usage of std::variant: 1) Error handling, 2)Roots of an equation, 3) command line and configuration file parse 4) state machine. 5) polymorphism by \texttt{std::visit}. 
+	\par A typical usage is state machines, and we can also use \texttt{std::variant} in below applications:
+	
+	\begin{itemize}
+		\item All the places where you might get a few types for a single field: so things like parsing command lines, ini files, language parsers, ... etc.
+		
+		\item Expressing efficiently several possible outcomes of a computation: like finding roots of equations
+		
+		\item Error handling - for example you can return \texttt{std::variant<Object, ErrorCode>}. If the value is available, then you return Object otherwise you assign some error code.
+		
+		\item Polymorphism without vtables and inheritance, use visiting pattern and \texttt{std::visit} instead.
+		
+		\item State machine
+	\end{itemize}
 	
 \begin{lstlisting}
 enum class ErrorCode {
@@ -18748,10 +18813,9 @@ enum class ErrorCode {
 	IoError,
 	NetworkError
 };
-std::variant<string, ErrorCode> FetchNameFromNetwork(int i) //1 Error handling
+variant<string, ErrorCode> FetchNameFromNetwork(int i) //1 Error handling
 
-std::variant<std::monostate, double, std::pair<double, double> > result; 
-//2 Roots of an equation
+variant<std::monostate, double, pair<double, double> > result; //2 Roots of an equation
 \end{lstlisting}	
 	
 	\par A state machine example. That is not full list code, but include main idea of how to implement a state machine. Detail can be found in "Everything You Need to Know About std::variant from C++17".
@@ -18783,14 +18847,13 @@ struct DoorState {
 \end{lstlisting}	
 		
 
-\subsubsection{any}
-	 \texttt{std::any} is statically type-safe; there is no way to access a 'pointer to the data' (like a void*) without knowing the exact static type of the stored data. Additionally, \texttt{std::any} does not utilize \texttt{dynamic\_cast}.
+\subsubsection{std::any}
+	 \texttt{std::any} is statically type-safe; there is no way to access a "pointer to the data" (like a \texttt{void*}) without knowing the exact static type of the stored data. Additionally, \texttt{std::any} does not utilize \texttt{dynamic\_cast}.
 	
 	\par The core idea behind "type erasure" involves identifying essential operations that should be supported for all types T. For \texttt{std::any}, these operations include: 1) constructing the contained object, 2) moving the contained object, and 3) retrieving the \texttt{typeid} of the contained object. Other type-specific operations are "erased", ensuring uniform behavior across different types.
 	
 	
-	\par A good article is "std::any why when how", it explains the \texttt{std::any} very well. It's just \newline 
-	\texttt{shared\_ptr<void>}, but it has value semantic, support deep copy and type safe. 
+	\par A good article is "std::any why when how", it explains the \texttt{std::any} very well. It's just \texttt{shared\_ptr<void>}, but it has value semantic, support deep copy and type safe. 
 \begin{lstlisting}
 std::any a; // a is empty
 std::any b = 4.3; // b has value 4.3 of type double
