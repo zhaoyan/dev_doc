@@ -4321,12 +4321,8 @@ std::vector<int> v2{10, 20};  //create 2-element vector, element are 10 and 20
 
 \subsection{Auto initialization(Almost Always Auto)}
 
-	 Three main usages of \texttt{auto}:
-	 \begin{enumerate}
-	 	\item Use in initialization expression. For example, you can assign lambda to an \texttt{auto} type variable.
-	 	\item \texttt{auto} parameter in a lambda.
-	 	\item \texttt{auto} return type in a function.  
-	 \end{enumerate}
+	 Three main usages of \texttt{auto}: 1) Use in initialization expression. For example, you can assign lambda to an \texttt{auto} type variable; 2) \texttt{auto} parameter in a lambda. 3) \texttt{auto} return type in a function.  
+	 
 	    
 %		with help of \texttt{auto} parameter and \texttt{auto} type, you can build \textbf{generic lambda}. 
 
@@ -4347,7 +4343,7 @@ auto w = make_unique<widget>(); //template class or function
 auto l = [](){..};              //for lambda, you have to use auto
 \end{lstlisting}
 	
-	\par About the auto \texttt{type} deduction, please refer to the later chapter "Generic programming". The basic idea is quite simple: take exactly the type on the right-hand side, but strip off top-level const/volatile and reference \&/\&\&. If you want your auto declaration to be \texttt{const}, or if you want your \texttt{auto} declaration to be a reference, you have to add them explicitly.
+	\par About the auto \texttt{type} deduction, please refer to the later chapter "Generic programming". The basic idea is quite simple: take exactly the type on the right-hand side, but strip off top-level \texttt{const/volatile} and reference \&/\&\&. If you want your auto declaration to be \texttt{const}, or if you want your \texttt{auto} declaration to be a reference, you have to add them explicitly.
 	
 \begin{lstlisting}[frame=single, language=c++]
 const auto iter = modmap.find(123); //specify const
@@ -4413,18 +4409,31 @@ for (const auto& p : m){  //better style with auto
 
 	\par There are two points need to be noticed. The first one is using \texttt{auto} with \texttt{vector<bool>}, The second is combining \texttt{auto} with list initialization.
 	
-	\par \texttt{vector<bool>::operator[]} neither yields a bool nor a reference to a bool. It just returns a little proxy object that acts like a reference. This is because there are no references to single bits and \texttt{vector<bool>} actually stores the bools in a compressed way. So by using \texttt{auto} you just created a copy of that reference-like proxy object. The problem is that C++ does not know that this object acts as a reference. You have to force the "decay to a value" here by replacing \texttt{auto} with T.  If you don't understand why, no worry. I will introduce \texttt{std::ref} in the "concurrent" chapter, you can go there to look the introduction of \texttt{std::ref}. Both "proxy" class and \texttt{std::ref} share the same idea.
+	
+	\par The below code doesn't work because the \texttt{std::vector} template is specialized for \texttt{bool}, optimizing space by storing each boolean value in one bit within a byte. Due to this optimization (where returning a reference to a single bit isn't possible), \texttt{vector<bool>} uses a 'proxy iterator' pattern. A 'proxy iterator' is an iterator that, when dereferenced, doesn't yield an ordinary \texttt{bool \&}, but instead returns a temporary object—a proxy class convertible to \texttt{bool}. The proxy class returned is a prvalue, so we can't use \texttt{auto \&} to refer to it. Instead, you can use \texttt{const \&} or an rvalue reference to refer to it. Both "proxy" class and \texttt{std::ref} share the same design idea.
+\begin{lstlisting}[numbers=none]
+vector<bool> v = {true, false, false, true};
+auto &x = v[1] //error
+auto &x = *v.begin() //error 
+
+for (auto&& elem : v) //OK
+for (const auto& elem : v) //also OK		
+\end{lstlisting}	
+	
+	
+	\par When use \texttt{vector<bool>::operator[]} and \texttt{auto} together, you just created a copy of that reference-like proxy object.
+\begin{lstlisting}
+vector<bool> v(6, false);
+auto x = v[0]; //avoid use auto with vector<bool> 
+bool y = v[1];
+x = true; //Not correct, v[0] has been changed to true, it's unexpected. 
+y = true; //correct, v[1] has NOT been changed. 	
+\end{lstlisting}
+	
 \begin{center}
 	\includegraphics[width=0.43\linewidth]{pics/auto2.png}
 \end{center}
 
-\begin{lstlisting}
-vector<bool> v(6, false);
-auto x = v[0];
-bool y = v[1];
-x = true; //Not correct, v[0] has been changed to true.
-y = true; //correct, v[1] has NOT been changed. 
-\end{lstlisting}
 
 	\par In below code, prior to C++17 the type for all the following variable (\texttt{a, b, c} and \texttt{d}) is deduced to \texttt{std::initializer\_list<int>}. There is no difference between the direct-list-initialization and the copy-list-initialization on the result of the type deduction. In another word, When you use = and \{\} together, it will deducted as \texttt{std::initializer\_list}, no matter how many parameters are there inside the \{\}. After C++ 17, For copy list initialization auto deduction will deduce a \texttt{std::initializer\_list<T>} if all elements in the list have the same type, or be ill-formed. For direct list initialization auto deduction will deduce a T if the list has a single element. \textbf{In one word, when \texttt{auto} used with = and \{\}, it will deduct \texttt{std::initializer\_list<T>}}.
 		
@@ -4642,9 +4651,7 @@ auto w = widget{x};// (i)
 
 \textbf{Key points of this chapter}
 
-	 \par Understanding some basic conceptions, such as aggregate type, copy-list-initilization, converting constructor. All the high level usages are based on these basic conceptions. 
-	
-	\par It's important to be familiar with the six basic initialization methods and know how to distinguish them. For instance, initialization with the equal sign is known as copy initialization.
+	 \par Understanding some basic conceptions, such as aggregate type, copy-list-initilization, converting constructor. All the high level usages are based on these basic conceptions. It's important to be familiar with the six basic initialization methods and know how to distinguish them. For instance, initialization with the equal sign is known as copy initialization.
 	
 	\par Six initialization methods and list initialization are irrelevant and orthogonal. List initialization syntax can be interpreted as aggregated init, value init, direct initialization or copy initialization and it brings its own advantage.
 	
@@ -4659,14 +4666,13 @@ auto w = widget{x};// (i)
 	
 	\par There are three levels of initialization knowledge in C++. The first level is the syntax level, which determines whether we use braces or parentheses, an assignment operator, or a function return, among other things. From this level, we can go deeper to another level to determine what kind of initialization methods are available. There are six different methods. Finally, we can reach the semantic level, which depends on the specific data type for the detailed initialization action.
 	
+	\begin{center}
+		\includegraphics[width=0.60\linewidth]{pics/sum_init.png}
+	\end{center}
+	
 	For example, if T is an aggregate type, we use aggregate initialization. If the braced-init-list is empty and T is a class type with a default constructor, we use value-initialization. In other words, '\texttt{A a\{x, y\}}' may be a direct initialization or an aggregate initialization, depending on the data type of \texttt{A}. This is an essential point for you to understand better about initialization in C++.
 	
 	
-\begin{center}
-	\includegraphics[width=0.60\linewidth]{pics/sum_init.png}
-\end{center}	
-			
-
 
 \textbf{Initialize suggestions}
 
@@ -4674,11 +4680,7 @@ auto w = widget{x};// (i)
 		
 		
 	\begin{enumerate}
-		\item If right side is expression, \texttt{new} operator or function, use \textbf{\texttt{auto var = expr;}}.  Pay attention one pitfalls when use \texttt{auto}.
-\begin{lstlisting}
-auto with vector<bool>      // 1) the first pitfalls of auto
-auto with initializer_list  // 2) the second pitfalls of auto
-\end{lstlisting}		
+		\item If right side is expression, \texttt{new} operator or function, use \textbf{\texttt{auto var = expr;}}.  Pay attention to two pitfalls when use \texttt{auto} with vector<bool> and use \texttt{auto} with \texttt{initializer\_list}
 		
 		\item Otherwise, Use \textbf{list initialization if possible.}  Use \{\} even in default initialization, maybe it's redundant for some types, but it's good habit and keep your style consistency. For example, use \texttt{String str\{\};} instead of \texttt{String str;}. When using list initialization, pay attention two traps for \texttt{std::initilizaer\_list} when class has overload constructor with \texttt{initializer\_list} argument.
 \begin{lstlisting}
@@ -4696,7 +4698,7 @@ vector v(10, 2) and vector v{10, 2}; //Semantic between () and {}.
 		\item For a specific scenario, if you intend to initialize a variable \texttt{f1} with the same type another variable \texttt{f2}, use copy initialization. Because in case of they have different type, you'll never accidentally invoke an explicit conversion constructor, which generally interprets the provided value differently.
 \begin{lstlisting}
 class Foo{
-	explicit Foo(int);
+	explicit Foo(int); //explicit here, it's important
 	Foo(const Foo& other);
 };	
 	
@@ -4705,7 +4707,7 @@ Foo f1(f2);  //bad style, if f2 is int, it will call Foo(int) here.
 Foo f1 = {f2};  //good style too, just like line 1 and use { } consistently.
 \end{lstlisting}		
 		\begin{description}
-			\item[Line 2:] You need explicit here. If \texttt{f2} is not \texttt{Foo} type, line 6 will fail with explicit single parameter constructor. You think that \texttt{f1} and \texttt{f2} are the same type, but this failure indicates that they have different type. However, line 7 will call explicit single parameter constructor directly and doesn't give you this kind of helpful hint. 
+			\item[Line 6-7:] You think that \texttt{f1} and \texttt{f2} are the same type, but this failure indicates that they have different type. However, line 7 will call explicit single parameter constructor directly and doesn't give you this kind of helpful hint. 
 		\end{description}
 		
 	\end{enumerate}
@@ -10604,11 +10606,11 @@ catch(my_base_ex &ex){
 
 \subsection{Debug program}
 	 Beside gdb, there are still a few useful debugger in Linux OS:
-	\begin{enumerate}
+	\begin{itemize}
 		\item cgbd: terminal-based frontend for gdb, sudo apt-get install cgbd (sudo apt install -y cgdb)
 		\item gdbgui: brower-based frontend for gdb, https://gdbgui.com,  sudo pip install gdbgui
 		\item visual studio code: can connect to gdb. 
-	\end{enumerate}
+	\end{itemize}
 	
 	\par When compiling your C++ code with g++, use the -g flag to include debugging information in the binary. This will allow gdb to map the executable code back to the source code, making it easier to inspect variables, set breakpoints, and step through the code. Also compile with -O0 to disable optimizations. Optimizations can rearrange or remove code, making it harder to debug.
 \begin{lstlisting}
@@ -10622,7 +10624,10 @@ valgrind [options] ./a [program options]
 valgrind --tool=memcheck ./a
 valgrind --tool=callgrind ./a // runtime profiling
 valgrind --tool=drd ./a // multithreading error detection		
-\end{lstlisting}		
+\end{lstlisting}	
+
+	\par It's a good practice to always enable all warning options in your compiler using \texttt{-Wall}. When you receive a warning, address it promptly before continuing further with your development. This approach helps in identifying potential issues or problematic code early in the development process, ensuring cleaner and more reliable software.
+	
 	
 	\par Recommended compiler flags for your first programs. Turn on the warning switch as many as possible.
 \begin{lstlisting}
@@ -10631,6 +10636,15 @@ g++ -std=c++20 -Wall -Wextra -Wpedantic -Wshadow -Werror input.cpp -o output
 // below is production level recommended set
 -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Werror -fsanitize=undefined,address -Wfloat-equal -Wformat-nonliteral -Wformat-security -Wformat-y2k -Wformat=2 -Wimport -Winvalid-pch -Wlogical-op -Wmissing-declarations -Wmissing-field-initializers -Wmissing-format-attribute -Wmissing-include-dirs -Wmissing-noreturn -Wnested-externs -Wpacked -Wpointer-arith -Wredundant-decls -Wstack-protector -Wstrict-null-sentinel -Wswitch-enum -Wundef -Wwrite-strings		
 \end{lstlisting}		
+
+\par Sometimes it's not possible to eliminate a warning, or you may have a specific reason to keep a warning in place. If a warning originates from a header file that you cannot modify, you can use the \texttt{\#pragma} warning directive in your code to temporarily disable it and then restore it later. This approach helps manage warnings effectively in situations where modifying the header file is not an option.
+
+\begin{lstlisting}[numbers=none]
+#pragma warning(push)  //save original warning configuration.
+#pragma warning(disable:4512); //disable warning.
+#include<not_change.h>
+#pragma warning(pop)  //restore original warning configuration.		
+\end{lstlisting}
 	
 
      
@@ -16675,8 +16689,31 @@ Drawback here is that your (outer) function becomes a template and hence needs t
 
 
 \section{Code examples}
+
 \subsection{Bit operations}
-	 Change the right most 1 to zero. Pay attention to the usage of \texttt{n\&(n-1)}.
+
+Avoid using \texttt{vector<bool>}, detail can be found in the "Auto initialization(Almost Always Auto)" in the chapter 4. In order to resolve \texttt{vector<bool>} problem, you can use \texttt{std::deque<bool>} it has normal container behavior. C++11 also introduces the \texttt{std::bitset} for fixed number bool bit. Boost library also provides \texttt{dynamic\_bitset}.
+\begin{lstlisting}
+std::bitset<8> a, b;
+b.to_ulong()  //change it to ulong type
+std::cout << b.set() << '\n'; //set to 1 all
+std::cout << b.reset() << '\n';  //set to 0 all
+std::cout << b.set(0); //from 0, from least significant to most significant
+b.test(0);  b.flip(0);
+a &= b; //Note &=, |=, and ^= are only defined for bitsets of the same size N.			
+\end{lstlisting}
+
+
+\par C++20 introduces several new bit manipulation functions, such as \texttt{std::rotl}, \texttt{std::rotr}, and  \\ \texttt{std::bit\_ceil}, which are defined in the <bit> header file. They accept unsigned integer types as input.
+
+\begin{lstlisting}
+const std::uint8_t i = 0b00011101;
+std::cout << "i          = " << std::bitset<8>(i) << '\n';
+std::cout << "rotr(i,1)  = " << std::bitset<8>(std::rotr(i, 1)) << '\n';		
+\end{lstlisting}	
+
+
+	 \par Change the right most set bit (1) to 0. Pay attention to the usage of \texttt{n\&(n-1)}.
 \begin{lstlisting}[frame=single, language=c++]	
 n&(n-1);  // change the right most bit to 0. change 110100 to 110000
 //when we n-1: 110100, the right most 1 will become 0,
@@ -16693,10 +16730,18 @@ bool isPowerOfTwo(int n) {
 }			
 \end{lstlisting}
 
-	\par when we use the left shift operator << in C++ the number will be shifted and 0 will be placed at the right of number, below code place 1 and not zero at the right. 
-\begin{lstlisting}[frame=single, language=c++]	
-int one_shift(int val, int n) {
-	return ~(~0 << n) | (val << n);
+	\par Find the leftmost and rightmost set bit.
+\begin{lstlisting}
+int position = 1; //find the rightmost set bit
+int m = 1;
+while ((n & m) == 0) {
+	m = m << 1;
+	position++;
+}
+
+while (n > 0) { //find the leftmost set bit.
+	n = n >> 1;
+	position++
 }
 \end{lstlisting}
 	
@@ -16711,16 +16756,22 @@ int hammingWeight(uint32_t n) {
 	return res;
 }	
 \end{lstlisting}	
+
+	\par when we use the left shift operator << in C++ the number will be shifted and 0 will be placed at the right of number, below code place 1(not 0) at the right. 
+\begin{lstlisting}[frame=single, language=c++]	
+int one_shift(int val, int n) {
+	return ~(~0 << n) | (val << n);
+}	
+\end{lstlisting}
+
 	
 	\par Array has a lot of duplicated numbers, but has only one single numbers, how to find it? When you use the XOR (exclusive OR) operation on a series of numbers where every number except one appears in pairs, the XOR operation will cancel out the paired numbers because \texttt{x\^{}x = 0}. The number that does not have a pair will remain after all XOR operations are completed. This property makes XOR a very efficient way to find the single number in such an array. 
 \begin{lstlisting}[frame=single, language=c++]	
-int singleNumber(vector<int>& nums) {
-	int res = 0; //[1, 2, 3, 2, 1], how to find 3 in this array? 
-	for (int n : nums) {
-		res ^= n;  //a^a = 0;   a^0 = a;
-	}
-	return res;
-}		
+int res = 0; //[1, 2, 3, 2, 1], how to find 3 in this array? 
+for (int n : nums) {
+	res ^= n;  //a^a = 0;   a^0 = a;
+}
+return res;
 \end{lstlisting}
 	
 	\par Change number to bits: 
@@ -16748,21 +16799,6 @@ int result = accumulate(rbegin(str), rend(str), 0, [&](int result, char a) {
 });			
 \end{lstlisting}
 	
-	\par \texttt{std::bitset} examples. It support \texttt{flip}, \texttt{set} and \texttt{reset} operations. 
-\begin{lstlisting}
-std::bitset<8> b2(42);          // [0,0,1,0,1,0,1,0]	
-b2.to_ulong()  //change it to ulong type
-	
-std::bitset<8> b;
-std::cout << b << '\n';         //00000000
-std::cout << b.set() << '\n';   //11111111
-std::cout << b.reset() << '\n'; //00000000
-for (std::size_t i = 1; i < b.size(); i += 2)
-	b.set(i);	                //10101010
-	
-b2 & b; b2 | b; b2 ^ b  // AND, OR and XOR
-\end{lstlisting}
-
 	\par Determining endianness of your machine. Here is one quick way:
 \begin{lstlisting}
 unsigned int i = 1;
@@ -16778,10 +16814,8 @@ else
 	
 	 There are a few famous algorithm examples to remember. 
 \begin{itemize}
-	\item quick sort(\texttt{std::partition})
-	\item merge sort(\texttt{std::inplace\_merge}) 
-	\item insert sort(\texttt{std::rotate}) 
-	\item selection sort(\texttt{std::iter\_swap}) 
+	\item quick sort(\texttt{std::partition}) and merge sort(\texttt{std::inplace\_merge}) 
+	\item insert sort(\texttt{std::rotate}) and selection sort(\texttt{std::iter\_swap}) 
 	\item palindrome(\texttt{std::equal}) 
 	\item fibonacci(\texttt{std::adjacent\_difference}) 
 	\item trim\_string (\texttt{std::erase+std::find}) 
@@ -17087,6 +17121,39 @@ auto slide(It f, It l, randIter p) -> std::pair<It, It>{
 	
 
 \subsubsection{Other code examples}
+
+	The range-based version is used when you want to iterate over every element in a container without mutating the container itself (i.e., without inserting or erasing elements). If you need to modify elements in a sequential container, you can use a range-based function to iterate and make changes. However, for associative containers, you should only visit each element. If you need to modify a key in an associative container, delete it first, then modify it, and finally insert the modified key again. 
+		
+	\par A range-based for loop was introduced in C++11. To avoid copying each element, use \texttt{auto\&}. The following patterns are highly recommended when using STL containers:
+	
+	\begin{itemize}
+		\item When iterating through elements in generic code, since we cannot assume that the generic type \texttt{T} is cheap to copy, it is safe to always use \texttt{(const auto\& elem : container)} in for loops. This approach avoids potentially expensive and unnecessary copies, works well for cheap-to-copy types like \texttt{int}, and also handles containers using proxy-iterators, such as \texttt{std::vector<bool>}.
+\begin{lstlisting}[numbers=none]
+for (const auto& elem : container)  // capture by const reference
+\end{lstlisting}			
+		
+		\item If the objects are cheap to copy (like \texttt{int}, \texttt{double}, etc.), it is possible to use a slightly simplified form. If there is a need to make a local copy of the element inside the loop body, capturing by value is a good choice.
+		
+\begin{lstlisting}[numbers=none]
+for (const auto elem : container)  // capture by value
+\end{lstlisting}            		
+		
+		\item For modifying the elements in place, use:
+\begin{lstlisting}[numbers=none]
+for (auto& elem : container)   // capture by (non-const) reference
+\end{lstlisting}		
+		
+		\item Although you don't need to use the star symbol explicitly, it can provide more clarity about the variable, especially when dealing with pointers inside a container. Therefore, I recommend using this style for pointer-type elements.
+\begin{lstlisting}[numbers=none]
+for(auto *ptr: Container){ ptr->change();} 
+for(const auto *ptr: Container){ ptr->read();} 
+	//make sure Container contain pointer
+\end{lstlisting}		
+		
+	\end{itemize}
+	
+	
+	
 	
 	 To move all zero elements to the end of a \texttt{std::vector}, you can't directly use \texttt{std::remove} because it only shifts non-zero elements forward, leaving the remaining elements unchanged (which might not be zeros). After using \texttt{std::remove}, you can then use \texttt{std::fill} to set all elements from the position of the last non-zero element to the end of the vector to 0. This strategy is analogous to techniques used in interview questions where you might need to delete a specific node. Instead of removing the node directly, you can overwrite its value with the value of the next node and then delete the next node, achieving the desired outcome without rearranging the entire structure. Using \texttt{std::fill} after \texttt{std::remove} is not only efficient but also ensures that the vector maintains its size and all elements are correctly positioned as required.
 \begin{lstlisting}[frame=single, language=c++]	
@@ -17684,19 +17751,75 @@ std::invoke(&S::do_something, s)();            //output "hello"
 std::invoke(std::invoke(&S::do_something, s)); //output "hello" too	
 \end{lstlisting}
 
-	\par The return types of some constrained algorithms have been changed to include all potentially useful information computed during the execution of the algorithm. The reason is that, unlike the traditional std algorithms, the ranges ones take an iterator and a sentinel. The only thing you can do with a sentinel (that is not itself an iterator) is to compare it with an iterator. If they compare equal, it means the end of range is reached. Since a sentinel is less useful that an iterator, and these algorithms need to get an end iterator anyway, they return that iterator to not lose valuable information.
+	\par The return types of some constrained algorithms have been changed to include all potentially useful information computed during the execution of the algorithm:
 	
 	\begin{itemize}
-	\item \texttt{std::ranges::for\_each} returns a \texttt{std::ranges::in\_fun\_result}. The in component is an iterator to the end of the source range.
-\begin{lstlisting}
-auto res1 = std::ranges::for_each_n(v, std::size(v),
-							[](int& x) { return x = -x; } // negating lambda
-						);
-assert(res1.in == std::end(v));	
-ranges::for_each(v, res1.fun); 
-\end{lstlisting}
+		
+		\item ranges::in\_in\_result and ranges::min\_max\_result have better descriptive name compared with pair when we use \textbf{ranges::mismatch} and \textbf{ranges::minmax}.
+
+\begin{tabular}{| p{0.26\textwidth} |p{0.3\textwidth}|p{0.3\textwidth}|}
+	\tophline 
+	ranges::in\_in\_result & \specialcell[t]{  ranges::mismatch \\ ranges::swap\_ranges} &  
+	\\ \hline
+	ranges::min\_max\_result & \specialcell[t]{  ranges::minmax \\ ranges::minmax\_element} &  
 	
-	\item \texttt{std::ranges::copy()}, \texttt{std::ranges::move()}, \texttt{std::ranges::transform()}, \\ \texttt{std::ranges::replace\_copy()},  \texttt{std::ranges::reverse\_copy()},  \texttt{std::ranges::rotate\_copy()},  \texttt{std::ranges::set\_difference()}returns a \texttt{std::ranges::in\_out\_result}. in is an iterator to the end of the source range, and out is an iterator to the end of the destination range. They all related two ranges and one is for input, the other is for output. (std::copy only returns the end of the destination range.)
+	\bottomhline
+\end{tabular}
+
+%\begin{lstlisting}
+%auto res1 = std::ranges::for_each_n(v, std::size(v),
+%[](int& x) { return x = -x; } // negating lambda
+%);
+%assert(res1.in == std::end(v));	
+%ranges::for_each(v, res1.fun); 	
+%\end{lstlisting}
+
+
+
+
+
+		
+		\item unlike the traditional std algorithms, the ranges ones take an iterator and a sentinel. The only thing you can do with a sentinel (that is not itself an iterator) is to compare it with an iterator. If they compare equal, it means the end of range is reached. Since a sentinel is less useful that an iterator, and these algorithms need to get an end iterator anyway, they return extra iterator to not lose valuable information. For example, in the table below, \textbf{std::copy} only return one itertor to the end of destination, but \textbf{ranges::copy} need to another in to the end of source. All reanges::in\_* result type have this semantic. 
+		
+\begin{tabular}{| p{0.26\textwidth} |p{0.34\textwidth}|p{0.27\textwidth}|}
+	\tophline 
+
+	ranges::in\_out\_result & \specialcell[t]{  ranges::copy(\_if)(\_n)(\_backward) \\ ranges::move(\_backward) \\
+		ranges::transform \\
+		ranges::replace\_copy(\_if) \\
+		ranges::unique\_copy \\
+		ranges::reverse\_copy \\
+		ranges::rotate\_copy \\
+		ranges::partial\_sort\_copy \\
+		ranges::set\_difference \\
+		
+	} & in is an iterator to the end of the source range, and out is an iterator to the end of the destination range. They all related two ranges and one is for input, the other is for output. 
+	
+	\\ \hline
+	ranges::in\_in\_out\_result & \specialcell[t]{  ranges::transform \\ ranges::merge \\
+		ranges::set\_union \\
+		ranges::set\_intersection \\
+		ranges::set\_symmetric\_difference \\
+	} &  std::merge only resturn one OutputIt iterator.
+	
+	\\ \hline
+	ranges::in\_out\_out\_result & \specialcell[t]{  ranges::ranges::partition\_copy 
+	} &  std::partition\_copy only return pair two outs
+	
+	\\ \hline
+	ranges::in\_found\_result & \specialcell[t]{  ranges::ranges::next\_permutation \\ ranges::ranges::next\_permutation} &  
+	
+	\\ \hline
+	ranges::in\_fun\_result & \specialcell[t]{  ranges::ranges::for\_each \\ ranges::ranges::for\_each\_n} &  The \texttt{in} component is an iterator to the end of the source range.
+	
+
+	
+	\\ \hline
+	ranges::out\_value\_result & \specialcell[t]{  ranges::iota } &  
+	
+	\bottomhline
+\end{tabular}
+
 \begin{lstlisting}
 constexpr char in[] = "transform" "\n"; 
 //Compiler automatically concatenates two string literals during compilation
@@ -17706,45 +17829,42 @@ const auto result = std::ranges::transform(in, out.begin(), [](char c){
 });
 
 auto print = [](char c) { std::cout << c; };
-std::ranges::for_each(std::cbegin(in), result.in, print);
-std::ranges::for_each(out.cbegin(), result.out, print);	
+std::ranges::for_each(std::cbegin(in), result.in, print);//cbegin non member function.
+std::ranges::for_each(out.cbegin(), result.out, print);	 //cbegin member function.	
 \end{lstlisting}
 
-	
+
+\begin{lstlisting}
+std::array<int, 4> a{};
+constexpr std::array expected{2, 3, 4, 5};
+const auto result = std::ranges::iota(a, 2);
+assert(std::ranges::distance(a.cbegin(), result.out) == 4);
+assert(result.value == 6);
+assert(a == expected);	
+\end{lstlisting}
+		
+		
 	\item \texttt{std::ranges::fill} and \texttt{std::ranges::generate} return an iterator to the end of the destination range. (The std algorithms return nothing.)
 	
-	\item \texttt{std::minmax()} and \texttt{std::minmax\_element()} return \texttt{std::ranges::min\_max\_result}
-	
-	
-	\item For \texttt{std::ranges::find\_last\_if}, this means it should return an iterator to the element it finds, and an end iterator. They naturally form a subrange, and that's what \texttt{std::ranges::find\_last\_if} actually returns. If you don't need the end iterator, you can extract the first iterator using \texttt{subrange::begin()}. 
+	\item For \texttt{std::ranges::find\_last\_if}, it returns an iterator to the element it finds and an end iterator. They naturally form a subrange. If you don't need the end iterator, you can extract the first iterator using \texttt{subrange::begin()}. \texttt{ranges::search} also return subrange, while \texttt{std::search} return iterator.
 \begin{lstlisting}
 const auto it = std::ranges::find_last_if(data, func).begin();
-\end{lstlisting}
 
-\par Return subrange is easier for better for continuous operation than return single iterator. For example, we can use \texttt{ranges::find} return value directly for next \texttt{views::counted} view. 
-\begin{lstlisting}
-	std::vector<int> v{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-	auto pos5 = std::ranges::find(v, 5);
-	auto countedView = std::views::counted(pos5, 5);
-	for (auto e : countedView) // outputs 5 6 7 8 9{
-		std::cout << e << ' ';
-	}	
-\end{lstlisting}	
-
-	\item The same idea as before, \texttt{ranges::search} and \texttt{std::search} don't return the same value. \\ \texttt{ranges::search} return subrange, while \texttt{std::search} return iterator.
-\begin{lstlisting}
-constexpr auto haystack {"abcd abcd"sv};
-constexpr auto needle {"bcd"sv};  //needle is string_view
-auto found = std::ranges::search(haystack, needle); //found is subrange.
+auto found = ranges::search(haystack, needle); //found is subrange.
 std::distance(haystack.begin(), found.begin());
 
-auto found = std::search(haystack.being(), haystack.end(), //found is iterator
-needle.begin(), needle.end() );
-std::distance(haystack.begin(), found); 	
-\end{lstlisting}	
+\end{lstlisting}
 
 	
-\end{itemize}
+	\item Return subrange is easier for better for continuous operation than return single iterator. For example, we can use \texttt{ranges::find} return value directly for next \texttt{views::counted} view. 
+\begin{lstlisting}
+std::vector<int> v{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+auto pos5 = std::ranges::find(v, 5);
+auto countedView = std::views::counted(pos5, 5); //5 6 7 8 9
+\end{lstlisting}		
+		
+	
+	\end{itemize}
 	
 
 %\begin{center}
@@ -17798,9 +17918,7 @@ std::ranges::fill(x, 42); // changes the even in input[] to 42
 \begin{lstlisting}
  std::vector Nums{3, 1, 5, 2, 4};
 std::ranges::subrange View{Nums};
-
 std::ranges::for_each(View, Log); //3, 1, 5, 2, 4
-
 std::ranges::sort(Nums);
 std::ranges::for_each(View, Log); //1, 2, 3, 4, 5
 \end{lstlisting}
@@ -18092,6 +18210,12 @@ std::ranges::copy(firstFive.begin(), MySentinel{}, output); //3) sentinel.
 		
 		\item What concept do algorithms can received? For example, \texttt{std::sort} only accepts range which models random\_access\_range concept.
 	\end{itemize}
+		
+	
+	\begin{center}
+		\includegraphics[width=0.6\linewidth]{pics/view_algorithm.drawio.png}
+	\end{center}
+
 \begin{lstlisting}
 //below comes from cpp conference website.
 // filter_view models the concepts bidirectional_range, forward_range, input_range, and common_range when the underlying view V models respective concepts.
@@ -18099,12 +18223,8 @@ std::ranges::copy(firstFive.begin(), MySentinel{}, output); //3) sentinel.
 // take_view models the concepts contiguous_range, random_access_range, bidirectional_range, forward_range, input_range, and sized_range when the underlying view V models respective concepts. It models common_range when the underlying view V models both random_access_range and sized_range.
 
 sort(v|views::take(3)); //OK, because views::take can model random range
-sort(v|views::filter(...)) //Error, views::filter only model bidirection range
-\end{lstlisting}		
-	
-	\begin{center}
-		\includegraphics[width=0.6\linewidth]{pics/view_algorithm.drawio.png}
-	\end{center}
+sort(v|views::filter(...)) //Error, views::filter only model bidirection range	
+\end{lstlisting}
 	
 	
 	\par common\_range is also an important concept when we want to use algorithms. For example, different with \texttt{std::views::filter}, \texttt{std::views::take\_while} isn't a common\_range. Common ranges require that \texttt{ranges::begin()} and \texttt{ranges::end()} return the same type. If it's not common range, we can't input this view to traditional algorithms.
@@ -18248,9 +18368,9 @@ fmt::print("{}\n", v); // [8]
 	
 	  From a syntax point of view, \texttt{std::ranges::SquareView} is a class with a special iterator, where the \texttt{operator*()} of the iterator is redefined. It also defines basic \texttt{begin()} and \texttt{end()} functions. Here’s a simple implementation: 
 \begin{lstlisting}
+//More detail can be found here: "An Introduction to the Range-v3 Library".
 template<typename T>
 using IteratorBase = decltype( std::begin( std::declval<T&>( ) ) );
-
 template <typename Rng>
 class SquareView : public ranges::view_base{
 	class IteratorType : public IteratorBase<Rng>
@@ -18321,17 +18441,14 @@ constexpr auto operator | (R&& r, custom_take_range_adaptor_closure const & a){
 }		
 \end{lstlisting}	
 
-	\par More detail can be found here: "An Introduction to the Range-v3 Library".
+	
 
 \subsubsection{Borrowed range}
-		 In C++20, a borrowed range is a range whose iterators remain valid even after the lifetime of the range object itself ends. This is in contrast to most standard library containers, where destroying the container invalidates its iterators.
-		
-		\par  An rvalue \texttt{std::vector} is not a borrowed range, but an rvalue \texttt{std::span} is.
+		In C++20, a borrowed range is a range whose iterators remain valid even after the lifetime of the range object itself ends. This is in contrast to most standard library containers, where destroying the container invalidates its iterators. For example, An rvalue \texttt{std::vector} is not a borrowed range, but an rvalue \texttt{std::span} is.
 	
 \begin{lstlisting}
 auto iter = std::ranges::min_element(get_vector());
 cout<<*iter;  // Error,iter is std::ranges::dangling	
-
 auto iter = std::ranges::min_element(get_span());
 cout<<*iter; // iter is an solid iterator, *not* ranges::dangling	
 \end{lstlisting}	
@@ -18347,7 +18464,7 @@ cout<<*iter;  // Error,iter is std::ranges::dangling
 \begin{center}
 	
 
-	\begin{tabular}{|p{0.25\textwidth}|p{0.3\textwidth}|p{0.3\textwidth}|}
+	\begin{tabular}{|p{0.25\textwidth}|p{0.33\textwidth}|p{0.32\textwidth}|}
 		\hline
 		 \textbf{borrowed range} & \textbf{borrowed range only if underlying view is borrowed range} & \textbf{non-borrowed range no matter what underlying view} \\
 		\hline
@@ -18580,7 +18697,6 @@ std::tuple<double, char, std::string> get_student(int id){
 	if (id == 0) return std::make_tuple(3.8, 'A', "Lisa Simpson");
 	if (id == 1) return std::make_tuple(2.9, 'C', "Milhouse Van Houten");
 }
-
 auto student0 = get_student(0); 
 std::cout << "ID: 0, " << "GPA: " << std::get<0>(student0) << ", "
 << "grade: " << std::get<1>(student0) << ", "
@@ -18598,11 +18714,9 @@ auto [gpa2,grade2,name2]=get_student(2); //method 3, C++17 structured binding
 struct S{
 	int n;
 	std::string s;
-	float d;
-	
+	float d;	
 	friend bool operator<(const S& lhs, const S& rhs) noexcept{
-	//compares lhs.n to rhs.n, then lhs.s to rhs.s, then lhs.d to rhs.d in that order, 
-	//first non-equal result is returned or false if all elements are equal
+	//compares lhs.n to rhs.n, then lhs.s to rhs.s, then lhs.d to rhs.d in that order
 		return std::tie(lhs.n, lhs.s, lhs.d) < std::tie(rhs.n, rhs.s, rhs.d);
 	}
 };
@@ -18615,18 +18729,14 @@ m.emplace(std::piecewise_construct, std::forward_as_tuple("c"),
           std::forward_as_tuple(10, 'c'));
 // an alternative is: m.try_emplace("c", 10, 'c');
 
-// The following is an error: it produces a
-// std::tuple<int&&, char&&> holding two dangling references.
-
+// Error, it produces a std::tuple<int&&, char&&> holding two dangling references.
 // auto t = std::forward_as_tuple(10, 'c');
 // m.emplace(std::piecewise_construct, std::forward_as_tuple("c"), t);
 \end{lstlisting}
 	
-	\par All below content of vocabulary type includes five contents: 1) create, 2) change, 3) check, 4) access, 5) when to use?
-
-
 
 \subsection{Sum type}
+	All below content of vocabulary type includes five contents: 1) create, 2) change, 3) check, 4) access, 5) when to use?
 \subsubsection{std::optional}
 
 	 It is recommended to use \texttt{std::optional<T>} in situations where there is exactly one clear reason for having no value of type T, and where the absence of a value is as natural as having any regular value of T. 
@@ -18734,12 +18844,9 @@ std::cout<< "odouble " << odouble.value_or(10.0) << '\n';  // method 3: by value
 \end{lstlisting}
 	
 
-\subsubsection{variant}
+\subsubsection{std::variant and std::any}
 
 	 
-
-	
-	
 	How do you create and initialize a variant? There are three key points to understand: \texttt{std::monostate}, \texttt{std::in\_place\_index}, and \texttt{std::in\_place\_type}. By default, a variant object is initialized with its first type. If the first type does not have a default constructor defined, attempting to call the default constructor for the variant will result in an error. This is where \texttt{std::monostate} becomes necessary
 	
 \begin{lstlisting}
@@ -18817,8 +18924,7 @@ for (const GeoObj& geoobj : figure) {
 enum class ErrorCode {
 	Ok,
 	SystemError,
-	IoError,
-	NetworkError
+	IoError
 };
 variant<string, ErrorCode> FetchNameFromNetwork(int i) //1 Error handling
 
@@ -18843,8 +18949,7 @@ struct DoorState {
 		State operator()(const DoorClosed&){ return DoorOpened(); }
 		// cannot open locked doors
 		State operator()(const DoorLocked&){ return DoorLocked(); } 
-	};
-	
+	};	
 	struct CloseEvent {
 		State operator()(const DoorOpened&){ return DoorClosed(); }
 		State operator()(const DoorClosed&){ return DoorClosed(); }
@@ -18854,7 +18959,7 @@ struct DoorState {
 \end{lstlisting}	
 		
 
-\subsubsection{std::any}
+
 	 \texttt{std::any} is statically type-safe; there is no way to access a "pointer to the data" (like a \texttt{void*}) without knowing the exact static type of the stored data. Additionally, \texttt{std::any} does not utilize \texttt{dynamic\_cast}.
 	
 	\par The core idea behind "type erasure" involves identifying essential operations that should be supported for all types T. For \texttt{std::any}, these operations include: 1) constructing the contained object, 2) moving the contained object, and 3) retrieving the \texttt{typeid} of the contained object. Other type-specific operations are "erased", ensuring uniform behavior across different types.
@@ -22806,8 +22911,26 @@ EXPECT_CALL(foo, DoThat(Not(HasSubstr("blah")), NULL));
 \end{lstlisting}
 
 
-\subsection{Mocker}
-	 Basic usage example. 1) create mock object, (use MOCK\_METHOD) 2) define expectation(use EXPECT\_CALL) 3) give mock to test object 4) use Assert or test it directly. (It's ok not use assert.)
+\subsection{Mock}
+When to use mock?
+\begin{itemize}
+	\item Database Interaction: Instead of connecting to a real database in unit tests, mock the database interface to simulate different query responses and error conditions.
+	
+	\item External API Calls: Mock HTTP requests and responses in tests that verify how your application handles different API responses without making actual network calls.
+	
+	\item File System Operations: Mock file read/write operations to test error handling and edge cases without manipulating real files.
+\end{itemize}
+
+
+	 Basic usage of mock:
+\begin{enumerate}
+	\item Create mock class by using MOCK\_METHOD.
+	\item Define expectation by using EXPECT\_CALL.
+	\item give mock to test object.
+	\item use Assert or test it directly, (It's ok not use assert.)
+	
+\end{enumerate}
+	 
 	
 \begin{lstlisting}
 lass FooInterface {
@@ -22864,9 +22987,34 @@ public:
 	Bar(FooInterface *foo) : m_foo(foo) {	
 	...
 \end{lstlisting}
+
+	\par Below code use template to inject mock object.
+\begin{lstlisting}
+class CSumWnd : public CBaseWnd{
+	private:
+	bool MethodA()
+}
+
+class MockCSumWnd : public CBaseWnd{
+	private:
+	MOCK_METHOD(MethodA, bool());
+};
+
+template <class CSumWndClass>
+class TestedClass {
+	//...
+	void useSumWnd(const CSumWndClass &a);
+	
+	private:
+	CSumWndClass sumWnd;
+};
+
+TestedClass <CSumWnd> obj; // Instantiation of TestedClass in production.
+TestedClass <MockCSumWnd> testObj; //Instantiation of TestedClass object in test.	
+\end{lstlisting}
 	
 	
-	\par Basic syntax. EXPECT\_CALL is google mock core function. you must remember all the detail information about it.
+	\par Basic syntax. EXPECT\_CALL is google mock core function. You must remember all the detail information about it.
 \begin{lstlisting}
 EXPECT_CALL(mock_object, method(matcher1, matcher2, ...))
 .With(multi_argument_matcher)
@@ -22911,42 +23059,9 @@ EXPECT_CALL(turtle, Forward(100)); // only match Forward(100)
 EXPECT_CALL(turtle, GoTo(Ge(50), _)); // match GoTo(x,y) when x>=50
 \end{lstlisting}
 
-\par Example Scenarios:
-\begin{enumerate}
-	\item Database Interaction: Instead of connecting to a real database in unit tests, mock the database interface to simulate different query responses and error conditions.
-
-	\item External API Calls: Mock HTTP requests and responses in tests that verify how your application handles different API responses without making actual network calls.
-
-	\item File System Operations: Mock file read/write operations to test error handling and edge cases without manipulating real files.
-\end{enumerate}
-
-\par Mock non-virtual method in gtest.
-\begin{lstlisting}
-class CSumWnd : public CBaseWnd{
-	private:
-	bool MethodA()
-}
-
-class MockCSumWnd : public CBaseWnd{
-	private:
-	MOCK_METHOD(MethodA, bool());
-};
-
-template <class CSumWndClass>
-class TestedClass {
-	//...
-	void useSumWnd(const CSumWndClass &a);
-	
-	private:
-	CSumWndClass sumWnd;
-};
-
-TestedClass <CSumWnd> obj; // Instantiation of TestedClass in production.
-TestedClass <MockCSumWnd> testObj; //Instantiation of TestedClass object in test.
-\end{lstlisting}
 
 	
-	 When you use dummy, it will follow EXPECT\_CALL sequence. dummy name is irrelevant here.
+	 \par When you use dummy, it will follow EXPECT\_CALL sequence. dummy name is irrelevant here.
 	
 \begin{lstlisting}
 using ::testing::InSequence;
@@ -22963,10 +23078,10 @@ int main(int argc, char **argv) {
 \end{lstlisting}
 
 
-	 Below can be used in Times: AnyNumber, AtLeast(n), AtMost(n), Between(m,n)
+	 \par Below can be used in Times: AnyNumber, AtLeast(n), AtMost(n), Between(m,n).
 
 
-	 Action is used to specify the expected actions of the methods in a mock class, such as what values to return, how to assign values to references or pointers, and so on. The common actions are: Return(value), Assign(\&variable, value), Invoke(f), DoAll(a1, a2, ...). 
+	 \par Action is used to specify the expected actions of the methods in a mock class, such as what values to return, how to assign values to references or pointers, and so on. The common actions are: Return(value), Assign(\&variable, value), Invoke(f), DoAll(a1, a2, ...). 
 	
 	\par Return and other side effects. \texttt{getParameter} will return 1, at the same time, point pointer \texttt{a} to pointer \texttt{b}. Please see here we use \texttt{::DoAll(..)}, it's useful in such context. 
 \begin{lstlisting}
@@ -23048,7 +23163,9 @@ TEST_CASE( "D", "[widget][gadget]" ) { /* ... */ }
 ./my_test_suite -e [slow] // exclude all test cases with the "slow" tag
 \end{lstlisting}
 
-	\par A section in gtest is simply a fixture. In contrast, Catch2 supports a class-based fixture mechanism where individual tests are methods on a class, and setup/teardown can be done in the constructor/destructor of the class. However, this mechanism is rarely used in Catch2 because idiomatic Catch2 tests use sections to share setup and teardown code between test code. This can be best explained through an example.
+	%\par A section in gtest is simply a fixture. In contrast, 
+	
+	\par Catch2 supports a class-based fixture mechanism where individual tests are methods on a class, and setup/teardown can be done in the constructor/destructor of the class. However, this mechanism is rarely used in Catch2 because idiomatic Catch2 tests use sections to share setup and teardown code between test code. This can be explained through an example below.
 	
 \begin{lstlisting}
 TEST_CASE( "vectors can be sized and resized", "[vector]" ) {
@@ -23134,8 +23251,8 @@ SCENARIO( "vectors can be sized and resized", "[vector]" ) {
 \subsection{Basic}
 
 	
-	 You need to follow rules to write pytest.
-	\begin{enumerate}
+	 You need to follow below rules to write pytest.
+	\begin{itemize}
 		\item Running pytest without mentioning a filename will run all files of format test\_*.py or *\_test.py in the current directory and subdirectories. Pytest automatically identifies those files as test files. We can make pytest run other filenames by explicitly mentioning them.
 		
 		\item Pytest requires the test function names to start with \texttt{test\_}. Function names which are not of format test* are not considered as test functions by pytest. We cannot explicitly make pytest consider any function not starting with test as a test function.
@@ -23153,7 +23270,7 @@ class TestClass:
 \end{lstlisting}
 		
 		\item Just use basic assert.
-	\end{enumerate}
+	\end{itemize}
 
 	\par Pytest provides two ways to run the subset of the test suite.
 	\begin{enumerate}
@@ -23177,7 +23294,7 @@ def test_divisible_by_3(input_value):
 def test_divisible_by_6(input_value):
 	assert input_value % 6 == 0	
 
-pytest -k divisible -v // -k filter test name.
+pytest -k divisible -v # -k filter test name.
 \end{lstlisting}
 
 	\par We can define the fixture functions conftest.py to make them accessible across multiple test files. Create a new file conftest.py and add the below code into it. The fixture method is invoked and the result is returned to the input argument of the test.
@@ -23204,7 +23321,7 @@ pytest -n 3
 \end{lstlisting}
 
 	\par pytest can be used in conjunction with Behavior Driven Development (BDD) principles. While pytest itself is primarily a framework for writing and executing traditional unit tests in Python, you can extend its capabilities to support BDD-style tests using plugins like pytest-bdd.
-\begin{enumerate}
+\begin{itemize}
 	\item Your project directory structure should look something like this:
 
 \begin{lstlisting}
@@ -23244,7 +23361,7 @@ def pytest_bdd_will_test_it_for_us():
 	assert True  # Here you can add the assertions for your test
 \end{lstlisting}
 
-\end{enumerate}
+\end{itemize}
 
 
 
@@ -23315,9 +23432,6 @@ A microcontroller UART can not generate such voltages levels by itself. This is 
 
 A complete list of awesome cpp librarys lsit is:  \\
 \verb|https://github.com/fffaraz/awesome-cpp#logging|
-
-
-
 
 \section{boost}
 \subsection{install}
@@ -24451,19 +24565,20 @@ g++ profile.cpp -o profile -ljsoncpp
 \fi
 
 \chapter{Modern C++}
-\section{Modern style}
-\subsection{Principle, naming and comment}
+\section{Modern C++ coding style}
+\subsection{Principle, naming}
 
 	 It is important to remain consistent with your coding and name style and avoid changing it frequently. Don't sweat the small stuff, such as how many spaces to indent, whether to use spaces or tabs, or the necessity of comments, etc. 
 	
-	\par The mainstream style involves using descriptive names instead of comments. Here are some guidelines to follow:
-	\begin{enumerate}
-		\item Utilize descriptive variable names: Choose names that clearly convey the purpose and meaning of the variable.
-		\item Use small functions with descriptive names to encapsulate logic: Breaking down code into smaller functions with meaningful names improves readability and understanding.
+	\par The mainstream style involves using descriptive names instead of comments. Code is typically read more often than it is written. By using well-chosen function and variable names, the need for comments can be minimized. Here are some guidelines to follow:
+	\begin{itemize}
+		\item Utilize descriptive variable names: Choose names that clearly convey the purpose and meaning of the variable. It helps enhance code clarity and maintainability.
 		
-	\end{enumerate}
+		\item Use small functions with descriptive names to encapsulate logic: Breaking down code into smaller functions with meaningful names improves readability and understanding. Don't worry too much about performance. The compiler will inline small functions automatically.
+		
+		\item Avoid using abbreviated names unless they are widely recognized, such as CPU and TCP/IP.
+	\end{itemize}
 	
-	\par Don't worry too much about performance. The compiler will inline small functions automatically. Code is typically read more often than it is written. By using well-chosen function and variable names, the need for comments can be minimized. Avoid using abbreviated names unless they are widely recognized, such as CPU and TCP/IP. Using concise yet descriptive names helps enhance code clarity and maintainability.
 	
 	\par A good example of using small functions is shown below. By turning the predicate loop into a predicate function, the code becomes clean and easy to understand.
 	
@@ -24486,7 +24601,14 @@ if(isHasSth()){ //change line 1~6 to a funciton isHasSth, this is good style.
 	
 	\par You don't need to use type indicators for all variables. Hungarian notation does not provide any benefits for object-oriented languages, particularly since it cannot be used in generic programming. However, for certain generic concepts like references, pointers, and STL containers, you can use it, such as \texttt{ptr\_map\_dic}. Modern IDEs, such as Visual Studio and Understand, offer pop-up messages when you hover over a variable, making descriptive variable names more important than type indicators.
 	
-	\begin{enumerate}
+	\begin{itemize}
+		\item Use UpperCamelCase for classes, structures, enumerations, typedefs, and constants.
+		
+		\item Use lowerCamelCase and verbs for functions, such as \texttt{getSth} and \texttt{doSth}.
+		
+		\item Use lowercase and underscores and nouns for variable and parameter names. This makes long variable names easier to read, such as \texttt{sth\_for\_dinner}.
+		
+		\item Use upper-case and underscores for pre-processor macros (e.g., \texttt{\#define MAX\_SIZE 100}).
 		
 		\item For global scope, use \texttt{g\_} prefix.
 		
@@ -24501,13 +24623,7 @@ if(isHasSth()){ //change line 1~6 to a funciton isHasSth, this is good style.
 		
 		\item For constant name, use the \texttt{k\_} prefix and UpperCamelCase (e.g., \texttt{kConstantName}).
 		
-		\item Use upper-case and underscores for pre-processor macros (e.g., \texttt{\#define MAX\_SIZE 100}).
 		
-		\item Use UpperCamelCase for classes, structures, enumerations, typedefs, and constants.
-		
-		\item Use lowerCamelCase and verbs for functions, such as \texttt{getSth} and \texttt{doSth}.
-		
-		\item Use lowercase and underscores and nouns for variable and parameter names. This makes long variable names easier to read, such as \texttt{sth\_for\_dinner}.
 		
 		\item Use \texttt{other} or \texttt{rhs} as names for copy constructors and assignment operators.
 		
@@ -24534,7 +24650,7 @@ main(){
 printTeacherName(const string& name){...} //lowerCamelCase function name
 \end{lstlisting}		
 		
-	\end{enumerate}
+	\end{itemize}
 	
 
 	
@@ -24551,7 +24667,7 @@ printTeacherName(const string& name){...} //lowerCamelCase function name
 \begin{lstlisting}[frame=single, language=c++]
 int cutoff = 7;
 std::find(foo.begin(),foo.end(),
-         [&](const Foo &a ) ->bool{
+         [&](const Foo& a ) ->bool{
 	         return a.blah<cutoff  //use reference to get local var
          });		
 \end{lstlisting}		
@@ -24560,7 +24676,8 @@ std::find(foo.begin(),foo.end(),
 	
 	\par Use \texttt{const} to replace \texttt{\#define} when defining global constants. For defining constant class members, use static const. The const keyword indicates that the value will not change, so there's no need for multiple copies across objects, hence static is used. Avoid macros and prefer inline functions. To avoid magic numbers, use const and scoped enums instead.
 	
-	\par Use more \texttt{typedef} or \texttt{alias} to simplify complicated type expressions, it's helpful especially in generic programming. Alias(C++11) is better than typedef. There are no sharp symbol before \texttt{using}.
+	\par Use more \texttt{typedef} or \texttt{alias} to simplify complicated type expressions, it's helpful especially in generic programming. Alias(C++11) is better than typedef. 
+	
 \begin{lstlisting}[frame=single, language=c++]
 typedef std::map< int, int > IntMap;
 typedef IntMap::const_iterator IntMapConstIter;
@@ -24576,10 +24693,10 @@ using UPtrMapSS = std::unique_ptr<std::unordered_map<std::string, int>>;
 using CB = int(*)(int, const char*); //CB is a type here.	 	
 \end{lstlisting}		
 	
-	\par Create a zero-valued enumerator to indicate an invalid or default state and make it the first item.
+%	\par Create a zero-valued enumerator to indicate an invalid or default state and make it the first item.
 	
 	\par Declare all member variables private, then use getter and setter functions to access them.
-	\begin{enumerate}
+	\begin{itemize}
 		
 		\item If external code needs to access an object's member variables, create a public interface function. This approach offers two advantages:
 		\begin{enumerate}
@@ -24589,22 +24706,22 @@ using CB = int(*)(int, const char*); //CB is a type here.
 		\end{enumerate}	
 		This decouples the implementation details of the class from the code that uses it.
 		
-		\item If child want to access its parent member, declare it as protected.
+		\item If only child class wants to access its parent member, declare it as protected.
 		
-	\end{enumerate}
+	\end{itemize}
 	
 	\par Uses early exits to simplify code.
 	
 \begin{lstlisting}[numbers=none]
 if(IsValid){   //bad style
-	do something;
+	..do something here;
 } else{
 	return;
 }
 
 if(!IsValid) // A better style is
-return;
-..do something here.		
+	return;
+..do something here;	
 \end{lstlisting}		
 	
 	
@@ -24634,15 +24751,7 @@ assert(index>=0 && " index is negative");
 	%	\item The C++11 standard (23.2.1) mandates that end has O(1) complexity, so previous item has no efficiency meaning in C++11.
 	
 	
-	\par It's a good practice to always enable all warning options in your compiler using \texttt{-Wall}. When you receive a warning, address it promptly before continuing further with your development. This approach helps in identifying potential issues or problematic code early in the development process, ensuring cleaner and more reliable software.
 	
-	\par Sometimes it's not possible to eliminate a warning, or you may have a specific reason to keep a warning in place. If a warning originates from a header file that you cannot modify, you can use the \texttt{\#pragma} warning directive in your code to temporarily disable it and then restore it later. This approach helps manage warnings effectively in situations where modifying the header file is not an option.
-\begin{lstlisting}[numbers=none]
-#pragma warning(push)  //save original warning configuration.
-#pragma warning(disable:4512); //disable warning.
-#include<not_change.h>
-#pragma warning(pop)  //restore original warning configuration.	
-\end{lstlisting}	
 	
 
 %\section{Efficiency}
@@ -24654,7 +24763,7 @@ assert(index>=0 && " index is negative");
 	Implementing lazy evaluation typically adds complexity to the codebase, as it involves managing state, dependencies, and ensuring correct synchronization where applicable. However, when used judiciously, lazy evaluation techniques can significantly enhance the efficiency and responsiveness of software systems.
 	
 
-
+\iffalse
 	
 \subsection{Comment}	
 
@@ -24733,12 +24842,12 @@ const Function *getFunction() const;
 	\end{center}
 	
 
-
+\fi
 
 
 
 \section{C++11/C++14}
-\subsection{New type and language features}
+\subsection{New type and other language feature}
 
      The C++ standard doesn't define the exact bit size for arithmetic types. It only specifies that \texttt{int} must be at least 16 bits, \texttt{long} must be at least 32 bits, and \texttt{long long} must be at least 64 bits. In modern C++, new data types with specified sizes have been added, such as \texttt{char16\_t} and \texttt{char32\_t}. If you need a specific integer size for a particular application, instead of relying on the compiler to pick the size you want, include \texttt{<stdint.h>} (or \texttt{<cstdint>}) so you can use these types. All of these types end with \texttt{\_t}.
     
@@ -24758,7 +24867,7 @@ cout<<numeric_limits<uint16_t>::digits10<<endl; //output 4
 
     \par The fixed-width integers have two downsides: First, they may not be supported on architectures where those types can't be represented. Second, they may have lower performance than the built-in types on some architectures. To help address these downsides, C++11 defines two alternative sets of integers: \texttt{int\_least} and \texttt{int\_fast}. Below are some usage suggestions for integers:
 
-\begin{enumerate}
+\begin{itemize}
 	
 	\item \texttt{int} should be preferred when the size of the integer doesn't matter, for example, when the number will always fit within the range of a 2-byte signed integer. For tasks such as asking the user to enter their age or counting from 1 to 10, it doesn't matter whether \texttt{int} is 16 or 32 bits as the numbers will fit either way. This will cover the vast majority of cases you're likely to encounter.
 	
@@ -24774,10 +24883,10 @@ cout<<sizeof(b)<<endl;  //output 2
 \end{lstlisting}
 	
 	\item Don't use unsigned types unless you have a compelling reason, such as when performing bit operations.
-\end{enumerate}
+\end{itemize}
 
 
-    \par Other syntactic improvements in C++14 include the ability to use the prefix '0b' followed by binary digits, and the ability to use single quotes to make large numbers more readable. For instance, you can represent one million as 1'000'000.00 in C++.
+    \par Other syntactic improvements in C++14 includes the ability to use the prefix '0b' followed by binary digits, and the ability to use single quotes to make large numbers more readable. For instance, you can represent one million as 1'000'000.00 in C++.
     
 \begin{lstlisting}[numbers=none]
 int val = 0b11110000;
@@ -24850,91 +24959,30 @@ int operator""_yan(const char* p){ //const char*p is raw literal operator.
 auto k = 12_yan; //will call cooked first.
 \end{lstlisting}
 	
-	\par The range-based version is used when you want to iterate over every element in a container without mutating the container itself (i.e., without inserting or erasing elements). If you need to modify elements in a sequential container, you can use a range-based function to iterate and make changes. However, for associative containers, you should only visit each element. If you need to modify a key in an associative container, delete it first, then modify it, and finally insert the modified key again. For more detailed information, refer to the STL chapter.
-	
-	\par A range-based for loop was introduced in C++11. To avoid copying each element, use \texttt{auto\&}. The following patterns are highly recommended when using STL containers:
-	
-	\begin{enumerate}
-		\item When iterating through elements in generic code, since we cannot assume that the generic type \texttt{T} is cheap to copy, it is safe to always use \texttt{(const auto\& elem : container)} in for loops. This approach avoids potentially expensive and unnecessary copies, works well for cheap-to-copy types like \texttt{int}, and also handles containers using proxy-iterators, such as \texttt{std::vector<bool>}.
-\begin{lstlisting}[numbers=none]
-for (const auto& elem : container)  // capture by const reference
-\end{lstlisting}	
-				
-		\item If the objects are cheap to copy (like \texttt{int}, \texttt{double}, etc.), it is possible to use a slightly simplified form. If there is a need to make a local copy of the element inside the loop body, capturing by value is a good choice.
-		
-\begin{lstlisting}[numbers=none]
-for (const auto elem : container)  // capture by value
-\end{lstlisting}            
-		
-		\item For modifying the elements in place, use:
-\begin{lstlisting}[numbers=none]
-for (auto& elem : container)   // capture by (non-const) reference
-\end{lstlisting}
-		
-		\item Although you don't need to use the star symbol explicitly, it can provide more clarity about the variable, especially when dealing with pointers inside a container. Therefore, I recommend using this style for pointer-type elements.
-\begin{lstlisting}[numbers=none]
-for(auto *ptr: Container){ ptr->change();} 
-for(const auto *ptr: Container){ ptr->read();} 
-//make sure Container contain pointer
-\end{lstlisting}
-		
-	\end{enumerate}
-	
-	\par For \texttt{vector<bool>}, the below code doesn't work because the \texttt{std::vector} template is specialized for \texttt{bool}, optimizing space by storing each boolean value in one bit within a byte. Due to this optimization (where returning a reference to a single bit isn't possible), \texttt{vector<bool>} uses a 'proxy iterator' pattern. A 'proxy iterator' is an iterator that, when dereferenced, doesn't yield an ordinary \texttt{bool \&}, but instead returns a temporary object—a proxy class convertible to \texttt{bool}. The proxy class returned is a prvalue, so we can't use \texttt{auto \&} to refer to it. Instead, you can use \texttt{const \&} or an rvalue reference to refer to it.
-\begin{lstlisting}[numbers=none]
-vector<bool> v = {true, false, false, true};
-auto &x = v[1] //error
-auto &x = *v.begin() //error 
-    
-for (auto&& elem : container) //OK
-for (const auto& elem : container) //also OK
-\end{lstlisting}
-
-	\par In order to resolve \texttt{vector<bool>} problem, you can use \texttt{std::deque<bool>} it has normal container behavior. C++11 also introduces the \texttt{std::bitset} for fixed number bool bit. Boost library also provides \texttt{dynamic\_bitset}.
-\begin{lstlisting}
-std::bitset<8> a, b;
-std::cout << b.set() << '\n'; //set to 1 all
-std::cout << b.reset() << '\n';  //set to 0 all
-std::cout << b.set(0); //from 0, from least significant to most significant
-b.test(0);  b.flip(0);
-a &= b; //Note &=, |=, and ^= are only defined for bitsets of the same size N.		
-\end{lstlisting}
-
-	\par C++20 introduces several new bit manipulation functions, such as \texttt{std::rotl}, \texttt{std::rotr}, and  \\ \texttt{std::bit\_ceil}, which are defined in the <bit> header file. They accept unsigned integer types as input.
-\begin{lstlisting}
-const std::uint8_t i = 0b00011101;
-std::cout << "i          = " << std::bitset<8>(i) << '\n';
-std::cout << "rotr(i,1)  = " << std::bitset<8>(std::rotr(i, 1)) << '\n';	
-\end{lstlisting}	
 	
 		
 	\par C++98-style enums are now known as unscoped enums. C++11 introduces scoped enums. 
 		
 \begin{lstlisting}[frame=single, language=c++]
-enum Color { black, white, red };
-auto white = false; // error! 
+enum Color { black, white, red }; //black, white.. are in same scope as Color
+auto white = false; //define the same variable name "white",  compiler report error.
 
-enum class Color { black, white, red }; //has class after enum
+enum class Color { black, white, red }; //has class after enum, black is scoped to Color
 auto white = false; // fine, 
 
 Color c = white; // error!
-Color c = Color::white; // fine
+Color c = Color::white; // fine, have to use scope qualifier here
 auto c = Color::white; //fine
 
-if (c < 14.5) { // this will fail 
-	if (static_cast<double>(c) < 14.5) { // this will be OK! 			
+if (c < 14.5) { // fail, Implicit conversion is not legal any more
+if (static_cast<double>(c) < 14.5) { // OK, unless you explicit convert it.
 \end{lstlisting}
-				\begin{description}
-					\item[Line 1:] black, white, red are all in same scope as Color, That is why when you define the duplicated variable name "white" again in line 2, compiler report error.
-					\item[Line 4-5:]black, white, red are scoped to Color. You have to use scope qualifier \texttt{Color::} here.
-					\item[Line 11-12:] Implicit conversion is not legal any more, unless you explicit convert it.
-				\end{description}
+				
 				
 		\par Both scoped and unscoped enums support specification of the underlying type. The default underlying type for scoped enums is \texttt{int}, while unscoped enums have no default underlying type. Scoped enums can always be forward-declared. However, unscoped enums can only be forward-declared if their declaration specifies an underlying type.
 				
 
-
-\subsection{alias declaration}
+\subsubsection{Alias declaration}
 
      Alias declaration is often preferred over typedef when declaring a function pointer because it's more clear and direct.
 \begin{lstlisting}[frame=single, language=c++]
@@ -24968,7 +25016,7 @@ class Foo {
 template<typename T>  //C++ 14 style, use template alias,
 using MyAllocList = std::list<T, MyAlloc<T>>;
 
-MyAllocList<Widget> lw; // client code, no ::type here
+MyAllocList<Widget> lw;  // client code, no ::type here
 template<typename T>
 class Widget {
 	MyAllocList<T> list; //no typename here, no ::type either
@@ -25005,18 +25053,17 @@ int *p = (std::remove_const_t<const int>*)0;
 
 
 
-\subsection{noexcept}
-
+\subsubsection{noexcept}
      Typically, copy constructors, move constructors, copy assignment operators, move assignment operators, and destructors should not throw exceptions in principle. However, if any of these functions call (explicitly or implicitly) another function that is potentially throwing, then the calling function will also be treated as potentially throwing. For instance, if a class has a data member with a potentially throwing constructor, then the class's constructors will also be treated as potentially throwing.
     
     \par The following are potentially throwing:
-        \begin{enumerate}
+        \begin{itemize}
             \item Normal function call. Most functions are exception-neutral rather than noexcept.
             
             \item An implicit call to a potentially-throwing function (such as an overloaded operator, an allocation function in a new-expression, a constructor for a function argument)
             
             \item \texttt{dynamic\_cast} and \texttt{typeid} expression.
-        \end{enumerate}
+        \end{itemize}
 
     \par \texttt{noexcept} is a new exception specification introduced in C++11. When an exception is thrown from an \texttt{noexcept} function, \texttt{std::terminate} is triggered. It is the responsibility of the programmer to ensure that the function is not throwing any exceptions. There are two good reasons for the use of \texttt{noexcept}: First, an exception specification documents the behavior of the function. If a function is specified as \texttt{noexcept}, it can be safely used in a non-throwing context. Second, it is an optimization opportunity for the compiler. If a function is declared as \texttt{noexcept}, it may not call \texttt{std::unexpected} and may not unwind the stack. For example, the initialization of a container may cheaply move elements into it if the move constructor is declared as \texttt{noexcept}. Otherwise, the elements may be expensively copied into the container.
 
@@ -25043,6 +25090,123 @@ constexpr bool b5{ noexcept(S{}) };   //true; default constructor is noexcept
 \begin{lstlisting}
 constexpr size_type size() const noexcept;
 \end{lstlisting}
+
+\subsubsection{Variadic Templates}
+
+There are four main usages of variadic templates:
+\begin{itemize}
+	\item Variadic data structures: A good example is \texttt{std::tuple}.
+	
+	\item Variadic function: With C++17, you can use fold expressions, eliminating the need for recursive implementations.
+	
+	\item Variadic template for catch-all functions: input various number and type parameter.
+	
+	\item Variadic template for forwarding.
+\end{itemize}
+
+\par Variadic templates can be used to implement catch-all functions. This example does not use the traditional recursive approach for implementing variadic templates but rather uses them to allow for 'any template parameters' to be passed. One example is writing a function that can print out standard library containers without acting on iterators. The function should work for any container with minimal input from the user. To achieve this, template template parameters are used. The \texttt{vector} template has two template parameters, while the \texttt{map} template has four. A parameter pack is used to handle this flexibility.
+
+
+\begin{lstlisting}
+template < template <typename, typename...> class ContainerType,
+typename ValueType, typename... Args>  
+// typename... Args is template parameter pack
+void print_container(const ContainerType<ValueType, Args...>& c) {
+	for (const auto& v : c) {
+		std::cout << v << ' ';
+	}
+	std::cout << '\n';
+}
+
+print_container(vector<double> vd);
+print_container(map<int,string> mi);	
+\end{lstlisting}
+
+\par Variadic templates for forwarding. This is a very typical usage for \texttt{make\_*} functions (object generators) in the STL. 
+\begin{lstlisting}
+std::unique_ptr<FooType> f = std::make_unique<FooType>(1, "str", 2.13);
+
+template<typename T, typename... Args>
+unique_ptr<T> make_unique(Args&&... args){
+	return unique_ptr<T>(new T(std::forward<Args>(args)...));
+}	
+\end{lstlisting}
+
+\par In previous code, you need to pay attention to the syntactic usage. An ellipsis is used in two ways by variadic templates. To the left of the parameter name, it signifies a parameter pack, and to the right of the parameter name, it expands the parameter packs into separate names.
+\begin{lstlisting}
+function(params...) expands function(param1, param2, ..., paramN).
+
+function(std::forward<Tys>(params)...)  //expands to
+function(std::forward<Tys1>(param1), std::forward<Tys2>(param2), ..., std::forward<TysN>(paramN))
+
+function(std::forward<Tys>(params...)) //expands to
+function(std::forward<Tys>(param1, param2, ..., paramN)) //Error here.	
+\end{lstlisting}
+
+\par Variadic templates make it possible to define data structures with an arbitrary number of fields, whose number can be configured per use. One primary example of this is a \texttt{std::tuple} class, which uses the recursive idea.
+\begin{lstlisting}
+template <typename... Ts> struct tuple {};
+
+template <typename T, typename... Ts>
+struct tuple<T, Ts...> : tuple<Ts...> {
+	tuple(T t, Ts... ts) : tuple<Ts...>(ts...), tail(t) {}
+	T tail;
+};	
+\end{lstlisting}
+
+
+\begin{lstlisting}
+tuple<double, uint64_t, const char*> t1(12.2, 42, "big");
+
+struct tuple<double, uint64_t, const char* >: tuple<uint64_t, const char*>{ //1
+	double tail;
+}
+struct tuple<uint64_t, const char*> : tuple<const char*> { //2
+	uint64_t tail;
+}
+struct tuple<const char*> : tuple { //3
+	const char* tail;
+}
+struct tuple {  //4
+}	
+\end{lstlisting}
+
+\par Next, I will introduce how to implement a \texttt{get} function to access tuple elements. First, we build a helper type that lets us access the type of the k-th element in a tuple. Similar to adding new layers when building a tuple, accessing the n-th element involves peeling off layers using a recursive implementation.
+
+\begin{lstlisting}
+template <size_t, class> struct elem_type_holder;
+
+template <class T, class... Ts>
+struct elem_type_holder<0, tuple<T, Ts...>> {
+	typedef T type;
+};
+
+template <size_t k, class T, class... Ts>
+struct elem_type_holder<k, tuple<T, Ts...>> {
+	typedef typename elem_type_holder<k - 1, tuple<Ts...>>::type type;
+};	
+\end{lstlisting}
+
+\par With the help of this helper function, we can implement the \texttt{get} function as follows. \texttt{get} is a template function, which is why you need to use \texttt{get<3>} to initialize it.
+\begin{lstlisting}
+template <size_t k, class... Ts>
+typename std::enable_if<
+k == 0, typename elem_type_holder<0, tuple<Ts...>>::type&>::type
+get(tuple<Ts...>& t) {
+	return t.tail;
+}
+
+template <size_t k, class T, class... Ts>
+typename std::enable_if<
+k != 0, typename elem_type_holder<k, tuple<T, Ts...>>::type&>::type
+get(tuple<T, Ts...>& t) {
+	tuple<Ts...>& base = t; //we peel off one layer here. 
+	return get<k - 1>(base);
+}	
+\end{lstlisting}
+
+\par Don't worry about the performance of variadic template implementations. There's no actual recursion involved; instead, we have a sequence of function calls pre-generated at compile-time. This sequence is generally fairly short (variadic calls with more than 5-6 arguments are rare). Modern compilers aggressively inline code, likely resulting in machine code with no function calls. The result is similar to loop unrolling. A good article is "Variadic templates in C++".
+
 
 
 \subsection{regex}
@@ -25103,154 +25267,38 @@ string r = regex_replace(s, ex, "xxx"); //
 cout << r << endl; // 
 \end{lstlisting}
 
-\par The basic regex expression includes four big categories:
-\begin{enumerate}
-\item Quantifier, such as ?, + , * and \{2,3\}
-\item Anchors, such as \verb|^|,  \$ and $\backslash$b match a word boundary
-\item Group and capturing, such as () and (?:)
-\item Range, such as [a-z], $\backslash$d, all number $\backslash$s, any space
-\end{enumerate}
+\par The basic regex expression includes four big categories:1) Quantifier, such as ?, + , * and \{2,3\}. 2) Anchors, such as \verb|^|,  \$ and $\backslash$b match a word boundary. 3) Group and capturing, such as () and (?:). 4) Range, such as [a-z], $\backslash$d, all number $\backslash$s, any space. 
 
 \par Based on the previous introduction, a regex expression example  \verb|^(?:\d{3}-){2}\d{4}$| (matching US telephone number, such as: 832-433-4125) can be understood as follows:
-\begin{enumerate}
+\begin{itemize}
 	
-\item \verb|^|: Asserts the start of the string.
+	\item \verb|^|: Asserts the start of the string.
 
-\item \verb|(?:\d{3}-)|: This is a non-capturing group \verb|(?: ... )| that matches exactly three digits \verb|\d{3}| followed by a hyphen -.
+	\item \verb|(?:\d{3}-)|: This is a non-capturing group \verb|(?: ... )| that matches exactly three digits \verb|\d{3}| followed by a hyphen -.
 
-\item \{2\}: Quantifier that specifies the non-capturing group \verb|(?:\d{3}-)| should occur exactly 2 times consecutively.
+	\item \{2\}: Quantifier that specifies the non-capturing group \verb|(?:\d{3}-)| should occur exactly 2 times consecutively.
 
-	\item \verb|\d{4}|: Matches exactly four digits.
-
-	\item \$: Asserts the end of the string.
-\end{enumerate}
+	\item \verb|\d{4}|: Matches exactly four digits. \$: Asserts the end of the string.
+\end{itemize}
 
 	\par When writing regular expressions, you should use raw string literals to avoid excessive escaping. 
-\begin{verbatim}
+\begin{lstlisting}
 R"delimiter( raw_characters )delimiter"
+regex mask("\\t[0-9]+\\.[0-9]+\\t\\\\SUB"); //many escaping, bad
+regex mask(R"(\t[0-9]+\.[0-9]+\t\\SUB)");  //with R"(, that is better
+\end{lstlisting}
+
+	\par The purpose of the parentheses is to allow you to specify a custom delimiter:
+\begin{lstlisting}[mathescape=false]
 string raw_str = R"~(^(?:\d{3}-){2}\d{4}$)~"; //~( and )~ are delimiters
-\end{verbatim}
-
-
-\subsection{Variadic Templates}
-     There are four main usages of variadic templates:
-        \begin{enumerate}
-            \item Variadic data structures: A good example is \texttt{std::tuple}.
-            \item Variadic function: With C++17, you can use fold expressions, eliminating the need for recursive implementations.
-            \item Variadic template for catch-all functions: input various number and type parameter.
-            \item Variadic template for forwarding.
-        \end{enumerate}
-
-    \par Variadic templates can be used to implement catch-all functions. This example does not use the traditional recursive approach for implementing variadic templates but rather uses them to allow for 'any template parameters' to be passed. One example is writing a function that can print out standard library containers without acting on iterators. The function should work for any container with minimal input from the user. To achieve this, template template parameters are used. The \texttt{vector} template has two template parameters, while the \texttt{map} template has four. A parameter pack is used to handle this flexibility.
-
-    
-\begin{lstlisting}
-template < template <typename, typename...> class ContainerType,
-          typename ValueType, typename... Args>  
-          // typename... Args is template parameter pack
-void print_container(const ContainerType<ValueType, Args...>& c) {
-    for (const auto& v : c) {
-        std::cout << v << ' ';
-    }
-    std::cout << '\n';
-}
-
-print_container(vector<double> vd);
-print_container(map<int,string> mi);
 \end{lstlisting}
 
-    \par Variadic templates for forwarding. This is a very typical usage for \texttt{make\_*} functions (object generators) in the STL. 
-\begin{lstlisting}
-std::unique_ptr<FooType> f = std::make_unique<FooType>(1, "str", 2.13);
-
-template<typename T, typename... Args>
-unique_ptr<T> make_unique(Args&&... args){
-	return unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
-\end{lstlisting}
-
-    \par In previous code, you need to pay attention to the syntactic usage. An ellipsis is used in two ways by variadic templates. To the left of the parameter name, it signifies a parameter pack, and to the right of the parameter name, it expands the parameter packs into separate names.
-\begin{lstlisting}
-function(params...) expands function(param1, param2, ..., paramN).
-
-function(std::forward<Tys>(params)...)  //expands to
-function(std::forward<Tys1>(param1), std::forward<Tys2>(param2), ..., std::forward<TysN>(paramN))
-
-function(std::forward<Tys>(params...)) //expands to
-function(std::forward<Tys>(param1, param2, ..., paramN)) //Error here.
-\end{lstlisting}
- 
-    \par Variadic templates make it possible to define data structures with an arbitrary number of fields, whose number can be configured per use. One primary example of this is a \texttt{std::tuple} class, which uses the recursive idea.
-\begin{lstlisting}
-template <typename... Ts> struct tuple {};
-
-template <typename T, typename... Ts>
-struct tuple<T, Ts...> : tuple<Ts...> {
-	tuple(T t, Ts... ts) : tuple<Ts...>(ts...), tail(t) {}
-	T tail;
-};
-\end{lstlisting}
-
-
-\begin{lstlisting}
-tuple<double, uint64_t, const char*> t1(12.2, 42, "big");
-
-struct tuple<double, uint64_t, const char* >: tuple<uint64_t, const char*>{ //1
-  double tail;
-}
-struct tuple<uint64_t, const char*> : tuple<const char*> { //2
-  uint64_t tail;
-}
-struct tuple<const char*> : tuple { //3
-  const char* tail;
-}
-struct tuple {  //4
-}
-\end{lstlisting}
-
-    \par Next, I will introduce how to implement a \texttt{get} function to access tuple elements. First, we build a helper type that lets us access the type of the k-th element in a tuple. Similar to adding new layers when building a tuple, accessing the n-th element involves peeling off layers using a recursive implementation.
-
-\begin{lstlisting}
-template <size_t, class> struct elem_type_holder;
-
-template <class T, class... Ts>
-struct elem_type_holder<0, tuple<T, Ts...>> {
-  typedef T type;
-};
-
-template <size_t k, class T, class... Ts>
-struct elem_type_holder<k, tuple<T, Ts...>> {
-  typedef typename elem_type_holder<k - 1, tuple<Ts...>>::type type;
-};
-\end{lstlisting}
-
-    \par With the help of this helper function, we can implement the \texttt{get} function as follows. \texttt{get} is a template function, which is why you need to use \texttt{get<3>} to initialize it.
-\begin{lstlisting}
-template <size_t k, class... Ts>
-typename std::enable_if<
-    k == 0, typename elem_type_holder<0, tuple<Ts...>>::type&>::type
-get(tuple<Ts...>& t) {
-  return t.tail;
-}
-
-template <size_t k, class T, class... Ts>
-typename std::enable_if<
-  k != 0, typename elem_type_holder<k, tuple<T, Ts...>>::type&>::type
-get(tuple<T, Ts...>& t) {
-    tuple<Ts...>& base = t; //we peel off one layer here. 
-    return get<k - 1>(base);
-}
-\end{lstlisting}
-
-    \par Don't worry about the performance of variadic template implementations. There's no actual recursion involved; instead, we have a sequence of function calls pre-generated at compile-time. This sequence is generally fairly short (variadic calls with more than 5-6 arguments are rare). Modern compilers aggressively inline code, likely resulting in machine code with no function calls. The result is similar to loop unrolling.
-
-    \par A good article is "Variadic templates in C++."
-
+	 \par Without delimiter, you would be in trouble if the string itself contained something like " (if you had just wanted R"..." as your raw string syntax) or )" (if the delimiter is empty). Both of those are perfectly common and frequent character sequences, especially in regular expressions, so it would be incredibly annoying if the decision whether or not you use a raw string depended on the specific content of your string.
 
 
 \section{C++17}
-\subsection{language feature}
-\subsubsection{structured binding}
+\subsection{Language feature}
+\subsubsection{Structured binding}
 
      Structured bindings can be used for structures with public data members, raw C-style arrays, and tuple-like objects. A structured binding declaration then performs the binding in one of three possible ways, depending on the type:
         \begin{enumerate}
@@ -25285,15 +25333,6 @@ int x_coord, y_coord;
 tie(x_coord, y_coord) = make_tuple(1, 2); //C++14, use tie
 
 auto [x_coord, y_coord] = p ;//C++17, use structure bindings. 
-
-struct S { //tie used in compared function is good.
-    int n; 
-    std::string s; 
-    float d;
-    bool operator<(const S& rhs) const {
-        return std::tie(n, s, d) < std::tie(rhs.n, rhs.s, rhs.d);
-    } //or use spaceship operator here. 
-};
 \end{lstlisting}
 
 	\par \texttt{std::tie} constructs and returns a tuple of references.
@@ -25339,7 +25378,7 @@ u = 100;
 cout<<ms.i;  // it will output 100 here. 
 \end{lstlisting}
 	
-	\par Structured bindings use alias name with anonymous structure, so when you use auto, it will not decay. That is important point to remember when you use structure binding.
+	\par Structured bindings use alias name with anonymous structure, so when you use \texttt{auto}, it will not decay. That is important point to remember when you use structure binding.
 	
 \begin{lstlisting}
 struct S{
@@ -25415,7 +25454,7 @@ auto foldSum(T... s){
 } 
 \end{lstlisting}
 
-    \par The first operand might be any operand, \texttt{such as std::cout}.
+    \par The first operand might be any operand, such as \texttt{std::cout}.
 \begin{lstlisting}
 template<typename...T>
 void print (const T&... args){
@@ -25428,7 +25467,9 @@ void print (const T&... args){
     \par If you want to output space, you can use this way.
 \begin{enumerate}
 	\item In line 10, there is () around fold expression, because we have \texttt{endl} in the end of statement.
-	\item  \texttt{std::cout} is special operand.
+	
+	\item  \texttt{std::cout} is a special operand.
+	
 	\item  ... applies to left, think left is init. then expands to \texttt{std::cout<<}. Then ... applies to right, expands to spaceBefore(arg1), spaceBefore(arg2), spaceBefore(arg3). In the end, we combine them together. \texttt{(std::cout<<spaceBefore(arg1))<<spaceBefore(arg2)...} . Hope that you can understand before explanation, this is a complex example, when you understand it, you will be able to understand simpler problems more easily. 
 \end{enumerate}
 
