@@ -17884,10 +17884,8 @@ auto countedView = std::views::counted(pos5, 5); //5 6 7 8 9
 //'string::substr' returns a new string, it's memory-instensive.
 std::cout << str.substr(5, 15) << '\n';
 
-//string_view from the literals does not require a dynamic allocation.
-// string_view::substr returns a new string_view. No new memory allocated
-std::string_view sv = str;
-std::cout << sv.substr(5, 15) << '\n';		
+//better style, no dynamic allocation, no new memory.
+cout<<string_view(str|views::drop(5)|views::take(15))<<endl;
 \end{lstlisting}
 
 
@@ -17934,11 +17932,11 @@ print("{}\n", std::views::stride(v,3));   //1) using functor notation, [0, 3, 6]
 print("{}\n", v | std::views::stride(3)); //2) using pipeline notation.
 
 std::ranges::stride_view sv2 {v,3};       //3) using an explicit view object.
-//need a varaible name sv2, stride_view is in ranges:: namespace, but stride is in views:: namespace.
+// stride_view is in ranges:: namespace, but stride is in views:: namespace.
 print("{}\n", sv2);  
 \end{lstlisting}
 	
-	\par We can use pipeline operator \texttt{|} to combine a serials of view adapters together. \texttt{view::take} is an adapter, it input a number, then return an anonymous view. You can also use combine range::view and range::algorithm together.  
+	\par We can use pipeline operator \texttt{|} to combine a serials of view adapters together. \texttt{view::take} is an adapter, it input a number, then return an anonymous view. 
 \begin{lstlisting}
 std::vector<int> v{0,1,2,3,4,5,6,7,8};
 for(int n : v | std::views::take(6) | std::views::drop(2)
@@ -17946,12 +17944,73 @@ for(int n : v | std::views::take(6) | std::views::drop(2)
   | std::views::transform( [](auto& e){return e*e; } ) ) {
 	std::cout << n << ' ';  //output 4 and 16
 }	
+\end{lstlisting}
+
+	\par \texttt{views::reverse} represents a view of underlying view with reversed order.
+\begin{lstlisting}
+vector v {3, 1, 4, 1, 5, 9};	
+for (auto i : il | std::views::reverse)
+std::cout << i << ' ';	
+\end{lstlisting}		
+
+	\par Projections views: \texttt{views::keys, views::values, views::elements}. \texttt{views::keys} applies a projection to extract keys from elements. It is typically used with associative containers or ranges of pairs or tuples where the first element represents a key. \texttt{views::elements} allows you to extract a specific element from a range of tuples or pairs, making it a concise way to access individual elements. \texttt{std::views::elements<0>} extracts the first element (e.g., first from a \texttt{std::pair} or the 0th element from a \texttt{std::tuple}).
+\begin{lstlisting}
+std::vector<std::pair<char,int>> v {{'b',3},{'a',4},{'z',2},{'k',9}};
+print("{}\n", v | std::views::keys); // [b,a,z,k]
+print("{}\n", v | std::views::values); // [3,4,2,9]
+
+std::vector<std::tuple<char,int,std::string>> v {
+	{'b',3,"hearts"}, {'a',4,"clubs"}, {'z',2,"spades"}, {'k',9,"diamonds"} };
+print("{}\n", v | std::views::elements<2>);	
+
+std::map<std::string, int> m{{"CPU", 10}, {"GPU", 15}, {"RAM", 20}};
+for(auto &e: m|views::keys){
+	cout<<e<<endl; //e ="abc" error, because e is const string &
+}
+for(auto &e: m|views::values){
+	e =40; //ok, because e is not const
+}
+for(auto &[f, s] : m){
+	cout<<f<<" "<<s<<endl; //output CPU 40,  GPU 40 and RAM 40.
+}
+\end{lstlisting}
+
+	\par The ranges library provides three views where all elements have the same value. \texttt{std::views::empty} represents a view with zero elements. \texttt{std::views::single} represents a view with one element. \texttt{std::views::repeat} can represent both finite and infinite views of the same value. Anoter range factory is \texttt{std::views::iota}. 
+\begin{lstlisting}
+auto empty = std::views::empty<int>;
+// View of a single instance of 42 (int)
+auto single = std::views::single(42);
+	
+auto const r51 = std::views::repeat(1, 5); // 1 1 1 1 1 
+auto const r4a = std::views::repeat('a') | std::views::take(4); // a a a a			
+	
+for (int i : std::ranges::iota_view{1, 10}) //use view object
+for (int i : std::views::iota(1, 10))   //use view functor
+for (int i : std::views::iota(1) | std::views::take(9))
+\end{lstlisting}
+
+\par Element selector views are: \texttt{views::filter}, \texttt{views::stride}.
+\begin{lstlisting}
+std::vector<int> v {0,1,2,3,4,5,6,7,8};
+auto const is_even = [] (int x) { return !(x & 1); };
+print("{}\n", v | std::views::filter(is_even)); // [0,2,4,6,8]
+print("{}\n", v | std::views::stride(2)); // [0,2,4,6,8]		
 \end{lstlisting}	
 
+\par Subrange selector views are: \texttt{views::counted}, \texttt{views::take}, \texttt{views::take\_while}, \texttt{views::drop}, \\ \texttt{views::drop\_while}. Note that \texttt{std::views::counted} is not pipelinable and that there's also no \texttt{std::ranges::counted\_view} type. \texttt{std::ranges::counted\_view} returns \texttt{std::span} if its underlying models contiguous\_iterator, otherwise it returns \texttt{ranges::subrange}.
+\begin{lstlisting}
+std::vector<int> v {0,1,2,3,4};
+print("{}\n", std::views::counted(v.begin()+1, 2)); // [1, 2]
+print("{}\n", v | std::views::take(3)); // [0,1,2]
+print("{}\n", v | std::views::drop(2)); // [2,3,4]
 
-%\item C++20 doesn't support action yet. 
+std::vector<int> v {2,6,7,6,5};
+auto const is_even = [] (int x) { return !(x & 1); };
+print("{}\n", v | std::views::drop_while(is_even)); // [7,6,5]			
+\end{lstlisting}
 
-	\par Function application call are \texttt{transform, adjacent\_transform} and \texttt{pairwise\_transform}.
+
+	\par Function application call are \texttt{transform, adjacent\_transform} and \texttt{pairwise\_transform}. They all need to input a functor.
 \begin{lstlisting}
 auto const to_upper = [] (char c) { 
 	return static_cast<char>(std::toupper(static_cast<unsigned char>(c))); 
@@ -17976,12 +18035,10 @@ std::cout << std::quoted(std::string_view(word)) << ' ';
 
 std::vector<int> v {1,2,0,2,4,5,8,4,6,3,5,2,4};
 for (auto x : std::views::chunk_by(v,std::ranges::less{})){
-	fmt::print("{} ",x); 
+	print("{} ",x); 
 }// [1,2] [0,2,4,5,8] [4,6] [3,5] [2,4]
 \end{lstlisting}
 
-
-	
 	\par Multiple ranges to single range: \texttt{zip, join, join\_with, zip\_transform, cartesian\_product}.
 \begin{lstlisting}
 std::vector<std::string> v = {"I","am","here","now"};
@@ -17993,46 +18050,14 @@ std::string s3 = "-+";
 fmt::print("{}\n", std::views::zip(a,s2,s3)); // (0,A,-) (1,B,+)
 \end{lstlisting}
 
-
-	\par Projections views: \texttt{views::keys, views::values, views::elements}. \texttt{views::keys} applies a projection to extract keys from elements. It is typically used with associative containers or ranges of pairs or tuples where the first element represents a key. \texttt{views::elements} allows you to extract a specific element from a range of tuples or pairs, making it a concise way to access individual elements. \texttt{std::views::elements<0>} extracts the first element (e.g., first from a \texttt{std::pair} or the 0th element from a \texttt{std::tuple}).
+		\par Another interesting view is \texttt{views::enumerate}, similar with \texttt{views::zip.}
 \begin{lstlisting}
-std::vector<std::pair<char,int>> v {{'b',3},{'a',4},{'z',2},{'k',9}};
-fmt::print("{}\n", v | std::views::keys); // [b,a,z,k]
-fmt::print("{}\n", v | std::views::values); // [3,4,2,9]
+std::string s = "ABCD";
+for (auto const& [index, value] : std::views::enumerate(s)) {
+	std::cout << "@" << index << ":" << value << '\n';
+}  // @0:A @1:B @2:C @3:D		
+\end{lstlisting}		
 
-std::vector<std::tuple<char,int,std::string>> v {
-	{'b',3,"hearts"}, {'a',4,"clubs"}, {'z',2,"spades"}, {'k',9,"diamonds"} };
-fmt::print("{}\n", v | std::views::elements<2>);
-\end{lstlisting}
-
-	\par \texttt{std::views::iota} and \texttt{std::views::repeat} are range factories. 
-\begin{lstlisting}
-for (int i : std::ranges::iota_view{1, 10})
-for (int i : std::views::iota(1, 10))    
-for (int i : std::views::iota(1) | std::views::take(9))
-auto const r51 = std::views::repeat(1,5); // 1 1 1 1 1 
-auto const r4a = std::views::repeat('a') | std::views::take(4); // a a a a		
-\end{lstlisting}
-
-	\par Element selector views are: \texttt{views::filter}, \texttt{views::stride}.
-\begin{lstlisting}
-std::vector<int> v {0,1,2,3,4,5,6,7,8};
-auto const is_even = [] (int x) { return !(x & 1); };
-fmt::print("{}\n", v | std::views::filter(is_even)); // [0,2,4,6,8]
-fmt::print("{}\n", v | std::views::stride(2)); // [0,2,4,6,8]	
-\end{lstlisting}	
-
-	\par Subrange selector views are: \texttt{views::counted}, \texttt{views::take}, \texttt{views::take\_while}, \texttt{views::drop}, \\ \texttt{views::drop\_while}. Note that \texttt{std::views::counted} is not pipelinable and that there's also no  \texttt{std::ranges::counted\_view} type.
-\begin{lstlisting}
-std::vector<int> v {0,1,2,3,4};
-print("{}\n", std::views::counted(v.begin()+1,2)); // [1, 2]
-print("{}\n", v | std::views::take(3)); // [0,1,2]
-print("{}\n", v | std::views::drop(2)); // [2,3,4]
-
-std::vector<int> v {2,6,7,6,5};
-auto const is_even = [] (int x) { return !(x & 1); };
-print("{}\n", v | std::views::drop_while(is_even)); // [7,6,5]		
-\end{lstlisting}
 
 	\par Sliding window view returns a range of either tuples or contiguous subranges of the input range. \texttt{views::slide, views::adjacent, views::pairwise}. 
 
@@ -18056,7 +18081,7 @@ for (auto [left, right] : data | std::views::pairwise) {
 	
 	\par \texttt{views::split}, \texttt{views::chunk(chun\_by)},  \texttt{views::slide}, \texttt{views::adjacent}, \texttt{views::pairwise}, \\ \texttt{views::zip} all produce a view and element inside the view is a "range" like type. 
 	\begin{itemize}
-	\item \texttt{views::adjacent} is similar to \texttt{views::slide}, producing a sliding window over the input range. However, where \texttt{views::slide} produces \texttt{std::subrange} (for \texttt{std::list}) or \texttt{std::span} (for \texttt{std::vector}), \texttt{views::adjacent} produces tuples of references to elements.
+	\item \texttt{views::adjacent} is similar to \texttt{views::slide}, producing a sliding window over the input range. However, where \texttt{views::slide} produces \texttt{std::subrange} (for \texttt{std::list}) or \texttt{std::span} (for \texttt{std::vector}), \texttt{views::adjacent} produces tuples of references to elements. \texttt{views::pairwise} is just alias name of \texttt{views::adjacent<2>}.
 	
 	\item Element in \texttt{views::split} and \texttt{views::chunk} are \texttt{ranges::subrange}. 
 \begin{lstlisting}
@@ -18069,21 +18094,33 @@ auto wt2 = v|views::chunk(2); //[ [1 2], [3 4], [5 6] ]
 		
 	\item Element in \texttt{views::zip} is \texttt{std::tuple}.  
 	\end{itemize}
-
-	\par Another interesting view is \texttt{views::enumerate}, similar with \texttt{views::zip.}
-\begin{lstlisting}
-std::string s = "ABCD";
-for (auto const& [index, value] : std::views::enumerate(s)) {
-	std::cout << "@" << index << ":" << value << '\n';
-}  // @0:A @1:B @2:C @3:D	
-\end{lstlisting}	
 	
-	\par \texttt{views::reverse}.
+	\par An interesting example is Trigram. 
 \begin{lstlisting}
-vector v {3, 1, 4, 1, 5, 9};	
-for (int i : il | std::views::reverse)
- std::cout << i << ' ';
-\end{lstlisting}	
+//text is "my name is Yan Zhao"
+auto vw = text| views::split(' ') | views::slide(3);
+for(auto e : vw){ //e is subrange.
+	auto it = e.begin(); //subrange includes counter\_iterator
+	auto e1 = string_view{*it}; //*it is subrange, it can input string_view
+	++it;                       //counter_iterator only supports ++
+	auto e2 = string_view{*it};
+	++it;                
+	auto e3 = string( (*it).begin(), (*it).end() ); //build string from subrange
+	cout<<e1<<" "<<e2<<" "<<e3<<endl;
+}
+
+//another method 
+auto vw = text| views::split(' ') | views::adjacent(3);
+for(auto [e1, e2, e3] : vw){ //views::adjacent return tuple
+	....
+}
+ 
+//output:
+my name is
+name is Yan
+is Yan Zhao
+\end{lstlisting}
+
 
 	\par \texttt{std::ranges::subrange} combines an iterator and a sentinel (or two iterators) into a view. One use case for \texttt{std::ranges::subrange} is to adapt algorithms and methods that return a pair of iterators. Most of time, we define it directly or it is generated by other views, such as \texttt{views::chunk}. We usually don't use it with pipeline syntax. \texttt{std::ranges::subrange} is class template.
 \begin{lstlisting}
@@ -18479,10 +18516,12 @@ cout<<*iter;  // Error,iter is std::ranges::dangling
 		std::ranges::common\_view \\
 		std::ranges::reverse\_view \\
 		std::ranges::elements\_view \\
-		std::ranges::adjacent\_view }  & \specialcell[t]{ std::ranges::filter \\
+		std::ranges::adjacent\_view }  
+		
+		& \specialcell[t]{ std::ranges::filter \\
 		std::ranges::take\_while\_view \\	
 		std::ranges::drop\_while\_view \\
-		}  \\
+		std::ranges::transform\_view }  \\
 		\hline
 	\end{tabular}
 \end{center}	
@@ -18651,6 +18690,21 @@ printMe({begin(vec)+2, end(v)})  //    (4) input range.
 
 \end{itemize}
 
+\subsubsection{Summary of view}
+The section on views is extensive and somewhat disorganized, so here is a summary:
+\begin{itemize}
+	\item Remember the main views objects (\textbf{GPTSSSRZS}). The three most useful views are transform(transform\_adjacent/pairwise); split (chunk or chunk\_by), and slide (adjacent or pairwise).
+	
+	\item The element in the previous three views are \texttt{std::span}, \texttt{sub::substring} or \texttt{std::tuple}. You need to know what type they return on the corresponding view and underlying range.
+	
+	\item When used view externally, different views may be common\_range, size\_range, random\_range, or borrow\_range. Know each range constraints and characteristics.
+	
+	
+	\item To convert a view into a real container, you can use the container's range constructor or ranges::to() if supported by your compiler. 
+	
+	\item \texttt{std::string\_view} and \texttt{std::span} do not inherit from views\_interface, so they are used primarily as function parameters, differing from regular usage like views::drop.
+	
+\end{itemize}
 
 
 \section{Algebraic data types}
@@ -25489,7 +25543,7 @@ void print(const First& firstarg, const Args&... args){
 
 	\par Below figure demonstrate relationship between previous three important modern c++ feature: variadic template, fold expression and structure binding. 
 \begin{center}
-	\includegraphics[width=0.75\linewidth]{pics/Variadic.png}
+	\includegraphics[width=0.69\linewidth]{pics/Variadic.png}
 \end{center}
 
 \subsubsection{class template argument deduction}
@@ -25509,7 +25563,7 @@ std::lock_guard lk{m};
 
 	\par There is no type conversions used to deduce template parameters if there is ambiguities. 
 \begin{lstlisting}
-std::complex c{5, 5.1} //ERROR, 
+std::complex c{5, 5.1} //compile fail, 
 \end{lstlisting}
 
     \par CTAD only uses the primary class constructor to deduce template arguments. Sometimes, CTAD doesn't work because it can only be used in some primary classes. Additionally, sometimes CTAD doesn't deduce the type that you want. In such cases, you can use deduction guides to help the compiler.
@@ -25553,17 +25607,15 @@ template<typename T>
 struct C{
   C(const T&){...}
   ...
-}
-
+};
 template<typename T>  // take its argument by value, not by reference.
 C(T) -> C<T>; 
 
-C x{"hello"};
-//without the deduction guide, T will be char[6],
-//with the deduction guide, T is const char*
+C x{"hello"};//without the deduction guide, T will be char[6], 
+             //with the deduction guide, T is const char*
 \end{lstlisting}
 
-    \par In general, CTAD automatically works when class templates have constructors whose signatures mention all of the class template parameters. However, sometimes constructors themselves are templated, which breaks the connection that CTAD relies on. In the code below, we want to make our '\texttt{my\_pair}' class accept any type of array and deduce T and U as the element types of the array. According to CTAD, we can just use the primary class constructor (not the template constructor) to deduce the argument. Therefore, we can use a deduction guide to deduce the A type in our second constructor (\#2), change it to the primary class constructor \#1, and then the compiler can use \#1 to continue its work properly.
+    \par In general, CTAD automatically works when class templates have constructors whose signatures mention all of the class template parameters. However, sometimes constructors themselves are templated, which breaks the connection that CTAD relies on. In the code below, we want to make our '\texttt{my\_pair}' class accept any type of array and deduce T and U as the element types of the array. According to CTAD, we can just use the primary class constructor (not the template constructor) to deduce the argument. Therefore, we can use a deduction guide to deduce the \texttt{A} type in our second constructor (\#2), change it to the primary class constructor \#1, and then the compiler can use \#1 to continue its work properly.
 
 \begin{lstlisting}
 template<typename T, typename U>
@@ -25582,7 +25634,7 @@ char ca[] = {'a', 'b'};
 my_pair mp2{ca}; // my_pair<char, char>, T and U ar char
 \end{lstlisting}
 
-    \par This code below has some things to explain. \#1 is the deduction guide because it's a template that can be specialized. \#2 is simply specialized of deduction guide. You can see that the specification is simple: just to say that when we input a pointer array, it should be changed to a \texttt{string}. The third point is that we also use '\texttt{explicit}'. Then, the specification deduction rule is only used in the constructor, not the copy constructor. This is a good example that demonstrates some common technologies that are used in template deduction guides.
+    \par The code below has some things to explain. \#1 is the deduction guide because it's a template that can be specialized. \#2 is simply specialized of deduction guide. You can see that the specification is simple: just to say that when we input a pointer array, it should be changed to a \texttt{string}. The third point is that we also use '\texttt{explicit}'. Then, the specification deduction rule is only used in the constructor, not the copy constructor. This is a good example that demonstrates some common technologies that are used in template deduction guides.
 
 \begin{lstlisting}
 template<typename A> // Deduction Guide
@@ -25600,7 +25652,7 @@ my_pair mp4copy = stra; //use #1, deduct my_pair<const char*, const char*>
 
 \subsubsection{compile-time if}
 	
-	 Example of compile-time if.
+	 Example code of compile-time if.
 \begin{lstlisting}
 template <typename T>
 std::string asString(T x){
@@ -25762,10 +25814,10 @@ concept _conceptName_ = requires(_arguments_) {//method 2, requires expression
 
 	\par Below is a simple example using the C++ keyword "\texttt{concept}", which is mainly used in templates. In this example, We define a new concept based on an existing concept.
 \begin{lstlisting}
-template<typename T> 
+template<typename T>  
 concept Any = true;
 
-template <typename T>
+template <typename T> 
 concept Number = std::integral<T> || std::floating_point<T>; //concept expression	
 \end{lstlisting}
     
