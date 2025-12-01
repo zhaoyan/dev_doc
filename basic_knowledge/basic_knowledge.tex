@@ -2971,6 +2971,120 @@ pipeline {
 }
 \end{lstlisting}
 
+\subsection{QA}
+\begin{lstlisting}
+Step 1 — Generate an SSH key on the Jenkins server
+
+If you don’t already have one:
+
+ssh-keygen -t ed25519 -C "jenkins"
+
+
+Save it under:
+
+/var/lib/jenkins/.ssh/id_ed25519
+
+
+Do NOT add a passphrase, or Jenkins will need extra configuration.
+
+After generation, you will have:
+
+Private key: /var/lib/jenkins/.ssh/id_ed25519
+
+Public key: /var/lib/jenkins/.ssh/id_ed25519.pub
+
+✅ Step 2 — Copy the public key to 10.0.45.101
+
+Login to Jenkins server and run:
+
+ssh-copy-id -i /var/lib/jenkins/.ssh/id_ed25519.pub username@10.0.45.101
+
+
+If ssh-copy-id is not installed, do it manually:
+
+cat /var/lib/jenkins/.ssh/id_ed25519.pub | ssh username@10.0.45.101 "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+
+
+Replace username with the actual user on 10.0.45.101.
+
+✅ Step 3 — Test SSH manually on the Jenkins server
+
+On Jenkins server terminal:
+
+sudo -u jenkins ssh username@10.0.45.101
+
+
+If you can log in without password, SSH is ready.
+
+✅ Step 4 — Add SSH key into Jenkins Credentials
+
+In Jenkins UI:
+
+Go to Manage Jenkins → Credentials
+
+Add a new credential:
+
+Kind: SSH Username with private key
+
+Username: username on 10.0.45.101
+
+Private Key: Enter directly
+
+Paste the content of your private key:
+
+cat /var/lib/jenkins/.ssh/id_ed25519
+
+
+💡 Passphrase is empty unless you added one.
+
+Save.
+
+✅ Step 5 — Use SSH in Jenkins pipeline
+
+Example:
+
+pipeline {
+    agent any
+
+    stages {
+        stage('SSH test') {
+            steps {
+                sshagent(credentials: ['my-ssh-key']) {
+                    sh 'ssh username@10.0.45.101 "hostname"'
+                    sh 'scp myfile.txt username@10.0.45.101:/home/username/'
+                }
+            }
+        }
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+git rev-parse --resolve-git-dir /var/lib/jenkins/caches/git-100d3e5823c08e3aa936f360707c092e/.git # timeout=10 ERROR: Workspace has a .git repository, but it appears to be corrupt. hudson.plugins.git.GitException: Error performing git command: git rev-parse --resolve-git-dir /var/lib/jenkins/caches/git-100d3e5823c08e3aa936f360707c092e/.git
+
+Delete the corrupted Jenkins Git cache directory.
+
+Linux command:
+sudo rm -rf /var/lib/jenkins/caches/git-100d3e5823c08e3aa936f360707c092e
+
+
+Or remove the whole cache folder (Jenkins recreates it automatically):
+
+sudo rm -rf /var/lib/jenkins/caches/*
+
+
+Then restart Jenkins:
+
+sudo systemctl restart jenkins
+
+
+Or from Jenkins web UI:
+
+Manage Jenkins → Restart Safely
+
+Then rescan your multibranch pipeline.
+\end{lstlisting}
+
 
 \subsection{Docker}
 docker can work with VS code very well.  inside a docker, you have source code, you want to edit, compile and debug it . 
