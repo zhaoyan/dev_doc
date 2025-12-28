@@ -132,6 +132,21 @@ public:
         return ans;
     }
 };
+
+std::string str = "()(())((()()))";
+    std::stack<char> st;
+    int mx{};
+    for(auto e: str){
+        if(e == '('){
+            st.push(e);
+            int ss = st.size();
+            mx = std::max(mx, ss);
+        }
+        else{
+            st.pop();
+        }
+    }
+    std::cout<<mx<<std::endl;
 ```
 
 #### Go

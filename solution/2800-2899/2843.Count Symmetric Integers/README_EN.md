@@ -134,6 +134,28 @@ public:
         return ans;
     }
 };
+
+int low = 100, high = 1456789;
+   for(int i = low; i<high; ++i){
+    std::string str = std::to_string(i);
+    int len = str.length(); 
+    if( len %2 == 1){
+        continue;
+    }
+    int sum1{};
+    for(int i = 0;i<len/2; ++i){
+        sum1+=str[i];
+    }
+    int sum2{};
+    for(int i = len/2 ;i<len; ++i){
+        sum2+=str[i];
+    }
+    if(sum1 == sum2){
+        std::cout<<i<<std::endl;
+    }
+
+   }
+
 ```
 
 #### Go

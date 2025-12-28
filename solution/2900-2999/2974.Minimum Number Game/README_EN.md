@@ -129,6 +129,14 @@ public:
         return ans;
     }
 };
+
+std::vector<int> v{5,4,2,3};
+    std::ranges::sort(v);
+    for(auto i = v.begin(); i<v.end(); ){
+        std::iter_swap(i, i+1);
+        i+=2;
+    }
+    std::print("{}", v);
 ```
 
 #### Go

@@ -98,6 +98,15 @@ public:
         return string(cnt - 1, '1') + string(s.size() - cnt, '0') + '1';
     }
 };
+
+std::string str = "00110101010";
+   std::ranges::partition(str, [](auto e){
+    return e == '1';
+   });
+   std::cout<<str<<std::endl;
+   auto it = std::find(str.rbegin(), str.rend(), '1');
+   std::iter_swap(it, str.end()-1);
+    std::cout<<str<<std::endl;
 ```
 
 #### Go

@@ -159,6 +159,25 @@ public:
         return ans;
     }
 };
+
+
+std::vector<int> a = {1,1}, b = {2,3}, c = {1,5};
+
+    int sum{};
+   for(auto e: a){
+    for(auto e1: b){
+        for(auto e2: c){
+            int temp = e ^e1;
+            temp = temp ^ e2;
+            std::bitset<sizeof(int)*8> bs(temp);
+            if(bs.count()%2 != 1){
+                ++sum;
+            }
+        }
+    }
+   }
+
+   std::cout<<sum<<std::endl;
 ```
 
 #### Go

@@ -120,6 +120,18 @@ public:
         return ans;
     }
 };
+
+std::vector<std::string> patterns = {"a","abc","bc","d"};
+    std::string word = "abc";
+
+    int sum{};
+    for(const auto&e : patterns){
+        if(word.find(e) != std::string::npos){
+            ++sum;
+        }
+    }
+
+    std::cout<<sum<<std::endl;
 ```
 
 #### Go

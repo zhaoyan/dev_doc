@@ -109,6 +109,19 @@ public:
         return ans;
     }
 };
+
+int n = 10;
+    auto vw = std::ranges::views::iota(1, n+1) | std::ranges::views::filter(
+        [](auto e){
+            return e%3 == 0 || e%5 == 0 || e%7 == 0;
+        }
+    );
+    int sum{};
+    for(auto e: vw){
+        sum +=e;
+    } 
+    std::print("{}", sum);
+
 ```
 
 #### Go

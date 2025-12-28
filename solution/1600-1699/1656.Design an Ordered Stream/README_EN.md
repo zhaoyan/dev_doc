@@ -160,6 +160,56 @@ private:
     vector<string> data;
 };
 
+
+
+
+class OrderedStream{
+public:
+    OrderedStream(int n): capacity_{n}, vs_(n+1, ""){}
+    std::vector<std::string> insert(int id, std::string value);
+private:
+    std::vector<std::string> vs_;
+    int ptr_{1};
+    int capacity_;
+};
+
+std::vector<std::string> OrderedStream::insert(int id, std::string value){
+    std::vector<std::string> result{};
+    if(id != ptr_){
+        vs_[id]= value;
+        return result;
+    }
+    vs_[id] = value;
+    result.push_back(value);
+    ++id;
+    while(id<=capacity_ && vs_[id]!="" ){
+        result.push_back(vs_[id]);
+        ++id;
+    }
+    ptr_ = id;
+    return result;
+}
+
+int main(){
+  OrderedStream os1(5);
+  auto e1 = os1.insert(3, "cccc");
+  std::print("{}", e1);
+  
+  auto e2 = os1.insert(1, "aaaa");
+  std::print("{}", e2);
+  
+  auto e3 = os1.insert(2, "bbbb");
+  std::print("{}", e3);
+  
+  auto e4 = os1.insert(5, "eeee");
+  std::print("{}", e4);
+  
+  auto e5 = os1.insert(4, "dddd");
+  std::print("{}", e5);
+
+}
+
+
 /**
  * Your OrderedStream object will be instantiated and called as such:
  * OrderedStream* obj = new OrderedStream(n);

@@ -132,6 +132,29 @@ public:
         return "";
     }
 };
+
+
+    int k = 2;
+    std::vector<std::string> arr = {"d","b","c","b","c","a"};
+    
+    std::unordered_map<std::string, int> um;
+    for(const auto & e: arr){
+        um[e]++;
+    }
+
+    int i = 0;
+    std::string result{};
+    for(const auto & e: arr){
+        if(um[e] == 1){
+            ++i;
+        }
+        if(i == k){
+            result = e;
+            break;
+        }
+    }
+
+    std::cout<<result<<std::endl;
 ```
 
 #### Go

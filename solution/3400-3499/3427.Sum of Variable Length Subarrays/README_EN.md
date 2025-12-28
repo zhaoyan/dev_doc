@@ -177,6 +177,20 @@ public:
         return ans;
     }
 };
+
+std::vector<int> v{2,3,1};
+    std::vector<int> va(v.size(), 0);
+    std::partial_sum(v.begin(), v.end(), va.begin());
+
+    std::print("{}", va);
+
+    int sum{};
+    for(int i = 0; i<v.size(); ++i){
+        int start = std::max(0, i-v[i]);
+        int temp = start>0 ? va[i]-va[start-1] : va[i]; 
+        sum += temp;
+    }
+    std::cout<<sum<<std::endl;
 ```
 
 #### Go

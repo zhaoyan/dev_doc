@@ -136,6 +136,21 @@ public:
         return prices;
     }
 };
+
+std::vector<int> v{8,4,6,2,3};
+    int n = v.size();
+    std::vector<int> ans(n, 0);
+
+    std::stack<int> st;
+    for(int i = n-1; i>=0; --i){
+        int x = v[i];
+        while(!st.empty()&&x<st.top()){
+            st.pop();
+        }
+        ans[i] = !st.empty()? x-st.top() : x;
+        st.push(x);
+    }
+    std::print("{}", ans);
 ```
 
 #### Go

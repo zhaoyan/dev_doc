@@ -148,6 +148,20 @@ public:
         return t[0] == t[1];
     }
 };
+
+std::string str = "34789";
+   while(str.size()>2){
+    auto vw = str | std::ranges::views::pairwise;
+    std::string result{};
+    for(auto [f, s] : vw){
+        int t1 = f - '0';
+        int t2 = s - '0';
+        int t = (t1+t2)%10;
+        result.push_back(t+'0');
+    }
+    str = result;
+   }
+   std::cout<<str[0]<<" "<<str[1]<<std::endl;
 ```
 
 #### Go

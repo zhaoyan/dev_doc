@@ -140,6 +140,21 @@ public:
         return image;
     }
 };
+
+std::vector< std::vector<int> > matrix{{1,1,0,0},{1,0,0,1},{0,1,1,1},{1,0,1,0}};
+
+   for(auto &e: matrix){
+    std::ranges::reverse(e);
+   }
+
+    for(auto &e: matrix){
+        for(auto &e1: e){
+            e1 = e1? 0:1;
+        }
+    }
+
+    std::print("{}", matrix);
+
 ```
 
 #### Go

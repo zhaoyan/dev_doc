@@ -101,6 +101,14 @@ public:
         return true;
     }
 };
+
+std::string str = "thequickbrownfoxjumpsoverthelazydog";
+    std::bitset<26> bs{};
+    for(auto e: str){
+        bs.set(e-'a');
+    }
+
+    std::cout<<bs.all()<<std::endl;
 ```
 
 #### Go

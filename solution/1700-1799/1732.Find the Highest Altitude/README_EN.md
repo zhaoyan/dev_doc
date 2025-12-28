@@ -111,6 +111,12 @@ public:
         return ans;
     }
 };
+
+   std::vector<int> v {-5,1,5,0,-7};
+   std::partial_sum(v.begin(), v.end(), v.begin());
+   auto it = std::ranges::max_element(v);
+   int m = std::max(0, *it);
+   std::cout<<m<<std::endl;
 ```
 
 #### Go

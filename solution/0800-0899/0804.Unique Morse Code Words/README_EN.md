@@ -154,6 +154,29 @@ public:
         return s.size();
     }
 };
+
+std::vector<std::string > v{".-","-...","-.-.","-..",".","..-.","--.","....","..",".---","-.-",".-..","--","-.","---",".--.","--.-",".-.","...","-","..-","...-",".--","-..-","-.--","--.."};
+
+    std::unordered_map<char, std::string> um;
+    char ch = 'a';
+    for( int i = 0;i <26; ++i){
+        um[ch] = v[i];
+        ++ch;
+    }
+
+    std::vector<std::string> str {"gin","zen","gig","msg"};
+
+    std::set<std::string> ss;
+    for(auto e: str){
+        std::string mc{};
+        for(auto c: e){
+            mc+=um[c];
+        }
+        ss.insert(mc);
+    }
+    
+    std::cout<<ss.size()<<std::endl;
+
 ```
 
 #### Go

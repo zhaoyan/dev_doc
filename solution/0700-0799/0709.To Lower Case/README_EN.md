@@ -96,6 +96,11 @@ public:
         return s;
     }
 };
+
+std::string str = "ABc";
+    //new string
+    std::ranges::transform(str, str.begin(), [](auto e){return tolower(e);});
+    std::cout<<str<<std::endl;
 ```
 
 #### Go

@@ -130,6 +130,18 @@ public:
         return s1 + s2;
     }
 };
+
+int n = 20;
+    int sum{};
+    int base = 0;
+    for(int i = 0;i<20; ++i){
+        if(i %7 == 0){
+            ++base;
+        }
+        std::cout<<base+(i%7)<<std::endl;
+        sum = sum+base+(i%7);
+    }
+    std::cout<<sum<<std::endl;
 ```
 
 #### Go

@@ -137,6 +137,21 @@ public:
         }
     }
 };
+
+std::vector<int> v{9, 1, 7, 8, 2, 3, 9, 6, 4};
+
+   for(auto e: v){
+    int index = 0;
+    if(e>0){
+        index = e;
+    }
+    else{
+        index = -e;
+
+    }
+    if(v[index-1]>0)
+        v[index-1] = -v[index-1];
+   }
 ```
 
 #### Go

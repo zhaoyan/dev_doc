@@ -117,6 +117,19 @@ public:
         return s;
     }
 };
+
+std::string str = "a1b2c3d4e";
+   auto vw = str | std::ranges::views::chunk(2);
+   for(auto e: vw){
+    if(e.size() == 2){
+        auto it1 = e.begin();
+        auto it2 = it1+1;
+        std::cout<<*it1<<" "<<*it2<<std::endl;
+        char temp = *it1+(*it2-'0');
+        *it2 = temp;
+    }
+   }
+   std::cout<<str<<std::endl;
 ```
 
 #### Go

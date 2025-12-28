@@ -103,6 +103,25 @@ public:
         return count_if(items.begin(), items.end(), [&](auto& v) { return v[i] == ruleValue; });
     }
 };
+
+std::vector<std::vector<std::string> > v{{"phone","blue","pixel"},{"computer","silver","lenovo"}, {"phone","silver","iphone"}};
+    std::string  ruleKey = "color", ruleValue = "silver";
+
+    std::unordered_map<std::string, int> um_type;
+    std::unordered_map<std::string, int> um_color;
+    std::unordered_map<std::string, int> um_name;
+    
+    for(const auto& e: v){
+        ++um_type[e[0]];
+        ++um_color[e[1]];
+        ++um_name[e[2]];
+    }
+    int sum{};
+    if(ruleKey == "color"){
+        sum = um_color[ruleValue];
+    }
+
+    std::cout<<sum<<std::endl;
 ```
 
 #### Go

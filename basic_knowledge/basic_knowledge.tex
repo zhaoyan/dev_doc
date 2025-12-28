@@ -2705,7 +2705,7 @@ pipeline {
 						sshPut remote: remote, from: 'checkout.sh', into: '/tmp'
 						sshCommand remote: remote, sudo: false, command: "cd /home/yan/ \texttt{list} && rm -f build.log" 
 						sshCommand remote: remote, sudo: false, command: "chmod +x /tmp/checkout.sh; chown yan /tmp/checkout.sh; chgrp yan /tmp/checkout.sh; cd /home/yan/your/path; cp /tmp/checkout.sh .; dos2unix checkout.sh; ./checkout.sh"         
-						sshCommand remote: remote, sudo: false, command: "cd /home/yan && sudo docker run --user dev -v ./your/path:/home/dev/your/path nexus.apptricity.com/repository/apptricity/iot/u18owrt19:18.19 /bin/bash -c \"cd ~/your/path; python3 ../../utilities/scripts/compile_product219.py\" "
+						sshCommand remote: remote, sudo: false, command: "cd /home/yan && sudo docker run --user dev -v ./your/path:/home/dev/your/path nexus.app.com/repository/app/iot/u18owrt19:18.19 /bin/bash -c \"cd ~/your/path; python3 ../../utilities/scripts/compile_product219.py\" "
 						sshGet remote: remote, from: '/home/yan/your/path/build.log', into: 'product2_build.log', override: true
 					}
 					
@@ -2879,7 +2879,7 @@ pipeline {
 				
 				script{
 					sh 'rm -f LTKC/iController/build19.log'
-					docker.image('nexus.apptricity.com/repository/apptricity/iot/u18owrt19:18.19').inside('--user root') {
+					docker.image('nexus.app.com/repository/app/iot/u18owrt19:18.19').inside('--user root') {
 						sh 'chmod -R o+rw . && su dev -c " git config --global --add safe.directory "$(pwd)" && touch LTKC/iController/insideDocker && cd LTKC/iController && python3 ../../utilities/scripts/compile_pathfinder19.py && rm -f LTKC/iController/insideDocker " '
 					}
 				}
@@ -2897,7 +2897,7 @@ pipeline {
 				
 				script{
 					sh 'rm -f LTKC/iController/build22.log'
-					docker.image('nexus.apptricity.com/repository/apptricity/iot/u22owrt22:22.22').inside('--user root') {
+					docker.image('nexus.app.com/repository/app/iot/u22owrt22:22.22').inside('--user root') {
 						sh 'chmod -R o+rw . && su dev -c " git config --global --add safe.directory "$(pwd)" && touch LTKC/iController/insideDocker && cd LTKC/iController && python3 ../../utilities/scripts/compile_pathfinder22.py && rm -f LTKC/iController/insideDocker " '
 					}
 				}
@@ -2968,6 +2968,62 @@ pipeline {
 		}  
 	} 
 	
+}
+\end{lstlisting}
+
+\subsection{Jenkin and sharepoint}
+\begin{lstlisting}
+pipeline {
+    agent any
+    environment {
+        TENANT_ID = '867b575b-c37d-46ad-9c2b-2955a3d5e814'
+        CLIENT_ID = '26475bf7-67e3-40b6-b5fa-0ba01dc52e63'
+        CLIENT_SECRET = credentials('sp_secret')
+        SHAREPOINT_SITE = 'https://appcorp.sharepoint.com/sites/IOTTeam'
+        SHAREPOINT_FOLDER = '/Shared Documents/Documents/Software/Firmware'
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                sh 'echo "hello world" > output.txt'
+            }
+        }
+
+        stage('Upload to SharePoint') {
+            steps {
+                sh '''
+                # 1. Get Access Token from Azure AD
+                ACCESS_TOKEN=$(curl -s \
+                  -X POST \
+                  -d "client_id=$CLIENT_ID" \
+                  -d "scope=https://graph.microsoft.com/.default" \
+                  -d "client_secret=$CLIENT_SECRET" \
+                  -d "grant_type=client_credentials" \
+                  https://login.microsoftonline.com/$TENANT_ID/oauth2/v2.0/token \
+                | jq -r .access_token)
+
+
+                SITE_ID=$(curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
+"https://graph.microsoft.com/v1.0/sites/app.sharepoint.com:/sites/IOTTeam" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+
+        curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
+"https://graph.microsoft.com/v1.0/sites/$SITE_ID/drives" | jq .
+
+            DRIVE_ID=$(curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
+"https://graph.microsoft.com/v1.0/sites/$SITE_ID/drives" \
+| python3 -c "import sys,json; print(json.load(sys.stdin)['value'][1]['id'])")
+                
+                # 2. Upload file to SharePoint via Microsoft Graph
+                curl -X PUT \
+                  -H "Authorization: Bearer $ACCESS_TOKEN" \
+                  -H "Content-Type: text/plain" \
+                  --data-binary @output.txt \
+                  "https://graph.microsoft.com/v1.0/sites/$SITE_ID/drives/$DRIVE_ID/root:/Software/Firmware/output.txt:/content"
+                '''
+            }
+        }
+    }
 }
 \end{lstlisting}
 
@@ -3134,8 +3190,8 @@ build my own image and upload to docker hub.
 	
 	\item Before push, you need to login first, then use tag to specify the directory in the docker hub website. In the end, run push. 
 \begin{lstlisting}
-sudo docker tag u22owrt22:22.22 nexus.***.com/repository/apptricity/iot/u22owrt22:22.22
-yan@yan-VMware-Virtual-Platform:~$ sudo docker push nexus.***.com/repository/apptricity/iot/u22owrt22:22.22
+sudo docker tag u22owrt22:22.22 nexus.***.com/repository/app/iot/u22owrt22:22.22
+yan@yan-VMware-Virtual-Platform:~$ sudo docker push nexus.***.com/repository/app/iot/u22owrt22:22.22
 
 \end{lstlisting}
 \end{enumerate}

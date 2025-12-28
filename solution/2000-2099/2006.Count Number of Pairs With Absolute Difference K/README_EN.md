@@ -131,6 +131,24 @@ public:
         return ans;
     }
 };
+
+std::vector<int> nums = {1,2,2, 1};
+    int k = 1;
+    std::unordered_map<int, int> um;
+    int sum{};
+
+    for(auto e: nums){
+        int key1 = e-k;
+        int key2 = e+k;
+        if(um.contains(key1)){
+            sum += um[key1];
+        }
+        if(um.contains(key2)){
+            sum += um[key2];
+        }
+        ++um[e];
+    }
+    std::cout<<sum<<std::endl;
 ```
 
 #### Go

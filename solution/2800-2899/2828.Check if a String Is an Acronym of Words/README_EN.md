@@ -112,6 +112,16 @@ public:
         return t == s;
     }
 };
+
+std::vector<std::string> v{"never","gonna","give","up","on","you"};
+   std::string s = "ngguoy";
+
+   std::string temp{};
+   for(const auto& e: v){
+    temp.push_back(e[0]);
+   }
+
+   std::cout<< (temp==s) <<std::endl;
 ```
 
 #### Go

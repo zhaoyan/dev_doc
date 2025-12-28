@@ -109,6 +109,28 @@ public:
         return ans;
     }
 };
+
+std::vector<int> nums1 = {12,28,46,32,50};
+    std::vector<int> nums2 = {50,12,32,46,28};
+    std::vector<int> result(nums1.size(), 0);
+
+    std::unordered_multimap<int, int> um;
+    for(int i = 0; auto e : nums2){
+        um.emplace(e, i);
+        ++i;
+    }
+
+    for(int i = 0; auto e: nums1){
+        auto [f, s] = um.equal_range(e);
+        auto [v, i2] = *f;
+        if(v == e){
+            result[i] = i2;
+            um.erase(f);
+        }
+        ++i;
+    }
+
+    std::print("{}", result);
 ```
 
 #### Go

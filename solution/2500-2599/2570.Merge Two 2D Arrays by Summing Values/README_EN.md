@@ -150,6 +150,30 @@ public:
         return ans;
     }
 };
+
+std::vector<std::pair<int, int> > nums1 = {{1, 2}, {2, 3}, {4, 5}};
+    std::vector<std::pair<int, int> > nums2 = {{1, 4}, {3, 2}, {4, 1}};
+
+    std::map<int, int> dict;
+    for( auto [f, s] : nums1){
+        dict[f] = s;
+    }
+
+    for( auto [f, s] : nums2){
+        if(dict.contains(f))
+            dict[f] = s+ dict[f];
+        else
+            dict[f] = s;
+    }
+
+    std::vector<std::pair<int, int> >result{};
+
+    for( auto & [f, s] : dict){
+        result.emplace_back(f, s);
+    }
+
+    std::print("{}", result);
+
 ```
 
 #### Go

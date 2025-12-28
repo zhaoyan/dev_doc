@@ -127,6 +127,20 @@ public:
         return ans;
     }
 };
+
+std::string str= "l**|*e*et|c**o|*de|";
+   bool flag = false;
+   int sum{};
+   for(auto e: str){
+    if(e == '|'){
+        flag = !flag;
+    }
+    if(!flag && e =='*' ){
+        ++sum;
+    }
+   }
+
+   std::cout<<sum<<std::endl;
 ```
 
 #### Go

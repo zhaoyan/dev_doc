@@ -137,6 +137,25 @@ public:
         return ans;
     }
 };
+
+
+std::vector<std::string> words = {"cd","ac","dc","ca","zz"};
+
+    std::unordered_set<std::string> us;
+
+    int sum{};
+    for(const auto & e: words){
+        std::string temp = e;
+        std::ranges::reverse(temp);
+        if(us.contains(temp)){
+            ++sum;
+        }
+        else{
+            us.insert(e);
+        }
+    }
+
+    std::cout<<sum<<std::endl;
 ```
 
 #### Go

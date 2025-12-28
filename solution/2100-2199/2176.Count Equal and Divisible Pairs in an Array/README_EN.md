@@ -107,6 +107,35 @@ public:
         return ans;
     }
 };
+
+ std::vector<int> v{3,1,2,2,2,1,3};
+
+    std::vector< std::pair<int, int> > vp;
+
+    for(int i = 0; auto e: v){
+        vp.emplace_back(e, i);
+        ++i;
+    }
+
+    std::ranges::sort(vp);
+
+    int sum{};
+    for(int i = 0; i<vp.size(); ++i){
+        int e = vp[i].first;
+        int index = vp[i].second;
+        for(int j = i+1; j<vp.size(); ++j){
+            int e1 = vp[j].first;
+            if(e != e1){
+                break;
+            }
+            int index1 = vp[j].second;
+            if( (index*index1) % 2 == 0){
+                ++sum;
+            }
+        }
+    }
+    std::cout<<sum<<std::endl;
+
 ```
 
 #### Go

@@ -125,6 +125,20 @@ public:
         return ans;
     }
 };
+
+std::vector< std::pair<int, int> > v {{1,1},
+ {3,4},
+ {-1,0}};
+
+    int sum{};
+ for(int i = 0; i<v.size()-1; ++i){
+    auto [f1, s1] = v[i];
+    auto [f2, s2] = v[i+1];
+    int temp1 = abs(f2-f1);
+    int temp2 = abs(s2-s1);
+    sum+= std::max(temp1, temp2);
+ }
+ std::cout<<sum<<std::endl;
 ```
 
 #### Go

@@ -121,6 +121,22 @@ public:
         return x - y;
     }
 };
+
+std::vector<int> nums = {1,15,6,3};
+    int sum{};
+    sum = std::accumulate(nums.begin(), nums.end(), sum);
+    std::cout<<sum<<std::endl;
+    std::string result{};
+    for(auto e: nums){
+        std::string temp = std::to_string(e);
+        result+=temp;
+    }
+    std::cout<<result<<std::endl;
+    int sum1{};
+    for(auto e: result){
+        sum1+=(e-'0');
+    }
+    std::cout<<sum1<<std::endl;
 ```
 
 #### Go

@@ -138,6 +138,15 @@ public:
         return ans;
     }
 };
+
+std::vector<int> v{5,3,4,1,3,2};
+   int min = std::numeric_limits<int>::max();
+   std::vector<int> result;
+   for(auto e: v){
+    min= std::min(e, min);
+    result.push_back(min);
+   }
+   std::print("{}", result);
 ```
 
 #### Go

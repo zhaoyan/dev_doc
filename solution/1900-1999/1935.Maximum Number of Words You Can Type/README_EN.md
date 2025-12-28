@@ -135,6 +135,27 @@ public:
         return ans;
     }
 };
+
+std::string str1 = "hello world yan zhao bce", brokenLetters = "ad";
+    std::unordered_set<char> us;
+    for(auto e: brokenLetters){
+        us.insert(e);
+    }
+
+    auto vw = str1 | std::ranges::views::split(' ');
+
+    int sum{};
+    for(auto e: vw){
+        ++sum;
+        for(auto it = e.begin(); it!=e.end(); ++it){
+            if(us.contains(*it)){
+                --sum;
+                break;
+            }
+        }
+    }
+
+    std::cout<<sum<<std::endl;   
 ```
 
 #### Go

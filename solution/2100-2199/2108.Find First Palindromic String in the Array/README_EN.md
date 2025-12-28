@@ -124,6 +124,15 @@ public:
         return "";
     }
 };
+
+
+std::vector<std::string> v{"abc","car","ada","racecar","cool"};
+    for(const auto &e: v){
+        if(std::equal(e.begin(), e.begin()+e.size()/2, e.rbegin() )){
+            std::cout<<e<<std::endl;
+        }
+    }
+
 ```
 
 #### Go

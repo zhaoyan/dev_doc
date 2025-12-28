@@ -130,6 +130,35 @@ public:
         return ans;
     }
 };
+
+int bt(Node* head, int &base){
+    if(head->next == nullptr){
+        base = 1;
+        return (head->value)*base;
+    }
+    int temp = bt(head->next, base);
+    base*=2;
+    temp+= head->value*base;
+    return temp;
+}
+
+int main(){
+
+    Node* head;
+    Node* n1= new Node{1, nullptr};
+    head = n1;
+    Node* n2= new Node{0, nullptr};
+    n1->next = n2;
+    Node* n3= new Node{1, nullptr};
+    n2->next = n3;
+    int base{1};
+    int sum = bt(head, base);
+    std::cout<<sum<<std::endl;
+    
+
+
+}
+
 ```
 
 #### Go

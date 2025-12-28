@@ -109,6 +109,19 @@ public:
         return ans;
     }
 };
+
+std::vector<int> v{3,1,5,2, 9, 9};
+   int a = 0, b = 0;
+   for(auto e: v){
+    if(e>=a){
+        b = a;
+        a = e;
+    }
+    else if (e>b){
+        b = e;
+    }
+   }
+   std::cout<<a<<" "<<b<<std::endl;
 ```
 
 #### Go

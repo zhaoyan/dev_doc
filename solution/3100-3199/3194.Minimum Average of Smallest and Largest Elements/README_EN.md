@@ -220,6 +220,19 @@ public:
         return ans / 2.0;
     }
 };
+
+std::vector<int> v{7,8,3,4,15,13,4,1};
+    std::ranges::sort(v);
+    int l = 0;
+    int r = v.size()-1;
+    float f = 200.0f;
+    while(l<r){
+
+        f = std::min(f, (v[l]+v[r])/2.0f );
+        ++l;
+        --r;
+    }
+    std::cout<<f<<std::endl;
 ```
 
 #### Go

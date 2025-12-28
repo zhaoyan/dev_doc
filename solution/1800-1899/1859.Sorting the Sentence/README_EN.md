@@ -124,6 +124,24 @@ public:
         return ans;
     }
 };
+
+std::string str = "is2 sentence4 This1 a3";
+    auto vw = str | std::ranges::views::split(' ') | std::ranges::to< std::vector<std::string> >();
+
+    int num = std::ranges::count(str, ' ');
+    std::cout<<num<<std::endl;
+    std::vector<std::string> result(num+1, "");
+    for(auto& e: vw){
+        int index = e.back()-'1';
+        e.pop_back();
+        result[index] = e;
+    }
+
+    std::print("{}", result);
+
+    auto vw1 = result | std::ranges::views::join_with(' ') | std::ranges::to<std::string>();
+
+    std::cout<<std::quoted(vw1)<<std::endl;
 ```
 
 #### Go

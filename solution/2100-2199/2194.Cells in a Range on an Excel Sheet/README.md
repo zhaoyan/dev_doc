@@ -129,6 +129,28 @@ public:
         return ans;
     }
 };
+
+std::string str = "KLG123:L2";
+    auto vw = str| std::views::split(':');
+    auto it = vw.begin();
+    std::string s1(std::from_range, *it);
+    ++it;
+    std::string s2(std::from_range, *it);
+
+    auto vw1 = s1 | std::views::chunk_by( [](auto e1, auto e2){
+        if((e1>='A' && e1<='Z') && (e2>='A' && e2<='Z'))
+            return true;
+        if((e1>='0' && e1<='9') && (e2>='0' && e2<='9'))
+            return true;    
+        return false;
+    });
+
+    for(auto e: vw1){
+        std::print("{}", e);
+    }
+
+    std::cout<<std::quoted(s1)<<std::quoted(s2)<<std::endl;
+
 ```
 
 #### Go

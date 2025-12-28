@@ -125,6 +125,25 @@ public:
         return ans;
     }
 };
+
+std::vector<int> v{0,1,4,6,7,10};
+    int diff = 3;
+
+    std::set<int> st;
+    for(auto e: v){
+        st.insert(e);
+    }
+
+    int sum{};
+    for(auto e: v){
+        int t1 = e+3;
+        int t2 = t1+3;
+        if(st.contains(t1) && st.contains(t2)){
+            ++sum;
+        }
+    }
+    std::cout<<sum<<std::endl;
+
 ```
 
 #### Go

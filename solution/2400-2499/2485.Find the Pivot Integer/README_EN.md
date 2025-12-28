@@ -117,6 +117,18 @@ public:
         return -1;
     }
 };
+
+int n = 8;
+    std::vector<int> v(n, 0);
+    std::iota(v.begin(), v.end(), 1);
+    std::print("{}", v);
+    std::partial_sum(v.begin(), v.end(), v.begin());
+    std::print("{}", v);
+    for(int i = 1;i<n; ++i){
+        if((v[n-1]-v[i-1])== v[i]){
+            std::cout<<v[i]<<std::endl;
+        }
+    }
 ```
 
 #### Go

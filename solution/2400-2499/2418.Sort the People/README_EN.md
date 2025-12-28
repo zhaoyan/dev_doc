@@ -117,6 +117,25 @@ public:
         return ans;
     }
 };
+
+std::vector<std::string> v{"Mary", "Yan", "John","Emma"};
+    std::vector<int> heights {180,160,165,170};
+
+    std::vector<std::pair<int, int> > vp;
+    for(int i = 0; auto e: heights){
+        vp.emplace_back(e, i);
+        ++i;
+    }
+
+    std::ranges::sort(vp, std::greater{}, &std::pair<int, int>::first);
+    std::print("{}", vp);
+
+    std::vector<std::string> result;
+    for(auto e: vp | std::ranges::views::values){
+        result.push_back(v[e]);
+    }
+
+    std::print("{}", result);
 ```
 
 #### Go

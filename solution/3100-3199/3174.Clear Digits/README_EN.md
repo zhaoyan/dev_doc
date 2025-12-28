@@ -133,6 +133,27 @@ public:
         return stk;
     }
 };
+
+std::string str = "12abcd34";
+   std::stack<char> st;
+   for(auto e: str){
+    if(std::isalpha(e)){
+        st.push(e);
+    }
+    else if(std::isdigit(e)){
+        if(!st.empty())
+            st.pop();
+    }
+   }
+    
+    std::string result{};
+    while(!st.empty()){
+        result.push_back(st.top());
+        st.pop();
+    }
+
+    std::ranges::reverse(result);
+    std::print("{}", result);
 ```
 
 #### Go

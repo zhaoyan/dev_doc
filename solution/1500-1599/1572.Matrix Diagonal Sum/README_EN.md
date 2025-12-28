@@ -121,6 +121,23 @@ public:
         return ans;
     }
 };
+
+std::vector< std::vector<int> > v{{1,2,3},
+ {4,5,6},
+ {7,8,9}};
+
+    int n = v.size();
+    int sum{};
+    for(int i=0; i<n; ++i ){
+        sum += v[i][i];
+        sum += v[i][n-i-1];
+    }
+
+    if(n%2 == 1){
+        sum -=v[n/2][n/2];
+    }
+
+    std::cout<<sum<<std::endl;
 ```
 
 #### Go

@@ -127,6 +127,19 @@ public:
         return ans;
     }
 };
+
+std::vector<int> v{999,12,13,14};
+    int min_sum = std::numeric_limits<int>::max();
+    for(auto e: v){
+        int sum{};
+        while(e){
+            int digit = e%10;
+            sum+=digit;
+            e/=10;
+        }
+        min_sum = std::min(min_sum, sum);
+    }
+    std::cout<<min_sum<<std::endl;
 ```
 
 #### Go

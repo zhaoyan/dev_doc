@@ -155,6 +155,45 @@ public:
         return ans;
     }
 };
+
+std::vector<int> nums1 = {4,3,2,3,1};
+    std::vector<int> nums2 = {2,2,5,2,3,6};
+
+    std::unordered_map<int, int> um1;
+    std::unordered_map<int, int> um2;
+
+    for(auto e: nums1){
+        ++um1[e];
+    }
+    for(auto e: nums2){
+        ++um2[e];
+    }
+
+    std::ranges::sort(nums1);
+    std::ranges::sort(nums2);
+
+    auto s1 = std::ranges::unique(nums1);
+    nums1.erase(s1.begin(), s1.end());
+
+    auto s2 = std::ranges::unique(nums2);
+    nums2.erase(s2.begin(), s2.end());
+    
+    std::vector<int> ru{};
+
+    std::ranges::set_intersection(nums1, nums2, std::back_inserter(ru));
+
+    std::print("{}", ru);
+
+    int result1{};
+    int result2{};
+
+    for(auto e: ru){
+        result1 += um2[e];
+        result2 += um1[e]; 
+    }
+
+    std::cout<<result1<<" "<<result2<<std::endl;
+
 ```
 
 #### Go

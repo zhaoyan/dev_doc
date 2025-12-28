@@ -150,6 +150,17 @@ public:
         return dummy->next;
     }
 };
+
+
+    std::list<int> l {1,1,2,1,2,3};
+    std::map<int, int> dict;
+    for(auto e: l){
+        ++dict[e];
+    }
+
+    auto vw = dict | std::ranges::views::values|std::ranges::to<std::list<int> >();
+    std::print("{}", vw);
+
 ```
 
 #### Go

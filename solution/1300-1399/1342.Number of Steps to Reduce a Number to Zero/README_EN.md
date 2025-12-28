@@ -119,6 +119,18 @@ public:
         return ans;
     }
 };
+
+//Yan's code
+int main(){
+    int num = 8;
+    int sum{};
+    while(num){
+        num%2 ? num-=1: num/=2;
+        sum++;
+    }
+    std::cout<<sum<<std::endl;
+}
+
 ```
 
 #### Go

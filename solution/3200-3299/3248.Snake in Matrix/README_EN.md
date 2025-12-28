@@ -252,6 +252,26 @@ public:
         return x * n + y;
     }
 };
+
+	int n = 3;
+    std::vector<std::string> commands = {"DOWN","RIGHT","UP"};
+    int i = 0, j = 0;
+
+    for(const auto &e: commands){
+        if(e == "DOWN"){
+            ++i;
+        }
+        else if(e == "UP"){
+            --i;
+        }
+        else if(e == "RIGHT"){
+            ++j;
+        }
+        else{
+            --j;
+        }
+    }
+    std::cout<<n*i+j<<std::endl;
 ```
 
 #### Go

@@ -148,6 +148,31 @@ public:
         return ans;
     }
 };
+
+std::string word1 = "abcd";
+    std::string word2 = "pq";
+
+    std::string result;
+
+    int i = 0;
+    while(i<word1.size() && i<word2.size()){
+        result.push_back(word1[i]);
+        result.push_back(word2[i]);
+        ++i;
+    }
+
+    while(i<word1.size())
+    {
+        result.push_back(word1[i]);
+        ++i;
+    }
+    while(i<word2.size())
+    {
+        result.push_back(word2[i]);
+        ++i;
+    }
+
+    std::cout<<result<<std::endl;
 ```
 
 #### Go

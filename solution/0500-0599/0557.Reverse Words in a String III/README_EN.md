@@ -99,6 +99,14 @@ public:
         return ans;
     }
 };
+
+   std::string str = "Let's take LeetCode contest";
+   auto vw = str | std::ranges::views::split(' ');
+   for(auto e: vw){
+    auto vw1 = e | std::ranges::views::reverse| std::ranges::to<std::string>();
+    std::cout<<vw1<<std::endl;
+   }
+
 ```
 
 #### Go

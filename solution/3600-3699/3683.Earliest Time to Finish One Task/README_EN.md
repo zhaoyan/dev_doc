@@ -105,6 +105,16 @@ public:
         return ans;
     }
 };
+
+std::vector< std::pair<int, int> > v{{1,6},{2,3}, {1,1}};
+   int min_len = std::numeric_limits<int>::max();
+   for(const auto & e: v){
+    auto [f, s] = e;
+    int len = f+s;
+    min_len = std::min(min_len, len);
+   }
+
+   std::cout<<min_len<<std::endl;
 ```
 
 #### Go
