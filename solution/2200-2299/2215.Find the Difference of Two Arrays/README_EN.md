@@ -133,6 +133,21 @@ public:
         return ans;
     }
 };
+
+
+std::vector<int> num1 = {1,2,3,3}, num2 = {1,1,2,2};
+    std::set<int> s1(num1.begin(), num1.end());
+    std::set<int> s2(num2.begin(), num2.end());
+   
+   std::print("{}, {}", s1.size(), s2.size());
+   std::vector<int> ans1;
+   std::vector<int> ans2;
+
+   std::set_difference(s1.begin(), s1.end(), s2.begin(), s2.end(), back_inserter(ans1));
+
+   std::set_difference(s2.begin(), s2.end(), s1.begin(), s1.end(), back_inserter(ans2));
+
+    std::print("{}, {}", ans1, ans2);
 ```
 
 #### Go

@@ -124,6 +124,23 @@ public:
         return ans;
     }
 };
+
+ std::vector<int> v{1,2,2,3,1,4};
+
+    std::unordered_map<int, int> um;
+    int maxx = std::numeric_limits<int>::min();
+    for(auto e: v){
+        ++um[e];
+        maxx = std::max(maxx, um[e]);
+    }
+
+    int sum{};
+    for(auto [f, s] : um){
+        if(s == maxx){
+            sum+=s;
+        }
+    }   
+    std::print("{}", sum);
 ```
 
 #### Go

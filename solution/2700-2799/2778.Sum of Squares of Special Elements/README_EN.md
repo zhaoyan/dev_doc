@@ -104,6 +104,15 @@ public:
         return ans;
     }
 };
+
+std::vector<int> v = {2,7,1,19,18,3};
+    int len = v.size();
+    int i = 0;
+    auto vw = v | std::ranges::views::filter([&](auto e){ 
+        ++i;
+        return len%i == 0;});
+
+    std::print("{}", vw);
 ```
 
 #### Go

@@ -129,6 +129,16 @@ public:
         return a != b;
     }
 };
+
+std::vector<int> v{1,2,3,4,5,14};
+   auto vw = v | std::ranges::views::filter([](auto e){
+    return e<10;
+   });
+
+   int sum1 = std::accumulate(v.begin(), v.end(), 0);
+   int sum2 = std::accumulate(vw.begin(), vw.end(), 0);
+   
+   std::print("{}, {}", sum1, sum2);
 ```
 
 #### Go

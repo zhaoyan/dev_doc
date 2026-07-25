@@ -119,6 +119,29 @@ public:
         return x - 1;
     }
 };
+
+int n = 14;
+    int temp = n+1;
+    bool all_set{false};
+
+    if( (temp & (temp-1)) == 0){
+        all_set = true;
+    }
+    
+    std::print("{}", all_set);
+
+    int i = 0;
+    while( (n & (1<<i) ) == 0){
+        ++i;
+    }
+    std::cout<<i<<std::endl;
+
+    i = 0;
+    while(n >>i){
+        ++i;
+    }
+
+    std::cout<<i<<std::endl;
 ```
 
 #### Go

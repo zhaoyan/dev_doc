@@ -138,6 +138,25 @@ public:
         return ans;
     }
 };
+
+std::vector v ={5,1};
+    auto [i1, i2] = std::ranges::minmax_element(v);
+    int minx = *i1;
+    int maxx = *i2;
+
+    std::unordered_set<int> us;
+    for(auto e: v){
+        us.insert(e);
+    }
+
+    std::vector<int> result{};
+    for(int i = minx+1; i<maxx; ++i){
+        if(!us.contains(i)){
+            result.push_back(i);
+        }
+    }
+    
+    std::print("{}", result);
 ```
 
 #### Go

@@ -124,6 +124,16 @@ public:
         return ans;
     }
 };
+
+
+    std::vector<int> v{5,1,2,3,4};
+    std::vector<int> w{v};
+    std::ranges::sort(w);
+
+    int sum = std::inner_product(v.begin(), v.end(), w.begin(), 
+    0,  std::plus{}, std::not_equal_to{});
+
+    std::print("{}", sum);
 ```
 
 #### Go

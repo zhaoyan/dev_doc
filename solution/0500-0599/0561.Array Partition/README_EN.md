@@ -104,6 +104,17 @@ public:
         return ans;
     }
 };
+
+std::vector<int> num1 = {6,2,6,5,1,2};
+   std::ranges::sort(num1);
+   auto vw = num1 | std::ranges::views::chunk(2);
+   int sum {};
+   for(auto e: vw){
+    auto it = e.begin();
+    sum += *it;
+   }
+
+   std::print("{}", sum);
 ```
 
 #### Go

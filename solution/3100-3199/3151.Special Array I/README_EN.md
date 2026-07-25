@@ -118,6 +118,32 @@ public:
         return true;
     }
 };
+
+std::vector<int> v {4, 3, 2, 7, 6};
+    bool flag = true;
+    bool b1 = v[0]%2;
+    for(int i = 1; i<v.size(); ++i){
+        bool b2 = v[i]%2;
+        if(b1 == b2 ){
+            flag = false;
+            break;
+        }
+        else{
+            b1 = b2;
+        }
+    }
+
+    std::print("{}", flag);
+
+
+    std::vector<int> v {4, 2, 2, 7, 6};
+    auto it = std::ranges::adjacent_find(v, [](auto e1, auto e2){
+        auto e = e1 ^ e2;
+        e = e & 1;
+        return e == 0;
+    });
+    std::print("{}", it == v.end());
+
 ```
 
 #### Go

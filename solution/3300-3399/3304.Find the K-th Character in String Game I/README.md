@@ -132,6 +132,23 @@ public:
         return 'a' + word[k - 1];
     }
 };
+
+int k = 5;
+    std::string str = "a";
+    str.reserve(k*2);
+    int len = str.length();
+    while(len<k){
+        std::string temp{};
+        std::transform(str.begin(), str.end(), back_inserter(temp), [](char c){
+            return c == 'z' ? 'a' : ++c;
+        });
+        //std::cout<<temp<<std::endl;
+        str.append(temp);
+        len = str.length();
+        std::cout<<str<<std::endl;
+    }
+
+    std::cout<<str[k-1]<<std::endl;
 ```
 
 #### Go

@@ -109,6 +109,30 @@ public:
         return stoi(s);
     }
 };
+
+int i = 9669;
+    char ch[32];
+    auto [pr, err] = std::to_chars(ch, ch+32, i);
+
+    std::cout<<static_cast<void*>(ch) <<"  "<< static_cast<void*>(pr)<<std::endl;
+    std::cout<<ch<<std::endl;
+
+    int len = std::strlen(ch);
+    std::cout<<"len "<<len<<std::endl;
+    
+    std::string str{ch};
+    std::cout<<str<<std::endl;
+
+    auto pos = str.find('6');
+    if(pos != std::string::npos){
+        str[pos]= '9';
+    }
+    std::cout<<str<<std::endl;
+
+
+    int k{};
+    std::from_chars(ch, ch+len, k);
+    std::print("answer is {}", k);
 ```
 
 #### Go

@@ -113,6 +113,15 @@ public:
         return ans;
     }
 };
+
+std::vector<std::string> v{ "7868190130M7522","5303914400F9211","9273338290F4010"};
+
+   for(const auto & e : v){
+    auto *p = e.c_str();
+    int k{};
+    std::from_chars(p+11, p+13, k);
+    std::cout<<k<<std::endl;
+   }
 ```
 
 #### Go

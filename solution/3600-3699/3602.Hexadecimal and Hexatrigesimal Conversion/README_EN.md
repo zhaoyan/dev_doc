@@ -156,6 +156,25 @@ private:
         return res;
     }
 };
+
+int n = 169;
+
+    std::string str{};
+    while(n >0){
+        int digit = n%16;
+        char c;
+        if(digit>= 10){
+            c = 'A'+digit-10;
+        }
+        else{
+            c = '0' + digit;
+        }
+        str.push_back(c);
+        n = n/16;
+    }
+    std::reverse(str.begin(), str.end());
+    std::cout<< str <<std::endl; 
+
 ```
 
 #### Go

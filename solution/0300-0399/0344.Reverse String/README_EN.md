@@ -87,6 +87,16 @@ public:
         }
     }
 };
+
+std::vector<char> v{'h', 'e', 'l', 'l', 'o' };
+
+    auto i = v.begin();
+    auto ri = v.rbegin();
+    for(; i< std::next(v.begin(), v.size()/2) ; ++i, ++ri){
+        std::iter_swap(i, ri);
+    }
+
+    std::print("{}", v);
 ```
 
 #### Go

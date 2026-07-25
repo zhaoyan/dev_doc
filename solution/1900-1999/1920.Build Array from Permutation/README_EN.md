@@ -105,6 +105,16 @@ public:
         return ans;
     }
 };
+
+
+
+std::vector<int> v {5,0,1,2,3,4};
+    std::vector<int> a(v.size(), 0);
+    std::generate(a.begin(), a.end(), [&v, i =0]() mutable  {
+        return v[v[i++]]; 
+    });
+
+    std::print("{}", a);
 ```
 
 #### Go

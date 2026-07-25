@@ -141,6 +141,35 @@ public:
         return ans;
     }
 };
+
+ std::vector< std::vector<int> > v {{1,10,4,2},{9,3,8,7},{15,16,17,12}};
+
+    int col_len = v[0].size();
+    int row_len = v.size();
+    std::vector<int> col(col_len, std::numeric_limits<int>::min());
+    std::vector< std::pair<int, int> > row(row_len, {std::numeric_limits<int>::max(), 0});
+
+    for(int i = 0; i<row_len; ++i){
+
+        for(int j = 0; j<col_len; ++j){
+            if(v[i][j]<  row[i].first){*
+                row[i] = std::pair{v[i][j], j};
+            }
+            if(v[i][j] > col[j]){
+                col[j] = v[i][j];
+            }
+        }
+    }
+
+    std::vector<int> ans;
+    for( auto [f, s] : row){
+        if(f == col[s]){
+            ans.push_back(f);
+        }
+    }
+
+    std::print("{}", ans);
+
 ```
 
 #### Go

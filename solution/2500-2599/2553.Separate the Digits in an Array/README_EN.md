@@ -130,6 +130,20 @@ public:
         return ans;
     }
 };
+
+std::vector<int> v{13,25,83,77};
+   std::vector<int> result;
+
+   for(auto e : v){
+    std::vector<int> ans;
+     while(e){
+        ans.push_back(e%10);
+        e = e/10;
+     }
+     std::reverse(ans.begin(), ans.end());
+     result.insert(result.end(), ans.begin(), ans.end());
+   }
+   std::print("{}", result);
 ```
 
 #### Go

@@ -197,6 +197,20 @@ public:
         return ans;
     }
 };
+
+
+std::string str = "!this  1-s b8d! abc";
+    auto vw = str | std::ranges::views::split(' ');
+    for(auto e : vw){
+        std::string_view sv(e.begin(), e.end());
+        if(sv.size()>0){
+            if(std::any_of(sv.begin(), sv.end(), [](auto e){return ::isdigit(e);}))
+                continue;
+
+            if( ::isalpha(sv.front()) && ::isalpha(sv.back()) )
+            std::cout<<sv<<std::endl;
+        }
+    }
 ```
 
 #### Go

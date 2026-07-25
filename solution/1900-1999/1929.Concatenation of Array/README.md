@@ -110,6 +110,12 @@ public:
         return nums;
     }
 };
+
+    std::vector<int> v{1,3,2,1};
+    int len = v.size();
+    std::vector<int> a = v;
+    a.insert(a.end(), v.begin(), v.end());
+    std::print("{}", a);
 ```
 
 #### Go

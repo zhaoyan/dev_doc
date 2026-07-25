@@ -140,6 +140,20 @@ public:
         return ans;
     }
 };
+
+
+std::vector<int> v = {1, 5, 2, 4, 1};
+    int minx = v[0];
+    int sum{};
+    for(int i = 1; i<v.size(); ++i){
+        if(v[i]<=minx){
+            sum+=  (minx-v[i] +1); 
+            v[i] += (minx-v[i] +1);
+        }
+        minx = v[i];
+    }
+
+    std::print("{}", sum);
 ```
 
 #### Go

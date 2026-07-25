@@ -145,6 +145,38 @@ private:
     vector<int> data;
 };
 
+
+
+class MovingAverage{
+public:
+    MovingAverage(int n) : n_(n), index_(0), v(n, 0), sum_{0}{
+    }
+
+    float next(int num){
+        if(index_<3){
+            int pos = index_ % n_;
+            v[pos] = num;
+            sum_ += num;
+            ++index_; 
+            return sum_/static_cast<float>( (index_) );
+            
+        }
+        else{
+            int pos = index_ % n_;
+            sum_ -= v[pos];
+            sum_ += num;
+            v[pos] = num;
+            ++index_;
+            return sum_/3.0f;
+        }
+    }
+private:
+    int sum_{};
+    int n_;
+    int index_;
+    std::vector<int> v;
+};
+
 /**
  * Your MovingAverage object will be instantiated and called as such:
  * MovingAverage* obj = new MovingAverage(size);

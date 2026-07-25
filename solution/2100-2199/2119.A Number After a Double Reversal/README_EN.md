@@ -99,6 +99,33 @@ public:
         return num == 0 || num % 10 != 0;
     }
 };
+
+int i = 1800100;
+    char ch[32];
+    auto [pr, err] = std::to_chars(ch, ch+32, i);
+
+    for(auto* p = pr-1 ; p!=ch; --p ){
+        if((*p) !='0'){
+            ++p;
+            *p = '\0';
+            break;
+        }
+    }
+
+    std::cout<<ch<<std::endl;
+    
+    /*
+    auto it = std::ranges::find_last_if_not(ch, pr, [](auto e){
+        return e == '0';
+    });
+
+    *(it.begin()+1) = '\0';
+
+    int j;
+    std::from_chars(ch, it.begin()+1, j);
+
+    std::cout<<j<<std::endl;
+    */
 ```
 
 #### Go

@@ -117,6 +117,13 @@ public:
         return ans;
     }
 };
+
+std::string str = "aaaba";
+   auto vw = str | std::ranges::views::chunk_by(std::equal_to{});
+   for(auto e : vw){
+    
+    std::print("{}, {}", e, e.size());
+   }
 ```
 
 #### Go

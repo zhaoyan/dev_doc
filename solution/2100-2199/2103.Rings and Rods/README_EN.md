@@ -131,6 +131,31 @@ class Solution {
         return ans;
     }
 }
+
+
+std::string str = "B0R0G0R9R0B0G0";
+    std::vector<int> v(10, 0);
+
+    auto vw = str | std::ranges::views::chunk(2);
+
+    for(auto e: vw){
+        auto it = e.begin();
+        char c = *it;
+        ++it;
+        char r = *it;
+        int index = r-'0';
+        if(c == 'B'){
+            v[index] |= 1;
+        }
+        else if(c == 'G'){
+            v[index] |= 2;
+        }
+        else if(c == 'R'){
+            v[index] |= 4;
+        }
+    }
+
+    std::print("{}", std::ranges::count(v, 7)); 
 ```
 
 #### C++

@@ -122,6 +122,27 @@ public:
         return ans;
     }
 };
+
+std::string str = "DDI";
+   int len = str.size();
+   std::vector<int> v;
+   v.reserve(len+1);
+    int minx = 0;
+    int maxx = len;
+   for(auto e: str){
+    if(e == 'I'){
+        v.push_back(minx);
+        ++minx;
+    }
+    else if(e == 'D'){
+        v.push_back(maxx);
+        --maxx;
+    }
+   }
+   str.back() == 'D' ? v.push_back(maxx): v.push_back(minx);
+
+   std::print("{}", v);
+   
 ```
 
 #### Go

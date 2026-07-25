@@ -192,6 +192,41 @@ public:
         return accumulate(stk.begin(), stk.end(), 0);
     }
 };
+
+std::vector<std::string> v = {"5","-2","4","C","D","9","+","+"};
+
+    std::stack<int> st;
+    for(const auto& e: v){
+        if( std::all_of(e.begin(), e.end(), [](auto c){
+            return ::isdigit(c);
+        }) || e[0] == '-'){
+            int score = std::stoi(e);
+            st.push(score);
+        }
+        else if(e == "C"){
+            st.pop();
+        }
+        else if(e == "D"){
+            int temp = st.top();
+            st.push(temp*2);
+        }
+        else if(e == "+"){
+            int temp = st.top();
+            st.pop();
+            int temp1 = st.top();
+            st.push(temp);
+            st.push(temp+temp1);
+        }
+    }
+
+    int sum{};
+    while(!st.empty()){
+        std::cout<<st.top()<<std::endl;
+        sum +=st.top();
+        st.pop();
+    }
+    std::cout<<sum<<std::endl;
+
 ```
 
 #### Go

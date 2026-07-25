@@ -113,6 +113,16 @@ public:
         return f[0] == f[1];
     }
 };
+
+ std::string str = "24123";
+    int sum_odd{};
+    int sum_even{};
+
+    for(int i = 0; i<str.size(); ++i){
+        i%2 == 0? sum_even += str[i]-'0' : sum_odd += str[i]-'0'; 
+    }
+
+    std::print("{}, {}", sum_odd, sum_even);
 ```
 
 #### Go

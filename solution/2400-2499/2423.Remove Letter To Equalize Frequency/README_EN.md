@@ -157,6 +157,22 @@ public:
         return false;
     }
 };
+
+ std::string str = "aabbcddd";
+    std::vector<int> v(26, 0);
+
+    for(auto e: str){
+        ++v[e-'a']; 
+    } 
+
+    std::erase(v, 0);
+    auto it = std::ranges::max_element(v);
+    int maxx = *it;
+
+    int left = std::ranges::count(v, maxx-1);
+
+    std::print("{}, {}", left, v.size());  
+
 ```
 
 #### Go

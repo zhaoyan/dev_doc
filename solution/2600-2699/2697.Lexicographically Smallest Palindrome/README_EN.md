@@ -116,6 +116,18 @@ public:
         return s;
     }
 };
+
+std::string str = "egcfe";
+    int f = 0;
+    int e = str.size()-1;
+    while(f<e){
+        if(str[f] != str[e]){
+            str[f] <str[e] ? str[e] = str[f] : str[f] = str[e]; 
+        }
+        ++f;
+        --e;
+    }
+    std::print("{}", str);
 ```
 
 #### Go

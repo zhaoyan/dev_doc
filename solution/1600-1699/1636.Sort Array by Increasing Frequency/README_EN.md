@@ -114,6 +114,41 @@ public:
         return nums;
     }
 };
+
+
+std::vector<int> v{-1,1,-6,4,5,-6,1,4,1};
+    std::map<int, int> m;
+    for(auto e: v){
+        m[e]++;
+    }
+
+    std::vector< std::pair<int, int>> vp(m.begin(), m.end());
+    std::sort(vp.begin(), vp.end(), [](auto &e1, auto & e2){
+        int f1 = e1.first;
+        int s1 = e1.second;
+        int f2 = e2.first;
+        int s2 = e2.second;
+        if(s1<s2){
+            return true;
+        }
+        if(s1>s2){
+            return false;
+        }
+        if(f1>f2){
+            return true;
+        }
+        return false;
+    });
+
+    std::vector<int> result;
+    for( auto [f, s] : vp){
+        for(int i = 0 ; i<s ; ++i){
+            result.push_back(f);
+        }
+    }
+
+    std::print("{}", result);
+
 ```
 
 #### Go

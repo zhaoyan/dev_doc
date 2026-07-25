@@ -133,6 +133,20 @@ public:
         return t;
     }
 };
+
+std::string str = "poiinter";
+    std::string result{};
+    result.reserve(str.size());
+    for(auto e: str){
+        if(e != 'i'){
+            result.push_back(e);
+        }
+        else{
+            std::ranges::reverse(result);
+        }
+    }
+
+    std::cout<<std::quoted(result)<<std::endl;
 ```
 
 #### Go

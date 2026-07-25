@@ -117,6 +117,16 @@ public:
         return ans;
     }
 };
+
+
+std::vector<int> arr1 = {1,2,3,4,5}, arr2 = {1,2,5,7,9}, arr3 = {1,3,4,5,8};
+    std::vector<int> temp;
+    std::ranges::set_intersection(arr1, arr2, back_inserter(temp));
+    std::print("{}", temp.size());
+    std::vector<int> result;
+    std::ranges::set_intersection(temp, arr3, back_inserter(result) );
+    std::print("{}", result);
+
 ```
 
 #### Go

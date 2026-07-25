@@ -130,6 +130,28 @@ public:
         return ans;
     }
 };
+
+std::string str = "1326#";
+    int len = str.size();
+    std::string result{};
+
+    for(int i = len-1 ; i>=0; ){
+        if(str[i] == '#'){
+            std::string temp{str[i-2], str[i-1]};
+            int k = stoi(temp);
+            char c = (k-10)+'j';
+            result.push_back(c);
+            i-=3;
+        }
+        else{
+            result.push_back( (str[i]-'1') + 'a');
+            i-=1;
+        }
+    }
+
+    std::reverse(result.begin(), result.end());
+
+    std::print("{}", result);
 ```
 
 #### Go

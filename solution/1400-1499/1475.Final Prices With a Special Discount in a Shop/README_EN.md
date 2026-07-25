@@ -151,6 +151,36 @@ std::vector<int> v{8,4,6,2,3};
         st.push(x);
     }
     std::print("{}", ans);
+
+
+   std::vector<int> v{8, 4, 6, 2, 3};
+    int len = v.size();
+    std::vector<int> ans{};
+    std::stack<int> st;
+    for(int i = len-1; i>=0; --i){
+        while(st.size()>0){
+            int temp = st.top();
+            if(v[i]<temp){
+                st.pop();
+            }
+            else{
+                break;
+            }
+        }
+
+        if(st.size() == 0){
+            ans.push_back(v[i]);
+        }
+        else {
+            ans.push_back(st.top());
+        }
+        st.push(v[i]);
+    }
+
+    std::reverse(ans.begin(), ans.end());
+    std::print("{}", ans);
+
+
 ```
 
 #### Go
