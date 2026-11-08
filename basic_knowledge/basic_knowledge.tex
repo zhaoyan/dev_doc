@@ -3709,14 +3709,14 @@ pub/sub
 \section{ssh}
 1) check ~/.ssh to see existing key
 2) if not
-ssh-keygen -t ed25519 -C "your_email@example.com"
+ssh-keygen -t ed25519 -C "your\_email@example.com"
 
-3)eval "$(ssh-agent -s)"
-ssh-add ~/.ssh/id_ed25519
+3)eval "\$(ssh-agent -s)"
+ssh-add ~/.ssh/id\_ed25519
 ssh-add -l
 
 4) copy public key to bitbucket website
- cat ~/.ssh/id_ed25519.pub 
+ cat ~/.ssh/id\_ed25519.pub 
 
 5)ssh -T git@bitbucket.org
 
@@ -4705,6 +4705,7 @@ sudo docker pull nexus.***.com/repository/***/iot/u18owrt19:18.19
 sudo docker push ??
 
 \section{compile}
+
 \subsection{Clang}
 This is command to output llvm code.
 \begin{lstlisting}
@@ -6077,7 +6078,99 @@ main_LDADD = /path_to_la/libabc.la
 
 \fi
 
-\subsection{CMAKE}
+\subsection{CMAKE, ninja and pkg-config}
+\subsubsection{local}
+cmake: Which source files need to be compiled;
+Which libraries are required
+Which compiler to use
+Which compiler options to use
+How the project should be linked
+
+pkg-config, if you develop your own lib and want to used by other people, write .pc and save it in lib/pkgconfig/mylib.pc, then pkg-config tool will find it. pkg-confg --cflags --libs mylib will generate something like: -I/usr/include -L/usr/lib -lmydevice
+
+
+\begin{lstlisting}
+cmake_minimum_required(VERSION 3.16)
+
+project(cross_compile_test LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(CURL REQUIRED IMPORTED_TARGET libcurl)
+pkg_check_modules(SQLITE3 REQUIRED IMPORTED_TARGET sqlite3)
+pkg_check_modules(SPDLOG REQUIRED IMPORTED_TARGET spdlog)
+
+add_executable(test_libs main.cpp)
+
+target_link_libraries(test_libs PRIVATE
+    PkgConfig::CURL
+    PkgConfig::SQLITE3
+    PkgConfig::SPDLOG
+)
+\end{lstlisting}
+
+\begin{lstlisting}
+    3  sudo apt install g++
+    4  g++ --version
+    5  sudo apt install build-essential cmake ninja-build git pkg-config
+     6  g++ --version
+        7  gcc --version
+        8  cmake --version
+        9  ninja --version
+        mkdir -p build
+          36  cd build/
+          37  cmake -G Ninja ..
+          39  cmake --build . -j2
+          
+\end{lstlisting}
+
+compile in raspberry
+\begin{lstlisting}
+sudo apt install nlohmann-json3-dev
+sudo apt install libbluetooth-dev
+sudo apt install libcurl4-openssl-dev
+\end{lstlisting}
+
+\subsubsection{cross compile}
+in yocto
+\begin{lstlisting}
+1587  cmake -S . -B build-debug       -G Ninja       -DCMAKE_BUILD_TYPE=Debug
+ 1590  cmake -S . -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
+ be='source /usr/local/rb-debug-x86_64/environment-setup-aarch64-oe-linux'
+ 
+ alias bd='ninja -C build-debug 2>1 | tee build-debug.log'
+ alias br='ninja -C build-release 2>1 | tee build-release.log'
+\end{lstlisting}
+
+
+
+\begin{lstlisting}
+export PKG_CONFIG_LIBDIR=/home/yan/rpi-buildroot/output/host/arm-buildroot-linux-musleabihf/sysroot/usr/lib/pkgconfig
+export PKG_CONFIG_SYSROOT_DIR=/home/yan/rpi-buildroot/output/host/arm-buildroot-linux-musleabihf/sysroot
+cmake -S . -B build -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE=/home/yan/rpi-buildroot/output/host/share/buildroot/toolchainfile.cmake
+  
+  
+  
+  below is explanation:
+  //"Don't build for my Ubuntu PC. Build for the target platform described by this Buildroot toolchain."
+  //Sysroot is /home/yan/rpi-buildroot/output/host/arm-buildroot-linux-musleabihf/sysroot
+  
+                  Buildroot
+                     |
+   
+    output/host/.../sysroot   output/target
+         |                       |
+         |                       |
+    Build-time files        Runtime filesystem
+         |                       |
+  Cross compiler            Raspberry Pi
+\end{lstlisting}
+
+
 
 	The best way to study is see a simple and complete template file. You can google "most simple but complete cmake example" and take a look.  
 		
@@ -6277,7 +6370,8 @@ For embedded development, you can use VS code to remote access your board, then 
 	
 	\item If remote ssh doesn't work, map remote directory to local by sshfs, then open local directory in VS code. You can also use rsync to sync code between local and remote.
 	
-	\item install winfsp and sshfs-win, then in windows explorer, input \\sshfs.r\yan@10.0.40.96\data\yan. that all. it will map remote directory to a local dirver, Z: Y: into the windows explorer. Then you can open this directory in VS code. You can also use rsync to sync code between local and remote. if deal map Z: still exist, run below command to stop it. 
+	\item install winfsp and sshfs-win, then in windows explorer, input \verb|\\sshfs.r\yan@10.0.40.96\data\yan|. that all. it will map remote directory to a local dirver, Z: Y: into the windows explorer. Then you can open this directory in VS code. You can also use rsync to sync code between local and remote. if deal map Z: still exist, run below command to stop it. 
+	
 	\begin{lstlisting}
 		start powershell with admin right, then run below command to stop map Z:
 		 taskkill /f /im explorer.exe
@@ -6292,9 +6386,8 @@ For embedded development, you can use VS code to remote access your board, then 
 		\\wsl$\Ubuntu-20.04\home\yzhao\v18.
 	\end{lstlisting}
 	
-	\end{lstlisting}
 
-	\item Then open vs code in windows, manually input \\wsl$\Ubuntu-20.04\home\yzhao\v18. because The vs code can't find this wsl directory automatically. 
+	\item Then open vs code in windows, manually input \verb|\\wsl$\Ubuntu-20.04\home\yzhao\v18|. because The vs code can't find this wsl directory automatically. 
 
 \end{itemize}
 
